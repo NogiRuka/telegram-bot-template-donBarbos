@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 import uuid
 
-from flask import Flask, abort, redirect, request, url_for
+from flask import Flask, abort, flash, redirect, request, url_for
 from flask_admin import Admin, AdminIndexView, expose, helpers
 from flask_admin.consts import ICON_TYPE_FONT_AWESOME
 from flask_admin.contrib.sqla import ModelView
@@ -113,14 +113,49 @@ class AdminView(RoleView):
     can_create = True
     export_types = ["csv", "xlsx", "json", "yaml"]
 
+    # 列表显示配置
+    column_list = ["id", "email", "first_name", "last_name", "active"]
     column_searchable_list = ["email", "first_name", "last_name"]
-    column_exclude_list = ["password", "fs_uniquifier"]
-    form_excluded_columns = ["confirmed_at", "fs_uniquifier", "password", "roles"]
+    column_exclude_list = ["password", "fs_uniquifier", "confirmed_at"]
     column_details_exclude_list = ["password", "fs_uniquifier"]
     column_filters = ["email", "first_name", "last_name", "active"]
     
-    # 禁用内联编辑以避免表单问题
+    # 表单配置 - 明确指定包含的字段
+    form_columns = ["email", "first_name", "last_name", "active"]
+    form_excluded_columns = ["id", "confirmed_at", "fs_uniquifier", "password", "roles"]
+    
+    # 禁用内联编辑
     column_editable_list = []
+    
+    def create_model(self, form):
+        """重写创建模型方法，手动处理密码和必需字段"""
+        try:
+            model = self.model()
+            form.populate_obj(model)
+            
+            # 设置默认密码
+            if not hasattr(model, 'password') or not model.password:
+                model.password = hash_password("admin123")
+            
+            # 确保必需字段有值
+            if not hasattr(model, 'fs_uniquifier') or not model.fs_uniquifier:
+                import uuid
+                model.fs_uniquifier = str(uuid.uuid4())
+            
+            if not hasattr(model, 'active'):
+                model.active = True
+                
+            self.session.add(model)
+            self._on_model_change(form, model, True)
+            self.session.commit()
+        except Exception as ex:
+            if not self.handle_view_exception(ex):
+                flash(f'创建失败: {str(ex)}', 'error')
+            self.session.rollback()
+            return False
+        else:
+            self.after_model_change(form, model, True)
+        return model
 
 
 # Flask views
