@@ -17,6 +17,13 @@ dependencies = [
     "loguru>=0.7.3",
     "aiomysql>=0.2.0",
     "pymysql>=1.1.2",
+    "aiogram>=3.19.0,<4.0.0",
+    "redis>=5.2.1,<6.0.0",
+    "aiohttp[speedups]>=3.11.16,<4.0.0",
+    "cachetools>=5.5.1,<6.0.0",
+    "orjson>=3.10.15,<4.0.0",
+    "alembic>=1.14.1,<2.0.0",
+    "prometheus-client>=0.21.1,<1.0.0",
 ]
 
 [project.urls]
@@ -45,7 +52,7 @@ admin = [
     "flask-caching>=2.3.0,<3.0.0",
     "flask-babel>=4.0.0,<5.0.0",
     "flask-sqlalchemy>=3.1.1,<4.0.0",
-    "psycopg2-binary>=2.9.10,<3.0.0",
+    "pymysql>=1.1.0,<2.0.0",
     "tablib[xlsx]>=3.8.0,<4.0.0",
 ]
 dev = [
