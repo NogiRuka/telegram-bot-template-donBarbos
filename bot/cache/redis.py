@@ -1,15 +1,14 @@
 from __future__ import annotations
+import asyncio
+import time
 from functools import wraps
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from bot.cache.serialization import AbstractSerializer, PickleSerializer
-from bot.core.loader import redis_client
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from datetime import timedelta
-
-    from redis.asyncio import Redis
 
 
 DEFAULT_TTL = 10
@@ -17,6 +16,39 @@ DEFAULT_TTL = 10
 _Func = TypeVar("_Func")
 Args = str | int  # basically only user_id is used as identifier
 Kwargs = Any
+
+
+# 简单的内存缓存实现
+class MemoryCache:
+    """简单的内存缓存实现，替代Redis"""
+    
+    def __init__(self):
+        self._cache = {}
+        self._expiry = {}
+    
+    async def get(self, key: str) -> bytes | None:
+        """获取缓存值"""
+        if key in self._expiry and time.time() > self._expiry[key]:
+            # 过期了，删除
+            self._cache.pop(key, None)
+            self._expiry.pop(key, None)
+            return None
+        return self._cache.get(key)
+    
+    async def set(self, key: str, value: bytes | str, ex: int | None = None) -> None:
+        """设置缓存值"""
+        self._cache[key] = value
+        if ex:
+            self._expiry[key] = time.time() + ex
+    
+    async def delete(self, key: str) -> None:
+        """删除缓存值"""
+        self._cache.pop(key, None)
+        self._expiry.pop(key, None)
+
+
+# 创建内存缓存实例
+memory_cache = MemoryCache()
 
 
 def build_key(*args: Args, **kwargs: Kwargs) -> str:
@@ -32,19 +64,21 @@ async def set_redis_value(
     ttl: int | timedelta | None = DEFAULT_TTL,
     is_transaction: bool = False,
 ) -> None:
-    """Set a value in Redis with an optional time-to-live (TTL)."""
-    async with redis_client.pipeline(transaction=is_transaction) as pipeline:
-        await pipeline.set(key, value)
-        if ttl:
-            await pipeline.expire(key, ttl)
-
-        await pipeline.execute()
+    """Set a value in memory cache with an optional time-to-live (TTL)."""
+    ttl_seconds = None
+    if ttl:
+        if hasattr(ttl, 'total_seconds'):
+            ttl_seconds = int(ttl.total_seconds())
+        else:
+            ttl_seconds = int(ttl)
+    
+    await memory_cache.set(str(key), value, ttl_seconds)
 
 
 def cached(
     ttl: int | timedelta = DEFAULT_TTL,
     namespace: str = "main",
-    cache: Redis = redis_client,
+    cache: MemoryCache = memory_cache,
     key_builder: Callable[..., str] = build_key,
     serializer: AbstractSerializer | None = None,
 ) -> Callable[[Callable[..., Awaitable[_Func]]], Callable[..., Awaitable[_Func]]]:
@@ -114,4 +148,4 @@ async def clear_cache(
     key = build_key(*args, **kwargs)
     key = f"{namespace}:{func.__module__}:{func.__name__}:{key}"
 
-    await redis_client.delete(key)
+    await memory_cache.delete(key)
