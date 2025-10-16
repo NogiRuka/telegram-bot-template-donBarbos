@@ -2,6 +2,7 @@
 from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
+import uuid
 
 from flask import Flask, abort, redirect, request, url_for
 from flask_admin import Admin, AdminIndexView, expose, helpers
@@ -17,7 +18,11 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect
 from wtforms import PasswordField
 
-from admin.views.users import UserView as AppUserView
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from views.users import UserView as AppUserView
 from bot.database.models import UserModel as AppUserModel
 
 if TYPE_CHECKING:
@@ -57,9 +62,9 @@ class AdminModel(db.Model, UserMixin):
     last_name = db.Column(db.String(255))
     email = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    active = db.Column(db.Boolean())
+    active = db.Column(db.Boolean(), default=True)
     confirmed_at = db.Column(db.DateTime(), default=datetime.utcnow)
-    fs_uniquifier = db.Column(db.String(255), unique=True)
+    fs_uniquifier = db.Column(db.String(255), unique=True, default=lambda: str(uuid.uuid4()))
     roles = db.relationship("RoleModel", secondary=roles_admins, backref=db.backref("admins", lazy="dynamic"))
 
     def __str__(self) -> str:
@@ -108,13 +113,14 @@ class AdminView(RoleView):
     can_create = True
     export_types = ["csv", "xlsx", "json", "yaml"]
 
-    column_editable_list = ["email", "first_name", "last_name"]
-    column_searchable_list = column_editable_list
-    column_exclude_list = ["password"]
-    form_excluded_columns = ["confirmed_at"]
-    column_details_exclude_list = column_exclude_list
-    column_filters = column_editable_list
-    form_overrides = {"password": PasswordField}
+    column_searchable_list = ["email", "first_name", "last_name"]
+    column_exclude_list = ["password", "fs_uniquifier"]
+    form_excluded_columns = ["confirmed_at", "fs_uniquifier", "password", "roles"]
+    column_details_exclude_list = ["password", "fs_uniquifier"]
+    column_filters = ["email", "first_name", "last_name", "active"]
+    
+    # 禁用内联编辑以避免表单问题
+    column_editable_list = []
 
 
 # Flask views
