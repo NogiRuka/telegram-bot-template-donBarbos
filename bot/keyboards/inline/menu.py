@@ -1,15 +1,19 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils.i18n import gettext as _
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
 def main_keyboard() -> InlineKeyboardMarkup:
-    """Use in main menu."""
+    """
+    创建主菜单键盘
+    
+    返回:
+        InlineKeyboardMarkup: 内联键盘标记
+    """
     buttons = [
-        [InlineKeyboardButton(text=_("wallet button"), callback_data="wallet")],
-        [InlineKeyboardButton(text=_("premium button"), callback_data="premium")],
-        [InlineKeyboardButton(text=_("info button"), callback_data="info")],
-        [InlineKeyboardButton(text=_("support button"), callback_data="support")],
+        [InlineKeyboardButton(text="💰 钱包", callback_data="wallet")],
+        [InlineKeyboardButton(text="⭐ 高级功能", callback_data="premium")],
+        [InlineKeyboardButton(text="ℹ️ 信息", callback_data="info")],
+        [InlineKeyboardButton(text="🆘 支持", callback_data="support")],
     ]
 
     keyboard = InlineKeyboardBuilder(markup=buttons)

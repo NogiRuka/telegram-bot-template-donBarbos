@@ -2,7 +2,6 @@ from __future__ import annotations
 import asyncio
 
 import sentry_sdk
-import uvloop
 from loguru import logger
 from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 
@@ -119,4 +118,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    uvloop.run(main())
+    asyncio.run(main())

@@ -60,24 +60,7 @@ async def get_first_name(session: AsyncSession, user_id: int) -> str:
     return first_name or ""
 
 
-@cached(key_builder=lambda session, user_id: build_key(user_id))
-async def get_language_code(session: AsyncSession, user_id: int) -> str:
-    query = select(UserModel.language_code).filter_by(id=user_id)
 
-    result = await session.execute(query)
-
-    language_code = result.scalar_one_or_none()
-    return language_code or ""
-
-
-async def set_language_code(
-    session: AsyncSession,
-    user_id: int,
-    language_code: str,
-) -> None:
-    stmt = update(UserModel).where(UserModel.id == user_id).values(language_code=language_code)
-
-    await session.execute(stmt)
     await session.commit()
 
 

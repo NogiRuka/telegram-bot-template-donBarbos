@@ -1,14 +1,18 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils.i18n import gettext as _
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.core.config import settings
 
 
 def contacts_keyboard() -> InlineKeyboardMarkup:
-    """Use when call contacts command."""
+    """
+    创建联系方式键盘
+    
+    返回:
+        InlineKeyboardMarkup: 内联键盘标记
+    """
     buttons = [
-        [InlineKeyboardButton(text=_("support button"), url=settings.SUPPORT_URL)],
+        [InlineKeyboardButton(text="🆘 支持", url=settings.SUPPORT_URL)],
     ]
 
     keyboard = InlineKeyboardBuilder(markup=buttons)
@@ -17,10 +21,15 @@ def contacts_keyboard() -> InlineKeyboardMarkup:
 
 
 def support_keyboard() -> InlineKeyboardMarkup:
-    """Use when call support query."""
+    """
+    创建支持键盘
+    
+    返回:
+        InlineKeyboardMarkup: 内联键盘标记
+    """
     buttons = [
-        [InlineKeyboardButton(text=_("support button"), url=settings.SUPPORT_URL)],
-        [InlineKeyboardButton(text=_("back button"), callback_data="menu")],
+        [InlineKeyboardButton(text="🆘 支持", url=settings.SUPPORT_URL)],
+        [InlineKeyboardButton(text="🔙 返回", callback_data="menu")],
     ]
 
     keyboard = InlineKeyboardBuilder(markup=buttons)
