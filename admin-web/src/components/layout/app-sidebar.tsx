@@ -120,7 +120,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-4">
         <div className="flex items-center gap-3 mb-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="/placeholder-avatar.jpg" alt="Admin" />
+            <AvatarImage src="/placeholder-avatar.svg" alt="Admin" />
             <AvatarFallback>AD</AvatarFallback>
           </Avatar>
           <div className="flex flex-col flex-1 min-w-0">

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from 'next/font/google';
 import "./globals.css";
 import { AppLayout } from '@/components/layout/app-layout';
@@ -10,7 +10,11 @@ export const metadata: Metadata = {
   description: 'Telegram Bot 管理系统 - 基于 Next.js 和 Shadcn UI',
   keywords: ['Telegram', 'Bot', '管理后台', 'Next.js', 'React'],
   authors: [{ name: 'Admin Team' }],
-  viewport: 'width=device-width, initial-scale=1',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 /**

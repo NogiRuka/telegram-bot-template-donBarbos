@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { getUsers, deleteUser, exportUsers } from '@/lib/api';
 import { User, PaginatedResponse } from '@/types';
+import { formatDate } from '@/lib/date-utils';
 
 /**
  * 用户状态徽章组件
@@ -313,10 +314,10 @@ export default function UsersPage() {
                         <UserStatusBadge isActive={!user.is_block} />
                       </TableCell>
                       <TableCell>
-                        {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                        {user.created_at ? formatDate(user.created_at) : '-'}
                       </TableCell>
                       <TableCell>
-                        {user.updated_at ? new Date(user.updated_at).toLocaleDateString() : '从未登录'}
+                        {user.updated_at ? formatDate(user.updated_at) : '从未登录'}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

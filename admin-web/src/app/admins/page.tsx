@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { getAdmins, createAdmin, updateAdmin, deleteAdmin } from '@/lib/api';
 import { Admin, PaginatedResponse } from '@/types';
+import { formatDate } from '@/lib/date-utils';
 
 /**
  * 管理员角色徽章组件
@@ -455,10 +456,10 @@ export default function AdminsPage() {
                         <AdminStatusBadge isActive={admin.active} />
                       </TableCell>
                       <TableCell>
-                        {admin.created_at ? new Date(admin.created_at).toLocaleDateString() : '-'}
+                        {formatDate(admin.created_at)}
                       </TableCell>
                       <TableCell>
-                        {admin.updated_at ? new Date(admin.updated_at).toLocaleDateString() : '从未登录'}
+                        {admin.updated_at ? formatDate(admin.updated_at) : '从未登录'}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

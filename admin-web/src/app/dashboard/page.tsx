@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { getDashboardStats } from '@/lib/api';
 import { DashboardStats } from '@/types';
+import { formatTime } from '@/lib/date-utils';
 
 /**
  * 统计卡片组件
@@ -71,7 +72,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   /**
    * 获取仪表板统计数据
@@ -134,7 +135,7 @@ export default function DashboardPage() {
         <div className="flex items-center space-x-2">
           <div className="text-sm text-muted-foreground flex items-center">
             <Calendar className="h-4 w-4 mr-1" />
-            最后更新: {lastUpdated.toLocaleTimeString()}
+            最后更新: {lastUpdated ? formatTime(lastUpdated) : '加载中...'}
           </div>
           <Button 
             variant="outline" 
