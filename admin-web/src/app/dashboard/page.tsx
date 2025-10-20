@@ -152,7 +152,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="总用户数"
-          value={stats?.totalUsers || 0}
+          value={stats?.total_users || 0}
           description="注册用户总数"
           icon={<Users />}
           trend={{
@@ -163,7 +163,7 @@ export default function DashboardPage() {
         
         <StatCard
           title="活跃用户"
-          value={stats?.activeUsers || 0}
+          value={stats?.active_users || 0}
           description="本月活跃用户"
           icon={<UserCheck />}
           trend={{
@@ -173,9 +173,9 @@ export default function DashboardPage() {
         />
         
         <StatCard
-          title="新增用户"
-          value={stats?.newUsers || 0}
-          description="本月新增用户"
+          title="今日新增用户"
+          value={stats?.new_users_today || 0}
+          description="今日新增用户"
           icon={<TrendingUp />}
           trend={{
             value: 15,
@@ -184,9 +184,9 @@ export default function DashboardPage() {
         />
         
         <StatCard
-          title="订单总数"
-          value={stats?.totalOrders || 0}
-          description="累计订单数量"
+          title="管理员总数"
+          value={stats?.total_admins || 0}
+          description="系统管理员数量"
           icon={<ShoppingCart />}
           trend={{
             value: 5,

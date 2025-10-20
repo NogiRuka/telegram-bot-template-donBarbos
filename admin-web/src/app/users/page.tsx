@@ -97,7 +97,7 @@ export default function UsersPage() {
   /**
    * 处理删除用户
    */
-  const handleDeleteUser = async (userId: string) => {
+  const handleDeleteUser = async (userId: number) => {
     if (!confirm('确定要删除这个用户吗？此操作不可撤销。')) {
       return;
     }
@@ -187,7 +187,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {users.filter(user => user.active).length}
+              {users.filter(user => !user.is_block).length}
             </div>
             <p className="text-xs text-muted-foreground">
               当前页面活跃用户
@@ -295,26 +295,28 @@ export default function UsersPage() {
                         <div className="flex items-center space-x-3">
                           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                             <span className="text-sm font-medium">
-                              {user.email.charAt(0).toUpperCase()}
+                              {(user.username || user.first_name || 'U').charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div>
-                            <div className="font-medium">{user.email}</div>
+                            <div className="font-medium">
+                              {user.username || `${user.first_name || ''} ${user.last_name || ''}`.trim() || `用户 ${user.id}`}
+                            </div>
                             <div className="text-sm text-muted-foreground">
                               ID: {user.id}
                             </div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.username || `${user.first_name || ''} ${user.last_name || ''}`.trim() || `用户 ${user.id}`}</TableCell>
                       <TableCell>
-                        <UserStatusBadge isActive={user.active} />
+                        <UserStatusBadge isActive={!user.is_block} />
                       </TableCell>
                       <TableCell>
                         {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
                       </TableCell>
                       <TableCell>
-                        {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : '从未登录'}
+                        {user.updated_at ? new Date(user.updated_at).toLocaleDateString() : '从未登录'}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

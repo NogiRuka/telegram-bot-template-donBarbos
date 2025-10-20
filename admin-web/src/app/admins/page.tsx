@@ -250,7 +250,7 @@ export default function AdminsPage() {
   /**
    * 处理删除管理员
    */
-  const handleDeleteAdmin = async (adminId: string) => {
+  const handleDeleteAdmin = async (adminId: number) => {
     if (!confirm('确定要删除这个管理员吗？此操作不可撤销。')) {
       return;
     }
@@ -345,7 +345,7 @@ export default function AdminsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {admins.filter(admin => admin.roles.includes('admin')).length}
+              {admins.filter(admin => admin.roles?.some(role => role.name === 'admin')).length}
             </div>
             <p className="text-xs text-muted-foreground">
               拥有完整权限
@@ -449,7 +449,7 @@ export default function AdminsPage() {
                       </TableCell>
                       <TableCell>{admin.email}</TableCell>
                       <TableCell>
-                        <AdminRoleBadge roles={admin.roles} />
+                        <AdminRoleBadge roles={admin.roles?.map(role => role.name) || []} />
                       </TableCell>
                       <TableCell>
                         <AdminStatusBadge isActive={admin.active} />
@@ -458,7 +458,7 @@ export default function AdminsPage() {
                         {admin.created_at ? new Date(admin.created_at).toLocaleDateString() : '-'}
                       </TableCell>
                       <TableCell>
-                        {admin.last_login_at ? new Date(admin.last_login_at).toLocaleDateString() : '从未登录'}
+                        {admin.updated_at ? new Date(admin.updated_at).toLocaleDateString() : '从未登录'}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
