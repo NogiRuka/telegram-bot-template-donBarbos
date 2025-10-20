@@ -7,7 +7,8 @@ from sqlalchemy.orm import DeclarativeBase, mapped_column
 
 int_pk = Annotated[int, mapped_column(primary_key=True, unique=True, autoincrement=False)]
 big_int_pk = Annotated[int, mapped_column(primary_key=True, unique=True, autoincrement=False, type_=BigInteger)]
-created_at = Annotated[datetime.datetime, mapped_column(server_default=text("TIMEZONE('utc', now())"))]
+created_at = Annotated[datetime.datetime, mapped_column(server_default=text("NOW()"))]
+updated_at = Annotated[datetime.datetime, mapped_column(server_default=text("NOW()"), onupdate=text("NOW()"))]
 
 
 class Base(DeclarativeBase):
