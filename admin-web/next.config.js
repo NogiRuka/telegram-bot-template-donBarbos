@@ -3,10 +3,12 @@ const nextConfig = {
   // 启用输出文件跟踪以减少 Docker 镜像大小
   output: 'standalone',
   
+  // 服务器外部包配置
+  serverExternalPackages: [],
+  
   // 实验性功能
   experimental: {
-    // 启用服务器组件
-    serverComponentsExternalPackages: [],
+    // 其他实验性功能可以在这里配置
   },
 
   // 图片优化配置
