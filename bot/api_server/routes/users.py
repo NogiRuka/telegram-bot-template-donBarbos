@@ -1,15 +1,10 @@
 """
 用户管理API路由
-提供用户数据管理接口
+提供用户数据管理接口，调用bot的数据库操作服务
 """
 from __future__ import annotations
-import sys
-from pathlib import Path
-from typing import Optional, List, Dict, Any
-
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+from typing import Optional, List
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -17,12 +12,26 @@ from loguru import logger
 
 from bot.database.database import sessionmaker
 from bot.database.models import UserModel
+from bot.services.users import get_all_users, get_user_count, user_exists
 
 router = APIRouter()
 
 
 class UserResponse(BaseModel):
-    """用户响应模型"""
+    """
+    用户响应模型
+    
+    Attributes:
+        id: 用户ID
+        username: 用户名
+        first_name: 名字
+        last_name: 姓氏
+        language_code: 语言代码
+        is_premium: 是否为高级用户
+        created_at: 创建时间
+        updated_at: 更新时间
+        referrer: 推荐人
+    """
     id: int
     username: Optional[str]
     first_name: Optional[str]
@@ -31,10 +40,20 @@ class UserResponse(BaseModel):
     is_premium: Optional[bool]
     created_at: Optional[str]
     updated_at: Optional[str]
+    referrer: Optional[str]
 
 
 class UsersListResponse(BaseModel):
-    """用户列表响应模型"""
+    """
+    用户列表响应模型
+    
+    Attributes:
+        items: 用户列表
+        total: 总数
+        page: 当前页码
+        per_page: 每页数量
+        pages: 总页数
+    """
     items: List[UserResponse]
     total: int
     page: int
@@ -65,7 +84,7 @@ async def get_users_list(
             
             # 构建查询
             query = select(UserModel)
-            count_query = select(func.count(UserModel.user_id))
+            count_query = select(func.count(UserModel.id))
             
             # 搜索过滤
             if search:
@@ -92,22 +111,26 @@ async def get_users_list(
             users_data = []
             for user in users:
                 users_data.append(UserResponse(
-                    id=user.user_id,
+                    id=user.id,
                     username=user.username,
                     first_name=user.first_name,
                     last_name=user.last_name,
                     language_code=user.language_code,
                     is_premium=user.is_premium,
                     created_at=user.created_at.isoformat() if user.created_at else None,
-                    updated_at=user.updated_at.isoformat() if user.updated_at else None,
+                    updated_at=None,  # UserModel没有updated_at字段
+                    referrer=user.referrer
                 ))
+            
+            # 计算总页数
+            pages = (total + per_page - 1) // per_page
             
             return UsersListResponse(
                 items=users_data,
                 total=total,
                 page=page,
                 per_page=per_page,
-                pages=(total + per_page - 1) // per_page
+                pages=pages
             )
             
     except Exception as e:
@@ -128,25 +151,28 @@ async def get_user_detail(user_id: int):
     """
     try:
         async with sessionmaker() as session:
-            from sqlalchemy import select
+            # 检查用户是否存在
+            if not await user_exists(session, user_id):
+                raise HTTPException(status_code=404, detail="用户不存在")
             
-            result = await session.execute(
-                select(UserModel).where(UserModel.user_id == user_id)
-            )
+            from sqlalchemy import select
+            query = select(UserModel).where(UserModel.id == user_id)
+            result = await session.execute(query)
             user = result.scalar_one_or_none()
             
             if not user:
                 raise HTTPException(status_code=404, detail="用户不存在")
             
             return UserResponse(
-                id=user.user_id,
+                id=user.id,
                 username=user.username,
                 first_name=user.first_name,
                 last_name=user.last_name,
                 language_code=user.language_code,
                 is_premium=user.is_premium,
                 created_at=user.created_at.isoformat() if user.created_at else None,
-                updated_at=user.updated_at.isoformat() if user.updated_at else None,
+                updated_at=None,  # UserModel没有updated_at字段
+                referrer=user.referrer
             )
             
     except HTTPException:
@@ -154,3 +180,21 @@ async def get_user_detail(user_id: int):
     except Exception as e:
         logger.error(f"获取用户详情失败: {e}")
         raise HTTPException(status_code=500, detail="获取用户详情失败")
+
+
+@router.get("/users/stats/count")
+async def get_users_count():
+    """
+    获取用户总数统计
+    
+    Returns:
+        dict: 用户总数信息
+    """
+    try:
+        async with sessionmaker() as session:
+            total = await get_user_count(session)
+            return {"total_users": total}
+            
+    except Exception as e:
+        logger.error(f"获取用户统计失败: {e}")
+        raise HTTPException(status_code=500, detail="获取用户统计失败")
