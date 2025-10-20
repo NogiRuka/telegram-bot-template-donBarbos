@@ -31,7 +31,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1 overflow-hidden">
           <AppHeader />
-          <main className="flex-1 overflow-auto p-6 bg-gray-50/50">
+          <main className="flex-1 overflow-auto p-6 bg-background">
             {children}
           </main>
         </SidebarInset>
