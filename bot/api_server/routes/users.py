@@ -28,9 +28,20 @@ class UserResponse(BaseModel):
         last_name: 姓氏
         language_code: 语言代码
         is_premium: 是否为高级用户
+        is_admin: 是否为管理员
+        is_block: 是否被封禁
+        is_suspicious: 是否可疑
+        is_bot: 是否为机器人
+        message_count: 消息数量
+        last_activity_at: 最后活动时间
         created_at: 创建时间
         updated_at: 更新时间
         referrer: 推荐人
+        referrer_id: 推荐人ID
+        phone_number: 电话号码
+        bio: 个人简介
+        is_deleted: 是否已删除
+        deleted_at: 删除时间
     """
     id: int
     username: Optional[str]
@@ -38,9 +49,20 @@ class UserResponse(BaseModel):
     last_name: Optional[str]
     language_code: Optional[str]
     is_premium: Optional[bool]
+    is_admin: Optional[bool]
+    is_block: Optional[bool]
+    is_suspicious: Optional[bool]
+    is_bot: Optional[bool]
+    message_count: Optional[int]
+    last_activity_at: Optional[str]
     created_at: Optional[str]
     updated_at: Optional[str]
     referrer: Optional[str]
+    referrer_id: Optional[int]
+    phone_number: Optional[str]
+    bio: Optional[str]
+    is_deleted: Optional[bool]
+    deleted_at: Optional[str]
 
 
 class UsersListResponse(BaseModel):
@@ -117,9 +139,20 @@ async def get_users_list(
                     last_name=user.last_name,
                     language_code=user.language_code,
                     is_premium=user.is_premium,
+                    is_admin=user.is_admin,
+                    is_block=user.is_block,
+                    is_suspicious=user.is_suspicious,
+                    is_bot=user.is_bot,
+                    message_count=user.message_count,
+                    last_activity_at=user.last_activity_at.isoformat() if user.last_activity_at else None,
                     created_at=user.created_at.isoformat() if user.created_at else None,
-                    updated_at=None,  # UserModel没有updated_at字段
-                    referrer=user.referrer
+                    updated_at=user.updated_at.isoformat() if user.updated_at else None,
+                    referrer=user.referrer,
+                    referrer_id=user.referrer_id,
+                    phone_number=user.phone_number,
+                    bio=user.bio,
+                    is_deleted=user.is_deleted,
+                    deleted_at=user.deleted_at.isoformat() if user.deleted_at else None
                 ))
             
             # 计算总页数
@@ -170,9 +203,20 @@ async def get_user_detail(user_id: int):
                 last_name=user.last_name,
                 language_code=user.language_code,
                 is_premium=user.is_premium,
+                is_admin=user.is_admin,
+                is_block=user.is_block,
+                is_suspicious=user.is_suspicious,
+                is_bot=user.is_bot,
+                message_count=user.message_count,
+                last_activity_at=user.last_activity_at.isoformat() if user.last_activity_at else None,
                 created_at=user.created_at.isoformat() if user.created_at else None,
-                updated_at=None,  # UserModel没有updated_at字段
-                referrer=user.referrer
+                updated_at=user.updated_at.isoformat() if user.updated_at else None,
+                referrer=user.referrer,
+                referrer_id=user.referrer_id,
+                phone_number=user.phone_number,
+                bio=user.bio,
+                is_deleted=user.is_deleted,
+                deleted_at=user.deleted_at.isoformat() if user.deleted_at else None
             )
             
     except HTTPException:
