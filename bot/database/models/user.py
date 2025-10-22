@@ -23,7 +23,7 @@ class UserModel(Base, BasicAuditMixin):
     Telegram用户模型类
     
     存储Telegram用户的完整信息，包括基本资料、状态标志、
-    推荐关系、活动统计等数据。
+    活动统计等数据。
     
     继承自:
         Base: 基础模型类，提供通用功能
@@ -32,7 +32,7 @@ class UserModel(Base, BasicAuditMixin):
     主要功能:
         1. 存储用户基本信息（姓名、用户名、电话等）
         2. 管理用户状态（管理员、封禁、高级用户等）
-        3. 记录推荐关系和统计数据
+        3. 记录活动统计数据
         4. 支持软删除和审计追踪
     
     数据库表名: users
@@ -85,20 +85,7 @@ class UserModel(Base, BasicAuditMixin):
         comment="用户的语言代码，可选字段，ISO 639-1标准（如zh、en、ru等）"
     )
     
-    # ==================== 推荐系统相关 ====================
-    
-    referrer: Mapped[str | None] = mapped_column(
-        String(255), 
-        nullable=True,
-        comment="推荐人信息，可选字段，存储推荐人的标识或描述信息"
-    )
-    
-    referrer_id: Mapped[int | None] = mapped_column(
-        BigInteger, 
-        nullable=True, 
-        index=True,
-        comment="推荐人的用户ID，可选字段，外键关联到users表的id字段"
-    )
+
     
     # ==================== 活动时间记录 ====================
     
@@ -154,8 +141,7 @@ class UserModel(Base, BasicAuditMixin):
         Index('idx_users_updated_at', 'updated_at'),  # 更新时间索引，用于查询最近更新的用户
         Index('idx_users_last_activity', 'last_activity_at'),  # 最后活动时间索引，用于查询活跃用户和僵尸用户
         
-        # 推荐系统索引
-        Index('idx_users_referrer_id', 'referrer_id'),  # 推荐人ID索引，用于查询某个用户推荐的所有用户
+
         
         # 状态组合索引，用于复杂查询
         Index('idx_users_status', 'is_block', 'is_suspicious'),  # 用户状态组合索引，用于查询封禁和可疑用户

@@ -45,8 +45,7 @@ CREATE TABLE users (
     phone_number VARCHAR(20) COMMENT '电话',
     bio TEXT COMMENT '简介',
     language_code VARCHAR(10) COMMENT '语言',
-    referrer VARCHAR(255) COMMENT '推荐人',
-    referrer_id BIGINT COMMENT '推荐人ID',
+
     last_activity_at DATETIME COMMENT '最后活动',
     is_admin TINYINT(1) NOT NULL DEFAULT 0 COMMENT '管理员',
     is_suspicious TINYINT(1) NOT NULL DEFAULT 0 COMMENT '可疑用户',
@@ -63,7 +62,6 @@ CREATE TABLE users (
     deleted_by BIGINT COMMENT '删除者ID',
     PRIMARY KEY (id),
     INDEX ix_users_username (username),
-    INDEX ix_users_referrer_id (referrer_id),
     INDEX ix_users_last_activity_at (last_activity_at),
     INDEX ix_users_is_admin (is_admin),
     INDEX ix_users_is_suspicious (is_suspicious),
@@ -323,10 +321,6 @@ CREATE TABLE statistics (
 ## 7. 外键约束
 
 ```sql
--- 用户推荐关系
-ALTER TABLE users ADD CONSTRAINT fk_users_referrer_id 
-FOREIGN KEY (referrer_id) REFERENCES users(id) ON DELETE SET NULL;
-
 -- 消息关联
 ALTER TABLE messages ADD CONSTRAINT fk_messages_user_id 
 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
