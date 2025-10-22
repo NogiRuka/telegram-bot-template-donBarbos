@@ -21,48 +21,63 @@ class UserResponse(BaseModel):
     """
     用户响应模型
     
+    按照数据库模型字段顺序定义，与UserModel保持一致
+    
     Attributes:
-        id: 用户ID
-        username: 用户名
-        first_name: 名字
-        last_name: 姓氏
-        language_code: 语言代码
-        is_premium: 是否为高级用户
+        id: 用户的Telegram ID，主键
+        first_name: 用户的名字
+        last_name: 用户的姓氏
+        username: 用户的Telegram用户名
+        phone_number: 用户的电话号码
+        bio: 用户的个人简介
+        language_code: 用户的语言代码
+        last_activity_at: 用户最后活动时间
         is_admin: 是否为管理员
+        is_suspicious: 是否可疑用户
         is_block: 是否被封禁
-        is_suspicious: 是否可疑
+        is_premium: 是否为高级用户
         is_bot: 是否为机器人
         message_count: 消息数量
-        last_activity_at: 最后活动时间
         created_at: 创建时间
+        created_by: 创建者用户ID
         updated_at: 更新时间
-        referrer: 推荐人
-        referrer_id: 推荐人ID
-        phone_number: 电话号码
-        bio: 个人简介
+        updated_by: 更新者用户ID
         is_deleted: 是否已删除
         deleted_at: 删除时间
+        deleted_by: 删除者用户ID
     """
+    # 基本身份信息
     id: int
-    username: Optional[str]
-    first_name: Optional[str]
+    first_name: str
     last_name: Optional[str]
-    language_code: Optional[str]
-    is_premium: Optional[bool]
-    is_admin: Optional[bool]
-    is_block: Optional[bool]
-    is_suspicious: Optional[bool]
-    is_bot: Optional[bool]
-    message_count: Optional[int]
-    last_activity_at: Optional[str]
-    created_at: Optional[str]
-    updated_at: Optional[str]
-    referrer: Optional[str]
-    referrer_id: Optional[int]
+    username: Optional[str]
+    
+    # 联系方式信息
     phone_number: Optional[str]
     bio: Optional[str]
-    is_deleted: Optional[bool]
+    language_code: Optional[str]
+    
+    # 活动时间记录
+    last_activity_at: Optional[str]
+    
+    # 用户状态标志
+    is_admin: bool
+    is_suspicious: bool
+    is_block: bool
+    is_premium: bool
+    is_bot: bool
+    
+    # 统计数据
+    message_count: int
+    
+    # 审计字段
+    created_at: str
+    created_by: Optional[int]
+    updated_at: str
+    updated_by: Optional[int]
+    is_deleted: bool
     deleted_at: Optional[str]
+    deleted_by: Optional[int]
 
 
 class UsersListResponse(BaseModel):
@@ -133,26 +148,38 @@ async def get_users_list(
             users_data = []
             for user in users:
                 users_data.append(UserResponse(
+                    # 基本身份信息
                     id=user.id,
-                    username=user.username,
                     first_name=user.first_name,
                     last_name=user.last_name,
-                    language_code=user.language_code,
-                    is_premium=user.is_premium,
-                    is_admin=user.is_admin,
-                    is_block=user.is_block,
-                    is_suspicious=user.is_suspicious,
-                    is_bot=user.is_bot,
-                    message_count=user.message_count,
-                    last_activity_at=user.last_activity_at.isoformat() if user.last_activity_at else None,
-                    created_at=user.created_at.isoformat() if user.created_at else None,
-                    updated_at=user.updated_at.isoformat() if user.updated_at else None,
-                    referrer=user.referrer,
-                    referrer_id=user.referrer_id,
+                    username=user.username,
+                    
+                    # 联系方式信息
                     phone_number=user.phone_number,
                     bio=user.bio,
+                    language_code=user.language_code,
+                    
+                    # 活动时间记录
+                    last_activity_at=user.last_activity_at.isoformat() if user.last_activity_at else None,
+                    
+                    # 用户状态标志
+                    is_admin=user.is_admin,
+                    is_suspicious=user.is_suspicious,
+                    is_block=user.is_block,
+                    is_premium=user.is_premium,
+                    is_bot=user.is_bot,
+                    
+                    # 统计数据
+                    message_count=user.message_count,
+                    
+                    # 审计字段
+                    created_at=user.created_at.isoformat() if user.created_at else None,
+                    created_by=user.created_by,
+                    updated_at=user.updated_at.isoformat() if user.updated_at else None,
+                    updated_by=user.updated_by,
                     is_deleted=user.is_deleted,
-                    deleted_at=user.deleted_at.isoformat() if user.deleted_at else None
+                    deleted_at=user.deleted_at.isoformat() if user.deleted_at else None,
+                    deleted_by=user.deleted_by
                 ))
             
             # 计算总页数
@@ -197,26 +224,38 @@ async def get_user_detail(user_id: int):
                 raise HTTPException(status_code=404, detail="用户不存在")
             
             return UserResponse(
+                # 基本身份信息
                 id=user.id,
-                username=user.username,
                 first_name=user.first_name,
                 last_name=user.last_name,
-                language_code=user.language_code,
-                is_premium=user.is_premium,
-                is_admin=user.is_admin,
-                is_block=user.is_block,
-                is_suspicious=user.is_suspicious,
-                is_bot=user.is_bot,
-                message_count=user.message_count,
-                last_activity_at=user.last_activity_at.isoformat() if user.last_activity_at else None,
-                created_at=user.created_at.isoformat() if user.created_at else None,
-                updated_at=user.updated_at.isoformat() if user.updated_at else None,
-                referrer=user.referrer,
-                referrer_id=user.referrer_id,
+                username=user.username,
+                
+                # 联系方式信息
                 phone_number=user.phone_number,
                 bio=user.bio,
+                language_code=user.language_code,
+                
+                # 活动时间记录
+                last_activity_at=user.last_activity_at.isoformat() if user.last_activity_at else None,
+                
+                # 用户状态标志
+                is_admin=user.is_admin,
+                is_suspicious=user.is_suspicious,
+                is_block=user.is_block,
+                is_premium=user.is_premium,
+                is_bot=user.is_bot,
+                
+                # 统计数据
+                message_count=user.message_count,
+                
+                # 审计字段
+                created_at=user.created_at.isoformat() if user.created_at else None,
+                created_by=user.created_by,
+                updated_at=user.updated_at.isoformat() if user.updated_at else None,
+                updated_by=user.updated_by,
                 is_deleted=user.is_deleted,
-                deleted_at=user.deleted_at.isoformat() if user.deleted_at else None
+                deleted_at=user.deleted_at.isoformat() if user.deleted_at else None,
+                deleted_by=user.deleted_by
             )
             
     except HTTPException:
