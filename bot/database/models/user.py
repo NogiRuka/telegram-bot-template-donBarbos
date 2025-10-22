@@ -133,6 +133,29 @@ class UserModel(Base, BasicAuditMixin):
         comment="消息计数，默认0，记录用户发送给机器人的消息总数，用于统计分析"
     )
     
+    # ==================== 审计字段（按文档顺序） ====================
+    
+    # 创建时间
+    created_at: Mapped[created_at]
+    
+    # 创建者用户ID
+    created_by: Mapped[created_by]
+    
+    # 更新时间  
+    updated_at: Mapped[updated_at]
+    
+    # 更新者用户ID
+    updated_by: Mapped[updated_by]
+    
+    # 软删除标志
+    is_deleted: Mapped[is_deleted]
+    
+    # 删除时间
+    deleted_at: Mapped[deleted_at]
+    
+    # 执行删除操作的用户ID
+    deleted_by: Mapped[deleted_by]
+    
     # ==================== 数据库索引定义 ====================
     
     __table_args__ = (
