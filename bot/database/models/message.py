@@ -17,7 +17,7 @@ from typing import Optional
 from sqlalchemy import String, Text, Index, BigInteger, Enum as SQLEnum, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bot.database.models.base import Base, TimestampMixin
+from bot.database.models.base import Base, BasicAuditMixin
 
 
 class MessageType(str, Enum):
@@ -61,7 +61,7 @@ class MessageType(str, Enum):
     OTHER = "other"                        # 其他类型消息，未分类的消息类型
 
 
-class MessageModel(Base, TimestampMixin):
+class MessageModel(Base, BasicAuditMixin):
     """
     消息记录模型类
     
@@ -70,7 +70,7 @@ class MessageModel(Base, TimestampMixin):
     
     继承自:
         Base: 基础模型类，提供通用功能
-        TimestampMixin: 时间戳混入，提供创建和更新时间字段
+        BasicAuditMixin: 基础审计混入，提供时间戳、操作者和软删除字段
     
     主要功能:
         1. 记录用户发送的各种类型消息
@@ -227,16 +227,7 @@ class MessageModel(Base, TimestampMixin):
         comment="编辑时间，可选字段，消息最后编辑的时间"
     )
     
-    is_deleted: Mapped[bool] = mapped_column(
-        default=False, 
-        index=True,
-        comment="是否已删除，默认False，True表示此消息已被删除（软删除）"
-    )
-    
-    deleted_at: Mapped[datetime.datetime | None] = mapped_column(
-        nullable=True,
-        comment="删除时间，可选字段，消息被删除的时间"
-    )
+    # 注意：is_deleted 和 deleted_at 字段已由 BasicAuditMixin 提供
     
     # ==================== 统计字段 ====================
     
@@ -274,8 +265,8 @@ class MessageModel(Base, TimestampMixin):
         Index('idx_messages_forward', 'is_forwarded', 'forward_from_user_id'),  # 转发消息索引，用于查询消息的转发关系
         Index('idx_messages_reply', 'is_reply', 'reply_to_message_id'),  # 回复消息索引，用于查询消息的回复关系
         Index('idx_messages_file', 'file_id', 'message_type'),  # 文件消息索引，用于查询包含文件的消息
-        Index('idx_messages_deleted', 'is_deleted', 'deleted_at'),  # 删除状态索引，用于过滤和查询已删除的消息
         Index('idx_messages_edited', 'is_edited', 'edit_date'),  # 编辑状态索引，用于查询已编辑的消息
+        # 注意：删除状态索引已由 BasicAuditMixin 提供
         Index('idx_messages_user_chat', 'user_id', 'chat_id', 'created_at'),  # 用户聊天组合索引，用于查询用户在特定聊天中的消息
         Index('idx_messages_lang_sentiment', 'language_code', 'sentiment_score'),  # 语言情感索引，用于多语言消息分析和情感统计
     )

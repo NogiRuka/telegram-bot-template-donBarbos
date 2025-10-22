@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import String, Text, Index, BigInteger, JSON, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bot.database.models.base import Base, TimestampMixin
+from bot.database.models.base import Base, BasicAuditMixin
 
 
 class StateType(str, Enum):
@@ -110,7 +110,7 @@ class StatePriority(str, Enum):
     CRITICAL = "critical"  # 关键优先级
 
 
-class UserStateModel(Base, TimestampMixin):
+class UserStateModel(Base, BasicAuditMixin):
     """
     用户状态模型类
     
@@ -119,7 +119,7 @@ class UserStateModel(Base, TimestampMixin):
     
     继承自:
         Base: 基础模型类，提供通用功能
-        TimestampMixin: 时间戳混入，提供创建和更新时间字段
+        BasicAuditMixin: 基础审计混入，提供时间戳、操作者和软删除字段
     
     主要功能:
         1. 存储用户的当前状态和状态数据

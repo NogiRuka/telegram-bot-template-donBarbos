@@ -95,13 +95,36 @@ is_deleted = Annotated[
     )
 ]
 
-# 操作用户ID字段类型
-operated_by = Annotated[
+# 创建者ID字段类型
+created_by = Annotated[
     Optional[int],
     mapped_column(
         BigInteger,
         nullable=True,
-        comment="执行操作的用户ID，NULL表示系统操作"
+        index=True,
+        comment="创建者用户ID，NULL表示系统创建"
+    )
+]
+
+# 更新者ID字段类型
+updated_by = Annotated[
+    Optional[int],
+    mapped_column(
+        BigInteger,
+        nullable=True,
+        index=True,
+        comment="最后更新者用户ID，NULL表示系统更新"
+    )
+]
+
+# 删除者ID字段类型
+deleted_by = Annotated[
+    Optional[int],
+    mapped_column(
+        BigInteger,
+        nullable=True,
+        index=True,
+        comment="删除者用户ID，NULL表示系统删除"
     )
 ]
 
@@ -182,6 +205,24 @@ class TimestampMixin:
     updated_at: Mapped[updated_at]
 
 
+class OperatorMixin:
+    """
+    操作者混入类
+    
+    为模型提供创建者和更新者字段，用于记录操作人员信息。
+    
+    字段:
+        created_by: 创建者用户ID
+        updated_by: 更新者用户ID
+    """
+    
+    # 创建者用户ID
+    created_by: Mapped[created_by]
+    
+    # 更新者用户ID
+    updated_by: Mapped[updated_by]
+
+
 class SoftDeleteMixin:
     """
     软删除混入类
@@ -192,7 +233,7 @@ class SoftDeleteMixin:
     字段:
         is_deleted: 删除标志
         deleted_at: 删除时间
-        operated_by: 执行删除操作的用户ID
+        deleted_by: 执行删除操作的用户ID
     """
     
     # 软删除标志
@@ -202,7 +243,7 @@ class SoftDeleteMixin:
     deleted_at: Mapped[deleted_at]
     
     # 执行删除操作的用户ID
-    operated_by: Mapped[operated_by]
+    deleted_by: Mapped[deleted_by]
 
 
 class VersionMixin:
@@ -234,31 +275,33 @@ class RemarkMixin:
     remark: Mapped[remark]
 
 
-class FullAuditMixin(TimestampMixin, SoftDeleteMixin, VersionMixin, RemarkMixin):
+class FullAuditMixin(TimestampMixin, OperatorMixin, SoftDeleteMixin, VersionMixin, RemarkMixin):
     """
     完整审计混入类
     
-    组合了时间戳、软删除、版本控制和备注功能，
+    组合了时间戳、操作者、软删除、版本控制和备注功能，
     适用于需要完整审计功能的重要业务模型。
     
     包含字段:
         - 时间戳: created_at, updated_at
-        - 软删除: is_deleted, deleted_at, operated_by  
+        - 操作者: created_by, updated_by
+        - 软删除: is_deleted, deleted_at, deleted_by  
         - 版本控制: version
         - 备注: remark
     """
     pass
 
 
-class BasicAuditMixin(TimestampMixin, SoftDeleteMixin):
+class BasicAuditMixin(TimestampMixin, OperatorMixin, SoftDeleteMixin):
     """
     基础审计混入类
     
-    组合了时间戳和软删除功能，
+    组合了时间戳、操作者和软删除功能，
     适用于大多数需要基础审计功能的模型。
     
     包含字段:
         - 时间戳: created_at, updated_at
-        - 软删除: is_deleted, deleted_at, operated_by
+        - 操作者: created_by, updated_by
+        - 软删除: is_deleted, deleted_at, deleted_by
     """
     pass

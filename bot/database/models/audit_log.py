@@ -106,17 +106,24 @@ class AuditLogModel(Base, TimestampMixin):
     
     # ==================== 操作者信息 ====================
     
-    user_id: Mapped[int | None] = mapped_column(
+    operator_id: Mapped[int | None] = mapped_column(
         BigInteger, 
         nullable=True, 
         index=True,
-        comment="执行操作的用户ID，可选字段，关联到users表，系统操作时可为空"
+        comment="操作者ID，可选字段，执行操作的用户ID，关联到users表，系统操作时可为空"
     )
     
     operator_name: Mapped[str | None] = mapped_column(
         String(255), 
         nullable=True,
         comment="操作者名称，可选字段，用于记录操作者的显示名称或系统标识"
+    )
+    
+    user_id: Mapped[int | None] = mapped_column(
+        BigInteger, 
+        nullable=True, 
+        index=True,
+        comment="被操作用户ID，可选字段，关联到users表，记录操作的目标用户"
     )
     
     # ==================== 操作信息 ====================
@@ -198,7 +205,8 @@ class AuditLogModel(Base, TimestampMixin):
     
     __table_args__ = (
         # 索引定义 - 用于提高查询性能和支持复杂查询
-        Index('idx_audit_logs_user_created', 'user_id', 'created_at'),  # 用户操作历史索引，用于查询特定用户的操作记录
+        Index('idx_audit_logs_operator_created', 'operator_id', 'created_at'),  # 操作者历史索引，用于查询特定操作者的操作记录
+        Index('idx_audit_logs_user_created', 'user_id', 'created_at'),  # 被操作用户历史索引，用于查询特定用户的被操作记录
         Index('idx_audit_logs_action_created', 'action_type', 'created_at'),  # 操作类型时间索引，用于按操作类型和时间查询
         Index('idx_audit_logs_target', 'target_type', 'target_id'),  # 目标对象索引，用于查询特定对象的操作历史
         Index('idx_audit_logs_created', 'created_at'),  # 创建时间索引，用于时间范围查询和日志清理
@@ -210,7 +218,7 @@ class AuditLogModel(Base, TimestampMixin):
     # ==================== 显示配置 ====================
     
     # 用于__repr__方法显示的关键列
-    repr_cols = ('id', 'user_id', 'action_type', 'target_type', 'is_success', 'created_at')
+    repr_cols = ('id', 'operator_id', 'action_type', 'target_type', 'is_success', 'created_at')
     
     # ==================== 业务方法 ====================
     
@@ -223,7 +231,7 @@ class AuditLogModel(Base, TimestampMixin):
         返回:
             str: 操作摘要字符串
         """
-        operator = self.operator_name or f"用户{self.user_id}" if self.user_id else "系统"
+        operator = self.operator_name or f"用户{self.operator_id}" if self.operator_id else "系统"
         target = f"{self.target_type}({self.target_id})" if self.target_type and self.target_id else "未知目标"
         status = "成功" if self.is_success else "失败"
         

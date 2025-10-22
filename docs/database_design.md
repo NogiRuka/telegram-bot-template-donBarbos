@@ -21,8 +21,6 @@
 | phone_number | VARCHAR | 20 | YES | NULL | - | 电话 |
 | bio | TEXT | - | YES | NULL | - | 简介 |
 | language_code | VARCHAR | 10 | YES | NULL | - | 语言 |
-| referrer | VARCHAR | 255 | YES | NULL | - | 推荐人 |
-| referrer_id | BIGINT | - | YES | NULL | IDX | 推荐人ID |
 | last_activity_at | DATETIME | - | YES | NULL | IDX | 最后活动 |
 | is_admin | TINYINT | 1 | NO | 0 | IDX | 管理员 |
 | is_suspicious | TINYINT | 1 | NO | 0 | IDX | 可疑用户 |
