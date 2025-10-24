@@ -17,7 +17,7 @@
 ## ✨ Features
 
 -   [x] Admin Panel based on [`Flask-Admin-Dashboard`](https://github.com/jonalxh/Flask-Admin-Dashboard/) ([`Flask-Admin`](https://flask-admin.readthedocs.io/) + [`AdminLTE`](https://adminlte.io/) = ❤️ )
--   [x] Product Analytics System: using [`Amplitude`](https://amplitude.com/) or [`Posthog`](https://posthog.com/) or [`Google Analytics`](https://analytics.google.com)
+-   [x] Product Analytics System: using [`Posthog`](https://posthog.com/) or [`Google Analytics`](https://analytics.google.com)
 -   [x] Performance Monitoring System: using [`Prometheus`](https://prometheus.io/) and [`Grafana`](https://grafana.com/)
 -   [x] Tracking System: using [`Sentry`](https://sentry.io/)
 -   [x] Seamless use of `Docker` and `Docker Compose`
@@ -101,7 +101,6 @@ to launch the bot you only need a token bot, database and redis settings, everyt
 | `REDIS_PORT`             | Port number for the Redis database                                                          |
 | `REDIS_PASS`             | Password for authenticating with the Redis database                                         |
 | `SENTRY_DSN`             | Sentry DSN (Data Source Name) for error tracking                                            |
-| `AMPLITUDE_API_KEY`      | API key for Amplitude analytics                                                             |
 | `POSTHOG_API_KEY`        | API key for PostHog analytics                                                               |
 | `PROMETHEUS_PORT`        | Port number for the Prometheus monitoring system                                            |
 | `GRAFANA_PORT`           | Port number for the Grafana monitoring and visualization platform                           |
@@ -136,7 +135,7 @@ to launch the bot you only need a token bot, database and redis settings, everyt
 ├── bot # Source code for Telegram Bot
 │   ├── __init__.py
 │   ├── __main__.py # Main entry point to launch the bot
-│   ├── analytics/ # Interaction with analytics services (e.g., Amplitude or Google Analytics)
+│   ├── analytics/ # Interaction with analytics services (e.g., PostHog or Google Analytics)
 │   ├── cache/ # Logic for using Redis cache
 │   ├── core/ # Settings for application and other core components
 │   ├── database/ # Database functions and SQLAlchemy Models

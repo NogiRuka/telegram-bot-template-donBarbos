@@ -4,9 +4,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 from aiogram.types import CallbackQuery, Message
 
-from bot.analytics.amplitude import AmplitudeTelegramLogger
 from bot.analytics.types import AbstractAnalyticsLogger, BaseEvent, EventProperties, EventType, UserProperties
-from bot.core.config import settings
 from bot.utils.singleton import SingletonMeta
 
 if TYPE_CHECKING:
@@ -35,7 +33,7 @@ class AnalyticsService(metaclass=SingletonMeta):
         self,
         event_name: EventType,
     ) -> Callable[[Callable[..., Awaitable[_Func]]], Callable[..., Awaitable[_Func]]]:
-        """Decorator for tracking events in Amplitude, Google Analytics or Posthog."""
+        """Decorator for tracking events in PostHog or Google Analytics."""
 
         def decorator(
             handler: Callable[[Message | CallbackQuery, dict[str, Any]], Awaitable[_Func]],
@@ -99,6 +97,4 @@ class AnalyticsService(metaclass=SingletonMeta):
         return decorator
 
 
-logger = AmplitudeTelegramLogger(api_token=settings.AMPLITUDE_API_KEY) if settings.AMPLITUDE_API_KEY else None
-
-analytics = AnalyticsService(logger)
+analytics = AnalyticsService(None)

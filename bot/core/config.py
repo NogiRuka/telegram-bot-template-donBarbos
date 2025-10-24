@@ -70,10 +70,12 @@ class BotSettings(WebhookSettings):
     BOT_TOKEN: str = Field(..., description="Telegram Bot Token")
     # 支持链接（可选）
     SUPPORT_URL: str | None = None
-    # 限流配置（每秒请求数）
+    # 限流配置
     RATE_LIMIT: int | float = Field(default=0.5, description="限流配置，每秒允许的请求数")
     # 调试模式
     DEBUG: bool = False
+    # 超级管理员ID列表（逗号分隔的字符串）
+    SUPER_ADMIN_IDS: str = Field(default="", description="超级管理员ID列表，用逗号分隔")
 
     @validator('BOT_TOKEN')
     def validate_bot_token(cls, v):
@@ -81,8 +83,32 @@ class BotSettings(WebhookSettings):
         if not v:
             raise ValueError('BOT_TOKEN 不能为空')
         if ':' not in v:
-            raise ValueError('BOT_TOKEN 格式不正确，应该包含冒号')
+            raise ValueError('BOT_TOKEN 格式不正确')
         return v
+    
+    @validator('SUPER_ADMIN_IDS')
+    def validate_super_admin_ids(cls, v):
+        """验证超级管理员ID格式"""
+        if not v:
+            return v
+        
+        # 分割并验证每个ID
+        ids = [id_str.strip() for id_str in v.split(',') if id_str.strip()]
+        for id_str in ids:
+            try:
+                int(id_str)
+            except ValueError:
+                raise ValueError(f'超级管理员ID格式不正确: {id_str}，必须是数字')
+        
+        return v
+    
+    def get_super_admin_ids(self) -> list[int]:
+        """获取超级管理员ID列表"""
+        if not self.SUPER_ADMIN_IDS:
+            return []
+        
+        ids = [id_str.strip() for id_str in self.SUPER_ADMIN_IDS.split(',') if id_str.strip()]
+        return [int(id_str) for id_str in ids]
 
 
 class DBSettings(EnvBaseSettings):
@@ -175,19 +201,10 @@ class ExternalServicesSettings(EnvBaseSettings):
     """外部服务配置"""
     # Sentry 错误监控 DSN
     SENTRY_DSN: str | None = None
-    # Amplitude 数据分析 API Key
-    AMPLITUDE_API_KEY: str = Field(..., description="Amplitude 数据分析 API Key")
     # PostHog 数据分析 API Key
     POSTHOG_API_KEY: str | None = None
     # PostHog 主机地址
     POSTHOG_HOST: str = "https://app.posthog.com"
-
-    @validator('AMPLITUDE_API_KEY')
-    def validate_amplitude_key(cls, v):
-        """验证 Amplitude API Key"""
-        if not v or v.strip() == "":
-            raise ValueError('AMPLITUDE_API_KEY 不能为空')
-        return v
 
 
 class Settings(BotSettings, DBSettings, CacheSettings, ExternalServicesSettings):

@@ -5,6 +5,7 @@ from .user_state import UserStateModel
 from .config import ConfigModel, ConfigType
 from .audit_log import AuditLogModel, ActionType
 from .statistics import StatisticsModel, StatisticType
+from .group_config import GroupConfigModel, GroupType, MessageSaveMode
 
 __all__ = [
     "Base",
@@ -14,4 +15,5 @@ __all__ = [
     "ConfigModel", "ConfigType",
     "AuditLogModel", "ActionType",
     "StatisticsModel", "StatisticType",
+    "GroupConfigModel", "GroupType", "MessageSaveMode",
 ]

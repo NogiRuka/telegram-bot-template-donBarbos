@@ -137,6 +137,18 @@ class MessageModel(Base, BasicAuditMixin):
         comment="媒体说明，可选字段，存储图片、视频等媒体消息的说明文字"
     )
     
+    entities: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="消息实体，可选字段，存储消息格式化信息的JSON字符串（链接、提及、粗体等）"
+    )
+    
+    caption_entities: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="媒体说明实体，可选字段，存储媒体说明格式化信息的JSON字符串"
+    )
+    
     # ==================== 文件信息字段 ====================
     
     file_id: Mapped[str | None] = mapped_column(
@@ -430,6 +442,158 @@ class MessageModel(Base, BasicAuditMixin):
         else:
             return "中性"
     
+    def get_formatted_text(self) -> str:
+        """
+        获取格式化的文本内容
+        
+        根据存储的entities信息，将纯文本转换为包含格式化标记的文本。
+        
+        返回:
+            str: 格式化的文本内容
+        """
+        import json
+        
+        text = self.text_content or ""
+        if not text or not self.entities:
+            return text
+        
+        try:
+            entities = json.loads(self.entities)
+            if not entities:
+                return text
+            
+            # 按offset倒序排列，从后往前处理，避免位置偏移
+            entities.sort(key=lambda x: x.get('offset', 0), reverse=True)
+            
+            formatted_text = text
+            for entity in entities:
+                entity_type = entity.get('type')
+                offset = entity.get('offset', 0)
+                length = entity.get('length', 0)
+                
+                if offset + length > len(formatted_text):
+                    continue
+                
+                entity_text = formatted_text[offset:offset + length]
+                
+                # 根据实体类型添加格式化标记
+                if entity_type == 'bold':
+                    replacement = f"**{entity_text}**"
+                elif entity_type == 'italic':
+                    replacement = f"*{entity_text}*"
+                elif entity_type == 'code':
+                    replacement = f"`{entity_text}`"
+                elif entity_type == 'pre':
+                    replacement = f"```{entity_text}```"
+                elif entity_type == 'url':
+                    replacement = f"[{entity_text}]({entity_text})"
+                elif entity_type == 'text_link':
+                    url = entity.get('url', entity_text)
+                    replacement = f"[{entity_text}]({url})"
+                elif entity_type == 'mention':
+                    replacement = entity_text  # 保持原样，因为已经包含@
+                elif entity_type == 'text_mention':
+                    user = entity.get('user', {})
+                    username = user.get('username', user.get('first_name', entity_text))
+                    replacement = f"[@{username}](tg://user?id={user.get('id', '')})"
+                elif entity_type == 'hashtag':
+                    replacement = entity_text  # 保持原样，因为已经包含#
+                elif entity_type == 'cashtag':
+                    replacement = entity_text  # 保持原样，因为已经包含$
+                elif entity_type == 'strikethrough':
+                    replacement = f"~~{entity_text}~~"
+                elif entity_type == 'underline':
+                    replacement = f"__{entity_text}__"
+                elif entity_type == 'spoiler':
+                    replacement = f"||{entity_text}||"
+                else:
+                    replacement = entity_text
+                
+                # 替换文本
+                formatted_text = formatted_text[:offset] + replacement + formatted_text[offset + length:]
+            
+            return formatted_text
+            
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            # 如果解析失败，返回原始文本
+            return text
+    
+    def get_formatted_caption(self) -> str:
+        """
+        获取格式化的媒体说明
+        
+        根据存储的caption_entities信息，将纯文本转换为包含格式化标记的文本。
+        
+        返回:
+            str: 格式化的媒体说明
+        """
+        import json
+        
+        caption = self.caption or ""
+        if not caption or not self.caption_entities:
+            return caption
+        
+        try:
+            entities = json.loads(self.caption_entities)
+            if not entities:
+                return caption
+            
+            # 按offset倒序排列，从后往前处理，避免位置偏移
+            entities.sort(key=lambda x: x.get('offset', 0), reverse=True)
+            
+            formatted_caption = caption
+            for entity in entities:
+                entity_type = entity.get('type')
+                offset = entity.get('offset', 0)
+                length = entity.get('length', 0)
+                
+                if offset + length > len(formatted_caption):
+                    continue
+                
+                entity_text = formatted_caption[offset:offset + length]
+                
+                # 根据实体类型添加格式化标记
+                if entity_type == 'bold':
+                    replacement = f"**{entity_text}**"
+                elif entity_type == 'italic':
+                    replacement = f"*{entity_text}*"
+                elif entity_type == 'code':
+                    replacement = f"`{entity_text}`"
+                elif entity_type == 'pre':
+                    replacement = f"```{entity_text}```"
+                elif entity_type == 'url':
+                    replacement = f"[{entity_text}]({entity_text})"
+                elif entity_type == 'text_link':
+                    url = entity.get('url', entity_text)
+                    replacement = f"[{entity_text}]({url})"
+                elif entity_type == 'mention':
+                    replacement = entity_text  # 保持原样，因为已经包含@
+                elif entity_type == 'text_mention':
+                    user = entity.get('user', {})
+                    username = user.get('username', user.get('first_name', entity_text))
+                    replacement = f"[@{username}](tg://user?id={user.get('id', '')})"
+                elif entity_type == 'hashtag':
+                    replacement = entity_text  # 保持原样，因为已经包含#
+                elif entity_type == 'cashtag':
+                    replacement = entity_text  # 保持原样，因为已经包含$
+                elif entity_type == 'strikethrough':
+                    replacement = f"~~{entity_text}~~"
+                elif entity_type == 'underline':
+                    replacement = f"__{entity_text}__"
+                elif entity_type == 'spoiler':
+                    replacement = f"||{entity_text}||"
+                else:
+                    replacement = entity_text
+                
+                # 替换文本
+                formatted_caption = formatted_caption[:offset] + replacement + formatted_caption[offset + length:]
+            
+            return formatted_caption
+            
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            # 如果解析失败，返回原始文本
+            return caption
+    
     @classmethod
     def create_from_telegram(
         cls,
@@ -439,6 +603,8 @@ class MessageModel(Base, BasicAuditMixin):
         message_type: MessageType,
         text_content: str | None = None,
         caption: str | None = None,
+        entities: str | None = None,
+        caption_entities: str | None = None,
         file_id: str | None = None,
         file_size: int | None = None,
         **kwargs
@@ -455,6 +621,8 @@ class MessageModel(Base, BasicAuditMixin):
             message_type: 消息类型
             text_content: 文本内容，可选
             caption: 媒体说明，可选
+            entities: 消息格式化实体JSON字符串，可选
+            caption_entities: 媒体说明格式化实体JSON字符串，可选
             file_id: 文件ID，可选
             file_size: 文件大小，可选
             **kwargs: 其他字段参数
@@ -469,6 +637,8 @@ class MessageModel(Base, BasicAuditMixin):
             message_type=message_type,
             text_content=text_content,
             caption=caption,
+            entities=entities,
+            caption_entities=caption_entities,
             file_id=file_id,
             file_size=file_size,
             **kwargs

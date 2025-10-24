@@ -31,11 +31,13 @@ class APISettings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
-        "http://127.0.0.1:3001"
+        "http://127.0.0.1:3001",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
     ]
     
     # 安全配置
-    SECRET_KEY: str = "your-secret-key-here"
+    SECRET_KEY: str = "请在此处设置您的密钥"
     
     # 复用bot的数据库配置
     @property
