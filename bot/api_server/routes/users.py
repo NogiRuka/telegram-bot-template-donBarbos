@@ -102,7 +102,9 @@ class UsersListResponse(BaseModel):
 async def get_users_list(
     page: int = Query(1, ge=1, description="页码"),
     per_page: int = Query(10, ge=1, le=100, description="每页数量"),
-    search: Optional[str] = Query(None, description="搜索关键词")
+    search: Optional[str] = Query(None, description="搜索关键词"),
+    sort_by: Optional[str] = Query("created_at", description="排序字段"),
+    sort_order: Optional[str] = Query("desc", description="排序方向 (asc/desc)")
 ):
     """
     获取用户列表
@@ -111,6 +113,8 @@ async def get_users_list(
         page: 页码
         per_page: 每页数量
         search: 搜索关键词
+        sort_by: 排序字段
+        sort_order: 排序方向 (asc/desc)
         
     Returns:
         UsersListResponse: 用户列表数据
@@ -137,9 +141,38 @@ async def get_users_list(
             total_result = await session.execute(count_query)
             total = total_result.scalar() or 0
             
+            # 排序处理
+            valid_sort_fields = {
+                'id': UserModel.id,
+                'first_name': UserModel.first_name,
+                'last_name': UserModel.last_name,
+                'username': UserModel.username,
+                'created_at': UserModel.created_at,
+                'updated_at': UserModel.updated_at,
+                'last_activity_at': UserModel.last_activity_at,
+                'message_count': UserModel.message_count,
+                'is_admin': UserModel.is_admin,
+                'is_premium': UserModel.is_premium
+            }
+            
+            # 验证排序字段
+            if sort_by not in valid_sort_fields:
+                sort_by = 'created_at'
+            
+            # 验证排序方向
+            if sort_order.lower() not in ['asc', 'desc']:
+                sort_order = 'desc'
+            
+            # 应用排序
+            sort_column = valid_sort_fields[sort_by]
+            if sort_order.lower() == 'asc':
+                query = query.order_by(sort_column.asc())
+            else:
+                query = query.order_by(sort_column.desc())
+            
             # 分页查询
             offset = (page - 1) * per_page
-            query = query.offset(offset).limit(per_page).order_by(UserModel.created_at.desc())
+            query = query.offset(offset).limit(per_page)
             
             result = await session.execute(query)
             users = result.scalars().all()
