@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 async def add_user(
     session: AsyncSession,
     user: User,
-    referrer: str | None = None,
 ) -> None:
     """Add a new user to the database."""
     user_id: int = user.id

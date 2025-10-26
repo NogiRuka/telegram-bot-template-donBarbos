@@ -28,13 +28,21 @@ class AuthMiddleware(BaseMiddleware):
         message: Message = event
         user = message.from_user
 
+        # 打印 message 对象结构，方便调试
+        logger.debug(f"message 结构: {message}")
+
         if not user:
             return await handler(event, data)
 
         if await user_exists(session, user.id):
             return await handler(event, data)
 
-        logger.info(f"new user registration | user_id: {user.id} | message: {message.text}")
+        # 记录新用户信息：user_id、用户名、全名
+        logger.info(
+            f"新用户注册 | user_id: {user.id} | "
+            f"用户名: @{user.username or '无'} | "
+            f"全名: {user.full_name}"
+        )
 
         await add_user(session=session, user=user)
 
