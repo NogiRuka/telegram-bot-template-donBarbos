@@ -28,9 +28,6 @@ class AuthMiddleware(BaseMiddleware):
         message: Message = event
         user = message.from_user
 
-        # 打印 message 对象结构，方便调试
-        logger.debug(f"message 结构: {message}")
-
         if not user:
             return await handler(event, data)
 
