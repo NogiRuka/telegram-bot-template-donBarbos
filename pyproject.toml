@@ -18,12 +18,10 @@ dependencies = [
     "aiomysql>=0.2.0",
     "pymysql>=1.1.2",
     "aiogram>=3.19.0,<4.0.0",
-    "redis>=5.2.1,<6.0.0",
     "aiohttp[speedups]>=3.11.16,<4.0.0",
     "cachetools>=5.5.1,<6.0.0",
     "orjson>=3.10.15,<4.0.0",
     "alembic>=1.14.1,<2.0.0",
-    "prometheus-client>=0.21.1,<1.0.0",
 ]
 
 [project.urls]
@@ -34,14 +32,12 @@ repository = "https://github.com/donBarbos/telegram-bot-template"
 bot = [
     "aiogram>=3.19.0,<4.0.0",
     "aiomysql>=0.2.0,<1.0.0",
-    "redis>=5.2.1,<6.0.0",
     "loguru>=0.7.3,<1.0.0",
     "sentry-sdk[loguru]>=2.20.0,<3.0.0",
     "aiohttp[speedups]>=3.11.16,<4.0.0",
     "cachetools>=5.5.1,<6.0.0",
     "orjson>=3.10.15,<4.0.0",
     "alembic>=1.14.1,<2.0.0",
-    "prometheus-client>=0.21.1,<1.0.0",
     "pymysql>=1.1.0,<2.0.0",
 ]
 admin = [

@@ -1,7 +1,8 @@
 from aiogram import Router
 
 from . import export_users, info, menu, start, support
-from . import group_config, group_message_saver, message_export, admin_commands
+from .group import get_group_router
+from .admin import get_admin_router
 
 # 导入测试模块（仅在开发模式下）
 try:
@@ -18,12 +19,10 @@ def get_handlers_router() -> Router:
     router.include_router(support.router)
     router.include_router(menu.router)
     router.include_router(export_users.router)
-    
-    # 群组消息保存功能
-    router.include_router(group_config.router)
-    router.include_router(group_message_saver.router)
-    router.include_router(message_export.router)
-    router.include_router(admin_commands.router)
+
+    # 群组与管理员聚合路由
+    router.include_router(get_group_router())
+    router.include_router(get_admin_router())
     
     # 在开发模式下添加测试路由
     if TESTS_AVAILABLE:

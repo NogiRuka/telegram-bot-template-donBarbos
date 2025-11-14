@@ -13,7 +13,7 @@ import json
 import logging
 from typing import List, Optional
 
-from bot.handlers.group.group_config import *
+from aiogram import types, Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup

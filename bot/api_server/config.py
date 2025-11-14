@@ -1,6 +1,6 @@
 """
 API服务配置
-复用bot项目的数据库和Redis配置，添加API服务特有的配置
+复用bot项目的数据库配置，添加API服务特有的配置
 """
 from typing import List
 
@@ -13,7 +13,7 @@ class APISettings(BaseSettings):
     """
     API服务配置类
     
-    复用bot的数据库和Redis配置，添加API服务特有的配置
+    复用bot的数据库配置，添加API服务特有的配置
     """
     model_config = SettingsConfigDict(
         env_file=".env", 
@@ -44,11 +44,6 @@ class APISettings(BaseSettings):
     def database_url(self) -> str:
         """获取数据库连接URL"""
         return bot_settings.database_url
-    
-    @property
-    def redis_url(self) -> str:
-        """获取Redis连接URL"""
-        return bot_settings.redis_url
 
 
 # 创建配置实例
