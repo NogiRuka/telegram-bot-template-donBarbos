@@ -29,15 +29,13 @@ class APISettings(BaseSettings):
     # CORS配置
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"
+        "http://127.0.0.1:3000"
     ]
     
     # 安全配置
     SECRET_KEY: str = "请在此处设置您的密钥"
+    # Emby Webhook 简单鉴权令牌（可选）。如果设置，则必须匹配。
+    EMBY_WEBHOOK_TOKEN: str | None = None
     
     # 复用bot的数据库配置
     @property
