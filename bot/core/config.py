@@ -8,13 +8,9 @@
 """
 from __future__ import annotations
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-if TYPE_CHECKING:
-    from sqlalchemy.engine.url import URL
 
 # 项目根目录路径
 DIR = Path(__file__).absolute().parent.parent.parent
@@ -25,8 +21,8 @@ BOT_DIR = Path(__file__).absolute().parent.parent
 class EnvBaseSettings(BaseSettings):
     """环境变量基础配置类"""
     model_config = SettingsConfigDict(
-        env_file=".env", 
-        env_file_encoding="utf-8", 
+        env_file=".env",
+        env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=True
     )
@@ -45,37 +41,40 @@ class BotSettings(EnvBaseSettings):
     # 超级管理员ID列表（逗号分隔的字符串）
     SUPER_ADMIN_IDS: str = Field(default="", description="超级管理员ID列表，用逗号分隔")
 
-    @validator('BOT_TOKEN')
-    def validate_bot_token(cls, v):
+    @validator("BOT_TOKEN")
+    def validate_bot_token(self, v):
         """验证 Bot Token 格式"""
         if not v:
-            raise ValueError('BOT_TOKEN 不能为空')
-        if ':' not in v:
-            raise ValueError('BOT_TOKEN 格式不正确')
+            msg = "BOT_TOKEN 不能为空"
+            raise ValueError(msg)
+        if ":" not in v:
+            msg = "BOT_TOKEN 格式不正确"
+            raise ValueError(msg)
         return v
-    
-    @validator('SUPER_ADMIN_IDS')
-    def validate_super_admin_ids(cls, v):
+
+    @validator("SUPER_ADMIN_IDS")
+    def validate_super_admin_ids(self, v):
         """验证超级管理员ID格式"""
         if not v:
             return v
-        
+
         # 分割并验证每个ID
-        ids = [id_str.strip() for id_str in v.split(',') if id_str.strip()]
+        ids = [id_str.strip() for id_str in v.split(",") if id_str.strip()]
         for id_str in ids:
             try:
                 int(id_str)
             except ValueError:
-                raise ValueError(f'超级管理员ID格式不正确: {id_str}，必须是数字')
-        
+                msg = f"超级管理员ID格式不正确: {id_str}，必须是数字"
+                raise ValueError(msg)
+
         return v
-    
+
     def get_super_admin_ids(self) -> list[int]:
         """获取超级管理员ID列表"""
         if not self.SUPER_ADMIN_IDS:
             return []
-        
-        ids = [id_str.strip() for id_str in self.SUPER_ADMIN_IDS.split(',') if id_str.strip()]
+
+        ids = [id_str.strip() for id_str in self.SUPER_ADMIN_IDS.split(",") if id_str.strip()]
         return [int(id_str) for id_str in ids]
 
 
@@ -114,31 +113,24 @@ class DBSettings(EnvBaseSettings):
             return f"mysql+pymysql://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         return f"mysql+pymysql://{self.DB_USER}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
-    @validator('DB_PORT')
-    def validate_db_port(cls, v):
+    @validator("DB_PORT")
+    def validate_db_port(self, v):
         """验证数据库端口范围"""
         if not 1 <= v <= 65535:
-            raise ValueError('数据库端口必须在 1-65535 范围内')
+            msg = "数据库端口必须在 1-65535 范围内"
+            raise ValueError(msg)
         return v
 
 
-class ExternalServicesSettings(EnvBaseSettings):
-    """外部服务配置"""
-    # PostHog 数据分析 API Key
-    POSTHOG_API_KEY: str | None = None
-    # PostHog 主机地址
-    POSTHOG_HOST: str = "https://app.posthog.com"
-
-
-class Settings(BotSettings, DBSettings, ExternalServicesSettings):
+class Settings(BotSettings, DBSettings):
     """主配置类，整合所有配置"""
-    
-    def __init__(self, **kwargs):
+
+    def __init__(self, **kwargs) -> None:
         """初始化配置，添加验证逻辑"""
         super().__init__(**kwargs)
         self._validate_settings()
-    
-    def _validate_settings(self):
+
+    def _validate_settings(self) -> None:
         """验证配置的一致性
 
         功能说明：
@@ -151,30 +143,33 @@ class Settings(BotSettings, DBSettings, ExternalServicesSettings):
         - None
         """
         if not self.BOT_TOKEN or ":" not in self.BOT_TOKEN:
-            raise ValueError("BOT_TOKEN 格式不正确，必须包含 ':'")
+            msg = "BOT_TOKEN 格式不正确，必须包含 ':'"
+            raise ValueError(msg)
         if not self.DB_HOST:
-            raise ValueError("数据库主机 DB_HOST 不能为空")
+            msg = "数据库主机 DB_HOST 不能为空"
+            raise ValueError(msg)
         if not self.DB_NAME:
-            raise ValueError("数据库名称 DB_NAME 不能为空")
-        
+            msg = "数据库名称 DB_NAME 不能为空"
+            raise ValueError(msg)
+
     @property
     def is_production(self) -> bool:
         """判断是否为生产环境"""
         return not self.DEBUG
-    
+
     @property
     def is_development(self) -> bool:
         """判断是否为开发环境"""
         return self.DEBUG
-    
+
     def get_database_config(self) -> dict:
         """获取数据库连接配置"""
         return {
-            'pool_size': self.DB_POOL_SIZE,
-            'max_overflow': self.DB_MAX_OVERFLOW,
-            'pool_timeout': self.DB_POOL_TIMEOUT,
-            'pool_pre_ping': True,  # 连接前检查连接是否有效
-            'pool_recycle': 3600,   # 连接回收时间（秒）
+            "pool_size": self.DB_POOL_SIZE,
+            "max_overflow": self.DB_MAX_OVERFLOW,
+            "pool_timeout": self.DB_POOL_TIMEOUT,
+            "pool_pre_ping": True,  # 连接前检查连接是否有效
+            "pool_recycle": 3600,   # 连接回收时间（秒）
         }
 
 
