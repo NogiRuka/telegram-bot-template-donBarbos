@@ -2,9 +2,8 @@
 消息导出处理器模块（子包）
 """
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
 
-from aiogram import F, Router, types
+from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -12,11 +11,9 @@ from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.models import GroupConfigModel, MessageType
+from bot.database.models import GroupConfigModel
 from bot.keyboards.inline.group_config import (
     get_message_export_keyboard,
-    get_message_filter_keyboard,
-    get_pagination_keyboard,
 )
 from bot.services.message_export import MessageExportService
 
@@ -72,7 +69,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
         if not stats:
             await message.answer("❌ 获取统计信息失败")
             return
-        stats_text = f"📊 **群组消息统计（最近30天）**\n\n"
+        stats_text = "📊 **群组消息统计（最近30天）**\n\n"
         stats_text += f"📈 **总消息数**: {stats['total_messages']}\n\n"
         if stats["message_types"]:
             stats_text += "📝 **消息类型分布**:\n"
@@ -162,16 +159,14 @@ async def handle_export_range(callback: CallbackQuery, session: AsyncSession) ->
         if chat_member.status not in ["administrator", "creator"]:
             await callback.answer("❌ 只有群组管理员可以导出消息", show_alert=True)
             return
-        start_date = None
         range_text = ""
         if range_type == "7d":
-            start_date = datetime.now() - timedelta(days=7)
+            datetime.now() - timedelta(days=7)
             range_text = "最近7天"
         elif range_type == "30d":
-            start_date = datetime.now() - timedelta(days=30)
+            datetime.now() - timedelta(days=30)
             range_text = "最近30天"
         elif range_type == "all":
-            start_date = None
             range_text = "全部消息"
         await callback.message.edit_text(
             f"📤 **消息导出功能**\n\n" f"已选择时间范围: **{range_text}**\n" f"请选择导出格式：",
@@ -224,10 +219,10 @@ async def handle_search_text(message: Message, state: FSMContext, session: Async
             start_date=datetime.now() - timedelta(days=30),
         )
         if not messages:
-            await message.answer(f"🔍 未找到包含 \"{search_text}\" 的消息")
+            await message.answer(f'🔍 未找到包含 "{search_text}" 的消息')
             await state.clear()
             return
-        result_text = f"🔍 **搜索结果**\n\n"
+        result_text = "🔍 **搜索结果**\n\n"
         result_text += f"关键词: `{search_text}`\n"
         result_text += f"找到 {total_count} 条相关消息（显示前20条）\n\n"
         for i, msg in enumerate(messages[:10], 1):

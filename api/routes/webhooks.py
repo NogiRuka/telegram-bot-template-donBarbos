@@ -5,10 +5,8 @@ Webhooks 路由
 from __future__ import annotations
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 from loguru import logger
-
-from bot.core.config import settings
 
 router = APIRouter()
 
@@ -17,33 +15,22 @@ router = APIRouter()
 async def handle_emby_webhook(
     request: Request,
     x_emby_event: Annotated[str | None, Header()] = None,
-    x_webhook_token: Annotated[str | None, Header()] = None,
-    token: Annotated[str | None, Query()] = None,
 ) -> dict[str, Any]:
     """
     处理 Emby Webhook 回调
 
     功能说明:
     - 接收 Emby Webhooks 插件发送的事件回调 (POST JSON)
-    - 支持通过 Header `X-Webhook-Token` 或查询参数 `token` 进行简单鉴权
     - 尽量兼容不同事件载荷结构, 进行日志记录与基本回执
 
     输入参数:
     - request: FastAPI 的请求对象, 用于读取原始 JSON 载荷
     - x_emby_event: 请求头 `X-Emby-Event` (可选), 某些配置会附带事件名
-    - x_webhook_token: 请求头 `X-Webhook-Token` (可选), 用于鉴权
-    - token: 查询参数 `token` (可选), 用于鉴权
 
     返回值:
     - dict: 处理结果, 包含状态与解析的关键信息
     """
-    # 简单鉴权: 如果配置了 EMBY_WEBHOOK_TOKEN, 则要求 Header 或查询参数匹配
-    expected_token = getattr(settings, "EMBY_WEBHOOK_TOKEN", None)
-    provided_token = x_webhook_token or token
-
-    if expected_token and (not provided_token or provided_token != expected_token):
-        logger.warning("拒绝 Emby Webhook: 令牌不匹配或缺失")
-        raise HTTPException(status_code=401, detail="Unauthorized webhook")
+    # 不进行鉴权: 根据用户要求, 移除令牌校验逻辑
 
     # 读取 JSON 载荷
     try:

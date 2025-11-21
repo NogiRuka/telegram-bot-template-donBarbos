@@ -5,7 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 def main_keyboard() -> InlineKeyboardMarkup:
     """
     创建主菜单键盘
-    
+
     返回:
         InlineKeyboardMarkup: 内联键盘标记
     """

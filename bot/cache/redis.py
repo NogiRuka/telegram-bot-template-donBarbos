@@ -1,5 +1,4 @@
 from __future__ import annotations
-import asyncio
 import time
 from functools import wraps
 from typing import TYPE_CHECKING, Any, TypeVar
@@ -21,11 +20,11 @@ Kwargs = Any
 # 简单的内存缓存实现
 class MemoryCache:
     """简单的内存缓存实现，替代Redis"""
-    
-    def __init__(self):
+
+    def __init__(self) -> None:
         self._cache = {}
         self._expiry = {}
-    
+
     async def get(self, key: str) -> bytes | None:
         """获取缓存值"""
         if key in self._expiry and time.time() > self._expiry[key]:
@@ -34,13 +33,13 @@ class MemoryCache:
             self._expiry.pop(key, None)
             return None
         return self._cache.get(key)
-    
+
     async def set(self, key: str, value: bytes | str, ex: int | None = None) -> None:
         """设置缓存值"""
         self._cache[key] = value
         if ex:
             self._expiry[key] = time.time() + ex
-    
+
     async def delete(self, key: str) -> None:
         """删除缓存值"""
         self._cache.pop(key, None)
@@ -67,11 +66,8 @@ async def set_redis_value(
     """Set a value in memory cache with an optional time-to-live (TTL)."""
     ttl_seconds = None
     if ttl:
-        if hasattr(ttl, 'total_seconds'):
-            ttl_seconds = int(ttl.total_seconds())
-        else:
-            ttl_seconds = int(ttl)
-    
+        ttl_seconds = int(ttl.total_seconds()) if hasattr(ttl, "total_seconds") else int(ttl)
+
     await memory_cache.set(str(key), value, ttl_seconds)
 
 

@@ -1,8 +1,7 @@
 from __future__ import annotations
-from typing import Optional
+from typing import TYPE_CHECKING
 
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, select
 
 from bot.database.models import (
     GroupConfigModel,
@@ -11,12 +10,15 @@ from bot.database.models import (
     MessageSaveMode,
 )
 
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
 
 async def get_or_create_group_config(
     session: AsyncSession,
     chat_id: int,
-    chat_title: Optional[str],
-    chat_username: Optional[str],
+    chat_title: str | None,
+    chat_username: str | None,
     group_type: GroupType,
     configured_by_user_id: int,
 ) -> GroupConfigModel:
@@ -40,7 +42,7 @@ async def get_or_create_group_config(
     result = await session.execute(
         select(GroupConfigModel).where(
             GroupConfigModel.chat_id == chat_id,
-            GroupConfigModel.is_deleted == False,
+            not GroupConfigModel.is_deleted,
         )
     )
     config = result.scalar_one_or_none()
@@ -76,7 +78,7 @@ async def get_group_message_stats(session: AsyncSession, chat_id: int) -> int:
     stats_result = await session.execute(
         select(func.count(MessageModel.id)).where(
             MessageModel.chat_id == chat_id,
-            MessageModel.is_deleted == False,
+            not MessageModel.is_deleted,
         )
     )
     return int(stats_result.scalar() or 0)
@@ -147,7 +149,7 @@ async def soft_delete_messages_by_chat(session: AsyncSession, chat_id: int) -> i
     messages_result = await session.execute(
         select(MessageModel).where(
             MessageModel.chat_id == chat_id,
-            MessageModel.is_deleted == False,
+            not MessageModel.is_deleted,
         )
     )
     messages = messages_result.scalars().all()

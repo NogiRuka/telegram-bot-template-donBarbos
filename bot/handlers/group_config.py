@@ -11,33 +11,24 @@
 
 import json
 import logging
-from typing import List, Optional
 
-from bot.handlers.group.group_config import *
-from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 from aiogram.enums import ChatType
-from sqlalchemy import select, func
+from aiogram.filters import Command
+from aiogram.fsm.state import State, StatesGroup
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # 移除db_session导入，使用依赖注入
-from bot.database.models import (
-    GroupConfigModel, GroupType, MessageSaveMode,
-    MessageModel, UserModel
-)
+from bot.database.models import GroupConfigModel, GroupType, MessageSaveMode
+from bot.filters.admin import AdminFilter
+from bot.handlers.group.group_config import *
+from bot.keyboards.inline.group_config import get_confirm_keyboard, get_group_config_keyboard, get_save_mode_keyboard
 from bot.services.group_config_service import (
-    get_or_create_group_config,
     get_group_message_stats,
-    toggle_save_enabled,
+    get_or_create_group_config,
     set_save_mode,
     soft_delete_messages_by_chat,
-)
-from bot.filters.admin import AdminFilter
-from bot.keyboards.inline.group_config import (
-    get_group_config_keyboard,
-    get_save_mode_keyboard,
-    get_confirm_keyboard
+    toggle_save_enabled,
 )
 
 # 配置日志
@@ -58,9 +49,9 @@ class GroupConfigStates(StatesGroup):
 async def cmd_group_config(message: types.Message, session: AsyncSession) -> None:
     """
     群组配置命令
-    
+
     显示当前群组的消息保存配置。
-    
+
     Args:
         message: Telegram消息对象
         session: 数据库会话
@@ -77,7 +68,7 @@ async def cmd_group_config(message: types.Message, session: AsyncSession) -> Non
         )
 
         total_messages = await get_group_message_stats(session, message.chat.id)
-        
+
         # 构建配置信息文本
         config_text = f"""
 🔧 **群组消息保存配置**
@@ -114,15 +105,15 @@ async def cmd_group_config(message: types.Message, session: AsyncSession) -> Non
 
 📝 **备注**: {config.notes or '无'}
         """
-        
+
         await message.reply(
             config_text,
             reply_markup=get_group_config_keyboard(config.id),
             parse_mode="Markdown"
         )
-        
+
     except Exception as e:
-        logger.error(f"显示群组配置失败: {e}")
+        logger.exception(f"显示群组配置失败: {e}")
         await message.reply("❌ 获取群组配置失败，请稍后重试。")
 
 
@@ -130,7 +121,7 @@ async def cmd_group_config(message: types.Message, session: AsyncSession) -> Non
 async def handle_group_config_callback(callback: types.CallbackQuery, session: AsyncSession) -> None:
     """
     处理群组配置回调
-    
+
     Args:
         callback: 回调查询对象
         session: 数据库会话
@@ -139,28 +130,28 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
         action_data = callback.data.split(":")
         action = action_data[1]
         config_id = int(action_data[2])
-        
+
         # 获取配置
         result = await session.execute(
             select(GroupConfigModel).where(GroupConfigModel.id == config_id)
         )
         config = result.scalar_one_or_none()
-        
+
         if not config:
             await callback.answer("❌ 配置不存在")
             return
-        
+
         if action == "toggle_enable":
             config = await toggle_save_enabled(session, config)
-            
+
             status = "启用" if config.is_message_save_enabled else "禁用"
             await callback.answer(f"✅ 已{status}消息保存")
-            
+
             # 更新键盘
             await callback.message.edit_reply_markup(
                 reply_markup=get_group_config_keyboard(config.id)
             )
-        
+
         elif action == "change_mode":
             # 显示保存模式选择
             await callback.message.edit_text(
@@ -173,7 +164,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
                 reply_markup=get_save_mode_keyboard(config.id),
                 parse_mode="Markdown"
             )
-        
+
         elif action == "toggle_text":
             config.save_text_messages = not config.save_text_messages
             await session.commit()
@@ -181,7 +172,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             await callback.message.edit_reply_markup(
                 reply_markup=get_group_config_keyboard(config.id)
             )
-        
+
         elif action == "toggle_media":
             config.save_media_messages = not config.save_media_messages
             await session.commit()
@@ -189,7 +180,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             await callback.message.edit_reply_markup(
                 reply_markup=get_group_config_keyboard(config.id)
             )
-        
+
         elif action == "toggle_forwarded":
             config.save_forwarded_messages = not config.save_forwarded_messages
             await session.commit()
@@ -197,7 +188,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             await callback.message.edit_reply_markup(
                 reply_markup=get_group_config_keyboard(config.id)
             )
-        
+
         elif action == "toggle_reply":
             config.save_reply_messages = not config.save_reply_messages
             await session.commit()
@@ -205,7 +196,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             await callback.message.edit_reply_markup(
                 reply_markup=get_group_config_keyboard(config.id)
             )
-        
+
         elif action == "toggle_bot":
             config.save_bot_messages = not config.save_bot_messages
             await session.commit()
@@ -213,7 +204,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             await callback.message.edit_reply_markup(
                 reply_markup=get_group_config_keyboard(config.id)
             )
-        
+
         elif action == "clear_messages":
             # 显示确认对话框
             await callback.message.edit_text(
@@ -223,14 +214,14 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
                 reply_markup=get_confirm_keyboard(f"confirm_clear:{config.id}", f"group_config_back:{config.id}"),
                 parse_mode="Markdown"
             )
-        
+
         elif action == "refresh":
             # 刷新配置显示
             await cmd_group_config(callback.message, session)
             await callback.answer("🔄 配置已刷新")
-        
+
     except Exception as e:
-        logger.error(f"处理群组配置回调失败: {e}")
+        logger.exception(f"处理群组配置回调失败: {e}")
         await callback.answer("❌ 操作失败，请稍后重试")
 
 
@@ -238,7 +229,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
 async def handle_save_mode_callback(callback: types.CallbackQuery, session: AsyncSession) -> None:
     """
     处理保存模式回调
-    
+
     Args:
         callback: 回调查询对象
         session: 数据库会话
@@ -247,17 +238,17 @@ async def handle_save_mode_callback(callback: types.CallbackQuery, session: Asyn
         action_data = callback.data.split(":")
         mode = action_data[1]
         config_id = int(action_data[2])
-        
+
         # 获取配置
         result = await session.execute(
             select(GroupConfigModel).where(GroupConfigModel.id == config_id)
         )
         config = result.scalar_one_or_none()
-        
+
         if not config:
             await callback.answer("❌ 配置不存在")
             return
-        
+
         # 更新保存模式
         mode_map = {
             "all": MessageSaveMode.ALL,
@@ -267,7 +258,7 @@ async def handle_save_mode_callback(callback: types.CallbackQuery, session: Asyn
             "disabled": MessageSaveMode.DISABLED,
         }
         await set_save_mode(session, config, mode_map[mode])
-        
+
         mode_names = {
             "all": "保存所有消息",
             "text_only": "仅保存文本",
@@ -275,14 +266,14 @@ async def handle_save_mode_callback(callback: types.CallbackQuery, session: Asyn
             "important_only": "仅保存重要消息",
             "disabled": "已禁用"
         }
-        
+
         await callback.answer(f"✅ 保存模式已设置为: {mode_names[mode]}")
-        
+
         # 返回配置页面
         await cmd_group_config(callback.message, session)
-        
+
     except Exception as e:
-        logger.error(f"处理保存模式回调失败: {e}")
+        logger.exception(f"处理保存模式回调失败: {e}")
         await callback.answer("❌ 操作失败，请稍后重试")
 
 
@@ -290,40 +281,40 @@ async def handle_save_mode_callback(callback: types.CallbackQuery, session: Asyn
 async def handle_confirm_clear_callback(callback: types.CallbackQuery, session: AsyncSession) -> None:
     """
     处理确认清空消息回调
-    
+
     Args:
         callback: 回调查询对象
         session: 数据库会话
     """
     try:
         config_id = int(callback.data.split(":")[1])
-        
+
         # 获取配置
         result = await session.execute(
             select(GroupConfigModel).where(GroupConfigModel.id == config_id)
         )
         config = result.scalar_one_or_none()
-        
+
         if not config:
             await callback.answer("❌ 配置不存在")
             return
-        
+
         # 软删除该群组的所有消息
         deleted_count = await soft_delete_messages_by_chat(session, config.chat_id)
 
         # 重置配置统计
         config.total_messages_saved = 0
         config.last_message_date = None
-        
+
         await session.commit()
-        
+
         await callback.answer(f"✅ 已清空 {deleted_count} 条消息")
-        
+
         # 返回配置页面
         await cmd_group_config(callback.message, session)
-        
+
     except Exception as e:
-        logger.error(f"清空消息失败: {e}")
+        logger.exception(f"清空消息失败: {e}")
         await callback.answer("❌ 清空失败，请稍后重试")
 
 
@@ -331,7 +322,7 @@ async def handle_confirm_clear_callback(callback: types.CallbackQuery, session: 
 async def handle_group_config_back_callback(callback: types.CallbackQuery, session: AsyncSession) -> None:
     """
     处理返回群组配置回调
-    
+
     Args:
         callback: 回调查询对象
         session: 数据库会话
@@ -339,9 +330,9 @@ async def handle_group_config_back_callback(callback: types.CallbackQuery, sessi
     try:
         # 返回配置页面
         await cmd_group_config(callback.message, session)
-        
+
     except Exception as e:
-        logger.error(f"返回群组配置失败: {e}")
+        logger.exception(f"返回群组配置失败: {e}")
         await callback.answer("❌ 操作失败，请稍后重试")
 
 
@@ -349,7 +340,7 @@ async def handle_group_config_back_callback(callback: types.CallbackQuery, sessi
 async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None:
     """
     快速启用消息保存命令
-    
+
     Args:
         message: Telegram消息对象
         session: 数据库会话
@@ -359,11 +350,11 @@ async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None
         result = await session.execute(
             select(GroupConfigModel).where(
                 GroupConfigModel.chat_id == message.chat.id,
-                GroupConfigModel.is_deleted == False
+                not GroupConfigModel.is_deleted
             )
         )
         config = result.scalar_one_or_none()
-        
+
         if not config:
             group_type = GroupType.SUPERGROUP if message.chat.type == "supergroup" else GroupType.GROUP
             config = GroupConfigModel.create_for_group(
@@ -374,22 +365,22 @@ async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None
                 configured_by_user_id=message.from_user.id
             )
             session.add(config)
-        
+
         # 启用消息保存
         config.is_message_save_enabled = True
         config.message_save_mode = MessageSaveMode.ALL
-        
+
         await session.commit()
-        
+
         await message.reply(
             "✅ **消息保存已启用**\n\n"
             "现在将自动保存此群组的所有消息。\n"
             "使用 `/group_config` 查看详细配置。",
             parse_mode="Markdown"
         )
-        
+
     except Exception as e:
-        logger.error(f"启用消息保存失败: {e}")
+        logger.exception(f"启用消息保存失败: {e}")
         await message.reply("❌ 启用失败，请稍后重试。")
 
 
@@ -397,7 +388,7 @@ async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None
 async def cmd_save_disable(message: types.Message, session: AsyncSession) -> None:
     """
     快速禁用消息保存命令
-    
+
     Args:
         message: Telegram消息对象
         session: 数据库会话
@@ -407,18 +398,18 @@ async def cmd_save_disable(message: types.Message, session: AsyncSession) -> Non
         result = await session.execute(
             select(GroupConfigModel).where(
                 GroupConfigModel.chat_id == message.chat.id,
-                GroupConfigModel.is_deleted == False
+                not GroupConfigModel.is_deleted
             )
         )
         config = result.scalar_one_or_none()
-        
+
         if config:
             # 禁用消息保存
             config.is_message_save_enabled = False
             config.message_save_mode = MessageSaveMode.DISABLED
-            
+
             await session.commit()
-            
+
             await message.reply(
                 "❌ **消息保存已禁用**\n\n"
                 "已停止保存此群组的消息。\n"
@@ -427,11 +418,11 @@ async def cmd_save_disable(message: types.Message, session: AsyncSession) -> Non
             )
         else:
             await message.reply("ℹ️ 此群组尚未配置消息保存功能。")
-        
+
     except Exception as e:
-        logger.error(f"禁用消息保存失败: {e}")
+        logger.exception(f"禁用消息保存失败: {e}")
         await message.reply("❌ 禁用失败，请稍后重试。")
 
 
 # 导出路由器
-__all__ = ["router", "GroupConfigStates"]
+__all__ = ["GroupConfigStates", "router"]

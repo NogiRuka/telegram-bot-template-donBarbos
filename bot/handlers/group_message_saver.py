@@ -9,22 +9,17 @@
 最后更新: 2025-01-21
 """
 
-import asyncio
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from aiogram import types, Router, F
+from aiogram import F, Router, types
 from aiogram.enums import ChatType
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # 移除db_session导入，使用依赖注入
-from bot.database.models import (
-    MessageModel, MessageType, 
-    GroupConfigModel, GroupType, MessageSaveMode
-)
-from bot.services.analytics import analytics
+from bot.database.models import GroupConfigModel, GroupType, MessageModel, MessageSaveMode, MessageType
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -36,12 +31,12 @@ router = Router()
 class GroupMessageSaver:
     """
     群组消息保存器类
-    
+
     负责处理群组消息的自动保存功能，
     根据群组配置决定是否保存消息。
     """
-    
-    def __init__(self):
+
+    def __init__(self) -> None:
         self.message_type_mapping = {
             "text": MessageType.TEXT,
             "photo": MessageType.PHOTO,
@@ -62,15 +57,15 @@ class GroupMessageSaver:
             "venue": MessageType.VENUE,
             "web_app_data": MessageType.WEB_APP_DATA,
         }
-    
-    async def get_group_config(self, chat_id: int, session: AsyncSession) -> Optional[GroupConfigModel]:
+
+    async def get_group_config(self, chat_id: int, session: AsyncSession) -> GroupConfigModel | None:
         """
         获取群组配置
-        
+
         Args:
             chat_id: 群组聊天ID
             session: 数据库会话
-            
+
         Returns:
             GroupConfigModel: 群组配置，如果不存在则返回None
         """
@@ -78,22 +73,22 @@ class GroupMessageSaver:
             result = await session.execute(
                 select(GroupConfigModel).where(
                     GroupConfigModel.chat_id == chat_id,
-                    GroupConfigModel.is_deleted == False
+                    not GroupConfigModel.is_deleted
                 )
             )
             return result.scalar_one_or_none()
         except Exception as e:
-            logger.error(f"获取群组配置失败: {e}")
+            logger.exception(f"获取群组配置失败: {e}")
             return None
-    
-    async def create_default_config(self, chat: types.Chat, session: AsyncSession) -> Optional[GroupConfigModel]:
+
+    async def create_default_config(self, chat: types.Chat, session: AsyncSession) -> GroupConfigModel | None:
         """
         为新群组创建默认配置
-        
+
         Args:
             chat: Telegram聊天对象
             session: 数据库会话
-            
+
         Returns:
             GroupConfigModel: 创建的群组配置
         """
@@ -108,7 +103,7 @@ class GroupMessageSaver:
             else:
                 logger.warning(f"未知的聊天类型: {chat.type}")
                 return None
-            
+
             # 创建默认配置（默认禁用消息保存）
             config = GroupConfigModel.create_for_group(
                 chat_id=chat.id,
@@ -118,75 +113,74 @@ class GroupMessageSaver:
                 is_message_save_enabled=False,  # 默认禁用
                 message_save_mode=MessageSaveMode.DISABLED
             )
-            
+
             session.add(config)
             await session.commit()
-            
+
             logger.info(f"为群组 {chat.id} 创建了默认配置")
             return config
-            
+
         except Exception as e:
-            logger.error(f"创建群组默认配置失败: {e}")
+            logger.exception(f"创建群组默认配置失败: {e}")
             await session.rollback()
             return None
-    
+
     def get_message_type(self, message: types.Message) -> MessageType:
         """
         获取消息类型
-        
+
         Args:
             message: Telegram消息对象
-            
+
         Returns:
             MessageType: 消息类型枚举值
         """
         # 检查各种消息类型
         if message.photo:
             return MessageType.PHOTO
-        elif message.video:
+        if message.video:
             return MessageType.VIDEO
-        elif message.audio:
+        if message.audio:
             return MessageType.AUDIO
-        elif message.voice:
+        if message.voice:
             return MessageType.VOICE
-        elif message.document:
+        if message.document:
             return MessageType.DOCUMENT
-        elif message.sticker:
+        if message.sticker:
             return MessageType.STICKER
-        elif message.animation:
+        if message.animation:
             return MessageType.ANIMATION
-        elif message.location:
+        if message.location:
             return MessageType.LOCATION
-        elif message.contact:
+        if message.contact:
             return MessageType.CONTACT
-        elif message.poll:
+        if message.poll:
             return MessageType.POLL
-        elif message.dice:
+        if message.dice:
             return MessageType.DICE
-        elif message.game:
+        if message.game:
             return MessageType.GAME
-        elif message.invoice:
+        if message.invoice:
             return MessageType.INVOICE
-        elif message.successful_payment:
+        if message.successful_payment:
             return MessageType.SUCCESSFUL_PAYMENT
-        elif message.video_note:
+        if message.video_note:
             return MessageType.VIDEO_NOTE
-        elif message.venue:
+        if message.venue:
             return MessageType.VENUE
-        elif message.web_app_data:
+        if message.web_app_data:
             return MessageType.WEB_APP_DATA
-        elif message.text:
+        if message.text:
             return MessageType.TEXT
-        else:
-            return MessageType.OTHER
-    
-    def extract_file_info(self, message: types.Message) -> Dict[str, Any]:
+        return MessageType.OTHER
+
+    def extract_file_info(self, message: types.Message) -> dict[str, Any]:
         """
         提取文件信息
-        
+
         Args:
             message: Telegram消息对象
-            
+
         Returns:
             Dict: 文件信息字典
         """
@@ -197,7 +191,7 @@ class GroupMessageSaver:
             "file_name": None,
             "mime_type": None
         }
-        
+
         # 根据消息类型提取文件信息
         if message.photo:
             # 选择最大尺寸的图片
@@ -258,27 +252,27 @@ class GroupMessageSaver:
                 "file_unique_id": message.video_note.file_unique_id,
                 "file_size": message.video_note.file_size
             })
-        
+
         return file_info
-    
-    def check_keywords(self, text: str, include_keywords: Optional[str], 
-                      exclude_keywords: Optional[str]) -> bool:
+
+    def check_keywords(self, text: str, include_keywords: str | None,
+                      exclude_keywords: str | None) -> bool:
         """
         检查关键词过滤
-        
+
         Args:
             text: 要检查的文本
             include_keywords: 包含关键词JSON字符串
             exclude_keywords: 排除关键词JSON字符串
-            
+
         Returns:
             bool: True表示通过关键词过滤
         """
         if not text:
             return True
-            
+
         text_lower = text.lower()
-        
+
         # 检查包含关键词
         if include_keywords:
             try:
@@ -287,7 +281,7 @@ class GroupMessageSaver:
                     return False
             except (json.JSONDecodeError, TypeError):
                 logger.warning(f"无效的包含关键词JSON: {include_keywords}")
-        
+
         # 检查排除关键词
         if exclude_keywords:
             try:
@@ -296,22 +290,22 @@ class GroupMessageSaver:
                     return False
             except (json.JSONDecodeError, TypeError):
                 logger.warning(f"无效的排除关键词JSON: {exclude_keywords}")
-        
+
         return True
-    
-    def extract_entities(self, entities: Optional[List]) -> Optional[str]:
+
+    def extract_entities(self, entities: list | None) -> str | None:
         """
         提取消息实体信息并转换为JSON字符串
-        
+
         Args:
             entities: Telegram消息实体列表
-            
+
         Returns:
             str: JSON格式的实体信息，如果没有实体则返回None
         """
         if not entities:
             return None
-        
+
         try:
             entities_data = []
             for entity in entities:
@@ -320,14 +314,12 @@ class GroupMessageSaver:
                     "offset": entity.offset,
                     "length": entity.length
                 }
-                
+
                 # 根据实体类型添加额外信息
-                if entity.type == "url":
-                    entity_dict["url"] = entity.url if hasattr(entity, 'url') else None
-                elif entity.type == "text_link":
-                    entity_dict["url"] = entity.url if hasattr(entity, 'url') else None
+                if entity.type in {"url", "text_link"}:
+                    entity_dict["url"] = entity.url if hasattr(entity, "url") else None
                 elif entity.type == "text_mention":
-                    if hasattr(entity, 'user') and entity.user:
+                    if hasattr(entity, "user") and entity.user:
                         entity_dict["user"] = {
                             "id": entity.user.id,
                             "first_name": entity.user.first_name,
@@ -339,39 +331,39 @@ class GroupMessageSaver:
                     pass
                 elif entity.type in ["bold", "italic", "underline", "strikethrough", "spoiler", "code", "pre"]:
                     # 格式化实体
-                    if entity.type == "pre" and hasattr(entity, 'language'):
+                    if entity.type == "pre" and hasattr(entity, "language"):
                         entity_dict["language"] = entity.language
-                
+
                 entities_data.append(entity_dict)
-            
+
             return json.dumps(entities_data, ensure_ascii=False) if entities_data else None
-            
+
         except Exception as e:
-            logger.error(f"提取实体信息失败: {e}")
+            logger.exception(f"提取实体信息失败: {e}")
             return None
-    
-    async def save_message(self, message: types.Message, config: GroupConfigModel, 
+
+    async def save_message(self, message: types.Message, config: GroupConfigModel,
                           session: AsyncSession) -> bool:
         """
         保存消息到数据库
-        
+
         Args:
             message: Telegram消息对象
             config: 群组配置
             session: 数据库会话
-            
+
         Returns:
             bool: 保存是否成功
         """
         try:
             # 获取消息类型
             message_type = self.get_message_type(message)
-            
+
             # 检查是否应该保存此消息
             is_forwarded = message.forward_from is not None or message.forward_from_chat is not None
             is_reply = message.reply_to_message is not None
             is_from_bot = message.from_user and message.from_user.is_bot
-            
+
             if not config.should_save_message(
                 message_type=message_type.value,
                 is_forwarded=is_forwarded,
@@ -379,25 +371,25 @@ class GroupMessageSaver:
                 is_from_bot=is_from_bot
             ):
                 return False
-            
+
             # 检查关键词过滤
             text_content = message.text or message.caption or ""
             if not self.check_keywords(text_content, config.include_keywords, config.exclude_keywords):
                 return False
-            
+
             # 提取文件信息
             file_info = self.extract_file_info(message)
-            
+
             # 检查文件大小限制
-            if (config.max_file_size_mb and file_info["file_size"] and 
+            if (config.max_file_size_mb and file_info["file_size"] and
                 file_info["file_size"] > config.max_file_size_mb * 1024 * 1024):
                 logger.info(f"消息 {message.message_id} 文件大小超过限制，跳过保存")
                 return False
-            
+
             # 提取消息实体信息
             entities_json = self.extract_entities(message.entities) if message.entities else None
             caption_entities_json = self.extract_entities(message.caption_entities) if message.caption_entities else None
-            
+
             # 创建消息记录
             message_record = MessageModel.create_from_telegram(
                 message_id=message.message_id,
@@ -416,38 +408,38 @@ class GroupMessageSaver:
                 is_forwarded=is_forwarded,
                 is_reply=is_reply
             )
-            
+
             # 设置转发信息
             if is_forwarded:
                 if message.forward_from:
                     message_record.forward_from_user_id = message.forward_from.id
                 elif message.forward_from_chat:
                     message_record.forward_from_chat_id = message.forward_from_chat.id
-                if hasattr(message, 'forward_from_message_id'):
+                if hasattr(message, "forward_from_message_id"):
                     message_record.forward_from_message_id = message.forward_from_message_id
-            
+
             # 设置回复信息
             if is_reply and message.reply_to_message:
                 message_record.reply_to_message_id = message.reply_to_message.message_id
                 if message.reply_to_message.from_user:
                     message_record.reply_to_user_id = message.reply_to_message.from_user.id
-            
+
             # 保存到数据库
             session.add(message_record)
-            
+
             # 更新群组配置统计
             config.increment_message_count(message_record.created_at)
-            
+
             await session.commit()
-            
+
             logger.debug(f"成功保存消息: 群组={message.chat.id}, 消息ID={message.message_id}, 类型={message_type.value}")
-            
+
             # 分析事件通过装饰器自动处理
-            
+
             return True
-            
+
         except Exception as e:
-            logger.error(f"保存消息失败: {e}")
+            logger.exception(f"保存消息失败: {e}")
             await session.rollback()
             return False
 
@@ -460,9 +452,9 @@ message_saver = GroupMessageSaver()
 async def handle_group_message(message: types.Message, session: AsyncSession) -> None:
     """
     处理群组消息
-    
+
     自动检查群组配置并保存符合条件的消息。
-    
+
     Args:
         message: Telegram消息对象
         session: 数据库会话
@@ -482,18 +474,18 @@ async def handle_group_message(message: types.Message, session: AsyncSession) ->
             success = await message_saver.save_message(message, config, session)
             if success:
                 logger.debug(f"群组 {message.chat.id} 的消息已保存")
-        
+
     except Exception as e:
-        logger.error(f"处理群组消息时发生错误: {e}")
+        logger.exception(f"处理群组消息时发生错误: {e}")
 
 
 @router.edited_message(F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]))
 async def handle_edited_group_message(message: types.Message, session: AsyncSession) -> None:
     """
     处理群组编辑消息
-    
+
     更新已保存的消息记录。
-    
+
     Args:
         message: 编辑后的Telegram消息对象
         session: 数据库会话
@@ -504,25 +496,25 @@ async def handle_edited_group_message(message: types.Message, session: AsyncSess
             select(MessageModel).where(
                 MessageModel.message_id == message.message_id,
                 MessageModel.chat_id == message.chat.id,
-                MessageModel.is_deleted == False
+                not MessageModel.is_deleted
             )
         )
-        
+
         existing_message = result.scalar_one_or_none()
-        
+
         if existing_message:
             # 更新消息内容
             existing_message.text_content = (message.text or message.caption or "")[:1000]
             existing_message.caption = message.caption[:1000] if message.caption else None
             existing_message.mark_as_edited(message.edit_date)
-            
+
             await session.commit()
             logger.debug(f"更新了编辑消息: 群组={message.chat.id}, 消息ID={message.message_id}")
-            
+
     except Exception as e:
-        logger.error(f"处理编辑消息时发生错误: {e}")
+        logger.exception(f"处理编辑消息时发生错误: {e}")
         await session.rollback()
 
 
 # 导出路由器
-__all__ = ["router", "GroupMessageSaver", "message_saver"]
+__all__ = ["GroupMessageSaver", "message_saver", "router"]

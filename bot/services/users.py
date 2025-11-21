@@ -60,6 +60,7 @@ async def get_first_name(session: AsyncSession, user_id: int) -> str:
 
 
     await session.commit()
+    return None
 
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))

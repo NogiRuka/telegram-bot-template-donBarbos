@@ -35,10 +35,10 @@ def get_engine(url: URL | str = settings.database_url, echo: bool = False) -> As
 def get_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     """
     创建异步会话工厂
-    
+
     Args:
         engine: 异步数据库引擎
-        
+
     Returns:
         async_sessionmaker[AsyncSession]: 异步会话工厂
     """

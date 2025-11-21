@@ -10,10 +10,10 @@ router = Router(name="menu")
 async def menu_handler(message: types.Message) -> None:
     """
     主菜单处理器
-    
+
     参数:
         message: Telegram消息对象
-    
+
     返回:
         None
     """

@@ -27,8 +27,10 @@ import aiohttp
 import uvicorn
 from aiogram.exceptions import TelegramAPIError
 
+from api.app import app as api_app
+from api.app import quiet_uvicorn_logs
+
 from bot.__main__ import main as bot_main
-from bot.api_server.app import app as api_app
 from bot.core.config import settings as core_settings
 from bot.core.loader import bot as core_bot
 
@@ -116,13 +118,15 @@ async def start_api() -> None:
     globals()["runtime_api_port"] = port
     globals()["start_time_api"] = time.monotonic()
 
+    quiet_uvicorn_logs()
     config = uvicorn.Config(
         api_app,
         host=core_settings.API_HOST,
         port=port,
-        reload=core_settings.API_DEBUG,
+        reload=False,
         log_level="warning",
         access_log=False,
+        log_config=None,
     )
     server = uvicorn.Server(config)
     await server.serve()

@@ -135,6 +135,7 @@
 ## 环境变量配置
 
 ```env
+# 写入项目根目录的 .env 文件
 # 超级管理员用户ID列表（用逗号分隔）
 SUPER_ADMIN_IDS=123456789,987654321
 
@@ -144,6 +145,9 @@ DB_PORT=3306
 DB_USER=root
 DB_PASS=password
 DB_NAME=telegram_bot
+
+# API 服务端口（默认 8000）
+API_PORT=8000
 ```
 
 ## 注意事项

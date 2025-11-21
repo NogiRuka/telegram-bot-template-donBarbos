@@ -5,21 +5,22 @@
 根据群组配置自动保存符合条件的消息到数据库。
 """
 
-import asyncio
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from aiogram import types, Router, F
+from aiogram import F, Router, types
 from aiogram.enums import ChatType
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import (
-    MessageModel, MessageType,
-    GroupConfigModel, GroupType, MessageSaveMode,
+    GroupConfigModel,
+    GroupType,
+    MessageModel,
+    MessageSaveMode,
+    MessageType,
 )
-from bot.services.analytics import analytics
 from bot.services.group_config_service import get_or_create_group_config
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ router = Router()
 class GroupMessageSaver:
     """群组消息保存器类"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.message_type_mapping = {
             "text": MessageType.TEXT,
             "photo": MessageType.PHOTO,
@@ -51,20 +52,20 @@ class GroupMessageSaver:
             "web_app_data": MessageType.WEB_APP_DATA,
         }
 
-    async def get_group_config(self, chat_id: int, session: AsyncSession) -> Optional[GroupConfigModel]:
+    async def get_group_config(self, chat_id: int, session: AsyncSession) -> GroupConfigModel | None:
         try:
             result = await session.execute(
                 select(GroupConfigModel).where(
                     GroupConfigModel.chat_id == chat_id,
-                    GroupConfigModel.is_deleted == False,
+                    not GroupConfigModel.is_deleted,
                 )
             )
             return result.scalar_one_or_none()
         except Exception as e:
-            logger.error(f"获取群组配置失败: {e}")
+            logger.exception(f"获取群组配置失败: {e}")
             return None
 
-    async def create_default_config(self, chat: types.Chat, session: AsyncSession) -> Optional[GroupConfigModel]:
+    async def create_default_config(self, chat: types.Chat, session: AsyncSession) -> GroupConfigModel | None:
         try:
             if chat.type == "group":
                 group_type = GroupType.GROUP
@@ -90,51 +91,50 @@ class GroupMessageSaver:
             logger.info(f"为群组 {chat.id} 创建了默认配置")
             return config
         except Exception as e:
-            logger.error(f"创建群组默认配置失败: {e}")
+            logger.exception(f"创建群组默认配置失败: {e}")
             await session.rollback()
             return None
 
     def get_message_type(self, message: types.Message) -> MessageType:
         if message.photo:
             return MessageType.PHOTO
-        elif message.video:
+        if message.video:
             return MessageType.VIDEO
-        elif message.audio:
+        if message.audio:
             return MessageType.AUDIO
-        elif message.voice:
+        if message.voice:
             return MessageType.VOICE
-        elif message.document:
+        if message.document:
             return MessageType.DOCUMENT
-        elif message.sticker:
+        if message.sticker:
             return MessageType.STICKER
-        elif message.animation:
+        if message.animation:
             return MessageType.ANIMATION
-        elif message.location:
+        if message.location:
             return MessageType.LOCATION
-        elif message.contact:
+        if message.contact:
             return MessageType.CONTACT
-        elif message.poll:
+        if message.poll:
             return MessageType.POLL
-        elif message.dice:
+        if message.dice:
             return MessageType.DICE
-        elif message.game:
+        if message.game:
             return MessageType.GAME
-        elif message.invoice:
+        if message.invoice:
             return MessageType.INVOICE
-        elif message.successful_payment:
+        if message.successful_payment:
             return MessageType.SUCCESSFUL_PAYMENT
-        elif message.video_note:
+        if message.video_note:
             return MessageType.VIDEO_NOTE
-        elif message.venue:
+        if message.venue:
             return MessageType.VENUE
-        elif message.web_app_data:
+        if message.web_app_data:
             return MessageType.WEB_APP_DATA
-        elif message.text:
+        if message.text:
             return MessageType.TEXT
-        else:
-            return MessageType.OTHER
+        return MessageType.OTHER
 
-    def extract_file_info(self, message: types.Message) -> Dict[str, Any]:
+    def extract_file_info(self, message: types.Message) -> dict[str, Any]:
         file_info = {
             "file_id": None,
             "file_unique_id": None,
@@ -202,7 +202,7 @@ class GroupMessageSaver:
             })
         return file_info
 
-    def check_keywords(self, text: str, include_keywords: Optional[str], exclude_keywords: Optional[str]) -> bool:
+    def check_keywords(self, text: str, include_keywords: str | None, exclude_keywords: str | None) -> bool:
         if not text:
             return True
         text_lower = text.lower()
@@ -222,7 +222,7 @@ class GroupMessageSaver:
                 logger.warning(f"无效的排除关键词JSON: {exclude_keywords}")
         return True
 
-    def extract_entities(self, entities: Optional[List]) -> Optional[str]:
+    def extract_entities(self, entities: list | None) -> str | None:
         if not entities:
             return None
         try:
@@ -233,9 +233,7 @@ class GroupMessageSaver:
                     "offset": entity.offset,
                     "length": entity.length,
                 }
-                if entity.type == "url":
-                    entity_dict["url"] = entity.url if hasattr(entity, "url") else None
-                elif entity.type == "text_link":
+                if entity.type in {"url", "text_link"}:
                     entity_dict["url"] = entity.url if hasattr(entity, "url") else None
                 elif entity.type == "text_mention":
                     if hasattr(entity, "user") and entity.user:
@@ -253,13 +251,12 @@ class GroupMessageSaver:
                     "spoiler",
                     "code",
                     "pre",
-                ]:
-                    if entity.type == "pre" and hasattr(entity, "language"):
-                        entity_dict["language"] = entity.language
+                ] and entity.type == "pre" and hasattr(entity, "language"):
+                    entity_dict["language"] = entity.language
                 entities_data.append(entity_dict)
             return json.dumps(entities_data, ensure_ascii=False) if entities_data else None
         except Exception as e:
-            logger.error(f"提取实体信息失败: {e}")
+            logger.exception(f"提取实体信息失败: {e}")
             return None
 
     async def save_message(self, message: types.Message, config: GroupConfigModel, session: AsyncSession) -> bool:
@@ -326,7 +323,7 @@ class GroupMessageSaver:
             )
             return True
         except Exception as e:
-            logger.error(f"保存消息失败: {e}")
+            logger.exception(f"保存消息失败: {e}")
             await session.rollback()
             return False
 
@@ -351,7 +348,7 @@ async def handle_group_message(message: types.Message, session: AsyncSession) ->
             if success:
                 logger.debug(f"群组 {message.chat.id} 的消息已保存")
     except Exception as e:
-        logger.error(f"处理群组消息时发生错误: {e}")
+        logger.exception(f"处理群组消息时发生错误: {e}")
 
 
 @router.edited_message(F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]))
@@ -361,7 +358,7 @@ async def handle_edited_group_message(message: types.Message, session: AsyncSess
             select(MessageModel).where(
                 MessageModel.message_id == message.message_id,
                 MessageModel.chat_id == message.chat.id,
-                MessageModel.is_deleted == False,
+                not MessageModel.is_deleted,
             )
         )
         existing_message = result.scalar_one_or_none()
@@ -374,8 +371,8 @@ async def handle_edited_group_message(message: types.Message, session: AsyncSess
                 f"更新了编辑消息: 群组={message.chat.id}, 消息ID={message.message_id}"
             )
     except Exception as e:
-        logger.error(f"处理编辑消息时发生错误: {e}")
+        logger.exception(f"处理编辑消息时发生错误: {e}")
         await session.rollback()
 
 
-__all__ = ["router", "GroupMessageSaver", "message_saver"]
+__all__ = ["GroupMessageSaver", "message_saver", "router"]

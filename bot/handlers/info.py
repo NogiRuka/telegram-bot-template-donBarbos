@@ -8,10 +8,10 @@ router = Router(name="info")
 async def info_handler(message: types.Message) -> None:
     """
     机器人信息处理器
-    
+
     参数:
         message: Telegram消息对象
-    
+
     返回:
         None
     """

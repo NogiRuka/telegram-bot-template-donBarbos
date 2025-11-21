@@ -6,21 +6,18 @@ API服务主应用
 from __future__ import annotations
 import time
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from bot.api_server.routes import admins, dashboard, users, webhooks
+from api.routes import admins, dashboard, users, webhooks
+
 from bot.core.config import settings
 
-if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
-
-
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> None:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     应用生命周期管理
 
@@ -35,7 +32,7 @@ async def lifespan(app: FastAPI) -> None:
     """
     del app
     logger.info("API 服务启动中...")
-    yield
+    yield None
     logger.info("API 服务关闭中...")
 
 
@@ -56,7 +53,7 @@ def create_app() -> FastAPI:
     # 配置CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.API_ALLOWED_ORIGINS,
+        allow_origins=settings.get_api_allowed_origins(),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -154,13 +151,67 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
+    import logging
+
+    def quiet_uvicorn_logs() -> None:
+        """压低 Uvicorn 日志等级
+
+        功能说明:
+        - 将 'uvicorn' 与 'uvicorn.error' 日志等级设为 WARNING
+        - 禁用 'uvicorn.access' 访问日志, 避免重复输出
+
+        输入参数:
+        - 无
+
+        返回值:
+        - None
+        """
+        logging.getLogger("uvicorn").setLevel(logging.WARNING)
+        logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+        logging.getLogger("uvicorn.access").disabled = True
+
+    def get_uvicorn_log_config() -> dict[str, object]:
+        """生成 Uvicorn 日志配置(压低噪音)
+
+        功能说明:
+        - 设置 'uvicorn' 与 'uvicorn.error' 为 WARNING 等级并输出到控制台
+        - 移除 'uvicorn.access' 的处理器, 禁止访问日志传播
+
+        输入参数:
+        - 无
+
+        返回值:
+        - dict[str, object]: logging 配置字典
+        """
+        return {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "default": {"format": "%(levelname)s: %(message)s"}
+            },
+            "handlers": {
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "default",
+                    "stream": "ext://sys.stderr",
+                }
+            },
+            "root": {"level": "WARNING", "handlers": ["console"]},
+            "loggers": {
+                "uvicorn": {"level": "WARNING", "handlers": ["console"], "propagate": False},
+                "uvicorn.error": {"level": "WARNING", "handlers": ["console"], "propagate": False},
+                "uvicorn.access": {"level": "WARNING", "handlers": [], "propagate": False},
+            },
+        }
 
     logger.info(f"启动API服务在 http://{settings.API_HOST}:{settings.API_PORT}")
+    quiet_uvicorn_logs()
     uvicorn.run(
-        "bot.api_server.app:app",
+        "api.app:app",
         host=settings.API_HOST,
         port=settings.API_PORT,
-        reload=settings.API_DEBUG,
-        log_level="info" if not settings.API_DEBUG else "debug",
+        reload=False,
+        log_level="warning" if not settings.API_DEBUG else "debug",
         access_log=False,
+        log_config=None,
     )

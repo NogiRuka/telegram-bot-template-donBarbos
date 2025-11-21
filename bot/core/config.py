@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pydantic import AliasChoices, Field, field_validator, validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 项目根目录路径
@@ -23,7 +23,11 @@ BOT_DIR = Path(__file__).absolute().parent.parent
 class EnvBaseSettings(BaseSettings):
     """环境变量基础配置类"""
     model_config = SettingsConfigDict(
-        env_file=(".env", ".env.local", ".env.example"),
+        env_file=(
+            DIR / ".env",
+            DIR / ".env.local",
+            DIR / ".env.example",
+        ),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=True
@@ -43,8 +47,8 @@ class BotSettings(EnvBaseSettings):
     # 超级管理员ID列表(逗号分隔的字符串)
     SUPER_ADMIN_IDS: str = Field(default="", description="超级管理员ID列表, 用逗号分隔")
 
-    @validator("BOT_TOKEN")
-    def validate_bot_token(self, v: str) -> str:
+    @field_validator("BOT_TOKEN")
+    def validate_bot_token(cls, v: str) -> str:
         """验证 Bot Token 格式"""
         if not v:
             msg = "BOT_TOKEN 不能为空"
@@ -54,8 +58,8 @@ class BotSettings(EnvBaseSettings):
             raise ValueError(msg)
         return v
 
-    @validator("SUPER_ADMIN_IDS")
-    def validate_super_admin_ids(self, v: str) -> str:
+    @field_validator("SUPER_ADMIN_IDS")
+    def validate_super_admin_ids(cls, v: str) -> str:
         """验证超级管理员ID格式"""
         if not v:
             return v
@@ -113,8 +117,8 @@ class DBSettings(EnvBaseSettings):
             return f"mysql+pymysql://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         return f"mysql+pymysql://{self.DB_USER}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
-    @validator("DB_PORT")
-    def validate_db_port(self, v: int) -> int:
+    @field_validator("DB_PORT")
+    def validate_db_port(cls, v: int) -> int:
         """验证数据库端口范围"""
         port_max = 65535
         if not 1 <= v <= port_max:
@@ -138,46 +142,23 @@ class APIMixin(EnvBaseSettings):
     )
     API_DEBUG: bool = Field(
         default=True,
-        validation_alias=AliasChoices("API_DEBUG", "DEBUG"),
+        validation_alias=AliasChoices("API_DEBUG"),
         description="API 调试模式开关",
     )
 
-    # CORS 配置(支持逗号分隔字符串或 JSON 数组)
-    API_ALLOWED_ORIGINS: list[str] = Field(
+    # CORS 原始配置(可为逗号分隔字符串或 JSON 字符串)
+    API_ALLOWED_ORIGINS_RAW: str | list[str] | None = Field(
         default_factory=lambda: [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
         ],
         validation_alias=AliasChoices("API_ALLOWED_ORIGINS", "ALLOWED_ORIGINS"),
-        description="允许跨域的来源列表",
+        description="允许跨域的来源(原始值, 字符串或列表)",
     )
 
-    # 安全配置
-    API_SECRET_KEY: str = Field(
-        default="请在此处设置您的密钥",
-        validation_alias=AliasChoices("API_SECRET_KEY", "SECRET_KEY"),
-        description="API 服务密钥",
-    )
-    # Emby Webhook 简单鉴权令牌(可选)。如果设置, 则必须匹配。
-    EMBY_WEBHOOK_TOKEN: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("EMBY_WEBHOOK_TOKEN", "API_EMBY_WEBHOOK_TOKEN"),
-        description="Emby Webhook 鉴权令牌",
-    )
-
-    @field_validator("API_ALLOWED_ORIGINS", mode="before")
-    def parse_allowed_origins(self, v: Any) -> list[str]:
-        """解析允许的跨域来源列表
-
-        功能说明:
-        - 支持从逗号分隔字符串或 JSON 数组字符串解析为列表
-
-        输入参数:
-        - v: 任意类型的原始输入值
-
-        返回值:
-        - list[str]: 解析后的字符串列表
-        """
+    def get_api_allowed_origins(self) -> list[str]:
+        """获取解析后的允许跨域来源列表"""
+        v = self.API_ALLOWED_ORIGINS_RAW
         result: list[str] = []
         if v is None:
             return result
@@ -186,7 +167,6 @@ class APIMixin(EnvBaseSettings):
             if not s:
                 return result
             if s.startswith("[") and s.endswith("]"):
-
                 try:
                     arr = json.loads(s)
                     result = [str(x).strip() for x in arr if str(x).strip()]
@@ -240,7 +220,7 @@ class Settings(BotSettings, DBSettings, APIMixin):
         """判断是否为开发环境"""
         return self.DEBUG
 
-    def get_database_config(self) -> dict:
+    def get_database_config(self) -> dict[str, int | bool]:
         """获取数据库连接配置"""
         return {
             "pool_size": self.DB_POOL_SIZE,

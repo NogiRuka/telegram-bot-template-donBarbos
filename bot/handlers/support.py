@@ -10,10 +10,10 @@ router = Router(name="support")
 async def support_handler(message: types.Message) -> None:
     """
     支持联系处理器
-    
+
     参数:
         message: Telegram消息对象
-    
+
     返回:
         None
     """

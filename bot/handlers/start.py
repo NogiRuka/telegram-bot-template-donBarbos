@@ -12,10 +12,10 @@ router = Router(name="start")
 async def start_handler(message: types.Message) -> None:
     """
     欢迎消息处理器
-    
+
     参数:
         message: Telegram消息对象
-    
+
     返回:
         None
     """

@@ -10,9 +10,8 @@
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
 
-from aiogram import F, Router, types
+from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -20,11 +19,9 @@ from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.models import GroupConfigModel, MessageType
+from bot.database.models import GroupConfigModel
 from bot.keyboards.inline.group_config import (
     get_message_export_keyboard,
-    get_message_filter_keyboard,
-    get_pagination_keyboard
 )
 from bot.services.message_export import MessageExportService
 
@@ -42,7 +39,7 @@ class MessageExportStates(StatesGroup):
 async def export_messages_command(message: Message, session: AsyncSession) -> None:
     """
     导出消息命令处理器
-    
+
     Args:
         message: Telegram消息对象
         session: 数据库会话
@@ -52,13 +49,13 @@ async def export_messages_command(message: Message, session: AsyncSession) -> No
         if message.chat.type not in ["group", "supergroup"]:
             await message.answer("❌ 此命令只能在群组中使用")
             return
-        
+
         # 检查用户权限（管理员或群主）
         chat_member = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
         if chat_member.status not in ["administrator", "creator"]:
             await message.answer("❌ 只有群组管理员可以使用此命令")
             return
-        
+
         # 检查群组配置
         config = await session.get(GroupConfigModel, message.chat.id)
         if not config or not config.is_message_save_enabled:
@@ -67,7 +64,7 @@ async def export_messages_command(message: Message, session: AsyncSession) -> No
                 "请先使用 /group_config 命令启用消息保存"
             )
             return
-        
+
         # 显示导出选项
         await message.answer(
             "📤 **消息导出功能**\n\n"
@@ -75,7 +72,7 @@ async def export_messages_command(message: Message, session: AsyncSession) -> No
             reply_markup=get_message_export_keyboard(message.chat.id),
             parse_mode="Markdown"
         )
-        
+
     except Exception as e:
         logger.error(f"导出消息命令处理失败: {e}")
         await message.answer("❌ 处理命令时发生错误，请稍后重试")
@@ -85,7 +82,7 @@ async def export_messages_command(message: Message, session: AsyncSession) -> No
 async def message_stats_command(message: Message, session: AsyncSession) -> None:
     """
     消息统计命令处理器
-    
+
     Args:
         message: Telegram消息对象
         session: 数据库会话
@@ -95,7 +92,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
         if message.chat.type not in ["group", "supergroup"]:
             await message.answer("❌ 此命令只能在群组中使用")
             return
-        
+
         # 检查群组配置
         config = await session.get(GroupConfigModel, message.chat.id)
         if not config or not config.is_message_save_enabled:
@@ -104,25 +101,25 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
                 "请先使用 /group_config 命令启用消息保存"
             )
             return
-        
+
         # 获取统计信息
         export_service = MessageExportService(session)
         stats = await export_service.get_message_statistics(message.chat.id, days=30)
-        
+
         if not stats:
             await message.answer("❌ 获取统计信息失败")
             return
-        
+
         # 构建统计消息
-        stats_text = f"📊 **群组消息统计（最近30天）**\n\n"
+        stats_text = "📊 **群组消息统计（最近30天）**\n\n"
         stats_text += f"📈 **总消息数**: {stats['total_messages']}\n\n"
-        
+
         # 消息类型统计
-        if stats['message_types']:
+        if stats["message_types"]:
             stats_text += "📝 **消息类型分布**:\n"
             type_names = {
                 "text": "文本消息",
-                "photo": "图片消息", 
+                "photo": "图片消息",
                 "video": "视频消息",
                 "audio": "音频消息",
                 "voice": "语音消息",
@@ -134,30 +131,30 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
                 "poll": "投票消息",
                 "other": "其他消息"
             }
-            
-            for msg_type, count in stats['message_types'].items():
+
+            for msg_type, count in stats["message_types"].items():
                 type_name = type_names.get(msg_type, msg_type)
                 stats_text += f"  • {type_name}: {count}\n"
             stats_text += "\n"
-        
+
         # 活跃用户统计
-        if stats['top_users']:
+        if stats["top_users"]:
             stats_text += "👥 **最活跃用户（前5名）**:\n"
-            for i, user in enumerate(stats['top_users'][:5], 1):
+            for i, user in enumerate(stats["top_users"][:5], 1):
                 stats_text += f"  {i}. 用户 {user['user_id']}: {user['message_count']} 条消息\n"
             stats_text += "\n"
-        
+
         # 最近活跃度
-        if stats['daily_statistics']:
-            recent_days = stats['daily_statistics'][-7:]  # 最近7天
+        if stats["daily_statistics"]:
+            recent_days = stats["daily_statistics"][-7:]  # 最近7天
             if recent_days:
-                avg_daily = sum(day['count'] for day in recent_days) / len(recent_days)
+                avg_daily = sum(day["count"] for day in recent_days) / len(recent_days)
                 stats_text += f"📅 **最近7天平均**: {avg_daily:.1f} 条消息/天\n"
-        
+
         stats_text += f"\n🕐 统计时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        
+
         await message.answer(stats_text, parse_mode="Markdown")
-        
+
     except Exception as e:
         logger.error(f"消息统计命令处理失败: {e}")
         await message.answer("❌ 获取统计信息时发生错误，请稍后重试")
@@ -167,7 +164,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
 async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -> None:
     """
     处理导出格式选择
-    
+
     Args:
         callback: 回调查询对象
         session: 数据库会话
@@ -176,29 +173,29 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
         data_parts = callback.data.split(":")
         export_format = data_parts[1]  # txt, csv, json
         chat_id = int(data_parts[2])
-        
+
         # 检查权限
         chat_member = await callback.bot.get_chat_member(chat_id, callback.from_user.id)
         if chat_member.status not in ["administrator", "creator"]:
             await callback.answer("❌ 只有群组管理员可以导出消息", show_alert=True)
             return
-        
+
         await callback.answer("🔄 正在准备导出...")
-        
+
         # 执行导出
         export_service = MessageExportService(session)
-        
+
         # 默认导出最近30天的消息
         start_date = datetime.now() - timedelta(days=30)
-        
+
         if export_format == "txt":
             file_content = await export_service.export_to_txt(
-                chat_id, 
+                chat_id,
                 start_date=start_date,
                 limit=5000
             )
             filename = f"messages_{chat_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-            
+
         elif export_format == "csv":
             file_content = await export_service.export_to_csv(
                 chat_id,
@@ -206,7 +203,7 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
                 limit=5000
             )
             filename = f"messages_{chat_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            
+
         elif export_format == "json":
             file_content = await export_service.export_to_json(
                 chat_id,
@@ -214,14 +211,14 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
                 limit=5000
             )
             filename = f"messages_{chat_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        
+
         else:
             await callback.message.edit_text("❌ 不支持的导出格式")
             return
-        
+
         # 发送文件
         document = BufferedInputFile(file_content.read(), filename=filename)
-        
+
         await callback.message.answer_document(
             document=document,
             caption=f"📤 群组消息导出完成\n"
@@ -229,10 +226,10 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
                    f"时间范围: 最近30天\n"
                    f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         )
-        
+
         # 删除原消息
         await callback.message.delete()
-        
+
     except Exception as e:
         logger.error(f"处理导出格式失败: {e}")
         await callback.answer("❌ 导出失败，请稍后重试", show_alert=True)
@@ -242,7 +239,7 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
 async def handle_export_range(callback: CallbackQuery, session: AsyncSession) -> None:
     """
     处理导出时间范围选择
-    
+
     Args:
         callback: 回调查询对象
         session: 数据库会话
@@ -251,27 +248,25 @@ async def handle_export_range(callback: CallbackQuery, session: AsyncSession) ->
         data_parts = callback.data.split(":")
         range_type = data_parts[1]  # 7d, 30d, all
         chat_id = int(data_parts[2])
-        
+
         # 检查权限
         chat_member = await callback.bot.get_chat_member(chat_id, callback.from_user.id)
         if chat_member.status not in ["administrator", "creator"]:
             await callback.answer("❌ 只有群组管理员可以导出消息", show_alert=True)
             return
-        
+
         # 计算时间范围
-        start_date = None
         range_text = ""
-        
+
         if range_type == "7d":
-            start_date = datetime.now() - timedelta(days=7)
+            datetime.now() - timedelta(days=7)
             range_text = "最近7天"
         elif range_type == "30d":
-            start_date = datetime.now() - timedelta(days=30)
+            datetime.now() - timedelta(days=30)
             range_text = "最近30天"
         elif range_type == "all":
-            start_date = None
             range_text = "全部消息"
-        
+
         # 更新消息显示选择的时间范围
         await callback.message.edit_text(
             f"📤 **消息导出功能**\n\n"
@@ -280,9 +275,9 @@ async def handle_export_range(callback: CallbackQuery, session: AsyncSession) ->
             reply_markup=get_message_export_keyboard(chat_id),
             parse_mode="Markdown"
         )
-        
+
         await callback.answer(f"✅ 已选择时间范围: {range_text}")
-        
+
     except Exception as e:
         logger.error(f"处理导出时间范围失败: {e}")
         await callback.answer("❌ 处理失败，请稍后重试", show_alert=True)
@@ -292,7 +287,7 @@ async def handle_export_range(callback: CallbackQuery, session: AsyncSession) ->
 async def search_messages_command(message: Message, state: FSMContext) -> None:
     """
     搜索消息命令处理器
-    
+
     Args:
         message: Telegram消息对象
         state: FSM状态上下文
@@ -302,22 +297,22 @@ async def search_messages_command(message: Message, state: FSMContext) -> None:
         if message.chat.type not in ["group", "supergroup"]:
             await message.answer("❌ 此命令只能在群组中使用")
             return
-        
+
         # 检查用户权限
         chat_member = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
         if chat_member.status not in ["administrator", "creator"]:
             await message.answer("❌ 只有群组管理员可以搜索消息")
             return
-        
+
         await message.answer(
             "🔍 **消息搜索功能**\n\n"
             "请输入要搜索的关键词：",
             parse_mode="Markdown"
         )
-        
+
         await state.set_state(MessageExportStates.waiting_for_search_text)
         await state.update_data(chat_id=message.chat.id)
-        
+
     except Exception as e:
         logger.error(f"搜索消息命令处理失败: {e}")
         await message.answer("❌ 处理命令时发生错误，请稍后重试")
@@ -327,7 +322,7 @@ async def search_messages_command(message: Message, state: FSMContext) -> None:
 async def handle_search_text(message: Message, state: FSMContext, session: AsyncSession) -> None:
     """
     处理搜索文本输入
-    
+
     Args:
         message: Telegram消息对象
         state: FSM状态上下文
@@ -338,17 +333,17 @@ async def handle_search_text(message: Message, state: FSMContext, session: Async
         if not search_text:
             await message.answer("❌ 请输入有效的搜索关键词")
             return
-        
+
         data = await state.get_data()
         chat_id = data.get("chat_id")
-        
+
         if not chat_id:
             await message.answer("❌ 会话状态错误，请重新开始")
             await state.clear()
             return
-        
+
         await message.answer("🔍 正在搜索消息...")
-        
+
         # 执行搜索
         export_service = MessageExportService(session)
         messages, total_count = await export_service.get_messages(
@@ -357,36 +352,36 @@ async def handle_search_text(message: Message, state: FSMContext, session: Async
             limit=20,
             start_date=datetime.now() - timedelta(days=30)  # 搜索最近30天
         )
-        
+
         if not messages:
-            await message.answer(f"🔍 未找到包含 \"{search_text}\" 的消息")
+            await message.answer(f'🔍 未找到包含 "{search_text}" 的消息')
             await state.clear()
             return
-        
+
         # 构建搜索结果
-        result_text = f"🔍 **搜索结果**\n\n"
+        result_text = "🔍 **搜索结果**\n\n"
         result_text += f"关键词: `{search_text}`\n"
         result_text += f"找到 {total_count} 条相关消息（显示前20条）\n\n"
-        
+
         for i, msg in enumerate(messages[:10], 1):  # 只显示前10条
             result_text += f"**{i}.** "
             result_text += f"用户 {msg.user_id} "
             result_text += f"({msg.created_at.strftime('%m-%d %H:%M')})\n"
-            
+
             # 显示消息内容（截取前100字符）
             content = msg.text or msg.caption or "[媒体消息]"
             if len(content) > 100:
                 content = content[:100] + "..."
             result_text += f"   {content}\n\n"
-        
+
         if len(messages) > 10:
             result_text += f"... 还有 {len(messages) - 10} 条消息\n\n"
-        
+
         result_text += "💡 使用 /export_messages 命令可以导出完整的搜索结果"
-        
+
         await message.answer(result_text, parse_mode="Markdown")
         await state.clear()
-        
+
     except Exception as e:
         logger.error(f"处理搜索文本失败: {e}")
         await message.answer("❌ 搜索失败，请稍后重试")

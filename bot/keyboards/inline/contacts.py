@@ -7,7 +7,7 @@ from bot.core.config import settings
 def contacts_keyboard() -> InlineKeyboardMarkup:
     """
     创建联系方式键盘
-    
+
     返回:
         InlineKeyboardMarkup: 内联键盘标记
     """
@@ -23,7 +23,7 @@ def contacts_keyboard() -> InlineKeyboardMarkup:
 def support_keyboard() -> InlineKeyboardMarkup:
     """
     创建支持键盘
-    
+
     返回:
         InlineKeyboardMarkup: 内联键盘标记
     """

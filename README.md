@@ -58,7 +58,7 @@
    ```bash
    docker compose up -d --build
    ```
-   > 💡 默认 Compose 仅启动 Bot、Admin、MySQL、备份与迁移服务。如需监控或 Redis，可在 `docker-compose.yml` 中自行扩展。
+   > 💡 默认 Compose 仅启动 Bot、API、Web、MySQL、备份与迁移服务。如需监控或 Redis，可在 `docker-compose.yml` 中自行扩展。
 
 3. **访问服务**
    - **Telegram Bot**: 在 Telegram 中搜索你的 Bot
@@ -123,7 +123,7 @@
 #### 🔄 开发工作流
 
 1. **修改 Bot 逻辑**: 编辑 `bot/` 目录下的文件
-2. **修改 API**: 编辑 `bot/api_server/` 目录下的文件  
+2. **修改 API**: 编辑 `api/` 目录下的文件  
 3. **修改前端**: 编辑 `web/src/` 目录下的文件
 4. **数据库变更**: 使用 `uv run alembic revision --autogenerate -m "描述"`
 
@@ -149,9 +149,9 @@
 |--------|------|--------|
 | `API_HOST` | API 服务器主机 | `0.0.0.0` |
 | `API_PORT` | API 服务器端口 | `8000` |
-| `API_DEBUG` | API 调试模式 | `True` |
+| `API_DEBUG` | API 调试模式 | `False` |
 | `API_ALLOWED_ORIGINS` | CORS 允许的来源 | `http://localhost:3000,http://127.0.0.1:3000` |
-| `EMBY_WEBHOOK_TOKEN` | Emby Webhook 鉴权令牌（可选） | 空 |
+
 
 ### 🌐 Webhook 配置 (可选)
 
@@ -171,9 +171,8 @@
 .
 ├── bot/ # Telegram Bot 源代码
 │   ├── __main__.py # Bot 主入口点
-│   ├── api_server/ # FastAPI 服务器
+│   ├── api/ # FastAPI 服务器(独立包)
 │   │   ├── app.py # API 应用主模块
-│   │   ├── config.py # API 服务器配置
 │   │   └── routes/ # API 路由定义
 │   ├── analytics/ # 分析服务集成（可选）
 │   ├── cache/ # 缓存逻辑（默认内存实现，可扩展 Redis）
