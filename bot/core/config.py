@@ -124,8 +124,6 @@ class DBSettings(EnvBaseSettings):
 
 class ExternalServicesSettings(EnvBaseSettings):
     """外部服务配置"""
-    # Sentry 错误监控 DSN
-    SENTRY_DSN: str | None = None
     # PostHog 数据分析 API Key
     POSTHOG_API_KEY: str | None = None
     # PostHog 主机地址

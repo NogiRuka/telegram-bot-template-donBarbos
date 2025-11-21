@@ -13,7 +13,6 @@ dependencies = [
     "sqlalchemy<3.0.0,>=2.0.38",
     "pydantic<3.0.0,>=2.10.6",
     "pydantic-settings<3.0.0,>=2.8.1",
-    "sentry-sdk>=2.27.0",
     "loguru>=0.7.3",
     "aiomysql>=0.2.0",
     "pymysql>=1.1.2",
@@ -33,7 +32,6 @@ bot = [
     "aiogram>=3.19.0,<4.0.0",
     "aiomysql>=0.2.0,<1.0.0",
     "loguru>=0.7.3,<1.0.0",
-    "sentry-sdk[loguru]>=2.20.0,<3.0.0",
     "aiohttp[speedups]>=3.11.16,<4.0.0",
     "cachetools>=5.5.1,<6.0.0",
     "orjson>=3.10.15,<4.0.0",
@@ -73,7 +71,7 @@ line-length = 120
 lint.select = ["ALL"]
 lint.ignore = ["D", "ANN401", "FIX002", "COM812", "ISC001", "FBT001", "FBT002", "ERA", "ARG005", "PGH003", "A005"]
 cache-dir = "/tmp/ruff-cache/"
-extend-exclude = ["logs", "configs", "migrations"]
+extend-exclude = ["logs", "migrations"]
 
 [tool.ruff.lint.isort]
 no-lines-before = ["future", "standard-library"]

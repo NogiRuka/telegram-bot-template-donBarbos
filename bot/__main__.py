@@ -2,9 +2,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-import sentry_sdk
 from loguru import logger
-from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 
 from bot.core.config import settings
 from bot.core.loader import bot, dp
@@ -72,7 +70,7 @@ async def main() -> None:
     """主入口函数
 
     功能说明：
-    - 初始化 Sentry（可选）与日志
+    - 初始化本地日志
     - 注册启动与关闭钩子
     - 以轮询模式启动机器人
 
@@ -82,18 +80,7 @@ async def main() -> None:
     返回值：
     - None
     """
-    if settings.SENTRY_DSN:
-        sentry_loguru = LoguruIntegration(
-            level=LoggingLevels.INFO.value,
-            event_level=LoggingLevels.INFO.value,
-        )
-        sentry_sdk.init(
-            dsn=settings.SENTRY_DSN,
-            enable_tracing=True,
-            traces_sample_rate=1.0,
-            profiles_sample_rate=1.0,
-            integrations=[sentry_loguru],
-        )
+    # 已移除 Sentry 集成，仅使用本地日志
 
     Path("logs").mkdir(parents=True, exist_ok=True)
     logger.add(
