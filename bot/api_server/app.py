@@ -12,8 +12,8 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from bot.api_server.config import settings
 from bot.api_server.routes import admins, dashboard, users, webhooks
+from bot.core.config import settings
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -56,7 +56,7 @@ def create_app() -> FastAPI:
     # 配置CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_origins=settings.API_ALLOWED_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -155,12 +155,12 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
-    logger.info(f"启动API服务在 http://{settings.HOST}:{settings.PORT}")
+    logger.info(f"启动API服务在 http://{settings.API_HOST}:{settings.API_PORT}")
     uvicorn.run(
         "bot.api_server.app:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=settings.DEBUG,
-        log_level="info" if not settings.DEBUG else "debug",
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=settings.API_DEBUG,
+        log_level="info" if not settings.API_DEBUG else "debug",
         access_log=False,
     )

@@ -8,7 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 from loguru import logger
 
-from bot.api_server.config import settings
+from bot.core.config import settings
 
 router = APIRouter()
 

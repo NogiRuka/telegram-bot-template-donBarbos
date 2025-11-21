@@ -12,18 +12,15 @@
 
 命名风格：统一 snake_case
 """
-import sys
-import os
-import re
 import asyncio
-import shutil
+import contextlib
 import logging
+import re
+import shutil
 import socket
-import time
-import time
+import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent
@@ -111,9 +108,10 @@ async def start_api() -> None:
     - None
     """
     import uvicorn
+
     from bot.api_server.app import app
-    from bot.api_server.config import settings as api_settings
-    port = ensure_free_port(api_settings.HOST, api_settings.PORT)
+    from bot.core.config import settings as api_settings
+    port = ensure_free_port(api_settings.API_HOST, api_settings.API_PORT)
     globals()["runtime_api_port"] = port
     globals()["start_time_api"] = time.monotonic()
     globals()["start_time_api"] = time.monotonic()
@@ -121,9 +119,9 @@ async def start_api() -> None:
 
     config = uvicorn.Config(
         app,
-        host=api_settings.HOST,
+        host=api_settings.API_HOST,
         port=port,
-        reload=api_settings.DEBUG,
+        reload=api_settings.API_DEBUG,
         log_level="warning",
         access_log=False,
     )
@@ -131,7 +129,7 @@ async def start_api() -> None:
     await server.serve()
 
 
-async def start_web_process() -> Optional[asyncio.subprocess.Process]:
+async def start_web_process() -> asyncio.subprocess.Process | None:
     """启动前端开发服务器（Vite）
 
     功能说明：
@@ -153,10 +151,8 @@ async def start_web_process() -> Optional[asyncio.subprocess.Process]:
     elif npm:
         cmd = "npm run dev"
     else:
-        print("⚠️ 未检测到 pnpm 或 npm，前端服务未启动。请在 web 目录执行依赖安装并确保命令可用。")
         return None
 
-    print(f"🌐 启动前端开发服务器（{cmd}）...")
     globals()["start_time_web"] = time.monotonic()
     globals()["start_time_web"] = time.monotonic()
     globals()["start_time_web"] = time.monotonic()
@@ -214,9 +210,9 @@ async def print_summary() -> None:
     返回值：
     - None
     """
+    from bot.core.config import settings as api_settings
     from bot.core.config import settings as bot_settings
     from bot.core.loader import bot
-    from bot.api_server.config import settings as api_settings
 
     try:
         me = await bot.get_me()
@@ -227,8 +223,8 @@ async def print_summary() -> None:
     runtime_port = globals().get("runtime_web_port")
     web_port = int(runtime_port) if runtime_port else read_web_port(default_port=3000)
     web_url = f"http://localhost:{web_port}"
-    api_host = api_settings.HOST if api_settings.HOST != "0.0.0.0" else "localhost"
-    api_port = globals().get("runtime_api_port", api_settings.PORT)
+    api_host = api_settings.API_HOST if api_settings.API_HOST != "0.0.0.0" else "localhost"
+    api_port = globals().get("runtime_api_port", api_settings.API_PORT)
     api_url = f"http://{api_host}:{api_port}"
 
     api_status, api_probe_ms = await probe_api_with_time(api_url)
@@ -272,15 +268,15 @@ async def print_summary() -> None:
             right = target - cur - left
             return (" " * left) + str(s) + (" " * right)
 
-        cols = list(zip(*([headers] + rows)))
+        cols = list(zip(*([headers, *rows]), strict=False))
         auto_widths = [max(display_width(cell) for cell in col) for col in cols]
-        widths = [max(a, f) for a, f in zip(auto_widths, fixed_widths)]
+        widths = [max(a, f) for a, f in zip(auto_widths, fixed_widths, strict=False)]
 
         def fmt(row: list[str]) -> str:
-            cells = [pad_str(cell, w) for cell, w in zip(row, widths)]
+            cells = [pad_str(cell, w) for cell, w in zip(row, widths, strict=False)]
             return " | ".join(cells)
 
-        header = " | ".join(center_str(h, w) for h, w in zip(headers, widths))
+        header = " | ".join(center_str(h, w) for h, w in zip(headers, widths, strict=False))
         sep = "-" * len(header)
         lines = [header, sep] + [fmt(r) for r in rows]
         return "\n".join(lines)
@@ -296,7 +292,7 @@ async def print_summary() -> None:
     web_cost = None
     if globals().get("start_time_web") and globals().get("runtime_web_ready_time"):
         web_cost = max(0.0, globals()["runtime_web_ready_time"] - globals()["start_time_web"])
-    def with_cost(desc: str, cost: Optional[float]) -> str:
+    def with_cost(desc: str, cost: float | None) -> str:
         return desc if cost is None else f"{desc}（约 {cost:.1f}s）"
 
     rows = [
@@ -311,8 +307,7 @@ async def print_summary() -> None:
         ["数据库", mask_database_url(bot_settings.database_url), "可用", "连接（已脱敏）"],
         ["日志", "logs/telegram_bot.log", "可用", "文件输出"],
     ]
-    table = format_table(headers, rows)
-    print("\n================ 服务清单（中文） ================\n" + table + "\n===============================================\n")
+    format_table(headers, rows)
 
 
 def get_api_extra_info(api_url: str) -> str:
@@ -370,10 +365,8 @@ async def run_all() -> None:
         pass
     finally:
         if web_proc and web_proc.returncode is None:
-            try:
+            with contextlib.suppress(ProcessLookupError):
                 web_proc.terminate()
-            except ProcessLookupError:
-                pass
 
 
 def setup_logging_quiet() -> None:
@@ -436,9 +429,8 @@ async def probe_api(api_url: str) -> bool:
     """
     try:
         import aiohttp
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{api_url}/health", timeout=3) as resp:
-                return resp.status == 200
+        async with aiohttp.ClientSession() as session, session.get(f"{api_url}/health", timeout=3) as resp:
+            return resp.status == 200
     except Exception:
         return False
 
@@ -491,10 +483,8 @@ def main() -> None:
     返回值：
     - None
     """
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(run_all())
-    except KeyboardInterrupt:
-        print("\n🛑 已收到中断信号，正在关闭所有服务...")
 
 
 if __name__ == "__main__":
