@@ -36,17 +36,12 @@
 -   [x] 自动生成 API 文档 (Swagger/OpenAPI)
 -   [x] 与 Telegram Bot 数据同步
 
-### 📊 数据分析与监控
--   [x] 产品分析系统：支持 [`PostHog`](https://posthog.com/) 或 [`Google Analytics`](https://analytics.google.com)
--   [x] 性能监控系统：使用 [`Prometheus`](https://prometheus.io/) 和 [`Grafana`](https://grafana.com/)
--   [x] 错误追踪系统：使用 [`Sentry`](https://sentry.io/)
 
 ### 🛠️ 开发与部署
 -   [x] 无缝的 `Docker` 和 `Docker Compose` 支持
 -   [x] 用户数据导出功能 (`.csv`, `.xlsx`, `.json`, `yaml`)
 -   [x] 完整的 CI/CD 流水线配置
 -   [x] 数据库迁移支持 [`Alembic`](https://pypi.org/project/alembic/)
--   [x] Redis 缓存装饰器支持
 -   [x] [`Pydantic V2`](https://pypi.org/project/pydantic/) 数据验证
 
 ## 🚀 快速开始
@@ -63,6 +58,7 @@
    ```bash
    docker compose up -d --build
    ```
+   > 💡 默认 Compose 仅启动 Bot、Admin、MySQL、备份与迁移服务。如需监控或 Redis，可在 `docker-compose.yml` 中自行扩展。
 
 3. **访问服务**
    - **Telegram Bot**: 在 Telegram 中搜索你的 Bot
@@ -75,7 +71,6 @@
 - Python 3.10+
 - Node.js 18+ 和 pnpm
 - MySQL 数据库
-- Redis 服务
 
 #### 🔧 安装步骤
 
@@ -89,7 +84,7 @@
 2. **配置环境变量**
    ```bash
    cp .env.example .env
-   # 编辑 .env 文件，配置数据库、Redis 和 Bot Token
+   # 编辑 .env 文件，配置数据库和 Bot Token
    ```
 
 3. **数据库迁移**
@@ -134,7 +129,7 @@
 
 ## 🌍 环境变量配置
 
-启动项目只需要配置 Bot Token、数据库和 Redis 设置，其他配置可选。
+所有服务（Bot、API、前端、Docker Compose）都从同一个 `.env` 文件读取配置。首次启动前先执行 `cp .env.example .env`，然后只需维护这一份文件。启动项目至少需要配置 Bot Token 和数据库，其他配置可按需开启。
 
 ### 🔑 必需配置
 
@@ -147,8 +142,6 @@
 | `DB_USER` | 数据库用户名 | `root` |
 | `DB_PASS` | 数据库密码 | `password` |
 | `DB_NAME` | 数据库名称 | `telegram_bot` |
-| `REDIS_HOST` | Redis 主机地址 | `localhost` |
-| `REDIS_PORT` | Redis 端口 | `6379` |
 
 ### 🔧 API 服务器配置
 
@@ -157,7 +150,8 @@
 | `API_HOST` | API 服务器主机 | `0.0.0.0` |
 | `API_PORT` | API 服务器端口 | `8000` |
 | `API_DEBUG` | API 调试模式 | `True` |
-| `API_ALLOWED_ORIGINS` | CORS 允许的来源 | `http://localhost:3000` |
+| `API_ALLOWED_ORIGINS` | CORS 允许的来源 | `http://localhost:3000,http://127.0.0.1:3000` |
+| `EMBY_WEBHOOK_TOKEN` | Emby Webhook 鉴权令牌（可选） | 空 |
 
 ### 🌐 Webhook 配置 (可选)
 
@@ -170,16 +164,6 @@
 | `WEBHOOK_HOST` | Webhook 主机 |
 | `WEBHOOK_PORT` | Webhook 端口 |
 
-### 📊 监控与分析 (可选)
-
-| 变量名 | 描述 |
-|--------|------|
-| `SENTRY_DSN` | Sentry 错误追踪 DSN |
-| `POSTHOG_API_KEY` | PostHog 分析 API 密钥 |
-| `PROMETHEUS_PORT` | Prometheus 监控端口 |
-| `GRAFANA_PORT` | Grafana 可视化端口 |
-| `GRAFANA_ADMIN_USER` | Grafana 管理员用户名 |
-| `GRAFANA_ADMIN_PASSWORD` | Grafana 管理员密码 |
 
 ## 📂 项目结构
 
@@ -191,8 +175,8 @@
 │   │   ├── app.py # API 应用主模块
 │   │   ├── config.py # API 服务器配置
 │   │   └── routes/ # API 路由定义
-│   ├── analytics/ # 分析服务集成 (PostHog, Google Analytics)
-│   ├── cache/ # Redis 缓存逻辑
+│   ├── analytics/ # 分析服务集成（可选）
+│   ├── cache/ # 缓存逻辑（默认内存实现，可扩展 Redis）
 │   ├── core/ # 核心配置和组件
 │   ├── database/ # 数据库模型和连接
 │   │   └── models/ # SQLAlchemy 数据模型
@@ -222,10 +206,6 @@
 │   ├── script.py.mako # 迁移脚本模板
 │   └── versions/ # 迁移版本文件
 │
-├── configs/ # 监控配置 (Prometheus, Grafana)
-│   ├── grafana/ # Grafana 配置文件
-│   └── prometheus/ # Prometheus 配置文件
-│
 ├── scripts/ # 实用脚本
 ├── run_api.py # API 服务器启动脚本
 ├── docker-compose.yml # Docker Compose 配置
@@ -243,7 +223,7 @@
 -   **`aiomysql`** — 异步 MySQL 数据库客户端
 -   **`Pydantic V2`** — 数据验证和设置管理
 -   **`Alembic`** — SQLAlchemy 数据库迁移工具
--   **`Redis`** — 内存数据结构存储，用作缓存和 FSM
+-   **缓存装饰器** — 默认内存实现，可扩展接入 Redis
 -   **`uvicorn`** — ASGI 服务器实现
 
 ### 🌐 前端技术
@@ -257,13 +237,6 @@
 
 ### 🗄️ 数据库与缓存
 -   **`MySQL`** — 关系型数据库管理系统
--   **`Redis`** — 内存数据库，用于缓存和会话存储
-
-### 📊 监控与分析
--   **`Prometheus`** — 时间序列数据库，用于收集系统指标
--   **`Grafana`** — 数据可视化和分析平台
--   **`Sentry`** — 错误追踪和性能监控
--   **`PostHog`** — 产品分析平台
 
 ### 🛠️ 开发工具
 -   **`uv`** — 现代 Python 包管理器
@@ -276,22 +249,20 @@
 
 [![Star History Chart](https://api.star-history.com/svg?repos=donBarbos/telegram-bot-template&type=Date)](https://star-history.com/#donBarbos/telegram-bot-template&Date)
 
-## 👷 Contributing
+## 👷 贡献指南
 
-First off, thanks for taking the time to contribute! Contributions are what makes the open-source community such an amazing place to learn, inspire, and create. Any contributions you make will benefit everybody else and are greatly appreciated.
+非常感谢你抽时间参与贡献！欢迎通过 Issue 反馈需求/问题，或者直接提交 Pull Request：
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement". Don't forget to give the project a star! Thanks again!
+1. Fork 本仓库并创建功能分支  
+2. 使用 `uv run ruff check` 等命令确保格式与静态检查通过  
+3. 提交前同步最新 `main`，保证没有冲突  
+4. 在 PR 描述中简要说明改动动机与测试方式
 
-1. `Fork` this repository
-2. Create a `branch`
-3. `Commit` your changes
-4. `Push` your `commits` to the `branch`
-5. Submit a `pull request`
+## 📝 许可证
 
-## 📝 License
+项目遵循 MIT 协议，详情见 [`LICENSE`](./LICENSE.md)。
 
-Distributed under the MIT license. See [`LICENSE`](./LICENSE.md) for more information.
+## 📢 联系方式
 
-## 📢 Contact
-
-[donbarbos](https://github.com/donBarbos): donbarbos@proton.me
+- GitHub: [@donBarbos](https://github.com/donBarbos)  
+- Email: donbarbos@proton.me
