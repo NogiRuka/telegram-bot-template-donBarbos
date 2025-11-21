@@ -21,7 +21,7 @@ BOT_DIR = Path(__file__).absolute().parent.parent
 class EnvBaseSettings(BaseSettings):
     """环境变量基础配置类"""
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", ".env.local", ".env.example"),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=True
