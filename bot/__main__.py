@@ -167,9 +167,11 @@ def print_boot_banner(service_name: str) -> None:
         text = ""
         if banner_path.exists():
             try:
-                text = banner_path.read_text(encoding="utf-8", errors="ignore")
+                raw = banner_path.read_text(encoding="utf-8", errors="ignore")
+                cleaned = sanitize_banner_text(raw)
                 compact_line = build_start_info_line("Bot")
-                logger.info("\n{}\n{}", text, compact_line)
+                sep = _make_separator(cleaned, compact_line)
+                logger.info("\n{}\n{}\n{}", cleaned, sep, compact_line)
             except Exception as e:
                 compact_line = build_start_info_line("Bot")
                 logger.info("{}\n{}", f"{service_name} 启动", compact_line)
@@ -200,6 +202,62 @@ def build_start_info_line(module_name: str) -> str:
         return f"🚀 项目: {project} | 🧩 模块: {module_name}"
     except Exception:
         return f"🚀 项目: Telegram Bot Admin | 🧩 模块: {module_name}"
+
+
+def sanitize_banner_text(text: str) -> str:
+    """清理 banner 文本的空行与尾随空格
+
+    功能说明：
+    - 去除每行末尾的空格
+    - 去除头尾的空白行
+    - 将连续空白行压缩为一行
+
+    输入参数：
+    - text: 原始 banner 文本
+
+    返回值：
+    - str: 清理后的 banner 文本
+    """
+    try:
+        lines = [ln.rstrip() for ln in text.splitlines()]
+        while lines and not lines[0].strip():
+            lines.pop(0)
+        while lines and not lines[-1].strip():
+            lines.pop()
+        cleaned: list[str] = []
+        last_blank = False
+        for ln in lines:
+            blank = not ln.strip()
+            if blank and last_blank:
+                continue
+            cleaned.append(ln)
+            last_blank = blank
+        return "\n".join(cleaned)
+    except Exception:
+        return text
+
+
+def _make_separator(banner_text: str, info_line: str) -> str:
+    """生成分隔线
+
+    功能说明：
+    - 根据 banner 最长行与信息行长度，生成一条由 '─' 组成的分隔线
+
+    输入参数：
+    - banner_text: 清理后的 banner 文本
+    - info_line: 单行启动信息文本
+
+    返回值：
+    - str: 分隔线文本
+    """
+    try:
+        banner_lines = banner_text.splitlines() if banner_text else []
+        w_banner = max((len(ln) for ln in banner_lines), default=0)
+        w_info = len(info_line)
+        width = max(w_banner, w_info, 32)
+        return "─" * width
+    except Exception:
+        return "─" * max(len(info_line), 32)
 
 
 # 已移除居中对齐逻辑，改为紧凑单行输出
