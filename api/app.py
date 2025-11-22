@@ -18,6 +18,32 @@ from api.routes import admins, dashboard, users, webhooks
 
 from bot.core.config import settings
 
+def setup_api_logging() -> None:
+    """初始化 API 文件日志
+
+    功能说明:
+    - 创建 `logs/api` 目录并添加 loguru 文件日志输出
+    - 根据 `API_DEBUG` 设置日志等级
+
+    输入参数:
+    - 无
+
+    返回值:
+    - None
+    """
+    try:
+        Path("logs/api").mkdir(parents=True, exist_ok=True)
+        logger.add(
+            "logs/api/api.log",
+            level="DEBUG" if settings.API_DEBUG else "INFO",
+            format="{time} | {level} | {module}:{function}:{line} | {message}",
+            rotation="100 KB",
+            compression="zip",
+        )
+    except Exception:
+        # 避免日志初始化失败影响服务启动
+        pass
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
@@ -219,28 +245,3 @@ if __name__ == "__main__":
         access_log=False,
         log_config=None,
     )
-def setup_api_logging() -> None:
-    """初始化 API 文件日志
-
-    功能说明:
-    - 创建 `logs/api` 目录并添加 loguru 文件日志输出
-    - 根据 `API_DEBUG` 设置日志等级
-
-    输入参数:
-    - 无
-
-    返回值:
-    - None
-    """
-    try:
-        Path("logs/api").mkdir(parents=True, exist_ok=True)
-        logger.add(
-            "logs/api/api.log",
-            level="DEBUG" if settings.API_DEBUG else "INFO",
-            format="{time} | {level} | {module}:{function}:{line} | {message}",
-            rotation="100 KB",
-            compression="zip",
-        )
-    except Exception:
-        # 避免日志初始化失败影响服务启动
-        pass
