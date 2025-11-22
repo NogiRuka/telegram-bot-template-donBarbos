@@ -40,35 +40,35 @@ def print_boot_banner(service_name: str) -> None:
                 banner_text = sanitize_banner_text(raw)
             except Exception as e:
                 logger.warning("读取 banner 失败: {}", e)
-        compact_line = build_start_info_line(service_name)
-        sep = _make_separator(banner_text, compact_line)
+        value_line = build_start_value_line(service_name)
+        box = _make_center_box(banner_text, value_line)
         if banner_text:
-            logger.info("\n{}\n{}\n{}", banner_text, sep, compact_line)
+            logger.info("\n{}\n{}", banner_text, box)
         else:
-            logger.info("{}\n{}", sep, compact_line)
+            logger.info("{}", box)
     except Exception:
         # 忽略打印失败，保证启动不中断
         pass
 
 
-def build_start_info_line(module_name: str) -> str:
-    """构建启动信息紧凑行
+def build_start_value_line(module_name: str) -> str:
+    """构建启动信息值行（无属性名）
 
     功能说明：
-    - 构造一行文本，在 banner 下方显示，使用分隔符与 emoji 装饰
-    - 仅包含项目名与模块名，例如："🚀 项目: Telegram Bot Admin | 🧩 模块: API"
+    - 仅返回值部分，不含属性名，示例："🚀 Telegram Bot Admin | 🧩 API"
+    - 用于在 banner 下方的方框居中显示
 
     输入参数：
     - module_name: 模块名称（例如 "API"、"Bot"）
 
     返回值：
-    - str: 单行启动信息
+    - str: 单行值文本
     """
     try:
         project = "Telegram Bot Admin"
-        return f"🚀 项目: {project} | 🧩 模块: {module_name}"
+        return f"🚀 {project} | 🧩 {module_name}"
     except Exception:
-        return f"🚀 项目: Telegram Bot Admin | 🧩 模块: {module_name}"
+        return f"🚀 Telegram Bot Admin | 🧩 {module_name}"
 
 
 def sanitize_banner_text(text: str) -> str:
@@ -106,27 +106,36 @@ def sanitize_banner_text(text: str) -> str:
         return text
 
 
-def _make_separator(banner_text: str, info_line: str) -> str:
-    """生成分隔线
+def _make_center_box(banner_text: str, content_line: str) -> str:
+    """生成方框并居中显示内容
 
     功能说明：
-    - 根据 banner 最长行与信息行长度，生成一条由 '─' 组成的分隔线
+    - 依据 banner 最长行宽度与内容长度，生成居中内容的方框
+    - 使用盒线字符：┌ ┐ └ ┘ │ ─
 
     输入参数：
     - banner_text: 清理后的 banner 文本
-    - info_line: 单行启动信息文本
+    - content_line: 方框中显示的单行文本
 
     返回值：
-    - str: 分隔线文本
+    - str: 三行方框文本
     """
     try:
         banner_lines = banner_text.splitlines() if banner_text else []
         w_banner = max((len(ln) for ln in banner_lines), default=0)
-        w_info = len(info_line)
-        width = max(w_banner, w_info, 32)
-        return "─" * width
+        inner = max(w_banner, len(content_line) + 2, 32)
+        top = "┌" + "─" * inner + "┐"
+        pad_left = max(0, (inner - len(content_line)) // 2)
+        pad_right = inner - len(content_line) - pad_left
+        middle = "│" + (" " * pad_left) + content_line + (" " * pad_right) + "│"
+        bottom = "└" + "─" * inner + "┘"
+        return "\n".join([top, middle, bottom])
     except Exception:
-        return "─" * max(len(info_line), 32)
+        inner = max(len(content_line) + 2, 32)
+        top = "┌" + "─" * inner + "┐"
+        middle = "│ " + content_line.center(inner - 2) + " │"
+        bottom = "└" + "─" * inner + "┘"
+        return "\n".join([top, middle, bottom])
 
 
 def get_project_version() -> str:
