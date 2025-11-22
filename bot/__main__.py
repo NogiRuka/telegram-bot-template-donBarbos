@@ -89,6 +89,7 @@ async def main() -> None:
         rotation="100 KB",
         compression="zip",
     )
+    print_boot_banner_once("Bot")
 
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
@@ -145,3 +146,38 @@ def get_services_info() -> dict:
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+def print_boot_banner_once(service_name: str) -> None:
+    """打印启动 Logo（仅首次）
+
+    功能说明：
+    - 在 `logs/.boot_banner_printed` 标记文件不存在时，打印一次启动 Logo
+    - 使用 loguru 输出到控制台与文件日志
+
+    输入参数：
+    - service_name: 服务名称，用于附加说明（如 "API"、"Bot"）
+
+    返回值：
+    - None
+    """
+    try:
+        flag = Path("logs/.boot_banner_printed")
+        if flag.exists():
+            return
+        banner = (
+            "\n"
+            "            ███████╗ █████╗ ██╗  ██╗██╗   ██╗██████╗  █████╗ \n"
+            "            ██╔════╝██╔══██╗██║ ██╔╝██║   ██║██╔══██╗██╔══██╗\n"
+            "            █████╗  ███████║█████╔╝ ██║   ██║██████╔╝███████║\n"
+            "            ██╔══╝  ██╔══██║██╔═██╗ ██║   ██║██╔══██╗██╔══██║\n"
+            "            ███████╗██║  ██║██║  ██╗╚██████╔╝██║  ██║██║  ██║\n"
+            "            ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝\n"
+            "\n"
+            "                ✿  ✿  ✿  Sakura Admin / {svc}  ✿  ✿  ✿\n"
+        ).format(svc=service_name)
+        logger.info(banner)
+        flag.parent.mkdir(parents=True, exist_ok=True)
+        flag.write_text("printed", encoding="utf-8")
+    except Exception:
+        pass

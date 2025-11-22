@@ -18,6 +18,41 @@ from api.routes import admins, dashboard, users, webhooks
 
 from bot.core.config import settings
 
+def print_boot_banner_once(service_name: str) -> None:
+    """打印启动 Logo（仅首次）
+
+    功能说明：
+    - 在 `logs/.boot_banner_printed` 标记文件不存在时，打印一次启动 Logo
+    - 使用 loguru 输出到控制台与文件日志
+
+    输入参数：
+    - service_name: 服务名称，用于附加说明（如 "API"、"Bot"）
+
+    返回值：
+    - None
+    """
+    try:
+        flag = Path("logs/.boot_banner_printed")
+        if flag.exists():
+            return
+        banner = (
+            "\n"
+            "            ███████╗ █████╗ ██╗  ██╗██╗   ██╗██████╗  █████╗ \n"
+            "            ██╔════╝██╔══██╗██║ ██╔╝██║   ██║██╔══██╗██╔══██╗\n"
+            "            █████╗  ███████║█████╔╝ ██║   ██║██████╔╝███████║\n"
+            "            ██╔══╝  ██╔══██║██╔═██╗ ██║   ██║██╔══██╗██╔══██║\n"
+            "            ███████╗██║  ██║██║  ██╗╚██████╔╝██║  ██║██║  ██║\n"
+            "            ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝\n"
+            "\n"
+            "                ✿  ✿  ✿  Sakura Admin / {svc}  ✿  ✿  ✿\n"
+        ).format(svc=service_name)
+        logger.info(banner)
+        flag.parent.mkdir(parents=True, exist_ok=True)
+        flag.write_text("printed", encoding="utf-8")
+    except Exception:
+        # 忽略打印失败，保证启动不中断
+        pass
+
 def setup_api_logging() -> None:
     """初始化 API 文件日志
 
@@ -72,6 +107,7 @@ def create_app() -> FastAPI:
         FastAPI: 配置好的FastAPI应用实例
     """
     setup_api_logging()
+    print_boot_banner_once("API")
     app = FastAPI(
         title="Telegram Bot Admin API",
         description="为Telegram Bot管理界面提供的API服务",
