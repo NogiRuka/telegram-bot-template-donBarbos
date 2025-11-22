@@ -334,7 +334,6 @@ def create_app() -> FastAPI:
         FastAPI: 配置好的FastAPI应用实例
     """
     setup_api_logging()
-    print_boot_banner("API")
     app = FastAPI(
         title="Telegram Bot Admin API",
         description="为Telegram Bot管理界面提供的API服务",
