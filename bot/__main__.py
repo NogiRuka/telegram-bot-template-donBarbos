@@ -3,8 +3,6 @@ import asyncio
 from pathlib import Path
 
 from loguru import logger
-from pathlib import Path
-from typing import Optional
 
 from bot.core.loader import bot, dp
 from bot.handlers import get_handlers_router
@@ -151,14 +149,14 @@ if __name__ == "__main__":
 
 
 def print_boot_banner_once(service_name: str) -> None:
-    """打印启动 Logo（仅首次）
+    """打印启动 Banner（仅首次）
 
     功能说明：
-    - 在 `logs/.boot_banner_printed` 标记文件不存在时，打印一次启动 Logo
-    - 使用 loguru 输出到控制台与文件日志
+    - 读取 `assets/banner.txt` 的文本内容并打印到日志（控制台与文件）
+    - 使用 `logs/.boot_banner_printed` 作为一次性标记，避免重复打印
 
     输入参数：
-    - service_name: 服务名称，用于附加说明（如 "API"、"Bot"）
+    - service_name: 服务名称说明（例如 "API"、"Bot"），用于日志定位
 
     返回值：
     - None
@@ -167,33 +165,18 @@ def print_boot_banner_once(service_name: str) -> None:
         flag = Path("logs/.boot_banner_printed")
         if flag.exists():
             return
-        img_path = resolve_logo_path()
-        if img_path:
+        banner_path = Path("assets/banner.txt")
+        if banner_path.exists():
             try:
-                from rich.console import Console  # 延迟导入，避免缺依赖时崩溃
-                from rich.image import Image
-                Console().print(Image(str(img_path)))
-            except Exception:
-                logger.info("Sakura Admin / {}", service_name)
+                text = banner_path.read_text(encoding="utf-8", errors="ignore")
+                logger.info("\n{}", text)
+            except Exception as e:
+                logger.info("{} 初次启动", service_name)
+                logger.warning("读取 banner 失败: {}", e)
         else:
-            logger.info("Sakura Admin / {}", service_name)
+            logger.info("{} 初次启动", service_name)
         flag.parent.mkdir(parents=True, exist_ok=True)
         flag.write_text("printed", encoding="utf-8")
     except Exception:
+        # 忽略打印失败，保证启动不中断
         pass
-
-
-def resolve_logo_path() -> Optional[Path]:
-    """解析 Logo 文件路径
-
-    功能说明：
-    - 固定使用 `assets/logo/sakura.png`，不存在则返回 None
-
-    输入参数：
-    - 无
-
-    返回值：
-    - Path | None: 可用的图片路径
-    """
-    p = Path("assets/logo/sakura.png")
-    return p if p.exists() else None
