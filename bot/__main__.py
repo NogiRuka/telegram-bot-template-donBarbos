@@ -81,9 +81,9 @@ async def main() -> None:
     """
     # 已移除 Sentry 集成，仅使用本地日志
 
-    Path("logs").mkdir(parents=True, exist_ok=True)
+    Path("logs/bot").mkdir(parents=True, exist_ok=True)
     logger.add(
-        "logs/telegram_bot.log",
+        "logs/bot/bot.log",
         level="DEBUG",
         format="{time} | {level} | {module}:{function}:{line} | {message}",
         rotation="100 KB",

@@ -6,6 +6,7 @@ API服务主应用
 from __future__ import annotations
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
@@ -44,6 +45,7 @@ def create_app() -> FastAPI:
     Returns:
         FastAPI: 配置好的FastAPI应用实例
     """
+    setup_api_logging()
     app = FastAPI(
         title="Telegram Bot Admin API",
         description="为Telegram Bot管理界面提供的API服务",
@@ -217,3 +219,28 @@ if __name__ == "__main__":
         access_log=False,
         log_config=None,
     )
+def setup_api_logging() -> None:
+    """初始化 API 文件日志
+
+    功能说明:
+    - 创建 `logs/api` 目录并添加 loguru 文件日志输出
+    - 根据 `API_DEBUG` 设置日志等级
+
+    输入参数:
+    - 无
+
+    返回值:
+    - None
+    """
+    try:
+        Path("logs/api").mkdir(parents=True, exist_ok=True)
+        logger.add(
+            "logs/api/api.log",
+            level="DEBUG" if settings.API_DEBUG else "INFO",
+            format="{time} | {level} | {module}:{function}:{line} | {message}",
+            rotation="100 KB",
+            compression="zip",
+        )
+    except Exception:
+        # 避免日志初始化失败影响服务启动
+        pass

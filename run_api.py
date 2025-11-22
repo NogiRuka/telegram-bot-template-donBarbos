@@ -146,6 +146,10 @@ async def start_web_process() -> asyncio.subprocess.Process | None:
     - 子进程对象(Process), 若无法启动则返回 None
     """
     web_dir = project_root / "web"
+    try:
+        (project_root / "logs" / "web").mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
     pnpm = shutil.which("pnpm")
     npm = shutil.which("npm")
 
@@ -180,11 +184,18 @@ async def tail_web_logs(proc: asyncio.subprocess.Process) -> None:
     if not proc or not proc.stdout:
         return
     try:
+        log_path = project_root / "logs" / "web" / "web-dev.log"
+        f = log_path.open("a", encoding="utf-8", errors="ignore")
         while True:
             line = await proc.stdout.readline()
             if not line:
                 break
             text = line.decode(errors="ignore").strip()
+            try:
+                f.write(text + "\n")
+                f.flush()
+            except OSError:
+                pass
             m = re.search(r"Local:\s*http://localhost:(\d+)", text)
             if m:
                 port = int(m.group(1))
@@ -195,6 +206,11 @@ async def tail_web_logs(proc: asyncio.subprocess.Process) -> None:
                 globals()["runtime_web_network"] = m2.group(1)
     except (asyncio.CancelledError, UnicodeDecodeError, OSError) as err:
         logging.getLogger(__name__).debug("监听前端日志失败: %s", err)
+    finally:
+        try:
+            f.close()
+        except Exception:
+            pass
 
 
 async def print_summary() -> None:
@@ -258,7 +274,7 @@ async def print_summary() -> None:
             with_cost("开发端口", web_cost),
         ],
         ["数据库", mask_database_url(bot_settings.database_url), "可用", "连接(已脱敏)"],
-        ["日志", "logs/telegram_bot.log", "可用", "文件输出"],
+        ["日志", "logs/bot/bot.log; logs/api/api.log; logs/web/web-dev.log", "可用", "文件输出"],
     ]
 
 
