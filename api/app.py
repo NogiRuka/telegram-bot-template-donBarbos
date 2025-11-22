@@ -11,6 +11,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
+import logging
 
 from api.routes import admins, dashboard, users, webhooks
 
@@ -145,64 +146,65 @@ def create_app() -> FastAPI:
     return app
 
 
+def quiet_uvicorn_logs() -> None:
+    """压低 Uvicorn 日志等级
+
+    功能说明:
+    - 将 'uvicorn' 与 'uvicorn.error' 日志等级设为 WARNING
+    - 禁用 'uvicorn.access' 访问日志, 避免重复输出
+
+    输入参数:
+    - 无
+
+    返回值:
+    - None
+    """
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").disabled = True
+
+
+def get_uvicorn_log_config() -> dict[str, object]:
+    """生成 Uvicorn 日志配置(压低噪音)
+
+    功能说明:
+    - 设置 'uvicorn' 与 'uvicorn.error' 为 WARNING 等级并输出到控制台
+    - 移除 'uvicorn.access' 的处理器, 禁止访问日志传播
+
+    输入参数:
+    - 无
+
+    返回值:
+    - dict[str, object]: logging 配置字典
+    """
+    return {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {"format": "%(levelname)s: %(message)s"}
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "default",
+                "stream": "ext://sys.stderr",
+            }
+        },
+        "root": {"level": "WARNING", "handlers": ["console"]},
+        "loggers": {
+            "uvicorn": {"level": "WARNING", "handlers": ["console"], "propagate": False},
+            "uvicorn.error": {"level": "WARNING", "handlers": ["console"], "propagate": False},
+            "uvicorn.access": {"level": "WARNING", "handlers": [], "propagate": False},
+        },
+    }
+
+
 # 创建应用实例
 app = create_app()
 
 
 if __name__ == "__main__":
     import uvicorn
-    import logging
-
-    def quiet_uvicorn_logs() -> None:
-        """压低 Uvicorn 日志等级
-
-        功能说明:
-        - 将 'uvicorn' 与 'uvicorn.error' 日志等级设为 WARNING
-        - 禁用 'uvicorn.access' 访问日志, 避免重复输出
-
-        输入参数:
-        - 无
-
-        返回值:
-        - None
-        """
-        logging.getLogger("uvicorn").setLevel(logging.WARNING)
-        logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
-        logging.getLogger("uvicorn.access").disabled = True
-
-    def get_uvicorn_log_config() -> dict[str, object]:
-        """生成 Uvicorn 日志配置(压低噪音)
-
-        功能说明:
-        - 设置 'uvicorn' 与 'uvicorn.error' 为 WARNING 等级并输出到控制台
-        - 移除 'uvicorn.access' 的处理器, 禁止访问日志传播
-
-        输入参数:
-        - 无
-
-        返回值:
-        - dict[str, object]: logging 配置字典
-        """
-        return {
-            "version": 1,
-            "disable_existing_loggers": False,
-            "formatters": {
-                "default": {"format": "%(levelname)s: %(message)s"}
-            },
-            "handlers": {
-                "console": {
-                    "class": "logging.StreamHandler",
-                    "formatter": "default",
-                    "stream": "ext://sys.stderr",
-                }
-            },
-            "root": {"level": "WARNING", "handlers": ["console"]},
-            "loggers": {
-                "uvicorn": {"level": "WARNING", "handlers": ["console"], "propagate": False},
-                "uvicorn.error": {"level": "WARNING", "handlers": ["console"], "propagate": False},
-                "uvicorn.access": {"level": "WARNING", "handlers": [], "propagate": False},
-            },
-        }
 
     logger.info(f"启动API服务在 http://{settings.API_HOST}:{settings.API_PORT}")
     quiet_uvicorn_logs()
