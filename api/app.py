@@ -33,18 +33,109 @@ def print_boot_banner(service_name: str) -> None:
     """
     try:
         banner_path = Path("assets/banner.txt")
+        info_text = build_start_info("API")
         if banner_path.exists():
             try:
                 text = banner_path.read_text(encoding="utf-8", errors="ignore")
-                logger.info("\n{}", text)
+                logger.info("\n{}\n{}", text, info_text)
             except Exception as e:
-                logger.info("{} 启动", service_name)
+                logger.info("{}\n{}", f"{service_name} 启动", info_text)
                 logger.warning("读取 banner 失败: {}", e)
         else:
-            logger.info("{} 启动", service_name)
+            logger.info("{}\n{}", f"{service_name} 启动", info_text)
     except Exception:
         # 忽略打印失败，保证启动不中断
         pass
+
+
+def build_start_info(module_name: str) -> str:
+    """构建启动项目信息文本
+
+    功能说明：
+    - 拼接当前模块的关键启动信息，打印在 banner 下方
+    - 包含项目版本、监听地址、调试开关、日志路径和数据库（脱敏）
+
+    输入参数：
+    - module_name: 模块名称（例如 "API"、"Bot"）
+
+    返回值：
+    - str: 多行文本信息
+    """
+    try:
+        version = get_project_version()
+    except Exception:
+        version = "unknown"
+
+    try:
+        db_masked = mask_database_url(settings.database_url)
+    except Exception:
+        db_masked = "unknown"
+
+    lines: list[str] = [
+        f"项目: Telegram Bot Admin (v{version})",
+        f"模块: {module_name}",
+        f"地址: http://{settings.API_HOST}:{settings.API_PORT}",
+        f"调试: {'开启' if settings.API_DEBUG else '关闭'}",
+        "日志: logs/api/api.log",
+        f"数据库: {db_masked}",
+    ]
+    return "\n" + "\n".join(lines) + "\n"
+
+
+def get_project_version() -> str:
+    """读取项目版本号
+
+    功能说明：
+    - 从项目根目录的 `pyproject.toml` 中解析 `[project] version` 字段
+
+    输入参数：
+    - 无
+
+    返回值：
+    - str: 版本号字符串，解析失败返回 `unknown`
+    """
+    try:
+        root = Path(__file__).absolute().parent.parent
+        py = root / "pyproject.toml"
+        if not py.exists():
+            return "unknown"
+        text = py.read_text(encoding="utf-8", errors="ignore")
+        for line in text.splitlines():
+            s = line.strip()
+            if s.startswith("version = "):
+                val = s.split("=", 1)[1].strip().strip('"').strip("'")
+                return val or "unknown"
+        return "unknown"
+    except Exception:
+        return "unknown"
+
+
+def mask_database_url(url: str) -> str:
+    """数据库URL脱敏
+
+    功能说明：
+    - 对包含账户密码的数据库URL进行脱敏，隐藏密码部分
+
+    输入参数：
+    - url: 数据库连接URL字符串
+
+    返回值：
+    - 脱敏后的URL字符串
+    """
+    try:
+        at = url.find("@")
+        scheme_end = url.find("://")
+        if at == -1 or scheme_end == -1:
+            return url
+        cred = url[scheme_end + 3 : at]
+        if ":" in cred:
+            user = cred.split(":", 1)[0]
+            masked = f"{user}:***"
+        else:
+            masked = cred
+        return url[: scheme_end + 3] + masked + url[at:]
+    except Exception:
+        return url
 
 def setup_api_logging() -> None:
     """初始化 API 文件日志

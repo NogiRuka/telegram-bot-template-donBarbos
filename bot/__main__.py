@@ -3,6 +3,7 @@ import asyncio
 from pathlib import Path
 
 from loguru import logger
+from bot.core.config import settings
 
 from bot.core.loader import bot, dp
 from bot.handlers import get_handlers_router
@@ -163,15 +164,45 @@ def print_boot_banner(service_name: str) -> None:
     """
     try:
         banner_path = Path("assets/banner.txt")
+        info_text = build_start_info("Bot")
         if banner_path.exists():
             try:
                 text = banner_path.read_text(encoding="utf-8", errors="ignore")
-                logger.info("\n{}", text)
+                logger.info("\n{}\n{}", text, info_text)
             except Exception as e:
-                logger.info("{} 启动", service_name)
+                logger.info("{}\n{}", f"{service_name} 启动", info_text)
                 logger.warning("读取 banner 失败: {}", e)
         else:
-            logger.info("{} 启动", service_name)
+            logger.info("{}\n{}", f"{service_name} 启动", info_text)
     except Exception:
         # 忽略打印失败，保证启动不中断
         pass
+
+
+def build_start_info(module_name: str) -> str:
+    """构建启动项目信息文本
+
+    功能说明：
+    - 汇总当前启动模块的关键信息，用于打印在 banner 下方
+    - 包含模式、地址、数据库脱敏信息与日志路径
+
+    输入参数：
+    - module_name: 模块名称（例如 "API"、"Bot"）
+
+    返回值：
+    - str: 多行文本，描述当前启动的项目信息
+    """
+    try:
+        mode = "开发" if settings.DEBUG else "生产"
+        masked_db = mask_database_url(settings.database_url)
+        lines = [
+            "项目: Telegram Bot Template",
+            f"模块: {module_name}",
+            "地址: 轮询(无端口)",
+            f"模式: {mode}",
+            f"数据库: {masked_db}",
+            "日志: logs/bot/bot.log",
+        ]
+        return "\n" + "\n".join(lines)
+    except Exception:
+        return "\n模块信息: 启动信息收集失败"
