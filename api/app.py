@@ -123,19 +123,60 @@ def _make_center_box(banner_text: str, content_line: str) -> str:
     try:
         banner_lines = banner_text.splitlines() if banner_text else []
         w_banner = max((len(ln) for ln in banner_lines), default=0)
-        inner = max(w_banner, len(content_line) + 2, 32)
+        content_w = _display_width(content_line)
+        inner = max(w_banner, content_w, 32)
         top = "┌" + "─" * inner + "┐"
-        pad_left = max(0, (inner - len(content_line)) // 2)
-        pad_right = inner - len(content_line) - pad_left
+        # 计算左右填充，确保视觉居中
+        pad_left = max(0, (inner - content_w) // 2)
+        pad_right = max(0, inner - content_w - pad_left)
+        empty = "│" + (" " * inner) + "│"
         middle = "│" + (" " * pad_left) + content_line + (" " * pad_right) + "│"
         bottom = "└" + "─" * inner + "┘"
-        return "\n".join([top, middle, bottom])
+        return "\n".join([top, empty, middle, empty, bottom])
     except Exception:
-        inner = max(len(content_line) + 2, 32)
+        inner = max(len(content_line), 32)
         top = "┌" + "─" * inner + "┐"
-        middle = "│ " + content_line.center(inner - 2) + " │"
+        empty = "│" + (" " * inner) + "│"
+        middle = "│" + content_line.center(inner) + "│"
         bottom = "└" + "─" * inner + "┘"
-        return "\n".join([top, middle, bottom])
+        return "\n".join([top, empty, middle, empty, bottom])
+
+
+def _display_width(text: str) -> int:
+    """计算字符串在终端中的显示宽度
+
+    功能说明：
+    - 优先使用 `wcwidth` 精确计算宽度（支持 emoji 等宽字符）
+    - 若不可用，回退到 `unicodedata.east_asian_width` 的近似计算
+
+    依赖：
+    - 可选安装：`pip install wcwidth`
+
+    输入参数：
+    - text: 需要计算显示宽度的字符串
+
+    返回值：
+    - int: 终端显示宽度（列数）
+    """
+    try:
+        from wcwidth import wcwidth as _wc
+        width = 0
+        for ch in text:
+            w = _wc(ch)
+            if w is None or w < 0:
+                w = 0
+            width += w
+        return width
+    except Exception:
+        import unicodedata
+        width = 0
+        for ch in text:
+            eaw = unicodedata.east_asian_width(ch)
+            if eaw in ("F", "W"):
+                width += 2
+            else:
+                width += 1
+        return width
 
 
 def get_project_version() -> str:
