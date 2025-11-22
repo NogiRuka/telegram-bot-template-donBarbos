@@ -39,35 +39,34 @@ def print_boot_banner(service_name: str) -> None:
                 text = banner_path.read_text(encoding="utf-8", errors="ignore")
             except Exception as e:
                 logger.warning("读取 banner 失败: {}", e)
-        info_lines = build_start_info_lines(service_name)
-        width = _calc_banner_width(text, info_lines)
-        formatted_info = _center_lines(width, info_lines)
+        compact_line = build_start_info_line(service_name)
         if text:
-            logger.info("\n{}\n{}", text, formatted_info)
+            logger.info("\n{}\n{}", text, compact_line)
         else:
-            logger.info("{}", formatted_info)
+            logger.info("{}", compact_line)
     except Exception:
         # 忽略打印失败，保证启动不中断
         pass
 
 
-def build_start_info_lines(module_name: str) -> list[str]:
-    """构建启动项目信息行（精简版）
+def build_start_info_line(module_name: str) -> str:
+    """构建启动信息紧凑行
 
     功能说明：
-    - 仅返回两行信息：项目名与模块名，用于在 banner 下方显示
+    - 构造一行文本，在 banner 下方显示，使用分隔符与 emoji 装饰
+    - 仅包含项目名与模块名，例如："🚀 项目: Telegram Bot Admin | 🧩 模块: API"
 
     输入参数：
     - module_name: 模块名称（例如 "API"、"Bot"）
 
     返回值：
-    - list[str]: 信息行列表
+    - str: 单行启动信息
     """
     try:
         project = "Telegram Bot Admin"
-        return [f"项目: {project}", f"模块: {module_name}"]
+        return f"🚀 项目: {project} | 🧩 模块: {module_name}"
     except Exception:
-        return ["项目: Telegram Bot Admin", f"模块: {module_name}"]
+        return f"🚀 项目: Telegram Bot Admin | 🧩 模块: {module_name}"
 
 
 def get_project_version() -> str:

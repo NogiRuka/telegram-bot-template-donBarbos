@@ -164,86 +164,42 @@ def print_boot_banner(service_name: str) -> None:
     """
     try:
         banner_path = Path("assets/banner.txt")
-        info_lines = build_start_info_lines("Bot")
         text = ""
         if banner_path.exists():
             try:
                 text = banner_path.read_text(encoding="utf-8", errors="ignore")
-                width = _calc_banner_width(text, info_lines)
-                formatted_info = _center_lines(width, info_lines)
-                logger.info("\n{}\n{}", text, formatted_info)
+                compact_line = build_start_info_line("Bot")
+                logger.info("\n{}\n{}", text, compact_line)
             except Exception as e:
-                formatted_info = "\n".join(info_lines)
-                logger.info("{}\n{}", f"{service_name} 启动", formatted_info)
+                compact_line = build_start_info_line("Bot")
+                logger.info("{}\n{}", f"{service_name} 启动", compact_line)
                 logger.warning("读取 banner 失败: {}", e)
         else:
-            formatted_info = "\n".join(info_lines)
-            logger.info("{}\n{}", f"{service_name} 启动", formatted_info)
+            compact_line = build_start_info_line("Bot")
+            logger.info("{}\n{}", f"{service_name} 启动", compact_line)
     except Exception:
         # 忽略打印失败，保证启动不中断
         pass
 
 
-def build_start_info_lines(module_name: str) -> list[str]:
-    """构建启动项目信息行（精简版）
+def build_start_info_line(module_name: str) -> str:
+    """构建启动信息紧凑行
 
     功能说明：
-    - 仅返回两行信息：项目名与模块名，用于在 banner 下方显示
+    - 构造一行文本，在 banner 下方显示，使用分隔符与 emoji 装饰
+    - 仅包含项目名与模块名，例如："🚀 项目: Telegram Bot Admin | 🧩 模块: Bot"
 
     输入参数：
     - module_name: 模块名称（例如 "API"、"Bot"）
 
     返回值：
-    - list[str]: 信息行列表
+    - str: 单行启动信息
     """
     try:
         project = "Telegram Bot Admin"
-        return [f"项目: {project}", f"模块: {module_name}"]
+        return f"🚀 项目: {project} | 🧩 模块: {module_name}"
     except Exception:
-        return ["项目: Telegram Bot Admin", f"模块: {module_name}"]
+        return f"🚀 项目: Telegram Bot Admin | 🧩 模块: {module_name}"
 
 
-def _calc_banner_width(text: str, info_lines: list[str]) -> int:
-    """计算用于对齐的宽度
-
-    功能说明：
-    - 根据 banner 文本的最长行长度与信息行长度，确定对齐宽度
-
-    输入参数：
-    - text: banner 原始文本
-    - info_lines: 需对齐的信息行
-
-    返回值：
-    - int: 对齐宽度（字符数）
-    """
-    try:
-        banner_lines = [ln.rstrip() for ln in text.splitlines()] if text else []
-        banner_width = max((len(ln) for ln in banner_lines), default=0)
-        info_width = max((len(ln) for ln in info_lines), default=0)
-        return max(banner_width, info_width)
-    except Exception:
-        return max((len(ln) for ln in info_lines), default=0)
-
-
-def _center_lines(width: int, lines: list[str]) -> str:
-    """将信息行按指定宽度居中对齐
-
-    功能说明：
-    - 为每一行计算左侧缩进，使其在给定宽度下居中
-
-    输入参数：
-    - width: 对齐宽度
-    - lines: 待对齐的文本行
-
-    返回值：
-    - str: 对齐后的多行文本
-    """
-    try:
-        centered = []
-        for ln in lines:
-            ln = ln.rstrip()
-            pad = max(0, (width - len(ln)) // 2)
-            centered.append(" " * pad + ln)
-        return "\n".join(centered)
-    except Exception:
-        return "\n".join(lines)
+# 已移除居中对齐逻辑，改为紧凑单行输出
