@@ -13,6 +13,10 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 import logging
+from os import getenv
+from typing import Optional
+from rich.console import Console
+from rich.image import Image
 
 from api.routes import admins, dashboard, users, webhooks
 
@@ -35,23 +39,51 @@ def print_boot_banner_once(service_name: str) -> None:
         flag = Path("logs/.boot_banner_printed")
         if flag.exists():
             return
-        banner = (
-            "\n"
-            "            ███████╗ █████╗ ██╗  ██╗██╗   ██╗██████╗  █████╗ \n"
-            "            ██╔════╝██╔══██╗██║ ██╔╝██║   ██║██╔══██╗██╔══██╗\n"
-            "            █████╗  ███████║█████╔╝ ██║   ██║██████╔╝███████║\n"
-            "            ██╔══╝  ██╔══██║██╔═██╗ ██║   ██║██╔══██╗██╔══██║\n"
-            "            ███████╗██║  ██║██║  ██╗╚██████╔╝██║  ██║██║  ██║\n"
-            "            ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝\n"
-            "\n"
-            "                ✿  ✿  ✿  Sakura Admin / {svc}  ✿  ✿  ✿\n"
-        ).format(svc=service_name)
-        logger.info(banner)
+        img_path = resolve_logo_path()
+        if img_path:
+            try:
+                Console().print(Image(str(img_path)))
+            except Exception:
+                logger.info("Sakura Admin / {}", service_name)
+        else:
+            logger.info("Sakura Admin / {}", service_name)
         flag.parent.mkdir(parents=True, exist_ok=True)
         flag.write_text("printed", encoding="utf-8")
     except Exception:
         # 忽略打印失败，保证启动不中断
         pass
+
+
+def resolve_logo_path() -> Optional[Path]:
+    """解析 Logo 文件路径
+
+    功能说明：
+    - 优先读取环境变量 `LOGO_PATH`
+    - 其次尝试仓库内常见位置：`assets/logo/sakura.png`、`web/public/images/favicon.png`
+
+    输入参数：
+    - 无
+
+    返回值：
+    - Path | None: 可用的图片路径
+    """
+    env_path = getenv("LOGO_PATH")
+    candidates: list[Path] = []
+    try:
+        if env_path:
+            candidates.append(Path(env_path))
+    except Exception:
+        pass
+    candidates.extend([
+        Path("assets/logo/sakura.png"),
+        Path("assets/logo/logo.png"),
+        Path("web/public/images/favicon.png"),
+        Path("web/public/images/favicon_light.png"),
+    ])
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
 
 def setup_api_logging() -> None:
     """初始化 API 文件日志
