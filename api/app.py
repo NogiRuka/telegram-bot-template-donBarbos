@@ -33,53 +33,41 @@ def print_boot_banner(service_name: str) -> None:
     """
     try:
         banner_path = Path("assets/banner.txt")
-        info_text = build_start_info("API")
+        text = ""
         if banner_path.exists():
             try:
                 text = banner_path.read_text(encoding="utf-8", errors="ignore")
-                logger.info("\n{}\n{}", text, info_text)
             except Exception as e:
-                logger.info("{}\n{}", f"{service_name} 启动", info_text)
                 logger.warning("读取 banner 失败: {}", e)
+        info_lines = build_start_info_lines(service_name)
+        width = _calc_banner_width(text, info_lines)
+        formatted_info = _center_lines(width, info_lines)
+        if text:
+            logger.info("\n{}\n{}", text, formatted_info)
         else:
-            logger.info("{}\n{}", f"{service_name} 启动", info_text)
+            logger.info("{}", formatted_info)
     except Exception:
         # 忽略打印失败，保证启动不中断
         pass
 
 
-def build_start_info(module_name: str) -> str:
-    """构建启动项目信息文本
+def build_start_info_lines(module_name: str) -> list[str]:
+    """构建启动项目信息行（精简版）
 
     功能说明：
-    - 拼接当前模块的关键启动信息，打印在 banner 下方
-    - 包含项目版本、监听地址、调试开关、日志路径和数据库（脱敏）
+    - 仅返回两行信息：项目名与模块名，用于在 banner 下方显示
 
     输入参数：
     - module_name: 模块名称（例如 "API"、"Bot"）
 
     返回值：
-    - str: 多行文本信息
+    - list[str]: 信息行列表
     """
     try:
-        version = get_project_version()
+        project = "Telegram Bot Admin"
+        return [f"项目: {project}", f"模块: {module_name}"]
     except Exception:
-        version = "unknown"
-
-    try:
-        db_masked = mask_database_url(settings.database_url)
-    except Exception:
-        db_masked = "unknown"
-
-    lines: list[str] = [
-        f"项目: Telegram Bot Admin (v{version})",
-        f"模块: {module_name}",
-        f"地址: http://{settings.API_HOST}:{settings.API_PORT}",
-        f"调试: {'开启' if settings.API_DEBUG else '关闭'}",
-        "日志: logs/api/api.log",
-        f"数据库: {db_masked}",
-    ]
-    return "\n" + "\n".join(lines) + "\n"
+        return ["项目: Telegram Bot Admin", f"模块: {module_name}"]
 
 
 def get_project_version() -> str:
@@ -136,6 +124,52 @@ def mask_database_url(url: str) -> str:
         return url[: scheme_end + 3] + masked + url[at:]
     except Exception:
         return url
+
+
+def _calc_banner_width(text: str, info_lines: list[str]) -> int:
+    """计算用于对齐的宽度
+
+    功能说明：
+    - 根据 banner 文本的最长行长度与信息行长度，确定对齐宽度
+
+    输入参数：
+    - text: banner 原始文本
+    - info_lines: 需对齐的信息行
+
+    返回值：
+    - int: 对齐宽度（字符数）
+    """
+    try:
+        banner_lines = [ln.rstrip() for ln in text.splitlines()] if text else []
+        banner_width = max((len(ln) for ln in banner_lines), default=0)
+        info_width = max((len(ln) for ln in info_lines), default=0)
+        return max(banner_width, info_width)
+    except Exception:
+        return max((len(ln) for ln in info_lines), default=0)
+
+
+def _center_lines(width: int, lines: list[str]) -> str:
+    """将信息行按指定宽度居中对齐
+
+    功能说明：
+    - 为每一行计算左侧缩进，使其在给定宽度下居中
+
+    输入参数：
+    - width: 对齐宽度
+    - lines: 待对齐的文本行
+
+    返回值：
+    - str: 对齐后的多行文本
+    """
+    try:
+        centered = []
+        for ln in lines:
+            ln = ln.rstrip()
+            pad = max(0, (width - len(ln)) // 2)
+            centered.append(" " * pad + ln)
+        return "\n".join(centered)
+    except Exception:
+        return "\n".join(lines)
 
 def setup_api_logging() -> None:
     """初始化 API 文件日志
