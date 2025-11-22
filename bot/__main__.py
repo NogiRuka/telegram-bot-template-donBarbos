@@ -89,7 +89,7 @@ async def main() -> None:
         rotation="100 KB",
         compression="zip",
     )
-    print_boot_banner_once("Bot")
+    print_boot_banner("Bot")
 
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
@@ -148,12 +148,12 @@ if __name__ == "__main__":
     asyncio.run(main())
 
 
-def print_boot_banner_once(service_name: str) -> None:
-    """打印启动 Banner（仅首次）
+def print_boot_banner(service_name: str) -> None:
+    """打印启动 Banner（每次启动）
 
     功能说明：
     - 读取 `assets/banner.txt` 的文本内容并打印到日志（控制台与文件）
-    - 使用 `logs/.boot_banner_printed` 作为一次性标记，避免重复打印
+    - 不使用任何标记文件，每次进程启动都会打印一次
 
     输入参数：
     - service_name: 服务名称说明（例如 "API"、"Bot"），用于日志定位
@@ -162,21 +162,16 @@ def print_boot_banner_once(service_name: str) -> None:
     - None
     """
     try:
-        flag = Path("logs/.boot_banner_printed")
-        if flag.exists():
-            return
         banner_path = Path("assets/banner.txt")
         if banner_path.exists():
             try:
                 text = banner_path.read_text(encoding="utf-8", errors="ignore")
                 logger.info("\n{}", text)
             except Exception as e:
-                logger.info("{} 初次启动", service_name)
+                logger.info("{} 启动", service_name)
                 logger.warning("读取 banner 失败: {}", e)
         else:
-            logger.info("{} 初次启动", service_name)
-        flag.parent.mkdir(parents=True, exist_ok=True)
-        flag.write_text("printed", encoding="utf-8")
+            logger.info("{} 启动", service_name)
     except Exception:
         # 忽略打印失败，保证启动不中断
         pass
