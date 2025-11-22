@@ -3,11 +3,8 @@ import asyncio
 from pathlib import Path
 
 from loguru import logger
-from os import getenv
 from pathlib import Path
 from typing import Optional
-from rich.console import Console
-from rich.image import Image
 
 from bot.core.loader import bot, dp
 from bot.handlers import get_handlers_router
@@ -173,6 +170,8 @@ def print_boot_banner_once(service_name: str) -> None:
         img_path = resolve_logo_path()
         if img_path:
             try:
+                from rich.console import Console  # 延迟导入，避免缺依赖时崩溃
+                from rich.image import Image
                 Console().print(Image(str(img_path)))
             except Exception:
                 logger.info("Sakura Admin / {}", service_name)
@@ -188,8 +187,7 @@ def resolve_logo_path() -> Optional[Path]:
     """解析 Logo 文件路径
 
     功能说明：
-    - 优先读取环境变量 `LOGO_PATH`
-    - 其次尝试仓库内常见位置：`assets/logo/sakura.png`、`web/public/images/favicon.png`
+    - 固定使用 `assets/logo/sakura.png`，不存在则返回 None
 
     输入参数：
     - 无
@@ -197,20 +195,5 @@ def resolve_logo_path() -> Optional[Path]:
     返回值：
     - Path | None: 可用的图片路径
     """
-    env_path = getenv("LOGO_PATH")
-    candidates: list[Path] = []
-    try:
-        if env_path:
-            candidates.append(Path(env_path))
-    except Exception:
-        pass
-    candidates.extend([
-        Path("assets/logo/sakura.png"),
-        Path("assets/logo/logo.png"),
-        Path("web/public/images/favicon.png"),
-        Path("web/public/images/favicon_light.png"),
-    ])
-    for p in candidates:
-        if p.exists():
-            return p
-    return None
+    p = Path("assets/logo/sakura.png")
+    return p if p.exists() else None
