@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -57,7 +58,8 @@ async def main() -> None:
         enqueue=True,
         compression=None,
     )
-    print_boot_banner("Bot & API")
+    label = os.getenv("BOOT_BANNER_LABEL", "Bot & API")
+    print_boot_banner(label)
     await ensure_bot_token_valid(bot)
 
     register_middlewares(dp)
