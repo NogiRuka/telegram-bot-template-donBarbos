@@ -2,8 +2,6 @@
 管理员命令处理器模块（子包）
 """
 from datetime import datetime, timedelta
-from functools import lru_cache
-
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
@@ -11,7 +9,6 @@ from loguru import logger
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.config import settings
 from bot.database.models import GroupConfigModel, GroupType, MessageModel, MessageSaveMode
 from bot.keyboards.inline.group_config import get_confirm_keyboard
 from bot.services.message_export import MessageExportService
@@ -19,31 +16,43 @@ from bot.services.message_export import MessageExportService
 router = Router(name="admin_commands")
 
 
-@lru_cache(maxsize=1)
-def get_super_admin_ids() -> list[int]:
-    try:
-        return settings.get_super_admin_ids()
-    except Exception as e:
-        logger.warning(f"获取超级管理员ID列表失败: {e}")
-        return []
+def has_admin_priv(role: str) -> bool:
+    """判断是否具有管理员或所有者权限
+
+    功能说明:
+    - 基于鉴权中间件注入的 `role` 判定是否拥有管理权限
+
+    输入参数:
+    - role: 角色标识字符串（"user" | "admin" | "owner"）
+
+    返回值:
+    - bool: True 表示允许执行管理员级操作
+    """
+    return role in {"admin", "owner"}
 
 
-def is_super_admin(user_id: int) -> bool:
-    super_admin_ids = get_super_admin_ids()
-    return user_id in super_admin_ids
+def is_owner(role: str) -> bool:
+    """判断是否为所有者
 
+    功能说明:
+    - 检查角色是否为 `owner`
 
-def clear_admin_cache() -> None:
-    get_super_admin_ids.cache_clear()
+    输入参数:
+    - role: 角色标识字符串
+
+    返回值:
+    - bool: True 表示为所有者
+    """
+    return role == "owner"
 
 
 @router.message(Command("admin_help"))
-async def admin_help_command(message: Message) -> None:
-    if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+async def admin_help_command(message: Message, role: str) -> None:
+    if not has_admin_priv(role):
+        await message.answer("❌ 此命令仅限管理员或所有者使用")
         return
     help_text = """
-🛡️ **超级管理员命令帮助**
+🛡️ **管理员/所有者命令帮助**
 
 **群组管理:**
 • `/admin_groups` - 查看所有群组配置
@@ -61,15 +70,15 @@ async def admin_help_command(message: Message) -> None:
 • `/admin_maintenance` - 进入维护模式
 • `/admin_status` - 查看系统状态
 
-**注意:** 所有管理员命令都需要超级管理员权限
+**注意:** 管理员命令需管理员或所有者权限；危险操作仅所有者可执行
     """
     await message.answer(help_text, parse_mode="Markdown")
 
 
 @router.message(Command("admin_groups"))
-async def admin_groups_command(message: Message, session: AsyncSession) -> None:
-    if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+async def admin_groups_command(message: Message, session: AsyncSession, role: str) -> None:
+    if not has_admin_priv(role):
+        await message.answer("❌ 此命令仅限管理员或所有者使用")
         return
     try:
         query = select(GroupConfigModel).order_by(GroupConfigModel.created_at.desc())
@@ -110,9 +119,9 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
 
 
 @router.message(Command("admin_enable_group"))
-async def admin_enable_group_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
-    if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+async def admin_enable_group_command(message: Message, command: CommandObject, session: AsyncSession, role: str) -> None:
+    if not has_admin_priv(role):
+        await message.answer("❌ 此命令仅限管理员或所有者使用")
         return
     if not command.args:
         await message.answer("❌ 请提供群组ID\n用法: `/admin_enable_group <chat_id>`", parse_mode="Markdown")
@@ -140,9 +149,9 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
 
 
 @router.message(Command("admin_disable_group"))
-async def admin_disable_group_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
-    if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+async def admin_disable_group_command(message: Message, command: CommandObject, session: AsyncSession, role: str) -> None:
+    if not has_admin_priv(role):
+        await message.answer("❌ 此命令仅限管理员或所有者使用")
         return
     if not command.args:
         await message.answer("❌ 请提供群组ID\n用法: `/admin_disable_group <chat_id>`", parse_mode="Markdown")
@@ -164,9 +173,9 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
 
 
 @router.message(Command("admin_group_info"))
-async def admin_group_info_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
-    if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+async def admin_group_info_command(message: Message, command: CommandObject, session: AsyncSession, role: str) -> None:
+    if not has_admin_priv(role):
+        await message.answer("❌ 此命令仅限管理员或所有者使用")
         return
     if not command.args:
         await message.answer("❌ 请提供群组ID\n用法: `/admin_group_info <chat_id>`", parse_mode="Markdown")
@@ -212,9 +221,9 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
 
 
 @router.message(Command("admin_cleanup"))
-async def admin_cleanup_command(message: Message, session: AsyncSession) -> None:
-    if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+async def admin_cleanup_command(message: Message, session: AsyncSession, role: str) -> None:
+    if not is_owner(role):
+        await message.answer("❌ 此危险操作仅限所有者使用")
         return
     try:
         cleanup_date = datetime.now() - timedelta(days=90)
@@ -237,9 +246,9 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
 
 
 @router.callback_query(F.data.startswith("admin_cleanup_confirm:"))
-async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession) -> None:
-    if not is_super_admin(callback.from_user.id):
-        await callback.answer("❌ 此操作仅限超级管理员", show_alert=True)
+async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession, role: str) -> None:
+    if not is_owner(role):
+        await callback.answer("❌ 此危险操作仅限所有者", show_alert=True)
         return
     try:
         int(callback.data.split(":")[1])
