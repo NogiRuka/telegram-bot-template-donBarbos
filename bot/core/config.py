@@ -38,13 +38,25 @@ class BotSettings(EnvBaseSettings):
     SUPPORT_URL: str | None = None
     RATE_LIMIT: float = Field(default=0.5, description="限流配置，每秒请求数")
     DEBUG: bool = False
-    SUPER_ADMIN_IDS: str = Field(default="", description="超级管理员ID列表（逗号分隔）")
+    OWNER_ID: int = Field(..., description="所有者用户ID（唯一，必填）")
+    ADMIN_IDS: str = Field(default="", description="管理员ID列表（逗号分隔）")
+    SUPER_ADMIN_IDS: str = Field(default="", description="兼容旧字段：超级管理员ID列表（逗号分隔）")
     PROJECT_NAME: str = Field(default="", description="项目名称，用于日志与Banner")
 
     @field_validator("BOT_TOKEN")
     def validate_bot_token(cls, v: str) -> str:
         if ":" not in v:
             msg = "BOT_TOKEN 格式不正确，必须包含 ':'"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("ADMIN_IDS")
+    def validate_admin_ids(cls, v: str) -> str:
+        if not v:
+            return v
+        ids = [x.strip() for x in v.split(",") if x.strip()]
+        if not all(x.isdigit() for x in ids):
+            msg = "ADMIN_IDS 必须全为数字，用逗号分隔"
             raise ValueError(msg)
         return v
 
@@ -58,7 +70,55 @@ class BotSettings(EnvBaseSettings):
             raise ValueError(msg)
         return v
 
+    def get_owner_id(self) -> int:
+        """获取所有者用户ID
+
+        功能说明:
+        - 返回配置中的 `OWNER_ID`
+        - 若未设置（不推荐），尝试从 `SUPER_ADMIN_IDS` 的第一个值回退
+
+        输入参数:
+        - 无
+
+        返回值:
+        - int: 所有者用户ID
+        """
+        if self.OWNER_ID:
+            return int(self.OWNER_ID)
+        ids = self.get_super_admin_ids()
+        if ids:
+            return ids[0]
+        msg = "OWNER_ID 未设置且无法从 SUPER_ADMIN_IDS 回退"
+        raise ValueError(msg)
+
+    def get_admin_ids(self) -> list[int]:
+        """获取管理员用户ID列表
+
+        功能说明:
+        - 解析 `ADMIN_IDS` 为整数列表
+
+        输入参数:
+        - 无
+
+        返回值:
+        - list[int]: 管理员ID列表
+        """
+        if not self.ADMIN_IDS:
+            return []
+        return [int(x.strip()) for x in self.ADMIN_IDS.split(",") if x.strip()]
+
     def get_super_admin_ids(self) -> list[int]:
+        """获取兼容旧字段的超级管理员ID列表
+
+        功能说明:
+        - 解析 `SUPER_ADMIN_IDS` 为整数列表，仅用于迁移兼容
+
+        输入参数:
+        - 无
+
+        返回值:
+        - list[int]: 旧字段的ID列表
+        """
         if not self.SUPER_ADMIN_IDS:
             return []
         return [int(x.strip()) for x in self.SUPER_ADMIN_IDS.split(",") if x.strip()]
@@ -148,6 +208,8 @@ class Settings(BotSettings, DBSettings, APIMixin):
         if not self.DB_NAME:
             msg = "数据库名称 DB_NAME 不能为空"
             raise ValueError(msg)
+        # 强制要求 OWNER_ID 存在或可回退
+        _ = self.get_owner_id()
         return self
 
     @property
