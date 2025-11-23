@@ -151,7 +151,7 @@ async def start_api_server() -> None:
     server = uvicorn.Server(config)
     api_runtime.server = server
     api_runtime.task = asyncio.create_task(server.serve())
-    logger.info("🚀 API 服务启动任务已提交(并行): http://{}:{}", settings.API_HOST, settings.API_PORT)
+    logger.info("🌐 API 地址: http://{}:{}", settings.API_HOST, settings.API_PORT)
 
 
 async def stop_api_server() -> None:

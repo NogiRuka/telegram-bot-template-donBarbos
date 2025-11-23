@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select, update
 
-from bot.cache.redis import build_key, cached, clear_cache
+from bot.cache import build_key, cached, clear_cache
 from bot.database.models import UserModel
 
 if TYPE_CHECKING:

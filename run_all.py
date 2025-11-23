@@ -17,6 +17,7 @@ import contextlib
 import os
 from pathlib import Path
 import shutil
+import socket
 from loguru import logger
 
 from bot.__main__ import main as bot_main
@@ -53,6 +54,52 @@ async def start_web_process() -> asyncio.subprocess.Process | None:
         return proc
     except OSError as err:
         logger.error("❗ 前端启动失败: {}", err)
+        return None
+
+
+def read_web_port(default_port: int = 3000) -> int:
+    """读取前端端口
+
+    功能说明:
+    - 从 `web/vite.config.ts` 的 `server.port` 解析端口，失败回退默认值
+
+    输入参数:
+    - default_port: 解析失败时返回的默认端口(默认 3000)
+
+    返回值:
+    - int: 端口号
+    """
+    cfg = Path(__file__).parent / "web" / "vite.config.ts"
+    try:
+        text = cfg.read_text(encoding="utf-8")
+        import re
+        m = re.search(r"server:\s*\{[\s\S]*?port:\s*(\d+)", text)
+        if m:
+            return int(m.group(1))
+    except OSError:
+        pass
+    return default_port
+
+
+def get_lan_ip() -> str | None:
+    """获取局域网IP
+
+    功能说明:
+    - 通过UDP探测外网路由，获取本机局域网IP
+
+    输入参数:
+    - 无
+
+    返回值:
+    - str | None: 局域网IP，失败返回 None
+    """
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
         return None
 
 
@@ -109,6 +156,11 @@ async def main() -> None:
     tail_task = None
     if web_proc:
         tail_task = asyncio.create_task(tail_web_logs(web_proc))
+        port = read_web_port(3000)
+        logger.info("🌐 Web 本地地址: http://localhost:{}", port)
+        ip = get_lan_ip()
+        if ip:
+            logger.info("🌐 Web 局域网地址: http://{}:{}", ip, port)
     try:
         await bot_task
     finally:
