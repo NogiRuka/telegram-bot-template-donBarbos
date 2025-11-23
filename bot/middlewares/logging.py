@@ -7,93 +7,116 @@ from loguru import logger
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-    from aiogram.types import CallbackQuery, ChatMemberUpdated, InlineQuery, Message, PreCheckoutQuery, TelegramObject
+    from aiogram.types import (
+        CallbackQuery,
+        ChatMemberUpdated,
+        InlineQuery,
+        Message,
+        PreCheckoutQuery,
+        TelegramObject,
+    )
 
 
 class LoggingMiddleware(BaseMiddleware):
+    """
+    全中文日志记录中间件
+    """
+
     def __init__(self) -> None:
         self.logger = logger
         super().__init__()
 
     def process_message(self, message: Message) -> dict[str, Any]:
-        print_attrs: dict[str, Any] = {"chat_type": message.chat.type}
+        """处理消息"""
+        # 将 Key 修改为中文
+        print_attrs: dict[str, Any] = {"聊天类型": message.chat.type}
 
         if message.from_user:
-            print_attrs["user_id"] = message.from_user.id
+            print_attrs["用户ID"] = message.from_user.id
+
         if message.text:
-            print_attrs["text"] = message.text
+            print_attrs["文本内容"] = message.text
+
         if message.video:
-            print_attrs["caption"] = message.caption
-            print_attrs["caption_entities"] = message.caption_entities
-            print_attrs["video_id"] = message.video.file_id
-            print_attrs["video_unique_id"] = message.video.file_unique_id
+            print_attrs["视频附言"] = message.caption
+            print_attrs["附言实体"] = message.caption_entities
+            print_attrs["视频ID"] = message.video.file_id
+            print_attrs["视频唯一ID"] = message.video.file_unique_id
+
         if message.audio:
-            print_attrs["duration"] = message.audio.duration
-            print_attrs["file_size"] = message.audio.file_size
+            print_attrs["音频时长"] = message.audio.duration
+            print_attrs["文件大小"] = message.audio.file_size
+
         if message.photo:
-            print_attrs["caption"] = message.caption
-            print_attrs["caption_entities"] = message.caption_entities
-            print_attrs["photo_id"] = message.photo[-1].file_id
-            print_attrs["photo_unique_id"] = message.photo[-1].file_unique_id
+            print_attrs["图片附言"] = message.caption
+            print_attrs["附言实体"] = message.caption_entities
+            # 取最后一张（最高清）
+            print_attrs["图片ID"] = message.photo[-1].file_id
+            print_attrs["图片唯一ID"] = message.photo[-1].file_unique_id
 
         return print_attrs
 
     def process_callback_query(self, callback_query: CallbackQuery) -> dict[str, Any]:
+        """处理按钮回调"""
         print_attrs: dict[str, Any] = {
-            "query_id": callback_query.id,
-            "data": callback_query.data,
-            "user_id": callback_query.from_user.id,
-            "inline_message_id": callback_query.inline_message_id,
+            "查询ID": callback_query.id,
+            "回调数据": callback_query.data,
+            "用户ID": callback_query.from_user.id,
+            "内联消息ID": callback_query.inline_message_id,
         }
 
         if callback_query.message:
-            print_attrs["message_id"] = callback_query.message.message_id
-            print_attrs["chat_type"] = callback_query.message.chat.type
-            print_attrs["chat_id"] = callback_query.message.chat.id
+            print_attrs["消息ID"] = callback_query.message.message_id
+            print_attrs["聊天类型"] = callback_query.message.chat.type
+            print_attrs["聊天ID"] = callback_query.message.chat.id
 
         return print_attrs
 
     def process_inline_query(self, inline_query: InlineQuery) -> dict[str, Any]:
-        print_attrs: dict[str, Any] = {
-            "query_id": inline_query.id,
-            "user_id": inline_query.from_user.id,
-            "query": inline_query.query,
-            "offset": inline_query.offset,
-            "chat_type": inline_query.chat_type,
-            "location": inline_query.location,
+        """处理内联搜索"""
+        return {
+            "查询ID": inline_query.id,
+            "用户ID": inline_query.from_user.id,
+            "搜索内容": inline_query.query,
+            "偏移量": inline_query.offset,
+            "聊天类型": inline_query.chat_type,
+            "位置信息": inline_query.location,
         }
-
-        return print_attrs
 
     def process_pre_checkout_query(self, pre_checkout_query: PreCheckoutQuery) -> dict[str, Any]:
-        print_attrs: dict[str, Any] = {
-            "query_id": pre_checkout_query.id,
-            "user_id": pre_checkout_query.from_user.id,
-            "currency": pre_checkout_query.currency,
-            "amount": pre_checkout_query.total_amount,
-            "payload": pre_checkout_query.invoice_payload,
-            "option": pre_checkout_query.shipping_option_id,
+        """处理支付预检"""
+        return {
+            "查询ID": pre_checkout_query.id,
+            "用户ID": pre_checkout_query.from_user.id,
+            "货币类型": pre_checkout_query.currency,
+            "总金额": pre_checkout_query.total_amount,
+            "发票负载": pre_checkout_query.invoice_payload,
+            "物流选项": pre_checkout_query.shipping_option_id,
         }
-
-        return print_attrs
 
     def process_my_chat_member(self, my_chat_member: ChatMemberUpdated) -> dict[str, Any]:
-        print_attrs: dict[str, Any] = {
-            "user_id": my_chat_member.from_user.id,
-            "chat_id": my_chat_member.chat.id,
+        """处理机器人自身状态"""
+        return {
+            "用户ID": my_chat_member.from_user.id,
+            "聊天ID": my_chat_member.chat.id,
+            "新状态": my_chat_member.new_chat_member.status,
         }
-
-        return print_attrs
 
     def process_chat_member(self, chat_member: ChatMemberUpdated) -> dict[str, Any]:
-        print_attrs: dict[str, Any] = {
-            "user_id": chat_member.from_user.id,
-            "chat_id": chat_member.chat.id,
-            "old_state": chat_member.old_chat_member,
-            "new_state": chat_member.new_chat_member,
+        """处理成员变动"""
+        return {
+            "用户ID": chat_member.from_user.id,
+            "聊天ID": chat_member.chat.id,
+            "旧状态": chat_member.old_chat_member.status,
+            "新状态": chat_member.new_chat_member.status,
         }
 
-        return print_attrs
+    def _log_event(self, event_name: str, attributes: dict[str, Any]) -> None:
+        """统一日志打印格式"""
+        # 过滤 None 值，并将 key 和 value 拼接到一起
+        log_parts = [f"{key}: {value}" for key, value in attributes.items() if value is not None]
+        logger_msg = f"{event_name} | " + " | ".join(log_parts)
+        self.logger.info(logger_msg)
 
     async def __call__(
         self,
@@ -101,61 +124,34 @@ class LoggingMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        print_attrs: dict[str, Any] = {}
-        message: Message | None = getattr(event, "message", None)
-        callback_query: CallbackQuery | None = getattr(event, "callback_query", None)
-        inline_query: InlineQuery | None = getattr(event, "inline_query", None)
-        pre_checkout_query: PreCheckoutQuery | None = getattr(event, "pre_checkout_query", None)
-        my_chat_member: ChatMemberUpdated | None = getattr(event, "my_chat_member", None)
-        chat_member: ChatMemberUpdated | None = getattr(event, "chat_member", None)
 
-        if message:
-            print_attrs = self.process_message(message)
+        # 定义：(属性名, 日志前缀, 处理函数)
+        event_handlers = [
+            ("message", "收到消息", self.process_message),
+            ("callback_query", "收到按钮回调", self.process_callback_query),
+            ("inline_query", "收到内联搜索", self.process_inline_query),
+            ("pre_checkout_query", "收到支付预检", self.process_pre_checkout_query),
+            ("my_chat_member", "机器人状态变更", self.process_my_chat_member),
+            ("chat_member", "群成员状态变更", self.process_chat_member),
+        ]
 
-            logger_msg = (
-                "received message | "
-                + " | ".join(f"{key}: {value}" for key, value in print_attrs.items() if value is not None),
-            )
-            self.logger.info(*logger_msg)
-        elif callback_query:
-            print_attrs = self.process_callback_query(callback_query)
+        # 1. 优先检查 Update 对象中的属性
+        for attr_name, log_prefix, process_func in event_handlers:
+            target_obj = getattr(event, attr_name, None)
+            if target_obj:
+                self._log_event(log_prefix, process_func(target_obj))
+                break
+        else:
+            # 2. 备用检查：如果 event 本身就是 Message/CallbackQuery 等对象（非 Update 包裹）
+            # 为了避免 import 循环或过多依赖，这里做简单的类名字符串匹配，或者你可以显式 import
+            event_type = type(event).__name__
 
-            logger_msg = (
-                "received callback query | "
-                + " | ".join(f"{key}: {value}" for key, value in print_attrs.items() if value is not None),
-            )
-            self.logger.info(*logger_msg)
-        elif inline_query:
-            print_attrs = self.process_inline_query(inline_query)
-
-            logger_msg = (
-                "received inline query | "
-                + " | ".join(f"{key}: {value}" for key, value in print_attrs.items() if value is not None),
-            )
-            self.logger.info(*logger_msg)
-        elif pre_checkout_query:
-            print_attrs = self.process_pre_checkout_query(pre_checkout_query)
-
-            logger_msg = (
-                "received pre-checkout query | "
-                + " | ".join(f"{key}: {value}" for key, value in print_attrs.items() if value is not None),
-            )
-            self.logger.info(*logger_msg)
-        elif my_chat_member:
-            print_attrs = self.process_my_chat_member(my_chat_member)
-
-            logger_msg = (
-                "received my chat member update | "
-                + " | ".join(f"{key}: {value}" for key, value in print_attrs.items() if value is not None),
-            )
-            self.logger.info(*logger_msg)
-        elif chat_member:
-            print_attrs = self.process_chat_member(chat_member)
-
-            logger_msg = (
-                "received chat member update | "
-                + " | ".join(f"{key}: {value}" for key, value in print_attrs.items() if value is not None),
-            )
-            self.logger.info(*logger_msg)
+            if event_type == "Message":
+                self._log_event("收到消息", self.process_message(event)) # type: ignore
+            elif event_type == "CallbackQuery":
+                self._log_event("收到按钮回调", self.process_callback_query(event)) # type: ignore
+            elif event_type == "InlineQuery":
+                self._log_event("收到内联搜索", self.process_inline_query(event)) # type: ignore
+            # ... 其他类型如有需要可继续添加
 
         return await handler(event, data)

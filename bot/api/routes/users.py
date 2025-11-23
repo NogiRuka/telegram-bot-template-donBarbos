@@ -3,13 +3,12 @@
 提供用户数据管理接口, 调用 bot 的数据库操作服务
 """
 from __future__ import annotations
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 from fastapi import APIRouter, HTTPException, Query
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import func, or_, select
-from typing import NoReturn
 
 from bot.database.database import sessionmaker
 from bot.database.models import UserModel

@@ -3,10 +3,11 @@ Webhooks 路由
 处理来自 Emby 的 Webhook 回调请求
 """
 from __future__ import annotations
+import json
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
-import json
+
 try:
     import orjson
 except Exception:

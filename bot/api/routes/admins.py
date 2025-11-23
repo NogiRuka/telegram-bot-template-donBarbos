@@ -4,14 +4,13 @@
 """
 from __future__ import annotations
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 from fastapi import APIRouter, HTTPException, Query
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from typing import NoReturn
 
 from bot.database.database import sessionmaker
 from bot.database.models import UserModel

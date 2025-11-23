@@ -23,7 +23,7 @@ services:
       - .env
     environment:
       - API_HOST=0.0.0.0
-    command: python -m api.app
+    command: python -m bot.api
     ports:
       - ${API_PORT}:${API_PORT}
     networks:

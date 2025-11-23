@@ -27,10 +27,9 @@ import aiohttp
 import uvicorn
 from aiogram.exceptions import TelegramAPIError
 
-from api.app import app as api_app
-from api.app import quiet_uvicorn_logs
-
 from bot.__main__ import main as bot_main
+from bot.api import quiet_uvicorn_logs
+from bot.api.app import app as api_app
 from bot.core.config import settings as core_settings
 from bot.core.loader import bot as core_bot
 
@@ -146,10 +145,8 @@ async def start_web_process() -> asyncio.subprocess.Process | None:
     - 子进程对象(Process), 若无法启动则返回 None
     """
     web_dir = project_root / "web"
-    try:
+    with contextlib.suppress(OSError):
         (project_root / "logs" / "web").mkdir(parents=True, exist_ok=True)
-    except OSError:
-        pass
     pnpm = shutil.which("pnpm")
     npm = shutil.which("npm")
 
@@ -207,10 +204,8 @@ async def tail_web_logs(proc: asyncio.subprocess.Process) -> None:
     except (asyncio.CancelledError, UnicodeDecodeError, OSError) as err:
         logging.getLogger(__name__).debug("监听前端日志失败: %s", err)
     finally:
-        try:
+        with contextlib.suppress(Exception):
             f.close()
-        except Exception:
-            pass
 
 
 async def print_summary() -> None:
