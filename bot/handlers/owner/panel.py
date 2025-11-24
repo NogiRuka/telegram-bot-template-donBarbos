@@ -28,7 +28,7 @@ async def show_owner_panel(callback: CallbackQuery, role: str) -> None:
     caption = "🛠️ 管理面板\n\n可进行机器人总开关、功能开关与管理员管理"
     kb = OwnerPanelKeyboard.main()
     if callback.message:
-        await render_view(callback.message, "assets/sakura.png", caption, kb)
+        await render_view(callback.message, "assets/ui/panel_general.jpg", caption, kb)
     await callback.answer()
 
 
@@ -76,7 +76,7 @@ async def show_features_panel(callback: CallbackQuery, role: str) -> None:
     caption = "🧩 功能开关\n\n可切换全部功能或单项功能"
     kb = FeaturesPanelKeyboard.main()
     if callback.message:
-        await render_view(callback.message, "assets/sakura.png", caption, kb)
+        await render_view(callback.message, "assets/ui/panel_general.jpg", caption, kb)
     await callback.answer()
 
 
@@ -102,7 +102,7 @@ async def show_admins_panel(callback: CallbackQuery, role: str) -> None:
     caption = "👮 管理员管理\n\n可查看管理员列表与管理权限"
     kb = AdminsPanelKeyboard.main()
     if callback.message:
-        await render_view(callback.message, "assets/sakura.png", caption, kb)
+        await render_view(callback.message, "assets/ui/panel_general.jpg", caption, kb)
     await callback.answer()
 
 
@@ -122,6 +122,5 @@ async def back_to_start(callback: CallbackQuery, role: str) -> None:
     """
     if callback.message:
         from bot.keyboards.inline.start_owner import get_start_owner_keyboard
-        await render_view(callback.message, "assets/sakura.png", "返回首页", get_start_owner_keyboard())
+        await render_view(callback.message, "assets/ui/start_owner.jpg", "返回首页", get_start_owner_keyboard())
     await callback.answer()
-

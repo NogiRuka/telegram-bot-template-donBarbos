@@ -27,13 +27,15 @@ async def start_handler(message: types.Message, role: str) -> None:
     返回值:
     - None
     """
-    image = "assets/sakura.png"
+    image = "assets/ui/start_user.jpg"
     if role == "owner":
         kb = get_start_owner_keyboard()
         caption = "🌸 所有者欢迎页"
+        image = "assets/ui/start_owner.jpg"
     elif role == "admin":
         kb = get_start_admin_keyboard()
         caption = "🌸 管理员欢迎页"
+        image = "assets/ui/start_admin.jpg"
     else:
         kb = get_start_user_keyboard()
         caption = "🌸 欢迎使用机器人！"

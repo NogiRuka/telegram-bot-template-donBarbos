@@ -29,7 +29,9 @@ async def render_view(message: types.Message, image_path: str, caption: str, key
         p = Path(image_path)
         if p.exists():
             try:
-                await message.edit_caption(caption, reply_markup=keyboard)
+                with p.open("rb") as f:
+                    media = InputMediaPhoto(media=f, caption=caption)
+                    await message.edit_media(media=media, reply_markup=keyboard)
             except Exception:
                 with p.open("rb") as f:
                     await message.answer_photo(photo=f, caption=caption, reply_markup=keyboard)

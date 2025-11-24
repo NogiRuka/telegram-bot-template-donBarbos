@@ -36,6 +36,5 @@ async def list_admins_view(callback: CallbackQuery, session, role: str) -> None:
             lines.append(label)
     caption = "\n".join(lines)
     if callback.message:
-        await render_view(callback.message, "assets/sakura.png", caption, AdminsPanelKeyboard.main())
+        await render_view(callback.message, "assets/ui/panel_general.jpg", caption, AdminsPanelKeyboard.main())
     await callback.answer()
-
