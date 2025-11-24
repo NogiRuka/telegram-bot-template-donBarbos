@@ -2,7 +2,7 @@ from pathlib import Path
 
 from aiogram import Router, types
 from aiogram.filters import Command
-from aiogram.types import InputMediaPhoto
+from aiogram.types import InputMediaPhoto, FSInputFile
 
 from bot.keyboards.inline.menu import main_keyboard
 
@@ -29,12 +29,12 @@ async def render_view(message: types.Message, image_path: str, caption: str, key
         p = Path(image_path)
         if p.exists():
             try:
-                with p.open("rb") as f:
-                    media = InputMediaPhoto(media=f, caption=caption)
-                    await message.edit_media(media=media, reply_markup=keyboard)
+                file = FSInputFile(str(p))
+                media = InputMediaPhoto(media=file, caption=caption)
+                await message.edit_media(media=media, reply_markup=keyboard)
             except Exception:
-                with p.open("rb") as f:
-                    await message.answer_photo(photo=f, caption=caption, reply_markup=keyboard)
+                file = FSInputFile(str(p))
+                await message.answer_photo(photo=file, caption=caption, reply_markup=keyboard)
         else:
             await message.answer(caption, reply_markup=keyboard)
     except Exception:
