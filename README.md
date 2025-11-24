@@ -255,9 +255,9 @@
 │   │   └── analytics.py # 分析服务聚合
 │   ├── analytics/ # 分析服务集成（可选）
 │   │   └── google/client.py # Google 集成示例
-│   ├── cache/ # 缓存层（默认内存，不依赖 Redis）
+│   ├── cache/ # 缓存层（默认内存）
 │   │   ├── serialization.py # 序列化工具
-│   │   └── memory_cache.py # 内存缓存封装（可扩展接入 Redis）
+│   │   └── memory_cache.py # 内存缓存封装
 │   └── utils/ # 工具函数
 │       ├── banner.py # 启动横幅打印
 │       ├── command.py # 命令辅助

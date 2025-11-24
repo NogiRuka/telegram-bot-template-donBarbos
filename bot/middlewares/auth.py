@@ -38,6 +38,7 @@ class AuthMiddleware(BaseMiddleware):
         if user_id in set(settings.get_admin_ids()):
             return "admin"
         return "user"
+        
     async def __call__(
         self,
         handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
