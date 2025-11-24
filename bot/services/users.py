@@ -80,6 +80,46 @@ async def set_is_admin(session: AsyncSession, user_id: int, is_admin: bool) -> N
     await session.commit()
 
 
+async def add_admin(session: AsyncSession, user_id: int) -> bool:
+    """添加管理员
+
+    功能说明:
+    - 将指定用户的管理员标志设置为 True
+
+    输入参数:
+    - session: 异步数据库会话
+    - user_id: Telegram 用户ID
+
+    返回值:
+    - bool: True 表示操作成功
+    """
+    try:
+        await set_is_admin(session, user_id, True)
+        return True
+    except Exception:
+        return False
+
+
+async def remove_admin(session: AsyncSession, user_id: int) -> bool:
+    """移除管理员
+
+    功能说明:
+    - 将指定用户的管理员标志设置为 False
+
+    输入参数:
+    - session: 异步数据库会话
+    - user_id: Telegram 用户ID
+
+    返回值:
+    - bool: True 表示操作成功
+    """
+    try:
+        await set_is_admin(session, user_id, False)
+        return True
+    except Exception:
+        return False
+
+
 @cached(key_builder=lambda session: build_key())
 async def get_all_users(session: AsyncSession) -> list[UserModel]:
     query = select(UserModel)
