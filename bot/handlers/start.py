@@ -14,7 +14,7 @@ router = Router(name="start")
 
 @router.message(CommandStart())
 @analytics.track_event("Sign Up")
-async def start_handler(message: types.Message, role: str) -> None:
+async def start_handler(message: types.Message, role: str | None = None, **kwargs) -> None:
     """欢迎消息处理器
 
     功能说明:
@@ -28,6 +28,21 @@ async def start_handler(message: types.Message, role: str) -> None:
     - None
     """
     image = "assets/ui/start_user.jpg"
+    if role is None:
+        user = message.from_user
+        if user and user.id:
+            from bot.core.config import settings
+            try:
+                if user.id == settings.get_owner_id():
+                    role = "owner"
+                elif user.id in set(settings.get_admin_ids()):
+                    role = "admin"
+                else:
+                    role = "user"
+            except Exception:
+                role = "user"
+        else:
+            role = "user"
     if role == "owner":
         kb = get_start_owner_keyboard()
         caption = "🌸 所有者欢迎页"
