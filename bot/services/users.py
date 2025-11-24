@@ -138,3 +138,22 @@ async def get_user_count(session: AsyncSession) -> int:
 
     count = result.scalar_one_or_none() or 0
     return int(count)
+
+
+@cached(key_builder=lambda session: build_key())
+async def list_admins(session: AsyncSession) -> list[UserModel]:
+    """列出管理员用户
+
+    功能说明:
+    - 查询所有 `is_admin=True` 的用户列表
+
+    输入参数:
+    - session: 异步数据库会话
+
+    返回值:
+    - list[UserModel]: 管理员列表
+    """
+    query = select(UserModel).where(UserModel.is_admin)
+    result = await session.execute(query)
+    users = result.scalars()
+    return list(users)
