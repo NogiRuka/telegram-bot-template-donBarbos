@@ -1,5 +1,6 @@
 from aiogram import F, Router, types
 from aiogram.types import CallbackQuery
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.panel_main import OwnerPanelKeyboard
 from bot.services.config_service import get_config, toggle_config
@@ -33,7 +34,7 @@ async def show_owner_panel(callback: CallbackQuery, role: str) -> None:
 
 
 @router.callback_query(F.data == "panel:toggle:bot")
-async def toggle_bot_enabled(callback: CallbackQuery, session: types.AsyncSession, role: str) -> None:
+async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession, role: str) -> None:
     """切换机器人总开关
 
     功能说明:
