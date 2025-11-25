@@ -14,7 +14,7 @@ import datetime
 from sqlalchemy import Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bot.database.models.base import Base, BasicAuditMixin, big_int_pk, remark
+from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
 
 
 class UserModel(Base, BasicAuditMixin):
@@ -45,6 +45,12 @@ class UserModel(Base, BasicAuditMixin):
         comment="Telegram 用户 ID（不可为空）"
     )
 
+    is_bot: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+        comment="是否为机器人，普通用户为0"
+    )
+
     first_name: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -70,23 +76,18 @@ class UserModel(Base, BasicAuditMixin):
         comment="用户语言标记（可空）"
     )
 
-    # aiogram User: 是否加入附件菜单（可空）
+    is_premium: Mapped[bool | None] = mapped_column(
+        nullable=True,
+        comment="是否 Telegram Premium 用户（可空）"
+    )
+
     added_to_attachment_menu: Mapped[bool | None] = mapped_column(
         nullable=True,
         comment="是否把 bot 加入附件菜单（可空）"
     )
 
-
-
-    is_premium: Mapped[bool | None] = mapped_column(
-        nullable=True,
-        comment="是否 Telegram Premium 用户（可空）"
-    )
-    is_bot: Mapped[bool] = mapped_column(
-        default=False,
-        nullable=False,
-        comment="是否为机器人，普通用户为0"
-    )
+    # 备注
+    remark: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="备注")
 
     # ==================== 审计字段（按文档顺序） ====================
 
@@ -111,8 +112,7 @@ class UserModel(Base, BasicAuditMixin):
     # 执行删除操作的用户ID
     deleted_by: Mapped[deleted_by]
 
-    # 备注
-    remark: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="备注")
+    
 
     # ==================== 数据库索引定义 ====================
 
@@ -178,7 +178,7 @@ class UserModel(Base, BasicAuditMixin):
         """
         self.is_deleted = True
         self.deleted_at = datetime.datetime.now()
-        self.operated_by = operated_by_user_id
+        self.deleted_by = operated_by_user_id
 
     def restore(self) -> None:
         """
@@ -188,4 +188,4 @@ class UserModel(Base, BasicAuditMixin):
         """
         self.is_deleted = False
         self.deleted_at = None
-        self.operated_by = None
+        self.deleted_by = None
