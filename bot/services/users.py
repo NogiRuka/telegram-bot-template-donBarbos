@@ -53,6 +53,12 @@ async def add_user(session: AsyncSession, user: User) -> None:
             added_to_attachment_menu=_normalize_bool(getattr(user, "added_to_attachment_menu", None)),
         )
         session.add(new_user)
+        # 同步写入 user_extend（首次交互）
+        from datetime import datetime
+        ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
+        ext = ext_res.scalar_one_or_none()
+        if ext is None:
+            session.add(UserExtendModel(user_id=user.id, last_interaction_at=datetime.now()))
         await session.commit()
         await clear_cache(user_exists, user_id)
     except Exception:
@@ -151,6 +157,36 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
         pass
 
 
+async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel) -> None:
+    """保存用户信息快照（基于当前数据库值）
+
+    功能说明:
+    - 将 `users` 表当前记录写入 `user_history`，用于在发生变更前保存旧值
+
+    输入参数:
+    - session: 异步数据库会话
+    - model: 当前数据库中的用户模型实例
+
+    返回值:
+    - None
+    """
+    try:
+        snapshot = UserHistoryModel(
+            user_id=model.id,
+            is_bot=bool(model.is_bot),
+            first_name=model.first_name,
+            last_name=model.last_name,
+            username=model.username,
+            language_code=model.language_code,
+            is_premium=model.is_premium,
+            added_to_attachment_menu=model.added_to_attachment_menu,
+        )
+        session.add(snapshot)
+        await session.commit()
+    except Exception:
+        pass
+
+
 async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
     """交互时更新用户信息
 
@@ -184,8 +220,8 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
 
         exists = await user_exists(session, user.id)
         if not exists:
+            # 首次：写 users 与 user_extend；不写 user_history
             await add_user(session, user)
-            await save_user_snapshot(session, user)
         else:
             res = await session.execute(select(UserModel).where(UserModel.id == user.id))
             current = res.scalar_one_or_none()
@@ -201,9 +237,14 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
                 }
                 changed = {k: v for k, v in new_values.items() if getattr(current, k) != v}
                 if changed:
+                    # 变更：先保存旧值到 user_history，再更新 users
+                    await save_user_snapshot_from_model(session, current)
                     await session.execute(update(UserModel).where(UserModel.id == user.id).values(**changed))
                     await session.commit()
-                    await save_user_snapshot(session, user)
+                else:
+                    # 无变更：仅更新时间戳
+                    await session.execute(update(UserModel).where(UserModel.id == user.id).values(updated_at=func.now()))
+                    await session.commit()
 
         # 更新扩展表最后交互时间（无则创建）
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
