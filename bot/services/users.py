@@ -123,6 +123,60 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
         pass
 
 
+async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
+    """交互时更新用户信息
+
+    功能说明:
+    - 用户与机器人交互（消息/回调）时，更新 `users` 表的最新字段
+    - 若用户不存在则创建；存在则覆盖可变字段
+    - 更新 `user_extend.last_interaction_at`，必要时自动创建扩展记录
+    - 保存一条 `user_history` 快照以便追踪变更
+
+    输入参数:
+    - session: 异步数据库会话
+    - user: aiogram User 实例
+
+    返回值:
+    - None
+    """
+    try:
+        exists = await user_exists(session, user.id)
+        if not exists:
+            await add_user(session, user)
+        else:
+            stmt = (
+                update(UserModel)
+                .where(UserModel.id == user.id)
+                .values(
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                    username=user.username,
+                    language_code=user.language_code,
+                    is_premium=bool(user.is_premium),
+                    is_bot=bool(user.is_bot),
+                    added_to_attachment_menu=bool(user.added_to_attachment_menu) if hasattr(user, "added_to_attachment_menu") else None,
+                )
+            )
+            await session.execute(stmt)
+            await session.commit()
+
+        # 更新扩展表最后交互时间（无则创建）
+        ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
+        ext = ext_res.scalar_one_or_none()
+        if ext is None:
+            ext = UserExtendModel(user_id=user.id)
+            session.add(ext)
+        from datetime import datetime
+        ext.last_interaction_at = datetime.now()
+        await session.commit()
+
+        # 保存快照（失败不影响主流程）
+        await save_user_snapshot(session, user)
+    except Exception:
+        # 忽略更新失败，避免影响交互
+        pass
+
+
 async def set_is_admin(session: AsyncSession, user_id: int, is_admin: bool) -> None:
     """设置管理员角色
 

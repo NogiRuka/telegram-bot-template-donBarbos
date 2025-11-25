@@ -2,11 +2,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from aiogram import BaseMiddleware
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from loguru import logger
 from bot.core.config import settings
 
-from bot.services.users import add_user, user_exists
+from bot.services.users import add_user, user_exists, upsert_user_on_interaction
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -45,12 +45,15 @@ class AuthMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        if not isinstance(event, Message):
-            return await handler(event, data)
-
         session: AsyncSession = data["session"]
-        message: Message = event
-        user = message.from_user
+
+        # 支持 Message 与 CallbackQuery 两类事件
+        if isinstance(event, Message):
+            user = event.from_user
+        elif isinstance(event, CallbackQuery):
+            user = event.from_user
+        else:
+            return await handler(event, data)
 
         if not user:
             return await handler(event, data)
@@ -58,16 +61,7 @@ class AuthMiddleware(BaseMiddleware):
         # 注入角色到上下文
         data["role"] = self._get_role(user.id)
 
-        if await user_exists(session, user.id):
-            return await handler(event, data)
-
-        # 记录新用户信息：user_id、用户名、全名
-        logger.info(
-            f"新用户注册 | user_id: {user.id} | "
-            f"用户名: @{user.username or '无'} | "
-            f"全名: {user.full_name}"
-        )
-
-        await add_user(session=session, user=user)
+        # 交互时对用户进行更新/新增与快照
+        await upsert_user_on_interaction(session=session, user=user)
 
         return await handler(event, data)
