@@ -4,37 +4,46 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select, update
 
 from bot.cache import build_key, cached, clear_cache
-from bot.database.models import UserModel
+from bot.database.models import UserModel, UserHistoryModel
 
 if TYPE_CHECKING:
     from aiogram.types import User
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def add_user(
-    session: AsyncSession,
-    user: User,
-) -> None:
-    """Add a new user to the database."""
-    user_id: int = user.id
-    first_name: str = user.first_name
-    last_name: str | None = user.last_name
-    username: str | None = user.username
-    language_code: str | None = user.language_code
-    is_premium: bool = user.is_premium or False
+async def add_user(session: AsyncSession, user: User) -> None:
+    """新增用户
 
-    new_user = UserModel(
-        id=user_id,
-        first_name=first_name,
-        last_name=last_name,
-        username=username,
-        language_code=language_code,
-        is_premium=is_premium,
-    )
+    功能说明:
+    - 将 aiogram `User` 写入 `users` 表；保存核心字段
+    - 额外保存 `is_bot`、`is_premium`、`added_to_attachment_menu`
+    - 提交后更新缓存
 
-    session.add(new_user)
-    await session.commit()
-    await clear_cache(user_exists, user_id)
+    输入参数:
+    - session: 异步数据库会话
+    - user: aiogram User 实例
+
+    返回值:
+    - None
+    """
+    try:
+        user_id: int = user.id
+        new_user = UserModel(
+            id=user.id,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            username=user.username,
+            language_code=user.language_code,
+            is_premium=bool(user.is_premium),
+            is_bot=bool(user.is_bot),
+            added_to_attachment_menu=bool(user.added_to_attachment_menu) if hasattr(user, "added_to_attachment_menu") else None,
+        )
+        session.add(new_user)
+        await session.commit()
+        await clear_cache(user_exists, user_id)
+    except Exception:
+        # 降级：若失败则忽略新增
+        pass
 
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
@@ -71,6 +80,37 @@ async def is_admin(session: AsyncSession, user_id: int) -> bool:
 
     is_admin = result.scalar_one_or_none()
     return bool(is_admin)
+
+
+async def save_user_snapshot(session: AsyncSession, user: User) -> None:
+    """保存用户信息快照
+
+    功能说明:
+    - 将 aiogram 用户信息保存到 `user_history`，用于历史追踪
+
+    输入参数:
+    - session: 异步数据库会话
+    - user: aiogram User 实例
+
+    返回值:
+    - None
+    """
+    try:
+        snapshot = UserHistoryModel(
+            user_id=user.id,
+            is_bot=bool(user.is_bot),
+            first_name=user.first_name,
+            last_name=user.last_name,
+            username=user.username,
+            language_code=user.language_code,
+            is_premium=bool(user.is_premium),
+            added_to_attachment_menu=bool(user.added_to_attachment_menu) if hasattr(user, "added_to_attachment_menu") else None,
+        )
+        session.add(snapshot)
+        await session.commit()
+    except Exception:
+        # 快照失败不影响主流程
+        pass
 
 
 async def set_is_admin(session: AsyncSession, user_id: int, is_admin: bool) -> None:

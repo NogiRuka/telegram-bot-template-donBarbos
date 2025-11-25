@@ -5,6 +5,8 @@ from .group_config import GroupConfigModel, GroupType, MessageSaveMode
 from .message import MessageModel, MessageType
 from .statistics import StatisticsModel, StatisticType
 from .user import UserModel
+from .user_extend import UserExtendModel, UserRole
+from .user_history import UserHistoryModel
 from .user_state import UserStateModel
 
 __all__ = [
@@ -21,5 +23,8 @@ __all__ = [
     "StatisticType",
     "StatisticsModel",
     "UserModel",
+    "UserExtendModel",
+    "UserHistoryModel",
+    "UserRole",
     "UserStateModel",
 ]

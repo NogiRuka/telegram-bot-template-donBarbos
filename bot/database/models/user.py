@@ -15,7 +15,7 @@ import datetime
 from sqlalchemy import Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
+from bot.database.models.base import Base, BasicAuditMixin, big_int_pk, remark
 
 
 class UserModel(Base, BasicAuditMixin):
@@ -83,6 +83,12 @@ class UserModel(Base, BasicAuditMixin):
         String(10),
         nullable=True,
         comment="用户的语言代码，可选字段，ISO 639-1标准（如zh、en、ru等）"
+    )
+
+    # aiogram User: 是否加入附件菜单（可空）
+    added_to_attachment_menu: Mapped[bool | None] = mapped_column(
+        nullable=True,
+        comment="是否把 bot 加入附件菜单（可空）"
     )
 
 
@@ -155,6 +161,9 @@ class UserModel(Base, BasicAuditMixin):
 
     # 执行删除操作的用户ID
     deleted_by: Mapped[deleted_by]
+
+    # 备注
+    remark: Mapped[remark]
 
     # ==================== 数据库索引定义 ====================
 
