@@ -41,50 +41,21 @@ class UserModel(Base, BasicAuditMixin):
 
     # ==================== 基本身份信息 ====================
 
-    id: Mapped[big_int_pk] = mapped_column(
-        comment="Telegram 用户 ID（不可为空）"
-    )
+    id: Mapped[big_int_pk] = mapped_column(comment="Telegram 用户 ID（不可为空）")
 
-    is_bot: Mapped[bool] = mapped_column(
-        default=False,
-        nullable=False,
-        comment="是否为机器人，普通用户为0"
-    )
+    is_bot: Mapped[bool] = mapped_column(default=False, nullable=False, comment="是否为机器人，普通用户为0")
 
-    first_name: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        comment="用户名（必填）"
-    )
+    first_name: Mapped[str] = mapped_column(String(255), nullable=False, comment="用户名（必填）")
 
-    last_name: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
-        comment="姓（可空）"
-    )
+    last_name: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="姓（可空）")
 
-    username: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
-        index=True,
-        comment="用户名（可空）"
-    )
+    username: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True, comment="用户名（可空）")
 
-    language_code: Mapped[str | None] = mapped_column(
-        String(32),
-        nullable=True,
-        comment="用户语言标记（可空）"
-    )
+    language_code: Mapped[str | None] = mapped_column(String(32), nullable=True, comment="用户语言标记（可空）")
 
-    is_premium: Mapped[bool | None] = mapped_column(
-        nullable=True,
-        comment="是否 Telegram Premium 用户（可空）"
-    )
+    is_premium: Mapped[bool | None] = mapped_column(nullable=True, comment="是否 Telegram Premium 用户（可空）")
 
-    added_to_attachment_menu: Mapped[bool | None] = mapped_column(
-        nullable=True,
-        comment="是否把 bot 加入附件菜单（可空）"
-    )
+    added_to_attachment_menu: Mapped[bool | None] = mapped_column(nullable=True, comment="是否把 bot 加入附件菜单（可空）")
 
     # 备注
     remark: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="备注")
