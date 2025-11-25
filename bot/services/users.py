@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def add_user(session: AsyncSession, user: User) -> None:
+async def add_user(session: AsyncSession, user: User, operator_id: int | None = None) -> None:
     """新增用户
 
     功能说明:
@@ -51,8 +51,8 @@ async def add_user(session: AsyncSession, user: User) -> None:
             is_premium=_normalize_bool(getattr(user, "is_premium", None)),
             is_bot=bool(user.is_bot),
             added_to_attachment_menu=_normalize_bool(getattr(user, "added_to_attachment_menu", None)),
-            created_by=user.id,
-            updated_by=user.id,
+            created_by=operator_id,
+            updated_by=operator_id,
         )
         session.add(new_user)
         # 同步写入 user_extend（首次交互）
@@ -60,9 +60,7 @@ async def add_user(session: AsyncSession, user: User) -> None:
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
         if ext is None:
-            session.add(UserExtendModel(user_id=user.id, last_interaction_at=datetime.now(), created_by=user.id, updated_by=user.id))
-        else:
-            ext.updated_by = user.id
+            session.add(UserExtendModel(user_id=user.id, last_interaction_at=datetime.now(), created_by=operator_id, updated_by=operator_id))
         await session.commit()
         await clear_cache(user_exists, user_id)
     except Exception:
@@ -116,7 +114,7 @@ async def is_admin(session: AsyncSession, user_id: int) -> bool:
     return role in {UserRole.admin, UserRole.owner}
 
 
-async def save_user_snapshot(session: AsyncSession, user: User) -> None:
+async def save_user_snapshot(session: AsyncSession, user: User, operator_id: int | None = None) -> None:
     """保存用户信息快照
 
     功能说明:
@@ -153,8 +151,8 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
             language_code=user.language_code,
             is_premium=_normalize_bool(getattr(user, "is_premium", None)),
             added_to_attachment_menu=_normalize_bool(getattr(user, "added_to_attachment_menu", None)),
-            created_by=user.id,
-            updated_by=user.id,
+            created_by=operator_id,
+            updated_by=operator_id,
         )
         session.add(snapshot)
         await session.commit()
@@ -163,7 +161,7 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
         pass
 
 
-async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel) -> None:
+async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel, operator_id: int | None = None) -> None:
     """保存用户信息快照（基于当前数据库值）
 
     功能说明:
@@ -186,8 +184,8 @@ async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel)
             language_code=model.language_code,
             is_premium=model.is_premium,
             added_to_attachment_menu=model.added_to_attachment_menu,
-            created_by=model.updated_by or model.created_by,
-            updated_by=model.updated_by or model.created_by,
+            created_by=operator_id,
+            updated_by=operator_id,
         )
         session.add(snapshot)
         await session.commit()
@@ -195,7 +193,7 @@ async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel)
         pass
 
 
-async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
+async def upsert_user_on_interaction(session: AsyncSession, user: User, operator_id: int | None = None) -> None:
     """交互时更新用户信息
 
     功能说明:
@@ -229,7 +227,7 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
         exists = await user_exists(session, user.id)
         if not exists:
             # 首次：写 users 与 user_extend；不写 user_history
-            await add_user(session, user)
+            await add_user(session, user, operator_id=operator_id)
         else:
             res = await session.execute(select(UserModel).where(UserModel.id == user.id))
             current = res.scalar_one_or_none()
@@ -245,10 +243,14 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
                 }
                 changed = {k: v for k, v in new_values.items() if getattr(current, k) != v}
                 if changed:
-                    # 变更：先保存旧值到 user_history，再更新 users（含 updated_by）
-                    await save_user_snapshot_from_model(session, current)
-                    changed["updated_by"] = user.id
+                    # 变更：先保存旧值到 user_history，再更新 users（补充 updated_by）
+                    await save_user_snapshot_from_model(session, current, operator_id=operator_id)
+                    changed["updated_by"] = operator_id
                     await session.execute(update(UserModel).where(UserModel.id == user.id).values(**changed))
+                    await session.commit()
+                else:
+                    # 无变更：仅更新时间戳与 updated_by
+                    await session.execute(update(UserModel).where(UserModel.id == user.id).values(updated_at=func.now(), updated_by=operator_id))
                     await session.commit()
 
         # 更新扩展表最后交互时间（无则创建）
@@ -259,7 +261,6 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
             session.add(ext)
         from datetime import datetime
         ext.last_interaction_at = datetime.now()
-        ext.updated_by = user.id
         await session.commit()
     except Exception:
         pass

@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 
 class AuthMiddleware(BaseMiddleware):
+    _bot_id: int | None = None
     def _get_role(self, user_id: int) -> str:
         """判定用户角色
 
@@ -46,6 +47,15 @@ class AuthMiddleware(BaseMiddleware):
         data: dict[str, Any],
     ) -> Any:
         session: AsyncSession = data["session"]
+        bot = data.get("bot")
+        operator_id: int | None = None
+        try:
+            if bot and self._bot_id is None:
+                me = await bot.get_me()
+                self._bot_id = me.id
+            operator_id = self._bot_id
+        except Exception:
+            operator_id = None
 
         # 支持 Message 与 CallbackQuery 两类事件
         if isinstance(event, Message):
@@ -61,7 +71,7 @@ class AuthMiddleware(BaseMiddleware):
         # 注入角色到上下文
         data["role"] = self._get_role(user.id)
 
-        # 交互时对用户进行更新/新增与快照
-        await upsert_user_on_interaction(session=session, user=user)
+        # 交互时对用户进行更新/新增与快照（操作者为机器人）
+        await upsert_user_on_interaction(session=session, user=user, operator_id=operator_id)
 
         return await handler(event, data)
