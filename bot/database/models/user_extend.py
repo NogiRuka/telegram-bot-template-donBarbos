@@ -11,7 +11,7 @@ from enum import Enum
 from sqlalchemy import Enum as SAEnum, ForeignKey, Index, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bot.database.models.base import Base, BasicAuditMixin, big_int_pk, remark
+from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
 
 
 class UserRole(Enum):
@@ -70,10 +70,9 @@ class UserExtendModel(Base, BasicAuditMixin):
     )
 
     # 备注
-    remark: Mapped[remark]
+    remark: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="备注")
 
     __table_args__ = (
         Index("idx_user_extend_role", "role"),
         Index("idx_user_extend_last_interaction", "last_interaction_at"),
     )
-

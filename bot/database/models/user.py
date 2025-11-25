@@ -1,12 +1,11 @@
 """
-用户模型模块
+用户模型模块（与《docs/设计文档.md》一致）
 
-本模块定义了Telegram用户的数据库模型，
-包含用户的基本信息、状态标志、统计数据等。
-
-作者: Telegram Bot Template
-创建时间: 2024-01-23
-最后更新: 2025-10-21
+只保存最新 aiogram User 对应字段：
+- 必填：id、is_bot、first_name
+- 可空：last_name、username、language_code、is_premium、added_to_attachment_menu
+- 备注：remark
+- 审计：created_at/created_by/updated_at/updated_by/is_deleted/deleted_at/deleted_by
 """
 
 from __future__ import annotations
@@ -43,32 +42,32 @@ class UserModel(Base, BasicAuditMixin):
     # ==================== 基本身份信息 ====================
 
     id: Mapped[big_int_pk] = mapped_column(
-        comment="用户的Telegram ID，作为主键，由Telegram系统分配的唯一标识符"
+        comment="Telegram 用户 ID（不可为空）"
     )
 
     first_name: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
-        comment="用户的名字，必填字段，最大255字符，来自Telegram用户资料"
+        comment="用户名（必填）"
     )
 
     last_name: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
-        comment="用户的姓氏，可选字段，最大255字符，来自Telegram用户资料"
+        comment="姓（可空）"
     )
 
     username: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
         index=True,
-        comment="用户的Telegram用户名，可选字段，不包含@符号，用于@提及和搜索"
+        comment="用户名（可空）"
     )
 
     language_code: Mapped[str | None] = mapped_column(
         String(32),
         nullable=True,
-        comment="用户的语言代码，可选字段，ISO 639-1标准（如zh、en、ru等）"
+        comment="用户语言标记（可空）"
     )
 
     # aiogram User: 是否加入附件菜单（可空）
@@ -79,8 +78,15 @@ class UserModel(Base, BasicAuditMixin):
 
 
 
-    is_premium: Mapped[bool | None] = mapped_column(nullable=True, comment="是否 Telegram Premium 用户（可空）")
-    is_bot: Mapped[bool] = mapped_column(default=False, nullable=False, comment="是否为机器人，普通用户为0")
+    is_premium: Mapped[bool | None] = mapped_column(
+        nullable=True,
+        comment="是否 Telegram Premium 用户（可空）"
+    )
+    is_bot: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+        comment="是否为机器人，普通用户为0"
+    )
 
     # ==================== 审计字段（按文档顺序） ====================
 
@@ -106,7 +112,7 @@ class UserModel(Base, BasicAuditMixin):
     deleted_by: Mapped[deleted_by]
 
     # 备注
-    remark: Mapped[remark]
+    remark: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="备注")
 
     # ==================== 数据库索引定义 ====================
 
@@ -118,7 +124,7 @@ class UserModel(Base, BasicAuditMixin):
     # ==================== 显示配置 ====================
 
     # 用于__repr__方法显示的关键列
-    repr_cols = ("id", "username", "first_name", "is_admin", "is_premium", "is_deleted")
+    repr_cols = ("id", "username", "first_name", "is_bot", "is_premium", "is_deleted")
 
     # ==================== 业务方法 ====================
 

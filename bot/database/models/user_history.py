@@ -10,7 +10,7 @@ import datetime
 from sqlalchemy import BigInteger, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk, remark
+from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
 
 
 class UserHistoryModel(Base, BasicAuditMixin):
@@ -58,9 +58,8 @@ class UserHistoryModel(Base, BasicAuditMixin):
     snapshot_at: Mapped[datetime.datetime] = mapped_column(nullable=False, default=datetime.datetime.now, comment="快照时间")
 
     # 备注
-    remark: Mapped[remark]
+    remark: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="备注")
 
     __table_args__ = (
         Index("idx_user_history_user_snapshot", "user_id", "snapshot_at"),
     )
-

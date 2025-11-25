@@ -217,7 +217,7 @@ async def list_admins(session: AsyncSession) -> list[UserModel]:
     """列出管理员用户
 
     功能说明:
-    - 查询所有 `is_admin=True` 的用户列表
+    - 基于 `user_extend.role in ('admin','owner')` 查询管理员/所有者对应的用户列表
 
     输入参数:
     - session: 异步数据库会话
@@ -225,7 +225,8 @@ async def list_admins(session: AsyncSession) -> list[UserModel]:
     返回值:
     - list[UserModel]: 管理员列表
     """
-    query = select(UserModel).where(UserModel.is_admin)
+    role_query = select(UserExtendModel.user_id).where(UserExtendModel.role.in_([UserRole.admin, UserRole.owner]))
+    query = select(UserModel).where(UserModel.id.in_(role_query))
     result = await session.execute(query)
     users = result.scalars()
     return list(users)
