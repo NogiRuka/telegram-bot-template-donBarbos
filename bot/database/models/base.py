@@ -13,7 +13,7 @@ from __future__ import annotations
 import datetime
 from typing import Annotated
 
-from sqlalchemy import BigInteger, Boolean, String, text
+from sqlalchemy import BigInteger, Boolean, String, Text, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # ==================== 通用字段类型定义 ====================
@@ -137,13 +137,13 @@ version = Annotated[
     )
 ]
 
-# 备注字段类型
+# 备注字段类型（TEXT）
 remark = Annotated[
     str | None,
     mapped_column(
-        String(500),
+        Text,
         nullable=True,
-        comment="备注信息，最大500字符"
+        comment="备注（长文本）"
     )
 ]
 
@@ -290,7 +290,7 @@ class FullAuditMixin(TimestampMixin, OperatorMixin, SoftDeleteMixin, VersionMixi
     """
 
 
-class BasicAuditMixin(TimestampMixin, OperatorMixin, SoftDeleteMixin):
+class BasicAuditMixin(TimestampMixin, OperatorMixin, SoftDeleteMixin, RemarkMixin):
     """
     基础审计混入类
 
@@ -301,4 +301,5 @@ class BasicAuditMixin(TimestampMixin, OperatorMixin, SoftDeleteMixin):
         - 时间戳: created_at, updated_at
         - 操作者: created_by, updated_by
         - 软删除: is_deleted, deleted_at, deleted_by
+        - 备注: remark
     """

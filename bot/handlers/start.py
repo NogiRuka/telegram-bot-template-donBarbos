@@ -1,22 +1,57 @@
+from pathlib import Path
+
 from aiogram import Router, types
 from aiogram.filters import CommandStart
 
-from bot.keyboards.inline.menu import main_keyboard
+from bot.keyboards.inline.start_user import get_start_user_keyboard
+from bot.keyboards.inline.start_admin import get_start_admin_keyboard
+from bot.keyboards.inline.start_owner import get_start_owner_keyboard
 from bot.services.analytics import analytics
+from bot.handlers.menu import render_view
 
 router = Router(name="start")
 
 
 @router.message(CommandStart())
 @analytics.track_event("Sign Up")
-async def start_handler(message: types.Message) -> None:
-    """
-    欢迎消息处理器
+async def start_handler(message: types.Message, role: str | None = None, **kwargs) -> None:
+    """欢迎消息处理器
 
-    参数:
-        message: Telegram消息对象
+    功能说明:
+    - 根据角色显示不同首页界面与按钮
 
-    返回:
-        None
+    输入参数:
+    - message: Telegram消息对象
+    - role: 用户角色标识
+
+    返回值:
+    - None
     """
-    await message.answer("欢迎使用机器人！", reply_markup=main_keyboard())
+    image = "assets/ui/start_user.jpg"
+    if role is None:
+        user = message.from_user
+        if user and user.id:
+            from bot.core.config import settings
+            try:
+                if user.id == settings.get_owner_id():
+                    role = "owner"
+                elif user.id in set(settings.get_admin_ids()):
+                    role = "admin"
+                else:
+                    role = "user"
+            except Exception:
+                role = "user"
+        else:
+            role = "user"
+    if role == "owner":
+        kb = get_start_owner_keyboard()
+        caption = "🌸 所有者欢迎页"
+        image = "assets/ui/start_owner.jpg"
+    elif role == "admin":
+        kb = get_start_admin_keyboard()
+        caption = "🌸 管理员欢迎页"
+        image = "assets/ui/start_admin.jpg"
+    else:
+        kb = get_start_user_keyboard()
+        caption = "🌸 欢迎使用机器人！"
+    await render_view(message, image, caption, kb)

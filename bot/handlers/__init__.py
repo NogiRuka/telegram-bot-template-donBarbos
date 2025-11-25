@@ -2,6 +2,7 @@ from aiogram import Router
 
 from . import export_users, info, menu, start, support
 from .admin import get_admin_router
+from .owner import get_owner_router
 from .group import get_group_router
 
 # 导入测试模块（仅在开发模式下）
@@ -23,6 +24,7 @@ def get_handlers_router() -> Router:
     # 群组与管理员聚合路由
     router.include_router(get_group_router())
     router.include_router(get_admin_router())
+    router.include_router(get_owner_router())
 
     # 在开发模式下添加测试路由
     if TESTS_AVAILABLE:
