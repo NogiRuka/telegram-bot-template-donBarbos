@@ -12,7 +12,7 @@
 from __future__ import annotations
 import datetime
 
-from sqlalchemy import Index, String, Text
+from sqlalchemy import Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, big_int_pk, remark
@@ -65,22 +65,8 @@ class UserModel(Base, BasicAuditMixin):
         comment="用户的Telegram用户名，可选字段，不包含@符号，用于@提及和搜索"
     )
 
-    # ==================== 联系方式信息 ====================
-
-    phone_number: Mapped[str | None] = mapped_column(
-        String(20),
-        nullable=True,
-        comment="用户的电话号码，可选字段，格式为国际标准格式（如+86138****1234）"
-    )
-
-    bio: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        comment="用户的个人简介，可选字段，支持长文本，来自Telegram用户资料"
-    )
-
     language_code: Mapped[str | None] = mapped_column(
-        String(10),
+        String(32),
         nullable=True,
         comment="用户的语言代码，可选字段，ISO 639-1标准（如zh、en、ru等）"
     )
@@ -93,51 +79,8 @@ class UserModel(Base, BasicAuditMixin):
 
 
 
-    # ==================== 活动时间记录 ====================
-
-    last_activity_at: Mapped[datetime.datetime | None] = mapped_column(
-        nullable=True,
-        index=True,
-        comment="用户最后活动时间，可选字段，记录用户最后一次与机器人交互的时间"
-    )
-
-    # ==================== 用户状态标志 ====================
-
-    is_admin: Mapped[bool] = mapped_column(
-        default=False,
-        index=True,
-        comment="管理员标志，默认False，True表示该用户具有管理员权限"
-    )
-
-    is_suspicious: Mapped[bool] = mapped_column(
-        default=False,
-        index=True,
-        comment="可疑用户标志，默认False，True表示该用户被标记为可疑，需要特别关注"
-    )
-
-    is_block: Mapped[bool] = mapped_column(
-        default=False,
-        index=True,
-        comment="封禁状态标志，默认False，True表示该用户被封禁，无法使用机器人功能"
-    )
-
-    is_premium: Mapped[bool] = mapped_column(
-        default=False,
-        index=True,
-        comment="高级用户标志，默认False，True表示该用户是Telegram Premium用户"
-    )
-
-    is_bot: Mapped[bool] = mapped_column(
-        default=False,
-        comment="机器人标志，默认False，True表示该账号是机器人而非真实用户"
-    )
-
-    # ==================== 统计数据 ====================
-
-    message_count: Mapped[int] = mapped_column(
-        default=0,
-        comment="消息计数，默认0，记录用户发送给机器人的消息总数，用于统计分析"
-    )
+    is_premium: Mapped[bool | None] = mapped_column(nullable=True, comment="是否 Telegram Premium 用户（可空）")
+    is_bot: Mapped[bool] = mapped_column(default=False, nullable=False, comment="是否为机器人，普通用户为0")
 
     # ==================== 审计字段（按文档顺序） ====================
 
@@ -168,20 +111,8 @@ class UserModel(Base, BasicAuditMixin):
     # ==================== 数据库索引定义 ====================
 
     __table_args__ = (
-        # 时间相关索引，用于按时间查询和排序
-        Index("idx_users_created_at", "created_at"),  # 创建时间索引，用于按注册时间查询用户
-        Index("idx_users_updated_at", "updated_at"),  # 更新时间索引，用于查询最近更新的用户
-        Index("idx_users_last_activity", "last_activity_at"),  # 最后活动时间索引，用于查询活跃用户和僵尸用户
-
-
-
-        # 状态组合索引，用于复杂查询
-        Index("idx_users_status", "is_block", "is_suspicious"),  # 用户状态组合索引，用于查询封禁和可疑用户
-        Index("idx_users_admin_premium", "is_admin", "is_premium"),  # 管理员和高级用户组合索引，用于权限相关查询
-
-        # 软删除相关索引（继承自BasicAuditMixin）
-        Index("idx_users_deleted", "is_deleted"),  # 软删除状态索引，用于过滤已删除用户
-        Index("idx_users_deleted_at", "deleted_at"),  # 删除时间索引，用于查询删除历史
+        Index("idx_users_created_at", "created_at"),
+        Index("idx_users_updated_at", "updated_at"),
     )
 
     # ==================== 显示配置 ====================
@@ -219,45 +150,16 @@ class UserModel(Base, BasicAuditMixin):
             return f"{self.first_name} {self.last_name}"
         return self.first_name
 
-    def is_active_user(self, days: int = 30) -> bool:
-        """
-        判断用户是否为活跃用户
-
-        根据最后活动时间判断用户是否在指定天数内有活动。
-
-        参数:
-            days: 活跃天数阈值，默认30天
-
-        返回:
-            bool: True表示活跃用户，False表示非活跃用户
-        """
-        if not self.last_activity_at:
-            return False
-
-        threshold = datetime.datetime.now() - datetime.timedelta(days=days)
-        return self.last_activity_at > threshold
-
     def can_use_bot(self) -> bool:
         """
         判断用户是否可以使用机器人
 
-        检查用户是否被封禁或软删除。
+        检查用户是否被软删除。
 
         返回:
             bool: True表示可以使用，False表示不可以使用
         """
-        return not self.is_block and not self.is_deleted
-
-    def increment_message_count(self) -> None:
-        """
-        增加用户消息计数
-
-        每当用户发送消息时调用此方法增加计数。
-        """
-        if self.message_count is None:
-            self.message_count = 0
-        self.message_count += 1
-        self.last_activity_at = datetime.datetime.now()
+        return not self.is_deleted
 
     def soft_delete(self, operated_by_user_id: int | None = None) -> None:
         """

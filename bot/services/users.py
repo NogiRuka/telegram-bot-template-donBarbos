@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select, update
 
 from bot.cache import build_key, cached, clear_cache
-from bot.database.models import UserModel, UserHistoryModel
+from bot.database.models import UserModel, UserHistoryModel, UserExtendModel, UserRole
 
 if TYPE_CHECKING:
     from aiogram.types import User
@@ -74,12 +74,22 @@ async def get_first_name(session: AsyncSession, user_id: int) -> str:
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
 async def is_admin(session: AsyncSession, user_id: int) -> bool:
-    query = select(UserModel.is_admin).filter_by(id=user_id)
+    """判断是否管理员
 
+    功能说明:
+    - 基于 `user_extend.role` 判断是否具备管理员权限（含 owner）
+
+    输入参数:
+    - session: 异步数据库会话
+    - user_id: 用户 ID
+
+    返回值:
+    - bool: True 表示管理员或所有者
+    """
+    query = select(UserExtendModel.role).where(UserExtendModel.user_id == user_id)
     result = await session.execute(query)
-
-    is_admin = result.scalar_one_or_none()
-    return bool(is_admin)
+    role = result.scalar_one_or_none()
+    return role in {UserRole.admin, UserRole.owner}
 
 
 async def save_user_snapshot(session: AsyncSession, user: User) -> None:
@@ -114,9 +124,31 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
 
 
 async def set_is_admin(session: AsyncSession, user_id: int, is_admin: bool) -> None:
-    stmt = update(UserModel).where(UserModel.id == user_id).values(is_admin=is_admin)
+    """设置管理员角色
 
-    await session.execute(stmt)
+    功能说明:
+    - 将 `user_extend.role` 设置为 `admin` 或 `user`
+
+    输入参数:
+    - session: 异步数据库会话
+    - user_id: 用户 ID
+    - is_admin: 是否管理员
+
+    返回值:
+    - None
+    """
+    target_role = UserRole.admin if is_admin else UserRole.user
+    # upsert
+    existing = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user_id))
+    model = existing.scalar_one_or_none()
+    if model:
+        # 若当前为 owner，则不降级
+        if model.role == UserRole.owner:
+            return
+        model.role = target_role
+    else:
+        model = UserExtendModel(user_id=user_id, role=target_role)
+        session.add(model)
     await session.commit()
 
 

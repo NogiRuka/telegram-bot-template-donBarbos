@@ -19,58 +19,35 @@ router = APIRouter()
 
 class UserResponse(BaseModel):
     """
-    用户响应模型
-
-    按照数据库模型字段顺序定义, 与 UserModel 保持一致
+    用户响应模型（与《设计文档》users 表一致）
 
     Attributes:
         id: 用户的 Telegram ID, 主键
+        is_bot: 是否机器人
         first_name: 用户的名字
         last_name: 用户的姓氏
-        username: 用户的Telegram用户名
-        phone_number: 用户的电话号码
-        bio: 用户的个人简介
-        language_code: 用户的语言代码
-        last_activity_at: 用户最后活动时间
-        is_admin: 是否为管理员
-        is_suspicious: 是否可疑用户
-        is_block: 是否被封禁
-        is_premium: 是否为高级用户
-        is_bot: 是否为机器人
-        message_count: 消息数量
+        username: 用户名
+        language_code: 用户语言代码
+        is_premium: 是否 Premium 用户
+        added_to_attachment_menu: 是否加入附件菜单
+        remark: 备注
         created_at: 创建时间
-        created_by: 创建者用户ID
+        created_by: 创建者ID
         updated_at: 更新时间
-        updated_by: 更新者用户ID
-        is_deleted: 是否已删除
+        updated_by: 更新者ID
+        is_deleted: 是否删除
         deleted_at: 删除时间
-        deleted_by: 删除者用户ID
+        deleted_by: 删除者ID
     """
-    # 基本身份信息
     id: int
+    is_bot: bool
     first_name: str
     last_name: str | None
     username: str | None
-
-    # 联系方式信息
-    phone_number: str | None
-    bio: str | None
     language_code: str | None
-
-    # 活动时间记录
-    last_activity_at: str | None
-
-    # 用户状态标志
-    is_admin: bool
-    is_suspicious: bool
-    is_block: bool
-    is_premium: bool
-    is_bot: bool
-
-    # 统计数据
-    message_count: int
-
-    # 审计字段
+    is_premium: bool | None
+    added_to_attachment_menu: bool | None
+    remark: str | None
     created_at: str
     created_by: int | None
     updated_at: str
@@ -148,10 +125,7 @@ async def get_users_list(
                 "username": UserModel.username,
                 "created_at": UserModel.created_at,
                 "updated_at": UserModel.updated_at,
-                "last_activity_at": UserModel.last_activity_at,
-                "message_count": UserModel.message_count,
-                "is_admin": UserModel.is_admin,
-                "is_premium": UserModel.is_premium
+                "is_premium": UserModel.is_premium,
             }
 
             # 验证排序字段
@@ -180,19 +154,14 @@ async def get_users_list(
             users_data = [
                 UserResponse(
                     id=u.id,
+                    is_bot=u.is_bot,
                     first_name=u.first_name,
                     last_name=u.last_name,
                     username=u.username,
-                    phone_number=u.phone_number,
-                    bio=u.bio,
                     language_code=u.language_code,
-                    last_activity_at=u.last_activity_at.isoformat() if u.last_activity_at else None,
-                    is_admin=u.is_admin,
-                    is_suspicious=u.is_suspicious,
-                    is_block=u.is_block,
                     is_premium=u.is_premium,
-                    is_bot=u.is_bot,
-                    message_count=u.message_count,
+                    added_to_attachment_menu=u.added_to_attachment_menu,
+                    remark=u.remark,
                     created_at=u.created_at.isoformat() if u.created_at else None,
                     created_by=u.created_by,
                     updated_at=u.updated_at.isoformat() if u.updated_at else None,
@@ -245,31 +214,15 @@ async def get_user_detail(user_id: int) -> UserResponse:
                 raise_user_not_found()
 
             return UserResponse(
-                # 基本身份信息
                 id=user.id,
+                is_bot=user.is_bot,
                 first_name=user.first_name,
                 last_name=user.last_name,
                 username=user.username,
-
-                # 联系方式信息
-                phone_number=user.phone_number,
-                bio=user.bio,
                 language_code=user.language_code,
-
-                # 活动时间记录
-                last_activity_at=user.last_activity_at.isoformat() if user.last_activity_at else None,
-
-                # 用户状态标志
-                is_admin=user.is_admin,
-                is_suspicious=user.is_suspicious,
-                is_block=user.is_block,
                 is_premium=user.is_premium,
-                is_bot=user.is_bot,
-
-                # 统计数据
-                message_count=user.message_count,
-
-                # 审计字段
+                added_to_attachment_menu=user.added_to_attachment_menu,
+                remark=user.remark,
                 created_at=user.created_at.isoformat() if user.created_at else None,
                 created_by=user.created_by,
                 updated_at=user.updated_at.isoformat() if user.updated_at else None,
