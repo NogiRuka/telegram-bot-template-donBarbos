@@ -2,11 +2,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from aiogram import BaseMiddleware
-from aiogram.types import Message, CallbackQuery
-from loguru import logger
-from bot.core.config import settings
+from aiogram.types import CallbackQuery, Message
 
-from bot.services.users import add_user, user_exists, upsert_user_on_interaction
+from bot.core.config import settings
+from bot.services.users import upsert_user_on_interaction
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -39,7 +38,7 @@ class AuthMiddleware(BaseMiddleware):
         if user_id in set(settings.get_admin_ids()):
             return "admin"
         return "user"
-        
+
     async def __call__(
         self,
         handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
@@ -47,20 +46,9 @@ class AuthMiddleware(BaseMiddleware):
         data: dict[str, Any],
     ) -> Any:
         session: AsyncSession = data["session"]
-        bot = data.get("bot")
-        operator_id: int | None = None
-        try:
-            if bot and self._bot_id is None:
-                me = await bot.get_me()
-                self._bot_id = me.id
-            operator_id = self._bot_id
-        except Exception:
-            operator_id = None
 
         # 支持 Message 与 CallbackQuery 两类事件
-        if isinstance(event, Message):
-            user = event.from_user
-        elif isinstance(event, CallbackQuery):
+        if isinstance(event, (Message, CallbackQuery)):
             user = event.from_user
         else:
             return await handler(event, data)
@@ -71,7 +59,7 @@ class AuthMiddleware(BaseMiddleware):
         # 注入角色到上下文
         data["role"] = self._get_role(user.id)
 
-        # 交互时对用户进行更新/新增与快照（操作者ID为机器人）
-        await upsert_user_on_interaction(session=session, user=user, operator_id=operator_id)
+        # 交互时对用户进行更新/新增与快照
+        await upsert_user_on_interaction(session=session, user=user)
 
         return await handler(event, data)
