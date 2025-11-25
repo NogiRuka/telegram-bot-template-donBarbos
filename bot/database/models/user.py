@@ -58,31 +58,6 @@ class UserModel(Base, BasicAuditMixin):
     added_to_attachment_menu: Mapped[bool | None] = mapped_column(nullable=True, comment="是否把 bot 加入附件菜单（可空）")
 
 
-    # ==================== 审计字段（按文档顺序） ====================
-
-    # 创建时间
-    created_at: Mapped[created_at]
-
-    # 创建者用户ID
-    created_by: Mapped[created_by]
-
-    # 更新时间
-    updated_at: Mapped[updated_at]
-
-    # 更新者用户ID
-    updated_by: Mapped[updated_by]
-
-    # 软删除标志
-    is_deleted: Mapped[is_deleted]
-
-    # 删除时间
-    deleted_at: Mapped[deleted_at]
-
-    # 执行删除操作的用户ID
-    deleted_by: Mapped[deleted_by]
-
-    
-
     # ==================== 数据库索引定义 ====================
 
     __table_args__ = (
