@@ -28,15 +28,29 @@ async def add_user(session: AsyncSession, user: User) -> None:
     """
     try:
         user_id: int = user.id
+        def _normalize_bool(val: bool | None) -> bool | None:
+            """布尔值归一化
+
+            功能说明:
+            - 将 None 保持为 None；非 None 转为 bool
+
+            输入参数:
+            - val: 布尔或 None
+
+            返回值:
+            - bool | None
+            """
+            return bool(val) if val is not None else None
+
         new_user = UserModel(
             id=user.id,
             first_name=user.first_name,
             last_name=user.last_name,
             username=user.username,
             language_code=user.language_code,
-            is_premium=bool(user.is_premium),
+            is_premium=_normalize_bool(getattr(user, "is_premium", None)),
             is_bot=bool(user.is_bot),
-            added_to_attachment_menu=bool(user.added_to_attachment_menu) if hasattr(user, "added_to_attachment_menu") else None,
+            added_to_attachment_menu=_normalize_bool(getattr(user, "added_to_attachment_menu", None)),
         )
         session.add(new_user)
         await session.commit()
@@ -106,6 +120,20 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
     - None
     """
     try:
+        def _normalize_bool(val: bool | None) -> bool | None:
+            """布尔值归一化
+
+            功能说明:
+            - 将 None 保持为 None；非 None 转为 bool
+
+            输入参数:
+            - val: 布尔或 None
+
+            返回值:
+            - bool | None
+            """
+            return bool(val) if val is not None else None
+
         snapshot = UserHistoryModel(
             user_id=user.id,
             is_bot=bool(user.is_bot),
@@ -113,8 +141,8 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
             last_name=user.last_name,
             username=user.username,
             language_code=user.language_code,
-            is_premium=bool(user.is_premium),
-            added_to_attachment_menu=bool(user.added_to_attachment_menu) if hasattr(user, "added_to_attachment_menu") else None,
+            is_premium=_normalize_bool(getattr(user, "is_premium", None)),
+            added_to_attachment_menu=_normalize_bool(getattr(user, "added_to_attachment_menu", None)),
         )
         session.add(snapshot)
         await session.commit()
@@ -140,25 +168,42 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
     - None
     """
     try:
+        def _normalize_bool(val: bool | None) -> bool | None:
+            """布尔值归一化
+
+            功能说明:
+            - 将 None 保持为 None；非 None 转为 bool
+
+            输入参数:
+            - val: 布尔或 None
+
+            返回值:
+            - bool | None
+            """
+            return bool(val) if val is not None else None
+
         exists = await user_exists(session, user.id)
         if not exists:
             await add_user(session, user)
+            await save_user_snapshot(session, user)
         else:
-            stmt = (
-                update(UserModel)
-                .where(UserModel.id == user.id)
-                .values(
-                    first_name=user.first_name,
-                    last_name=user.last_name,
-                    username=user.username,
-                    language_code=user.language_code,
-                    is_premium=bool(user.is_premium),
-                    is_bot=bool(user.is_bot),
-                    added_to_attachment_menu=bool(user.added_to_attachment_menu) if hasattr(user, "added_to_attachment_menu") else None,
-                )
-            )
-            await session.execute(stmt)
-            await session.commit()
+            res = await session.execute(select(UserModel).where(UserModel.id == user.id))
+            current = res.scalar_one_or_none()
+            if current:
+                new_values = {
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "username": user.username,
+                    "language_code": user.language_code,
+                    "is_premium": _normalize_bool(getattr(user, "is_premium", None)),
+                    "is_bot": bool(user.is_bot),
+                    "added_to_attachment_menu": _normalize_bool(getattr(user, "added_to_attachment_menu", None)),
+                }
+                changed = {k: v for k, v in new_values.items() if getattr(current, k) != v}
+                if changed:
+                    await session.execute(update(UserModel).where(UserModel.id == user.id).values(**changed))
+                    await session.commit()
+                    await save_user_snapshot(session, user)
 
         # 更新扩展表最后交互时间（无则创建）
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
@@ -169,11 +214,7 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
         from datetime import datetime
         ext.last_interaction_at = datetime.now()
         await session.commit()
-
-        # 保存快照（失败不影响主流程）
-        await save_user_snapshot(session, user)
     except Exception:
-        # 忽略更新失败，避免影响交互
         pass
 
 
