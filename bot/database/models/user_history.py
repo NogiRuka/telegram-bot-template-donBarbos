@@ -39,8 +39,8 @@ class UserHistoryModel(Base, BasicAuditMixin):
 
     __tablename__ = "user_history"
 
-    # 主键
-    history_id: Mapped[auto_int_pk]
+    # 主键ID
+    history_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, comment="主键ID")
 
     # 用户 ID
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True, comment="用户 ID")
