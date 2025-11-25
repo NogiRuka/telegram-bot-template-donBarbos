@@ -200,10 +200,10 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User, operator
     """交互时更新用户信息
 
     功能说明:
-    - 用户与机器人交互（消息/回调）时，更新 `users` 表最新字段并始终刷新 `updated_at`
-    - 若用户不存在则创建；存在则仅在字段变更时先保存旧值到 `user_history` 再更新 `users`
-    - 更新 `user_extend.last_interaction_at`（不更新其 `updated_at`），必要时自动创建扩展记录
-    - 操作者使用机器人ID填充 `created_by/updated_by`
+    - 用户与机器人交互（消息/回调）时，更新 `users` 表的最新字段
+    - 若用户不存在则创建；存在则覆盖可变字段
+    - 更新 `user_extend.last_interaction_at`，必要时自动创建扩展记录
+    - 保存一条 `user_history` 快照以便追踪变更
 
     输入参数:
     - session: 异步数据库会话
@@ -253,15 +253,14 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User, operator
                     await session.execute(update(UserModel).where(UserModel.id == user.id).values(**changed))
                     await session.commit()
                 else:
-                    # 无变更：仅更新时间戳与 updated_by
-                    await session.execute(update(UserModel).where(UserModel.id == user.id).values(updated_at=func.now(), updated_by=operator_id))
-                    await session.commit()
+                    # 无变更：不更新 users.updated_at
+                    pass
 
         # 更新扩展表最后交互时间（无则创建）
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
         if ext is None:
-            ext = UserExtendModel(user_id=user.id)
+            ext = UserExtendModel(user_id=user.id, created_by=operator_id, updated_by=operator_id)
             session.add(ext)
         from datetime import datetime
         ext.last_interaction_at = datetime.now()

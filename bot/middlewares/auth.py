@@ -71,7 +71,7 @@ class AuthMiddleware(BaseMiddleware):
         # 注入角色到上下文
         data["role"] = self._get_role(user.id)
 
-        # 交互时对用户进行更新/新增与快照（操作者为机器人）
+        # 交互时对用户进行更新/新增与快照（操作者ID为机器人）
         await upsert_user_on_interaction(session=session, user=user, operator_id=operator_id)
 
         return await handler(event, data)
