@@ -13,7 +13,7 @@ from __future__ import annotations
 import datetime
 from typing import Annotated
 
-from sqlalchemy import BigInteger, Boolean, String, text
+from sqlalchemy import BigInteger, Boolean, String, Text, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # ==================== 通用字段类型定义 ====================
@@ -137,13 +137,13 @@ version = Annotated[
     )
 ]
 
-# 备注字段类型（与文档一致：VARCHAR(255)）
+# 备注字段类型（TEXT）
 remark = Annotated[
     str | None,
     mapped_column(
-        String(255),
+        Text,
         nullable=True,
-        comment="备注"
+        comment="备注（长文本）"
     )
 ]
 
