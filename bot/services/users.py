@@ -4,14 +4,15 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select, update
 
 from bot.cache import build_key, cached, clear_cache
-from bot.database.models import UserModel, UserHistoryModel, UserExtendModel, UserRole
+from bot.core.config import settings
+from bot.database.models import UserExtendModel, UserHistoryModel, UserModel, UserRole
 
 if TYPE_CHECKING:
     from aiogram.types import User
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def add_user(session: AsyncSession, user: User, operator_id: int | None = None) -> None:
+async def add_user(session: AsyncSession, user: User) -> None:
     """新增用户
 
     功能说明:
@@ -22,7 +23,6 @@ async def add_user(session: AsyncSession, user: User, operator_id: int | None = 
     输入参数:
     - session: 异步数据库会话
     - user: aiogram User 实例
-    - operator_id: 操作者ID（机器人ID），用于填充 `created_by/updated_by`
 
     返回值:
     - None
@@ -52,16 +52,19 @@ async def add_user(session: AsyncSession, user: User, operator_id: int | None = 
             is_premium=_normalize_bool(getattr(user, "is_premium", None)),
             is_bot=bool(user.is_bot),
             added_to_attachment_menu=_normalize_bool(getattr(user, "added_to_attachment_menu", None)),
-            created_by=operator_id,
-            updated_by=operator_id,
         )
         session.add(new_user)
         # 同步写入 user_extend（首次交互）
-        from datetime import datetime
+        import datetime
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
         if ext is None:
-            session.add(UserExtendModel(user_id=user.id, last_interaction_at=datetime.now(), created_by=operator_id, updated_by=operator_id))
+            session.add(
+                UserExtendModel(
+                    user_id=user.id,
+                    last_interaction_at=datetime.datetime.now(datetime.timezone.utc),
+                )
+            )
         await session.commit()
         await clear_cache(user_exists, user_id)
     except Exception:
@@ -115,7 +118,7 @@ async def is_admin(session: AsyncSession, user_id: int) -> bool:
     return role in {UserRole.admin, UserRole.owner}
 
 
-async def save_user_snapshot(session: AsyncSession, user: User, operator_id: int | None = None) -> None:
+async def save_user_snapshot(session: AsyncSession, user: User) -> None:
     """保存用户信息快照
 
     功能说明:
@@ -124,7 +127,6 @@ async def save_user_snapshot(session: AsyncSession, user: User, operator_id: int
     输入参数:
     - session: 异步数据库会话
     - user: aiogram User 实例
-    - operator_id: 操作者ID（机器人ID），用于填充快照的 `created_by/updated_by`
 
     返回值:
     - None
@@ -153,8 +155,6 @@ async def save_user_snapshot(session: AsyncSession, user: User, operator_id: int
             language_code=user.language_code,
             is_premium=_normalize_bool(getattr(user, "is_premium", None)),
             added_to_attachment_menu=_normalize_bool(getattr(user, "added_to_attachment_menu", None)),
-            created_by=operator_id,
-            updated_by=operator_id,
         )
         session.add(snapshot)
         await session.commit()
@@ -163,7 +163,7 @@ async def save_user_snapshot(session: AsyncSession, user: User, operator_id: int
         pass
 
 
-async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel, operator_id: int | None = None) -> None:
+async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel) -> None:
     """保存用户信息快照（基于当前数据库值）
 
     功能说明:
@@ -172,7 +172,6 @@ async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel,
     输入参数:
     - session: 异步数据库会话
     - model: 当前数据库中的用户模型实例
-    - operator_id: 操作者ID（机器人ID），用于填充快照的 `created_by/updated_by`
 
     返回值:
     - None
@@ -187,8 +186,6 @@ async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel,
             language_code=model.language_code,
             is_premium=model.is_premium,
             added_to_attachment_menu=model.added_to_attachment_menu,
-            created_by=operator_id,
-            updated_by=operator_id,
         )
         session.add(snapshot)
         await session.commit()
@@ -196,7 +193,7 @@ async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel,
         pass
 
 
-async def upsert_user_on_interaction(session: AsyncSession, user: User, operator_id: int | None = None) -> None:
+async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
     """交互时更新用户信息
 
     功能说明:
@@ -208,7 +205,6 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User, operator
     输入参数:
     - session: 异步数据库会话
     - user: aiogram User 实例
-    - operator_id: 操作者ID（机器人ID）
 
     返回值:
     - None
@@ -231,7 +227,7 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User, operator
         exists = await user_exists(session, user.id)
         if not exists:
             # 首次：写 users 与 user_extend；不写 user_history
-            await add_user(session, user, operator_id=operator_id)
+            await add_user(session, user)
         else:
             res = await session.execute(select(UserModel).where(UserModel.id == user.id))
             current = res.scalar_one_or_none()
@@ -247,24 +243,72 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User, operator
                 }
                 changed = {k: v for k, v in new_values.items() if getattr(current, k) != v}
                 if changed:
-                    # 变更：先保存旧值到 user_history，再更新 users（补充 updated_by）
-                    await save_user_snapshot_from_model(session, current, operator_id=operator_id)
-                    changed["updated_by"] = operator_id
+                    await save_user_snapshot_from_model(session, current)
                     await session.execute(update(UserModel).where(UserModel.id == user.id).values(**changed))
                     await session.commit()
-                else:
-                    # 无变更：不更新 users.updated_at
-                    pass
+
+        # 基于配置同步角色（owner/admin/user）
+        await ensure_role_by_settings(session, user.id)
 
         # 更新扩展表最后交互时间（无则创建）
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
         if ext is None:
-            ext = UserExtendModel(user_id=user.id, created_by=operator_id, updated_by=operator_id)
-            session.add(ext)
-        from datetime import datetime
-        ext.last_interaction_at = datetime.now()
-        await session.commit()
+            import datetime
+            session.add(
+                UserExtendModel(
+                    user_id=user.id,
+                    last_interaction_at=datetime.datetime.now(datetime.timezone.utc),
+                )
+            )
+            await session.commit()
+        else:
+            await session.execute(
+                update(UserExtendModel)
+                .where(UserExtendModel.user_id == user.id)
+                .values(last_interaction_at=func.now(), updated_at=UserExtendModel.updated_at)
+            )
+            await session.commit()
+    except Exception:
+        pass
+
+
+async def ensure_role_by_settings(session: AsyncSession, user_id: int) -> None:
+    """根据配置同步用户角色
+
+    功能说明:
+    - 对 `user_extend.role` 进行校正：与配置中的 `OWNER_ID`/`ADMIN_IDS` 对齐
+    - 优先级：owner > admin > user
+
+    输入参数:
+    - session: 异步数据库会话
+    - user_id: Telegram 用户ID
+
+    返回值:
+    - None
+    """
+    try:
+        desired = UserRole.user
+        try:
+            if user_id == settings.get_owner_id():
+                desired = UserRole.owner
+        except Exception:
+            pass
+        if desired is UserRole.user:
+            admin_ids = set(settings.get_admin_ids())
+            if user_id in admin_ids:
+                desired = UserRole.admin
+
+        res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user_id))
+        ext = res.scalar_one_or_none()
+        if ext is None:
+            model = UserExtendModel(user_id=user_id, role=desired)
+            session.add(model)
+            await session.commit()
+            return
+        if ext.role != desired:
+            ext.role = desired
+            await session.commit()
     except Exception:
         pass
 

@@ -44,6 +44,7 @@ class BotSettings(EnvBaseSettings):
     PROJECT_NAME: str = Field(default="", description="项目名称，用于日志与Banner")
 
     @field_validator("BOT_TOKEN")
+    @classmethod
     def validate_bot_token(cls, v: str) -> str:
         if ":" not in v:
             msg = "BOT_TOKEN 格式不正确，必须包含 ':'"
@@ -51,6 +52,7 @@ class BotSettings(EnvBaseSettings):
         return v
 
     @field_validator("ADMIN_IDS")
+    @classmethod
     def validate_admin_ids(cls, v: str) -> str:
         if not v:
             return v
@@ -61,6 +63,7 @@ class BotSettings(EnvBaseSettings):
         return v
 
     @field_validator("SUPER_ADMIN_IDS")
+    @classmethod
     def validate_super_admin_ids(cls, v: str) -> str:
         if not v:
             return v
@@ -139,6 +142,7 @@ class DBSettings(EnvBaseSettings):
     DB_ECHO: bool = False
 
     @field_validator("DB_PORT")
+    @classmethod
     def validate_db_port(cls, v: int) -> int:
         if not 1 <= v <= 65535:
             msg = "数据库端口必须在 1-65535 范围内"

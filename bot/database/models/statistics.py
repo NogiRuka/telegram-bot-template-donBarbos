@@ -12,17 +12,15 @@
 from __future__ import annotations
 import json
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy import BigInteger, Date, Float, Index, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin
-from datetime import date, datetime
 
-if TYPE_CHECKING:
-    pass
+from datetime import date, datetime
 
 
 class StatisticType(str, Enum):

@@ -5,10 +5,11 @@
 """
 
 from __future__ import annotations
-import datetime
 from enum import Enum
+import datetime
 
-from sqlalchemy import Enum as SAEnum, ForeignKey, Index, JSON, String, text
+from sqlalchemy import JSON, ForeignKey, Index, String
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
@@ -67,13 +68,6 @@ class UserExtendModel(Base, BasicAuditMixin):
     last_interaction_at: Mapped[datetime.datetime | None] = mapped_column(
         nullable=True,
         comment="最后与机器人交互的时间"
-    )
-
-    # 覆盖审计字段 updated_at：不自动 on update
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        server_default=text("NOW()"),
-        nullable=False,
-        comment="更新时间（不随交互自动更新）"
     )
 
 
