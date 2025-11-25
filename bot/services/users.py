@@ -22,6 +22,7 @@ async def add_user(session: AsyncSession, user: User, operator_id: int | None = 
     输入参数:
     - session: 异步数据库会话
     - user: aiogram User 实例
+    - operator_id: 操作者ID（机器人ID），用于填充 `created_by/updated_by`
 
     返回值:
     - None
@@ -123,6 +124,7 @@ async def save_user_snapshot(session: AsyncSession, user: User, operator_id: int
     输入参数:
     - session: 异步数据库会话
     - user: aiogram User 实例
+    - operator_id: 操作者ID（机器人ID），用于填充快照的 `created_by/updated_by`
 
     返回值:
     - None
@@ -170,6 +172,7 @@ async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel,
     输入参数:
     - session: 异步数据库会话
     - model: 当前数据库中的用户模型实例
+    - operator_id: 操作者ID（机器人ID），用于填充快照的 `created_by/updated_by`
 
     返回值:
     - None
@@ -197,14 +200,15 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User, operator
     """交互时更新用户信息
 
     功能说明:
-    - 用户与机器人交互（消息/回调）时，更新 `users` 表的最新字段
-    - 若用户不存在则创建；存在则覆盖可变字段
-    - 更新 `user_extend.last_interaction_at`，必要时自动创建扩展记录
-    - 保存一条 `user_history` 快照以便追踪变更
+    - 用户与机器人交互（消息/回调）时，更新 `users` 表最新字段并始终刷新 `updated_at`
+    - 若用户不存在则创建；存在则仅在字段变更时先保存旧值到 `user_history` 再更新 `users`
+    - 更新 `user_extend.last_interaction_at`（不更新其 `updated_at`），必要时自动创建扩展记录
+    - 操作者使用机器人ID填充 `created_by/updated_by`
 
     输入参数:
     - session: 异步数据库会话
     - user: aiogram User 实例
+    - operator_id: 操作者ID（机器人ID）
 
     返回值:
     - None
