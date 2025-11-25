@@ -51,6 +51,8 @@ async def add_user(session: AsyncSession, user: User) -> None:
             is_premium=_normalize_bool(getattr(user, "is_premium", None)),
             is_bot=bool(user.is_bot),
             added_to_attachment_menu=_normalize_bool(getattr(user, "added_to_attachment_menu", None)),
+            created_by=user.id,
+            updated_by=user.id,
         )
         session.add(new_user)
         # 同步写入 user_extend（首次交互）
@@ -58,7 +60,9 @@ async def add_user(session: AsyncSession, user: User) -> None:
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
         if ext is None:
-            session.add(UserExtendModel(user_id=user.id, last_interaction_at=datetime.now()))
+            session.add(UserExtendModel(user_id=user.id, last_interaction_at=datetime.now(), created_by=user.id, updated_by=user.id))
+        else:
+            ext.updated_by = user.id
         await session.commit()
         await clear_cache(user_exists, user_id)
     except Exception:
@@ -149,6 +153,8 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
             language_code=user.language_code,
             is_premium=_normalize_bool(getattr(user, "is_premium", None)),
             added_to_attachment_menu=_normalize_bool(getattr(user, "added_to_attachment_menu", None)),
+            created_by=user.id,
+            updated_by=user.id,
         )
         session.add(snapshot)
         await session.commit()
@@ -180,6 +186,8 @@ async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel)
             language_code=model.language_code,
             is_premium=model.is_premium,
             added_to_attachment_menu=model.added_to_attachment_menu,
+            created_by=model.updated_by or model.created_by,
+            updated_by=model.updated_by or model.created_by,
         )
         session.add(snapshot)
         await session.commit()
@@ -237,13 +245,10 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
                 }
                 changed = {k: v for k, v in new_values.items() if getattr(current, k) != v}
                 if changed:
-                    # 变更：先保存旧值到 user_history，再更新 users
+                    # 变更：先保存旧值到 user_history，再更新 users（含 updated_by）
                     await save_user_snapshot_from_model(session, current)
+                    changed["updated_by"] = user.id
                     await session.execute(update(UserModel).where(UserModel.id == user.id).values(**changed))
-                    await session.commit()
-                else:
-                    # 无变更：仅更新时间戳
-                    await session.execute(update(UserModel).where(UserModel.id == user.id).values(updated_at=func.now()))
                     await session.commit()
 
         # 更新扩展表最后交互时间（无则创建）
@@ -254,6 +259,7 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
             session.add(ext)
         from datetime import datetime
         ext.last_interaction_at = datetime.now()
+        ext.updated_by = user.id
         await session.commit()
     except Exception:
         pass
