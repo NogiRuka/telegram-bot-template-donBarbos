@@ -137,13 +137,13 @@ version = Annotated[
     )
 ]
 
-# 备注字段类型
+# 备注字段类型（与文档一致：VARCHAR(255)）
 remark = Annotated[
     str | None,
     mapped_column(
-        String(500),
+        String(255),
         nullable=True,
-        comment="备注信息，最大500字符"
+        comment="备注"
     )
 ]
 
@@ -290,7 +290,7 @@ class FullAuditMixin(TimestampMixin, OperatorMixin, SoftDeleteMixin, VersionMixi
     """
 
 
-class BasicAuditMixin(TimestampMixin, OperatorMixin, SoftDeleteMixin):
+class BasicAuditMixin(TimestampMixin, OperatorMixin, SoftDeleteMixin, RemarkMixin):
     """
     基础审计混入类
 
@@ -301,4 +301,5 @@ class BasicAuditMixin(TimestampMixin, OperatorMixin, SoftDeleteMixin):
         - 时间戳: created_at, updated_at
         - 操作者: created_by, updated_by
         - 软删除: is_deleted, deleted_at, deleted_by
+        - 备注: remark
     """

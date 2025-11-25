@@ -57,8 +57,6 @@ class UserModel(Base, BasicAuditMixin):
 
     added_to_attachment_menu: Mapped[bool | None] = mapped_column(nullable=True, comment="是否把 bot 加入附件菜单（可空）")
 
-    # 备注
-    remark: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="备注")
 
     # ==================== 审计字段（按文档顺序） ====================
 

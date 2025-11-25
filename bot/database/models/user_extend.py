@@ -69,8 +69,6 @@ class UserExtendModel(Base, BasicAuditMixin):
         comment="最后与机器人交互的时间"
     )
 
-    # 备注
-    remark: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="备注")
 
     __table_args__ = (
         Index("idx_user_extend_role", "role"),
