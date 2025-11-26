@@ -1,5 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from bot.keyboards.inline.start_admin import build_admin_home_rows
+from bot.keyboards.inline.start_user import make_home_keyboard
 
 
 def get_start_owner_keyboard() -> InlineKeyboardMarkup:
@@ -14,13 +16,7 @@ def get_start_owner_keyboard() -> InlineKeyboardMarkup:
     返回值:
     - InlineKeyboardMarkup: 内联键盘
     """
-    buttons = [
-        [InlineKeyboardButton(text="👤 个人信息", callback_data="start:profile")],
-        [InlineKeyboardButton(text="🧾 账号中心", callback_data="start:account")],
-        [InlineKeyboardButton(text="🛡️ 管理员面板", callback_data="admin:panel")],
-        [InlineKeyboardButton(text="👑 所有者面板", callback_data="panel:main")],
-    ]
-    kb = InlineKeyboardBuilder(markup=buttons)
-    kb.adjust(1)
-    return kb.as_markup()
+    rows = build_admin_home_rows()
+    rows.append([InlineKeyboardButton(text="👑 所有者面板", callback_data="panel:main")])
+    return make_home_keyboard(rows)
 
