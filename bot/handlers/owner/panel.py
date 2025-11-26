@@ -1,16 +1,21 @@
-from aiogram import F, Router, types
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.keyboards.inline.panel_main import OwnerPanelKeyboard
-from bot.services.config_service import get_config, toggle_config
 from bot.handlers.menu import render_view
+from bot.keyboards.inline.panel_admins import AdminsPanelKeyboard
+from bot.keyboards.inline.panel_features import FeaturesPanelKeyboard
+from bot.keyboards.inline.panel_main import OwnerPanelKeyboard
+from bot.keyboards.inline.start_owner import get_start_owner_keyboard
+from bot.services.config_service import toggle_config
+from bot.utils.permissions import require_owner
 
 router = Router(name="owner_panel")
 
 
 @router.callback_query(F.data == "panel:main")
-async def show_owner_panel(callback: CallbackQuery, role: str) -> None:
+@require_owner
+async def show_owner_panel(callback: CallbackQuery) -> None:
     """显示所有者主面板
 
     功能说明:
@@ -18,14 +23,10 @@ async def show_owner_panel(callback: CallbackQuery, role: str) -> None:
 
     输入参数:
     - callback: 回调对象
-    - role: 用户角色标识
 
     返回值:
     - None
     """
-    if role != "owner":
-        await callback.answer("❌ 此功能仅所有者可用", show_alert=True)
-        return
     caption = "🛠️ 管理面板\n\n可进行机器人总开关、功能开关与管理员管理"
     kb = OwnerPanelKeyboard.main()
     if callback.message:
@@ -34,7 +35,8 @@ async def show_owner_panel(callback: CallbackQuery, role: str) -> None:
 
 
 @router.callback_query(F.data == "panel:toggle:bot")
-async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession, role: str) -> None:
+@require_owner
+async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession) -> None:
     """切换机器人总开关
 
     功能说明:
@@ -43,20 +45,17 @@ async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession, rol
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
-    - role: 用户角色标识
 
     返回值:
     - None
     """
-    if role != "owner":
-        await callback.answer("❌ 此操作仅所有者可用", show_alert=True)
-        return
     new_val = await toggle_config(session, "bot_enabled")
     await callback.answer(f"✅ 机器人总开关: {'开启' if new_val else '关闭'}")
 
 
 @router.callback_query(F.data == "panel:features")
-async def show_features_panel(callback: CallbackQuery, role: str) -> None:
+@require_owner
+async def show_features_panel(callback: CallbackQuery) -> None:
     """显示功能开关面板
 
     功能说明:
@@ -64,15 +63,10 @@ async def show_features_panel(callback: CallbackQuery, role: str) -> None:
 
     输入参数:
     - callback: 回调对象
-    - role: 用户角色标识
 
     返回值:
     - None
     """
-    if role != "owner":
-        await callback.answer("❌ 此功能仅所有者可用", show_alert=True)
-        return
-    from bot.keyboards.inline.panel_features import FeaturesPanelKeyboard
 
     caption = "🧩 功能开关\n\n可切换全部功能或单项功能"
     kb = FeaturesPanelKeyboard.main()
@@ -82,7 +76,8 @@ async def show_features_panel(callback: CallbackQuery, role: str) -> None:
 
 
 @router.callback_query(F.data == "panel:admins")
-async def show_admins_panel(callback: CallbackQuery, role: str) -> None:
+@require_owner
+async def show_admins_panel(callback: CallbackQuery) -> None:
     """显示管理员管理面板
 
     功能说明:
@@ -90,15 +85,10 @@ async def show_admins_panel(callback: CallbackQuery, role: str) -> None:
 
     输入参数:
     - callback: 回调对象
-    - role: 用户角色标识
 
     返回值:
     - None
     """
-    if role != "owner":
-        await callback.answer("❌ 此功能仅所有者可用", show_alert=True)
-        return
-    from bot.keyboards.inline.panel_admins import AdminsPanelKeyboard
 
     caption = "👮 管理员管理\n\n可查看管理员列表与管理权限"
     kb = AdminsPanelKeyboard.main()
@@ -108,7 +98,8 @@ async def show_admins_panel(callback: CallbackQuery, role: str) -> None:
 
 
 @router.callback_query(F.data == "panel:back")
-async def back_to_start(callback: CallbackQuery, role: str) -> None:
+@require_owner
+async def back_to_start(callback: CallbackQuery) -> None:
     """返回首页
 
     功能说明:
@@ -116,12 +107,10 @@ async def back_to_start(callback: CallbackQuery, role: str) -> None:
 
     输入参数:
     - callback: 回调对象
-    - role: 用户角色标识
 
     返回值:
     - None
     """
     if callback.message:
-        from bot.keyboards.inline.start_owner import get_start_owner_keyboard
         await render_view(callback.message, "assets/ui/start_owner.jpg", "返回首页", get_start_owner_keyboard())
     await callback.answer()

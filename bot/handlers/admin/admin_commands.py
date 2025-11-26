@@ -2,6 +2,7 @@
 管理员命令处理器模块（子包）
 """
 from datetime import datetime, timedelta
+
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.database.models import GroupConfigModel, GroupType, MessageModel, MessageSaveMode
 from bot.keyboards.inline.group_config import get_confirm_keyboard
 from bot.services.message_export import MessageExportService
+from bot.utils.permissions import require_admin_priv, require_owner
 
 router = Router(name="admin_commands")
 
@@ -47,10 +49,19 @@ def is_owner(role: str) -> bool:
 
 
 @router.message(Command("admin_help"))
-async def admin_help_command(message: Message, role: str) -> None:
-    if not has_admin_priv(role):
-        await message.answer("❌ 此命令仅限管理员或所有者使用")
-        return
+@require_admin_priv
+async def admin_help_command(message: Message) -> None:
+    """管理员帮助命令
+
+    功能说明:
+    - 展示管理员/所有者可用的命令列表与说明
+
+    输入参数:
+    - message: 文本消息对象
+
+    返回值:
+    - None
+    """
     help_text = """
 🛡️ **管理员/所有者命令帮助**
 
@@ -76,10 +87,20 @@ async def admin_help_command(message: Message, role: str) -> None:
 
 
 @router.message(Command("admin_groups"))
-async def admin_groups_command(message: Message, session: AsyncSession, role: str) -> None:
-    if not has_admin_priv(role):
-        await message.answer("❌ 此命令仅限管理员或所有者使用")
-        return
+@require_admin_priv
+async def admin_groups_command(message: Message, session: AsyncSession) -> None:
+    """查看所有群组配置
+
+    功能说明:
+    - 查询并展示群组配置与统计信息（长度过长时展示摘要）
+
+    输入参数:
+    - message: 文本消息对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
     try:
         query = select(GroupConfigModel).order_by(GroupConfigModel.created_at.desc())
         result = await session.execute(query)
@@ -119,10 +140,21 @@ async def admin_groups_command(message: Message, session: AsyncSession, role: st
 
 
 @router.message(Command("admin_enable_group"))
-async def admin_enable_group_command(message: Message, command: CommandObject, session: AsyncSession, role: str) -> None:
-    if not has_admin_priv(role):
-        await message.answer("❌ 此命令仅限管理员或所有者使用")
-        return
+@require_admin_priv
+async def admin_enable_group_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
+    """启用群组消息保存
+
+    功能说明:
+    - 将指定群组的消息保存功能开启，如无配置则创建默认配置
+
+    输入参数:
+    - message: 文本消息对象
+    - command: 命令对象（包含 chat_id 参数）
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
     if not command.args:
         await message.answer("❌ 请提供群组ID\n用法: `/admin_enable_group <chat_id>`", parse_mode="Markdown")
         return
@@ -149,10 +181,21 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
 
 
 @router.message(Command("admin_disable_group"))
-async def admin_disable_group_command(message: Message, command: CommandObject, session: AsyncSession, role: str) -> None:
-    if not has_admin_priv(role):
-        await message.answer("❌ 此命令仅限管理员或所有者使用")
-        return
+@require_admin_priv
+async def admin_disable_group_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
+    """禁用群组消息保存
+
+    功能说明:
+    - 将指定群组的消息保存功能关闭，若群组未配置则提示
+
+    输入参数:
+    - message: 文本消息对象
+    - command: 命令对象（包含 chat_id 参数）
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
     if not command.args:
         await message.answer("❌ 请提供群组ID\n用法: `/admin_disable_group <chat_id>`", parse_mode="Markdown")
         return
@@ -173,10 +216,21 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
 
 
 @router.message(Command("admin_group_info"))
-async def admin_group_info_command(message: Message, command: CommandObject, session: AsyncSession, role: str) -> None:
-    if not has_admin_priv(role):
-        await message.answer("❌ 此命令仅限管理员或所有者使用")
-        return
+@require_admin_priv
+async def admin_group_info_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
+    """查看群组详细信息
+
+    功能说明:
+    - 展示群组基本信息、最近统计与累积统计
+
+    输入参数:
+    - message: 文本消息对象
+    - command: 命令对象（包含 chat_id 参数）
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
     if not command.args:
         await message.answer("❌ 请提供群组ID\n用法: `/admin_group_info <chat_id>`", parse_mode="Markdown")
         return
@@ -221,10 +275,20 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
 
 
 @router.message(Command("admin_cleanup"))
-async def admin_cleanup_command(message: Message, session: AsyncSession, role: str) -> None:
-    if not is_owner(role):
-        await message.answer("❌ 此危险操作仅限所有者使用")
-        return
+@require_owner
+async def admin_cleanup_command(message: Message, session: AsyncSession) -> None:
+    """清理过期数据（所有者）
+
+    功能说明:
+    - 删除 90 天前的旧消息数据，先展示确认提示
+
+    输入参数:
+    - message: 文本消息对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
     try:
         cleanup_date = datetime.now() - timedelta(days=90)
         count_query = select(func.count(MessageModel.id)).where(MessageModel.created_at < cleanup_date)
@@ -246,10 +310,20 @@ async def admin_cleanup_command(message: Message, session: AsyncSession, role: s
 
 
 @router.callback_query(F.data.startswith("admin_cleanup_confirm:"))
-async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession, role: str) -> None:
-    if not is_owner(role):
-        await callback.answer("❌ 此危险操作仅限所有者", show_alert=True)
-        return
+@require_owner
+async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession) -> None:
+    """确认清理过期数据（所有者）
+
+    功能说明:
+    - 执行过期数据删除并反馈结果
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
     try:
         int(callback.data.split(":")[1])
         await callback.answer("🔄 正在清理数据...")

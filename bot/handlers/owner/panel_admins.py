@@ -1,15 +1,18 @@
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.menu import render_view
 from bot.keyboards.inline.panel_admins import AdminsPanelKeyboard
-from bot.services.users import list_admins, remove_admin
+from bot.services.users import list_admins
+from bot.utils.permissions import require_owner
 
 router = Router(name="owner_admins")
 
 
 @router.callback_query(F.data == "admins:list")
-async def list_admins_view(callback: CallbackQuery, session, role: str) -> None:
+@require_owner
+async def list_admins_view(callback: CallbackQuery, session: AsyncSession) -> None:
     """查看管理员列表
 
     功能说明:
@@ -18,14 +21,10 @@ async def list_admins_view(callback: CallbackQuery, session, role: str) -> None:
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
-    - role: 用户角色标识
 
     返回值:
     - None
     """
-    if role != "owner":
-        await callback.answer("❌ 此功能仅所有者可用", show_alert=True)
-        return
     admins = await list_admins(session)
     lines = ["👮 管理员列表"]
     if not admins:

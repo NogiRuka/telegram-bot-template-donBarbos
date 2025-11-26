@@ -1,10 +1,12 @@
 from __future__ import annotations
+import contextlib
 import functools
 from typing import TYPE_CHECKING, Any
 
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
 
+from bot.core.config import settings
 from bot.database.models import UserExtendModel, UserRole
 
 if TYPE_CHECKING:
@@ -46,7 +48,15 @@ def require_owner(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitabl
                 else:
                     role = "user"
             else:
-                role = "user"
+                with contextlib.suppress(Exception):
+                    if user_id is not None and user_id == settings.get_owner_id():
+                        role = "owner"
+                    elif user_id is not None and user_id in set(settings.get_admin_ids()):
+                        role = "admin"
+                    else:
+                        role = "user"
+                if role is None:
+                    role = "user"
         if role != "owner":
             first = args[0] if args else None
             if isinstance(first, CallbackQuery):
@@ -94,7 +104,15 @@ def require_admin_priv(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awa
                 else:
                     role = "user"
             else:
-                role = "user"
+                with contextlib.suppress(Exception):
+                    if user_id is not None and user_id == settings.get_owner_id():
+                        role = "owner"
+                    elif user_id is not None and user_id in set(settings.get_admin_ids()):
+                        role = "admin"
+                    else:
+                        role = "user"
+                if role is None:
+                    role = "user"
         if role not in {"admin", "owner"}:
             first = args[0] if args else None
             if isinstance(first, CallbackQuery):
