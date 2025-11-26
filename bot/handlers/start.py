@@ -12,7 +12,7 @@ from bot.keyboards.inline.start_owner import get_start_owner_keyboard
 from bot.keyboards.inline.start_user import get_account_center_keyboard, get_start_user_keyboard
 from bot.services.analytics import analytics
 from bot.services.config_service import list_features
-from bot.utils.permissions import require_admin_priv
+from bot.utils.permissions import _resolve_role, require_admin_priv
 
 router = Router(name="start")
 
@@ -96,7 +96,7 @@ async def placeholder_callbacks(callback: types.CallbackQuery) -> None:
 
 
 @router.callback_query(lambda c: c.data == "home:back")
-async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, role: str) -> None:
+async def back_to_home(callback: types.CallbackQuery, session: AsyncSession) -> None:
     """返回主面板
 
     功能说明:
@@ -105,13 +105,14 @@ async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, rol
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
-    - role: 用户角色标识
 
     返回值:
     - None
     """
     with contextlib.suppress(Exception):
         await list_features(session)
+    user_id = callback.from_user.id if callback.from_user else None
+    role = await _resolve_role(session, user_id)
     caption = "🌸 欢迎使用机器人!"
     image = "assets/ui/start_user.jpg"
     kb = get_start_user_keyboard()
@@ -151,7 +152,7 @@ async def show_account_center(callback: types.CallbackQuery, session: AsyncSessi
 
 @router.callback_query(lambda c: c.data == "admin:panel")
 @require_admin_priv
-async def show_admin_panel(callback: types.CallbackQuery, session: AsyncSession, role: str) -> None:
+async def show_admin_panel(callback: types.CallbackQuery, session: AsyncSession) -> None:
     """展示管理员面板
 
     功能说明:
@@ -160,13 +161,14 @@ async def show_admin_panel(callback: types.CallbackQuery, session: AsyncSession,
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
-    - role: 用户角色标识
 
     返回值:
     - None
     """
     features = await list_features(session)
     kb = get_admin_panel_keyboard(features)
+    user_id = callback.from_user.id if callback.from_user else None
+    role = await _resolve_role(session, user_id)
     image = "assets/ui/start_admin.jpg" if role == "admin" else "assets/ui/start_owner.jpg"
     caption = "🛡️ 管理员面板"
     if callback.message:
