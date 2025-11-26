@@ -15,8 +15,10 @@ def build_user_home_rows() -> list[list[InlineKeyboardButton]]:
     - list[list[InlineKeyboardButton]]: 按钮行集合
     """
     return [
-        [InlineKeyboardButton(text="👤 个人信息", callback_data="start:profile")],
-        [InlineKeyboardButton(text="🧾 账号中心", callback_data="start:account")],
+        [
+            InlineKeyboardButton(text="👤 个人信息", callback_data="start:profile"),
+            InlineKeyboardButton(text="🧾 账号中心", callback_data="start:account"),
+        ],
     ]
 
 
@@ -33,7 +35,6 @@ def make_home_keyboard(rows: list[list[InlineKeyboardButton]]) -> InlineKeyboard
     - InlineKeyboardMarkup: 内联键盘
     """
     kb = InlineKeyboardBuilder(markup=rows)
-    kb.adjust(1)
     return kb.as_markup()
 
 
