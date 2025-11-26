@@ -56,7 +56,7 @@ async def set_config(session: AsyncSession, key: str, value: Any, config_type: C
             session.add(model)
         else:
             await session.execute(
-                update(ConfigModel).where(ConfigModel.id == model.id).values(value=str(value))
+                update(ConfigModel).where(ConfigModel.key == key).values(value=str(value))
             )
     except SQLAlchemyError:
         with contextlib.suppress(SQLAlchemyError):
