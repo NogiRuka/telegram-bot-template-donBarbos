@@ -8,7 +8,7 @@ from bot.utils.permissions import require_owner
 router = Router(name="owner_features")
 
 
-@router.callback_query(F.data == "features:toggle:all")
+@router.callback_query(F.data == "owner:features:toggle:all")
 @require_owner
 async def toggle_all_features(callback: CallbackQuery, session: AsyncSession) -> None:
     """切换全部功能开关
@@ -27,7 +27,7 @@ async def toggle_all_features(callback: CallbackQuery, session: AsyncSession) ->
     await callback.answer(f"✅ 功能总开关: {'启用' if new_val else '禁用'}")
 
 
-@router.callback_query(F.data == "features:toggle:export_users")
+@router.callback_query(F.data == "owner:features:toggle:export_users")
 @require_owner
 async def toggle_export_users(callback: CallbackQuery, session: AsyncSession) -> None:
     """切换导出用户功能
@@ -46,7 +46,7 @@ async def toggle_export_users(callback: CallbackQuery, session: AsyncSession) ->
     await callback.answer(f"✅ 导出用户功能: {'启用' if new_val else '禁用'}")
 
 
-@router.callback_query(F.data == "features:toggle:emby_register")
+@router.callback_query(F.data == "owner:features:toggle:emby_register")
 @require_owner
 async def toggle_emby_register(callback: CallbackQuery, session: AsyncSession) -> None:
     """切换 Emby 注册功能
@@ -65,7 +65,7 @@ async def toggle_emby_register(callback: CallbackQuery, session: AsyncSession) -
     await callback.answer(f"✅ Emby 注册: {'启用' if new_val else '禁用'}")
 
 
-@router.callback_query(F.data == "features:toggle:admin_open_registration")
+@router.callback_query(F.data == "owner:features:toggle:admin_open_registration")
 @require_owner
 async def toggle_admin_open_registration(callback: CallbackQuery, session: AsyncSession) -> None:
     """切换管理员开放注册权限

@@ -15,9 +15,10 @@
 import asyncio
 import contextlib
 import os
-from pathlib import Path
 import shutil
 import socket
+from pathlib import Path
+
 from loguru import logger
 
 from bot.__main__ import main as bot_main
@@ -39,7 +40,7 @@ async def start_web_process() -> asyncio.subprocess.Process | None:
     web_dir = Path(__file__).parent / "web"
     pnpm = shutil.which("pnpm")
     npm = shutil.which("npm")
-    cmd = pnpm and "pnpm dev" or (npm and "npm run dev")
+    cmd = (pnpm and "pnpm dev") or (npm and "npm run dev")
     if not cmd:
         logger.warning("⚠️ 未检测到 pnpm 或 npm，前端未启动")
         return None

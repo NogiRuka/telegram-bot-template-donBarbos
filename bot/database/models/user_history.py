@@ -10,7 +10,7 @@ import datetime
 from sqlalchemy import BigInteger, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
+from bot.database.models.base import Base, BasicAuditMixin
 
 
 class UserHistoryModel(Base, BasicAuditMixin):

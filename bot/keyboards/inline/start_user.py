@@ -17,7 +17,7 @@ def build_user_home_rows() -> list[list[InlineKeyboardButton]]:
     return [
         [
             InlineKeyboardButton(text="👤 个人信息", callback_data="start:profile"),
-            InlineKeyboardButton(text="🧾 账号中心", callback_data="start:account"),
+            InlineKeyboardButton(text="🧩 账号中心", callback_data="start:account"),
         ],
     ]
 
@@ -53,22 +53,32 @@ def get_start_user_keyboard() -> InlineKeyboardMarkup:
     return make_home_keyboard(build_user_home_rows())
 
 
-def get_account_center_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
+def get_account_center_keyboard(has_emby_account: bool) -> InlineKeyboardMarkup:
     """账号中心键盘
 
     功能说明:
-    - 二级入口: 包含与账号相关功能, 底部包含返回主面板
+    - 若已有 Emby 账号: 展示账号信息、线路信息、设备管理、修改密码, 每行两个, 底部返回主面板
+    - 若尚无 Emby 账号: 展示开始注册与返回主面板, 每行一个
 
     输入参数:
-    - features: 功能开关映射
+    - has_emby_account: 是否已有 Emby 账号
 
     返回值:
     - InlineKeyboardMarkup: 内联键盘
     """
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="📤 消息导出", callback_data="start:export"))
-    if features.get("features_enabled", False) and features.get("feature_emby_register", False):
-        builder.row(InlineKeyboardButton(text="🎬 Emby 注册", callback_data="emby:register"))
-    builder.row(InlineKeyboardButton(text="↩️ 返回主面板", callback_data="home:back"))
+    if has_emby_account:
+        builder.row(
+            InlineKeyboardButton(text="👤 账号信息", callback_data="emby:info"),
+            InlineKeyboardButton(text="🛰️ 线路信息", callback_data="emby:lines"),
+        )
+        builder.row(
+            InlineKeyboardButton(text="📱 设备管理", callback_data="emby:devices"),
+            InlineKeyboardButton(text="🔐 修改密码", callback_data="emby:password"),
+        )
+        builder.row(InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"))
+    else:
+        builder.row(InlineKeyboardButton(text="🎬 开始注册", callback_data="emby:register"))
+        builder.row(InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"))
     return builder.as_markup()
 

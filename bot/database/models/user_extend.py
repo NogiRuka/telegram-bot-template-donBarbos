@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 from enum import Enum
-import datetime
+from datetime import datetime
 
 from sqlalchemy import JSON, ForeignKey, Index, String
 from sqlalchemy import Enum as SAEnum
@@ -65,7 +65,7 @@ class UserExtendModel(Base, BasicAuditMixin):
 
     # IP 列表与最后交互时间
     ip_list: Mapped[dict | list | None] = mapped_column(JSON, nullable=True, comment="访问过的IP数组")
-    last_interaction_at: Mapped[datetime.datetime | None] = mapped_column(
+    last_interaction_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
         comment="最后与机器人交互的时间"
     )

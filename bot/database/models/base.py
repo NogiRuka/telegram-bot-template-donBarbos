@@ -13,7 +13,7 @@ from __future__ import annotations
 import datetime
 from typing import Annotated
 
-from sqlalchemy import BigInteger, Boolean, String, Text, text
+from sqlalchemy import BigInteger, Boolean, Text, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # ==================== 通用字段类型定义 ====================

@@ -3,14 +3,15 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.menu import render_view
-from bot.keyboards.inline.panel_admins import AdminsPanelKeyboard
+from bot.handlers.start import get_common_image
+from bot.keyboards.inline.start_owner import get_admins_panel_keyboard
 from bot.services.users import list_admins
 from bot.utils.permissions import require_owner
 
 router = Router(name="owner_admins")
 
 
-@router.callback_query(F.data == "admins:list")
+@router.callback_query(F.data == "owner:admins:list")
 @require_owner
 async def list_admins_view(callback: CallbackQuery, session: AsyncSession) -> None:
     """查看管理员列表
@@ -35,5 +36,6 @@ async def list_admins_view(callback: CallbackQuery, session: AsyncSession) -> No
             lines.append(label)
     caption = "\n".join(lines)
     if callback.message:
-        await render_view(callback.message, "assets/ui/panel_general.jpg", caption, AdminsPanelKeyboard.main())
+        image = get_common_image()
+        await render_view(callback.message, image, caption, get_admins_panel_keyboard())
     await callback.answer()

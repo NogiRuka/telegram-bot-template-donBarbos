@@ -1,21 +1,26 @@
 """
-管理员命令处理器模块（子包）
+管理员命令处理器模块(子包)
 """
-from datetime import datetime, timedelta
+import contextlib
+from datetime import datetime, timedelta, timezone
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
 from loguru import logger
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.config import settings
 from bot.database.models import GroupConfigModel, GroupType, MessageModel, MessageSaveMode
 from bot.keyboards.inline.group_config import get_confirm_keyboard
 from bot.services.message_export import MessageExportService
 from bot.utils.permissions import require_admin_priv, require_owner
 
 router = Router(name="admin_commands")
+MAX_MESSAGE_LENGTH = 4000
+SUMMARY_LIMIT = 20
 
 
 def has_admin_priv(role: str) -> bool:
@@ -25,7 +30,7 @@ def has_admin_priv(role: str) -> bool:
     - 基于鉴权中间件注入的 `role` 判定是否拥有管理权限
 
     输入参数:
-    - role: 角色标识字符串（"user" | "admin" | "owner"）
+    - role: 角色标识字符串("user" | "admin" | "owner")
 
     返回值:
     - bool: True 表示允许执行管理员级操作
@@ -81,7 +86,7 @@ async def admin_help_command(message: Message) -> None:
 • `/admin_maintenance` - 进入维护模式
 • `/admin_status` - 查看系统状态
 
-**注意:** 管理员命令需管理员或所有者权限；危险操作仅所有者可执行
+**注意:** 管理员命令需管理员或所有者权限; 危险操作仅所有者可执行
     """
     await message.answer(help_text, parse_mode="Markdown")
 
@@ -92,7 +97,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
     """查看所有群组配置
 
     功能说明:
-    - 查询并展示群组配置与统计信息（长度过长时展示摘要）
+    - 查询并展示群组配置与统计信息(长度过长时展示摘要)
 
     输入参数:
     - message: 文本消息对象
@@ -118,7 +123,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
             groups_text += f"  保存模式: {config.message_save_mode.value}\n"
             groups_text += f"  已保存消息: {config.total_messages_saved}\n"
             groups_text += f"  创建时间: {config.created_at.strftime('%Y-%m-%d %H:%M')}\n\n"
-        if len(groups_text) > 4000:
+        if len(groups_text) > MAX_MESSAGE_LENGTH:
             groups_text = "📋 **所有群组配置**\n\n"
             enabled_count = sum(1 for c in configs if c.is_message_save_enabled)
             total_messages = sum(c.total_messages_saved for c in configs)
@@ -128,13 +133,13 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
             groups_text += f"  禁用群组: {len(configs) - enabled_count}\n"
             groups_text += f"  总消息数: {total_messages}\n\n"
             groups_text += "📝 **群组列表:**\n"
-            for config in configs:
+            for config in configs[:SUMMARY_LIMIT]:
                 status = "✅" if config.is_message_save_enabled else "❌"
                 groups_text += f"  {status} 群组 {config.chat_id} ({config.total_messages_saved} 条消息)\n"
-            if len(configs) > 20:
-                groups_text += f"\n... 还有 {len(configs) - 20} 个群组"
+            if len(configs) > SUMMARY_LIMIT:
+                groups_text += f"\n... 还有 {len(configs) - SUMMARY_LIMIT} 个群组"
         await message.answer(groups_text, parse_mode="Markdown")
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"查看群组配置失败: {e}")
         await message.answer("❌ 查看群组配置时发生错误")
 
@@ -145,11 +150,11 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
     """启用群组消息保存
 
     功能说明:
-    - 将指定群组的消息保存功能开启，如无配置则创建默认配置
+    - 将指定群组的消息保存功能开启, 如无配置则创建默认配置
 
     输入参数:
     - message: 文本消息对象
-    - command: 命令对象（包含 chat_id 参数）
+    - command: 命令对象(包含 chat_id 参数)
     - session: 异步数据库会话
 
     返回值:
@@ -175,7 +180,7 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
         await message.answer(f"✅ 已启用群组 {chat_id} 的消息保存功能")
     except ValueError:
         await message.answer("❌ 无效的群组ID")
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"启用群组失败: {e}")
         await message.answer("❌ 启用群组时发生错误")
 
@@ -186,11 +191,11 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
     """禁用群组消息保存
 
     功能说明:
-    - 将指定群组的消息保存功能关闭，若群组未配置则提示
+    - 将指定群组的消息保存功能关闭, 若群组未配置则提示
 
     输入参数:
     - message: 文本消息对象
-    - command: 命令对象（包含 chat_id 参数）
+    - command: 命令对象(包含 chat_id 参数)
     - session: 异步数据库会话
 
     返回值:
@@ -210,7 +215,7 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
         await message.answer(f"❌ 已禁用群组 {chat_id} 的消息保存功能")
     except ValueError:
         await message.answer("❌ 无效的群组ID")
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"禁用群组失败: {e}")
         await message.answer("❌ 禁用群组时发生错误")
 
@@ -221,11 +226,11 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
     """查看群组详细信息
 
     功能说明:
-    - 展示群组基本信息、最近统计与累积统计
+    - 展示群组基本信息, 最近统计与累积统计
 
     输入参数:
     - message: 文本消息对象
-    - command: 命令对象（包含 chat_id 参数）
+    - command: 命令对象(包含 chat_id 参数)
     - session: 异步数据库会话
 
     返回值:
@@ -258,7 +263,7 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
         info_text += f"  保存回复: {'✅' if config.save_replies else '❌'}\n"
         info_text += f"  保存机器人: {'✅' if config.save_bot_messages else '❌'}\n\n"
         if stats:
-            info_text += "**统计信息（最近30天）:**\n"
+            info_text += "**统计信息(最近30天):**\n"
             info_text += f"  总消息数: {stats.get('total_messages', 0)}\n"
             info_text += f"  活跃用户: {len(stats.get('top_users', []))}\n"
             if stats.get("message_types"):
@@ -269,7 +274,7 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
         await message.answer(info_text, parse_mode="Markdown")
     except ValueError:
         await message.answer("❌ 无效的群组ID")
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"查看群组信息失败: {e}")
         await message.answer("❌ 查看群组信息时发生错误")
 
@@ -277,10 +282,10 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
 @router.message(Command("admin_cleanup"))
 @require_owner
 async def admin_cleanup_command(message: Message, session: AsyncSession) -> None:
-    """清理过期数据（所有者）
+    """清理过期数据(所有者)
 
     功能说明:
-    - 删除 90 天前的旧消息数据，先展示确认提示
+    - 删除 90 天前的旧消息数据, 先展示确认提示
 
     输入参数:
     - message: 文本消息对象
@@ -290,7 +295,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
     - None
     """
     try:
-        cleanup_date = datetime.now() - timedelta(days=90)
+        cleanup_date = datetime.now(timezone.utc) - timedelta(days=90)
         count_query = select(func.count(MessageModel.id)).where(MessageModel.created_at < cleanup_date)
         result = await session.execute(count_query)
         message_count = result.scalar() or 0
@@ -298,13 +303,13 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
             await message.answer("✅ 没有需要清理的过期数据")
             return
         await message.answer(
-            f"🗑️ **数据清理确认**\n\n" f"将删除 {message_count} 条90天前的消息\n" f"此操作不可撤销，是否继续？",
+            f"🗑️ **数据清理确认**\n\n" f"将删除 {message_count} 条90天前的消息\n" f"此操作不可撤销, 是否继续?",
             reply_markup=get_confirm_keyboard(
                 f"admin_cleanup_confirm:{message_count}", "admin_cleanup_cancel"
             ),
             parse_mode="Markdown",
         )
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"数据清理失败: {e}")
         await message.answer("❌ 数据清理时发生错误")
 
@@ -312,7 +317,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
 @router.callback_query(F.data.startswith("admin_cleanup_confirm:"))
 @require_owner
 async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession) -> None:
-    """确认清理过期数据（所有者）
+    """确认清理过期数据(所有者)
 
     功能说明:
     - 执行过期数据删除并反馈结果
@@ -327,16 +332,18 @@ async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession)
     try:
         int(callback.data.split(":")[1])
         await callback.answer("🔄 正在清理数据...")
-        cleanup_date = datetime.now() - timedelta(days=90)
+        cleanup_date = datetime.now(timezone.utc) - timedelta(days=90)
         delete_query = delete(MessageModel).where(MessageModel.created_at < cleanup_date)
         result = await session.execute(delete_query)
         await session.commit()
         deleted_count = result.rowcount
         await callback.message.edit_text(
-            f"✅ **数据清理完成**\n\n" f"已删除 {deleted_count} 条过期消息\n" f"清理时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"✅ **数据清理完成**\n\n"
+            f"已删除 {deleted_count} 条过期消息\n"
+            f"清理时间: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}",
             parse_mode="Markdown",
         )
-    except Exception as e:
+    except (ValueError, SQLAlchemyError) as e:
         logger.error(f"确认清理失败: {e}")
         await callback.answer("❌ 清理失败", show_alert=True)
 
@@ -364,7 +371,7 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         message_query = select(func.count(MessageModel.id))
         message_result = await session.execute(message_query)
         total_messages = message_result.scalar() or 0
-        recent_date = datetime.now() - timedelta(days=30)
+        recent_date = datetime.now(timezone.utc) - timedelta(days=30)
         recent_query = select(func.count(MessageModel.id)).where(MessageModel.created_at >= recent_date)
         recent_result = await session.execute(recent_query)
         recent_messages = recent_result.scalar() or 0
@@ -381,12 +388,27 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         stats_text += f"  最近30天: {recent_messages:,}\n"
         stats_text += f"  日均消息: {recent_messages/30:.1f}\n\n"
         stats_text += "**系统信息:**\n"
-        stats_text += f"  统计时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        stats_text += f"  统计时间: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}\n"
         stats_text += "  运行状态: ✅ 正常"
         await message.answer(stats_text, parse_mode="Markdown")
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"查看全局统计失败: {e}")
         await message.answer("❌ 查看统计信息时发生错误")
 
 
 __all__ = ["router"]
+def is_super_admin(user_id: int) -> bool:
+    """判断是否为超级管理员
+
+    功能说明:
+    - 将所有者视为超级管理员, 拥有最高权限
+
+    输入参数:
+    - user_id: Telegram 用户ID
+
+    返回值:
+    - bool: True 表示为超级管理员
+    """
+    with contextlib.suppress(Exception):
+        return user_id == settings.get_owner_id()
+    return False

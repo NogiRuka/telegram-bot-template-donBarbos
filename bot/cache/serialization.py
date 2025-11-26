@@ -1,6 +1,6 @@
 # ruff: noqa: S301
 import pickle
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any
 
 import orjson
@@ -57,8 +57,9 @@ class PickleSerializer(AbstractSerializer):
         """
         try:
             return pickle.dumps(obj)
-        except Exception as exc:  # noqa: BLE001
-            raise ValueError(f"pickle 序列化失败: {exc}") from exc
+        except Exception as exc:
+            msg = f"pickle 序列化失败: {exc}"
+            raise ValueError(msg) from exc
 
     def deserialize(self, obj: bytes) -> Any:
         """反序列化 `bytes` 为对象
@@ -71,8 +72,9 @@ class PickleSerializer(AbstractSerializer):
         """
         try:
             return pickle.loads(obj)
-        except Exception as exc:  # noqa: BLE001
-            raise ValueError(f"pickle 反序列化失败: {exc}") from exc
+        except Exception as exc:
+            msg = f"pickle 反序列化失败: {exc}"
+            raise ValueError(msg) from exc
 
 
 class JSONSerializer(AbstractSerializer):
@@ -93,8 +95,9 @@ class JSONSerializer(AbstractSerializer):
         """
         try:
             return orjson.dumps(obj)
-        except Exception as exc:  # noqa: BLE001
-            raise ValueError(f"JSON 序列化失败: {exc}") from exc
+        except Exception as exc:
+            msg = f"JSON 序列化失败: {exc}"
+            raise ValueError(msg) from exc
 
     def deserialize(self, obj: bytes | str) -> Any:
         """反序列化 JSON 为对象
@@ -107,5 +110,6 @@ class JSONSerializer(AbstractSerializer):
         """
         try:
             return orjson.loads(obj)
-        except Exception as exc:  # noqa: BLE001
-            raise ValueError(f"JSON 反序列化失败: {exc}") from exc
+        except Exception as exc:
+            msg = f"JSON 反序列化失败: {exc}"
+            raise ValueError(msg) from exc

@@ -1,8 +1,8 @@
 from aiogram import Router
 
 from .panel import router as owner_panel_router
-from .panel_features import router as owner_features_router
 from .panel_admins import router as owner_admins_router
+from .panel_features import router as owner_features_router
 
 
 def get_owner_router() -> Router:
