@@ -9,8 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
 from bot.handlers.menu import render_view
+from bot.keyboards.inline.start_admin import get_admin_panel_keyboard
+from bot.keyboards.inline.start_user import get_account_center_keyboard
 from bot.services.analytics import analytics
 from bot.services.config_service import list_features
+from bot.utils.permissions import require_admin_priv
 
 router = Router(name="start")
 
@@ -79,7 +82,7 @@ def build_admin_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def build_user_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
+def build_user_keyboard() -> InlineKeyboardMarkup:
     """用户首页键盘构建
 
     功能说明:
@@ -93,10 +96,7 @@ def build_user_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
     """
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="👤 个人信息", callback_data="start:profile"))
-    if features.get("features_enabled", False) and features.get("feature_emby_register", False):
-        builder.row(InlineKeyboardButton(text="🎬 Emby 注册", callback_data="emby:register"))
-    builder.row(InlineKeyboardButton(text="📤 消息导出", callback_data="start:export"))
-    builder.row(InlineKeyboardButton(text="🆘 支持", callback_data="start:support"))
+    builder.row(InlineKeyboardButton(text="🧾 账号中心", callback_data="start:account"))
     return builder.as_markup()
 
 
@@ -134,7 +134,7 @@ async def start_handler(message: types.Message, role: str | None = None, session
         caption = "🌸 管理员欢迎页"
         image = "assets/ui/start_admin.jpg"
     else:
-        kb = build_user_keyboard(features)
+        kb = build_user_keyboard()
         caption = "🌸 欢迎使用机器人!"
     await render_view(message, image, caption, kb)
 
@@ -154,3 +154,83 @@ async def placeholder_callbacks(callback: types.CallbackQuery) -> None:
     """
     with contextlib.suppress(Exception):
         await callback.answer("功能建设中, 请稍后再试", show_alert=True)
+
+
+@router.callback_query(lambda c: c.data == "home:back")
+async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, role: str) -> None:
+    """返回主面板
+
+    功能说明:
+    - 根据用户角色返回至对应的一级主页键盘
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+    - role: 用户角色标识
+
+    返回值:
+    - None
+    """
+    features: dict[str, bool] = {}
+    with contextlib.suppress(Exception):
+        features = await list_features(session)
+    caption = "🌸 欢迎使用机器人!"
+    image = "assets/ui/start_user.jpg"
+    kb = build_user_keyboard()
+    if role == "admin":
+        caption = "🌸 管理员欢迎页"
+        image = "assets/ui/start_admin.jpg"
+        kb = build_admin_keyboard(features)
+    elif role == "owner":
+        caption = "🌸 所有者欢迎页"
+        image = "assets/ui/start_owner.jpg"
+        kb = build_owner_keyboard(features)
+    if callback.message:
+        await render_view(callback.message, image, caption, kb)
+    await callback.answer()
+
+
+@router.callback_query(lambda c: c.data == "start:account")
+async def show_account_center(callback: types.CallbackQuery, session: AsyncSession) -> None:
+    """展示账号中心
+
+    功能说明:
+    - 展示二级账号中心菜单, 底部包含返回主面板
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    features = await list_features(session)
+    kb = get_account_center_keyboard(features)
+    if callback.message:
+        await render_view(callback.message, "assets/ui/start_user.jpg", "🧾 账号中心", kb)
+    await callback.answer()
+
+
+@router.callback_query(lambda c: c.data == "admin:panel")
+@require_admin_priv
+async def show_admin_panel(callback: types.CallbackQuery, session: AsyncSession, role: str) -> None:
+    """展示管理员面板
+
+    功能说明:
+    - 展示二级管理员面板菜单, 底部包含返回主面板
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+    - role: 用户角色标识
+
+    返回值:
+    - None
+    """
+    features = await list_features(session)
+    kb = get_admin_panel_keyboard(features)
+    image = "assets/ui/start_admin.jpg" if role == "admin" else "assets/ui/start_owner.jpg"
+    caption = "🛡️ 管理员面板"
+    if callback.message:
+        await render_view(callback.message, image, caption, kb)
+    await callback.answer()

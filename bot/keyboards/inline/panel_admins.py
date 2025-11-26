@@ -18,7 +18,7 @@ class AdminsPanelKeyboard:
         """
         buttons = [
             [InlineKeyboardButton(text="👀 查看管理员列表", callback_data="admins:list")],
-            [InlineKeyboardButton(text="↩️ 返回", callback_data="panel:main")],
+            [InlineKeyboardButton(text="↩️ 返回主面板", callback_data="panel:main")],
         ]
         kb = InlineKeyboardBuilder(markup=buttons)
         kb.adjust(1)

@@ -6,7 +6,7 @@ def get_start_owner_keyboard() -> InlineKeyboardMarkup:
     """所有者首页键盘
 
     功能说明:
-    - 在管理员基础上加入管理面板入口
+    - 复用管理员首页并追加所有者面板入口
 
     输入参数:
     - 无
@@ -15,10 +15,10 @@ def get_start_owner_keyboard() -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 内联键盘
     """
     buttons = [
-        [InlineKeyboardButton(text="📋 管理面板", callback_data="panel:main")],
-        [InlineKeyboardButton(text="📊 群组管理", callback_data="start:groups")],
-        [InlineKeyboardButton(text="📈 统计数据", callback_data="start:stats")],
-        [InlineKeyboardButton(text="🆘 支持", callback_data="start:support")],
+        [InlineKeyboardButton(text="👤 个人信息", callback_data="start:profile")],
+        [InlineKeyboardButton(text="🧾 账号中心", callback_data="start:account")],
+        [InlineKeyboardButton(text="🛡️ 管理员面板", callback_data="admin:panel")],
+        [InlineKeyboardButton(text="👑 所有者面板", callback_data="panel:main")],
     ]
     kb = InlineKeyboardBuilder(markup=buttons)
     kb.adjust(1)

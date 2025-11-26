@@ -20,7 +20,7 @@ class OwnerPanelKeyboard:
             [InlineKeyboardButton(text="🚦 机器人总开关", callback_data="panel:toggle:bot")],
             [InlineKeyboardButton(text="🧩 功能开关", callback_data="panel:features")],
             [InlineKeyboardButton(text="👮 管理员管理", callback_data="panel:admins")],
-            [InlineKeyboardButton(text="↩️ 返回", callback_data="panel:back")],
+            [InlineKeyboardButton(text="↩️ 返回主面板", callback_data="panel:back")],
         ]
         kb = InlineKeyboardBuilder(markup=buttons)
         kb.adjust(1)

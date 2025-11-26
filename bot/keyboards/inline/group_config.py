@@ -1,7 +1,7 @@
 """
 群组配置内联键盘模块
 
-本模块定义了群组消息保存配置相关的内联键盘，
+本模块定义了群组消息保存配置相关的内联键盘,
 用于群组配置管理界面的交互。
 
 作者: Telegram Bot Template
@@ -25,7 +25,7 @@ def get_group_config_keyboard(config_id: int) -> InlineKeyboardMarkup:
     """
     builder = InlineKeyboardBuilder()
 
-    # 第一行：启用/禁用 和 保存模式
+    # 第一行: 启用/禁用 和 保存模式
     builder.row(
         InlineKeyboardButton(
             text="🔄 切换启用状态",
@@ -37,7 +37,7 @@ def get_group_config_keyboard(config_id: int) -> InlineKeyboardMarkup:
         )
     )
 
-    # 第二行：消息类型过滤
+    # 第二行: 消息类型过滤
     builder.row(
         InlineKeyboardButton(
             text="📝 文本消息",
@@ -49,7 +49,7 @@ def get_group_config_keyboard(config_id: int) -> InlineKeyboardMarkup:
         )
     )
 
-    # 第三行：特殊消息过滤
+    # 第三行: 特殊消息过滤
     builder.row(
         InlineKeyboardButton(
             text="↩️ 转发消息",
@@ -61,7 +61,7 @@ def get_group_config_keyboard(config_id: int) -> InlineKeyboardMarkup:
         )
     )
 
-    # 第四行：机器人消息
+    # 第四行: 机器人消息
     builder.row(
         InlineKeyboardButton(
             text="🤖 机器人消息",
@@ -69,7 +69,7 @@ def get_group_config_keyboard(config_id: int) -> InlineKeyboardMarkup:
         )
     )
 
-    # 第五行：管理操作
+    # 第五行: 管理操作
     builder.row(
         InlineKeyboardButton(
             text="🗑️ 清空消息",
@@ -132,9 +132,13 @@ def get_save_mode_keyboard(config_id: int) -> InlineKeyboardMarkup:
     # 返回按钮
     builder.row(
         InlineKeyboardButton(
-            text="⬅️ 返回",
+            text="⬅️ 返回上一级",
             callback_data=f"group_config_back:{config_id}"
-        )
+        ),
+        InlineKeyboardButton(
+            text="↩️ 返回主面板",
+            callback_data="home:back"
+        ),
     )
 
     return builder.as_markup()
