@@ -15,7 +15,7 @@ from bot.core.loader import bot, dp
 from bot.database.database import engine, sessionmaker
 from bot.handlers import get_handlers_router
 from bot.keyboards.default_commands import remove_default_commands, set_default_commands
-from bot.services.config_service import ensure_config_defaults, ensure_config_schema
+from bot.services.config_service import ensure_config_defaults
 
 if TYPE_CHECKING:
     from aiogram import Bot
@@ -46,7 +46,6 @@ async def on_startup() -> None:
         raise SystemExit(1) from err
     try:
         async with sessionmaker() as session:
-            await ensure_config_schema(session)
             await ensure_config_defaults(session)
         await start_api_server()
     except (OSError, ValueError, RuntimeError) as err:
