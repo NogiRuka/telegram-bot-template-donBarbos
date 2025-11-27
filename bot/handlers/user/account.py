@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.handlers.menu import render_view
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.start_user import get_account_center_keyboard
-from bot.services.config_service import get_config, list_features
+from bot.services.config_service import get_config
 from bot.utils.permissions import _resolve_role
 
 router = Router(name="user_account")
@@ -26,9 +26,8 @@ async def show_account_center(callback: CallbackQuery, session: AsyncSession) ->
     返回值:
     - None
     """
-    features = await list_features(session)
     has_emby_account = True
-    kb = get_account_center_keyboard(has_emby_account, features)
+    kb = get_account_center_keyboard(has_emby_account)
     msg = callback.message
     if msg:
         uid = callback.from_user.id if callback.from_user else None

@@ -55,7 +55,6 @@ def get_start_user_keyboard() -> InlineKeyboardMarkup:
 
 def get_account_center_keyboard(
     has_emby_account: bool,
-    _features: dict[str, bool] | None = None,
 ) -> InlineKeyboardMarkup:
     """账号中心键盘
 
@@ -65,7 +64,6 @@ def get_account_center_keyboard(
 
     输入参数:
     - has_emby_account: 是否已有 Emby 账号
-    - features: 功能开关字典(可选), 不影响键盘展示, 仅为保持接口一致
 
     返回值:
     - InlineKeyboardMarkup: 内联键盘
