@@ -110,6 +110,10 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
         "features.enabled",
         "features.export_users",
         "user.register",
+        "user.info",
+        "user.lines",
+        "user.devices",
+        "user.password",
         "admin.open_registration",
     ]
     out: dict[str, bool] = {}

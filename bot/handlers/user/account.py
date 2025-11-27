@@ -27,9 +27,9 @@ async def show_account_center(callback: CallbackQuery, session: AsyncSession) ->
     返回值:
     - None
     """
-    _ = await list_features(session)
+    features = await list_features(session)
     has_emby_account = True
-    kb = get_account_center_keyboard(has_emby_account)
+    kb = get_account_center_keyboard(has_emby_account, features)
     msg = callback.message
     if msg:
         uid = callback.from_user.id if callback.from_user else None
@@ -47,6 +47,7 @@ async def show_account_center(callback: CallbackQuery, session: AsyncSession) ->
             "user:lines",
             "user:devices",
             "user:password",
+            "user:profile",
         }
     )
 )
