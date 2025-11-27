@@ -78,16 +78,16 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
         callback_data="owner:features:toggle:user_info",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"🔐 修改密码 {status(features.get('user.password', False))}",
-        callback_data="owner:features:toggle:user_password",
-    ))
-    kb.row(InlineKeyboardButton(
         text=f"🛰️ 线路信息 {status(features.get('user.lines', False))}",
         callback_data="owner:features:toggle:user_lines",
     ))
     kb.row(InlineKeyboardButton(
         text=f"📱 设备管理 {status(features.get('user.devices', False))}",
         callback_data="owner:features:toggle:user_devices",
+    ))
+    kb.row(InlineKeyboardButton(
+        text=f"🔐 修改密码 {status(features.get('user.password', False))}",
+        callback_data="owner:features:toggle:user_password",
     ))
     kb.row(InlineKeyboardButton(
         text=f"📤 导出用户 {status(features.get('user.export_users', False))}",
