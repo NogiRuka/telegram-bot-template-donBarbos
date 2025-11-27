@@ -77,8 +77,10 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
             text=f"🛂 管理员开放注册权限 {status(features.get('feature_admin_open_registration', False))}",
             callback_data="owner:features:toggle:admin_open_registration",
         )],
-        [InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel")],
-        [InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back")],
+        [
+            InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
+            InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+        ],
     ]
     kb = InlineKeyboardBuilder(markup=buttons)
     kb.adjust(1)
@@ -99,8 +101,10 @@ def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
     """
     buttons = [
         [InlineKeyboardButton(text="👀 查看管理员列表", callback_data="owner:admins:list")],
-        [InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel")],
-        [InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back")],
+        [
+            InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
+            InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+        ],
     ]
     kb = InlineKeyboardBuilder(markup=buttons)
     kb.adjust(1)
@@ -135,8 +139,10 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
             text=f"🛂 开放注册 {status(perms.get('admin_perm_open_registration', False))}",
             callback_data="owner:admin_perms:toggle:open_registration",
         )],
-        [InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel")],
-        [InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back")],
+        [
+            InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
+            InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+        ],
     ]
     kb = InlineKeyboardBuilder(markup=buttons)
     kb.adjust(1)
