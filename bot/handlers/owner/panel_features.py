@@ -77,6 +77,50 @@ async def toggle_emby_register(callback: CallbackQuery, session: AsyncSession) -
     await callback.answer(f"✅ Emby 注册: {'启用' if new_val else '禁用'}")
 
 
+@router.callback_query(F.data == "owner:features:toggle:user_info")
+@require_owner
+async def toggle_user_info(callback: CallbackQuery, session: AsyncSession) -> None:
+    """切换用户功能: 账号信息"""
+    new_val = await toggle_config(session, "user.info")
+    features = await list_features(session)
+    if callback.message:
+        await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
+    await callback.answer(f"✅ 账号信息: {'启用' if new_val else '禁用'}")
+
+
+@router.callback_query(F.data == "owner:features:toggle:user_password")
+@require_owner
+async def toggle_user_password(callback: CallbackQuery, session: AsyncSession) -> None:
+    """切换用户功能: 修改密码"""
+    new_val = await toggle_config(session, "user.password")
+    features = await list_features(session)
+    if callback.message:
+        await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
+    await callback.answer(f"✅ 修改密码: {'启用' if new_val else '禁用'}")
+
+
+@router.callback_query(F.data == "owner:features:toggle:user_lines")
+@require_owner
+async def toggle_user_lines(callback: CallbackQuery, session: AsyncSession) -> None:
+    """切换用户功能: 线路信息"""
+    new_val = await toggle_config(session, "user.lines")
+    features = await list_features(session)
+    if callback.message:
+        await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
+    await callback.answer(f"✅ 线路信息: {'启用' if new_val else '禁用'}")
+
+
+@router.callback_query(F.data == "owner:features:toggle:user_devices")
+@require_owner
+async def toggle_user_devices(callback: CallbackQuery, session: AsyncSession) -> None:
+    """切换用户功能: 设备管理"""
+    new_val = await toggle_config(session, "user.devices")
+    features = await list_features(session)
+    if callback.message:
+        await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
+    await callback.answer(f"✅ 设备管理: {'启用' if new_val else '禁用'}")
+
+
 @router.callback_query(F.data == "owner:features:toggle:admin_open_registration")
 @require_owner
 async def toggle_admin_open_registration(callback: CallbackQuery, session: AsyncSession) -> None:
