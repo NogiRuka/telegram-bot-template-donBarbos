@@ -51,7 +51,7 @@ async def menu_handler(message: types.Message) -> None:
     """主菜单处理器
 
     功能说明:
-    - 显示基础主菜单
+    - 显示美化后的主面板文案与内联菜单
 
     输入参数:
     - message: Telegram消息对象
@@ -59,4 +59,14 @@ async def menu_handler(message: types.Message) -> None:
     返回值:
     - None
     """
-    await message.answer("主菜单", reply_markup=main_keyboard())
+    caption = (
+        "🎀 桜色服务助手 | 主面板\n\n"
+        "欢迎使用, 本机器人为你提供便捷的账号与群组管理:\n\n"
+        "• 账号中心: 注册、信息、线路、设备、密码\n"
+        "• 群组工具: 消息保存与导出(管理员)\n"
+        "• 管理功能: 权限配置与统计(管理员/所有者)\n\n"
+        "提示: 若功能提示不可用, 可能是权限不足或全局开关关闭。\n"
+        "当总开关关闭时, 仅所有者可操作。\n\n"
+        "请选择下方菜单开始使用 ⬇️"
+    )
+    await message.answer(caption, reply_markup=main_keyboard(), parse_mode="Markdown")
