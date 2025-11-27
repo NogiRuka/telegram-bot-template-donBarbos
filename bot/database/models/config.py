@@ -1,4 +1,4 @@
-"""配置模型"""
+"""配置模型定义"""
 
 from __future__ import annotations
 import json
@@ -27,20 +27,16 @@ class ConfigModel(Base, BasicAuditMixin):
 
     __tablename__ = "configs"
 
-    # ==================== 主键字段 ====================
-
     key: Mapped[str] = mapped_column(
         String(255),
         primary_key=True,
-        comment="配置键名, 主键, 唯一标识配置项, 建议使用点分隔层级结构"
+        comment="配置键名"
     )
-
-    # ==================== 配置内容 ====================
 
     value: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
-        comment="配置值, 可选字段, 以字符串形式存储, 实际类型由 config_type 字段决定"
+        comment="配置值字符串表示, 类型由 config_type 决定"
     )
 
     config_type: Mapped[ConfigType] = mapped_column(
@@ -48,23 +44,8 @@ class ConfigModel(Base, BasicAuditMixin):
         nullable=False,
         default=ConfigType.STRING,
         index=True,
-        comment="配置类型, 必填字段, 使用 ConfigType 枚举值, 用于值的类型验证和转换"
+        comment="配置值类型"
     )
-
-
-    # ==================== 描述信息 ====================
-
-
-    # ==================== 权限控制 ====================
-
-
-    # ==================== 验证规则 ====================
-
-
-    # ==================== 元数据信息 ====================
-
-
-    # ==================== 数据库索引定义 ====================
 
     __table_args__ = (
         Index("idx_configs_type", "config_type"),
@@ -72,25 +53,19 @@ class ConfigModel(Base, BasicAuditMixin):
         Index("idx_configs_updated", "updated_at"),
     )
 
-    # ==================== 显示配置 ====================
-
-    # 用于__repr__方法显示的关键列
     repr_cols = ("key", "config_type", "is_deleted")
 
-    # ==================== 业务方法 ====================
-
     def get_typed_value(self) -> Any:
-        """
-        获取类型化的配置值
+        """获取类型化配置值
 
         功能说明:
-        - 根据 `config_type` 将字符串值转换为对应的 Python 类型
+        - 按 `config_type` 将字符串值转换为对应类型
 
         输入参数:
         - 无
 
         返回值:
-        - Any: 转换后的配置值, 类型由 `config_type` 决定
+        - Any: 转换后的配置值; 当 `value` 为 None 时返回类型默认值
         """
         if self.value is None:
             defaults: dict[ConfigType, Any] = {
@@ -122,19 +97,20 @@ class ConfigModel(Base, BasicAuditMixin):
             msg = f"无法将配置值 '{self.value}' 转换为类型 {self.config_type.value}: {e}"
             raise ValueError(msg) from e
 
-    # 已移除默认值支持
-
     def set_typed_value(self, value: Any) -> None:
-        """
-        设置类型化的配置值
+        """设置类型化配置值
 
-        将Python值转换为字符串格式存储到value字段。
+        功能说明:
+        - 将 Python 值转换为字符串并存储到 `value`
 
-        参数:
-            value: 要设置的值, 类型应与 config_type 匹配
+        输入参数:
+        - value: 要设置的值
+
+        返回值:
+        - None
 
         异常:
-            ValueError: 当值类型不匹配时抛出
+        - ValueError: 当值类型不匹配或转换失败
         """
         if value is None:
             self.value = None
@@ -156,15 +132,3 @@ class ConfigModel(Base, BasicAuditMixin):
         except (ValueError, TypeError) as e:
             msg = f"无法将值 '{value}' 转换为配置类型 {self.config_type.value}: {e}"
             raise ValueError(msg) from e
-
-    # 已移除验证规则相关方法
-
-    # 已移除显示值相关方法
-
-    # 已移除标签相关方法
-
-    # 已移除权限相关方法
-
-    # 已移除权限相关方法
-
-    # 已移除创建配置便捷方法
