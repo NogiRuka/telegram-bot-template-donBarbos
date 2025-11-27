@@ -19,4 +19,5 @@ def register_middlewares(dp: Dispatcher) -> None:
     dp.message.middleware(AuthMiddleware())
 
     dp.callback_query.middleware(BotEnabledMiddleware())
+    dp.callback_query.middleware(AuthMiddleware())
     dp.callback_query.middleware(CallbackAnswerMiddleware())
