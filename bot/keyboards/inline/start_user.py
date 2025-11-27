@@ -16,8 +16,8 @@ def build_user_home_rows() -> list[list[InlineKeyboardButton]]:
     """
     return [
         [
-            InlineKeyboardButton(text="👤 个人信息", callback_data="start:profile"),
-            InlineKeyboardButton(text="🧩 账号中心", callback_data="start:account"),
+            InlineKeyboardButton(text="👤 个人信息", callback_data="user:profile"),
+            InlineKeyboardButton(text="🧩 账号中心", callback_data="user:account"),
         ],
     ]
 
@@ -69,16 +69,16 @@ def get_account_center_keyboard(has_emby_account: bool) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if has_emby_account:
         builder.row(
-            InlineKeyboardButton(text="👤 账号信息", callback_data="emby:info"),
-            InlineKeyboardButton(text="🛰️ 线路信息", callback_data="emby:lines"),
+            InlineKeyboardButton(text="👤 账号信息", callback_data="user:info"),
+            InlineKeyboardButton(text="🛰️ 线路信息", callback_data="user:lines"),
         )
         builder.row(
-            InlineKeyboardButton(text="📱 设备管理", callback_data="emby:devices"),
-            InlineKeyboardButton(text="🔐 修改密码", callback_data="emby:password"),
+            InlineKeyboardButton(text="📱 设备管理", callback_data="user:devices"),
+            InlineKeyboardButton(text="🔐 修改密码", callback_data="user:password"),
         )
         builder.row(InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"))
     else:
-        builder.row(InlineKeyboardButton(text="🎬 开始注册", callback_data="emby:register"))
+        builder.row(InlineKeyboardButton(text="🎬 开始注册", callback_data="user:register"))
         builder.row(InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"))
     return builder.as_markup()
 

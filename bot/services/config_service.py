@@ -106,11 +106,11 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
     - dict[str, bool]: 功能键到布尔值的映射
     """
     keys = [
-        "bot_enabled",
-        "features_enabled",
-        "feature_export_users",
-        "feature_emby_register",
-        "feature_admin_open_registration",
+        "bot.enabled",
+        "features.enabled",
+        "features.export_users",
+        "user.register",
+        "admin.open_registration",
     ]
     out: dict[str, bool] = {}
     for k in keys:
@@ -132,13 +132,50 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
     - dict[str, bool]: 管理员权限键到布尔值的映射
     """
     keys = [
-        "admin_perm_groups",
-        "admin_perm_stats",
-        "admin_perm_open_registration",
+        "admin.permissions.groups",
+        "admin.permissions.stats",
+        "admin.permissions.open_registration",
     ]
     out: dict[str, bool] = {}
     for k in keys:
         val = await get_config(session, k)
         out[k] = bool(val) if val is not None else False
     return out
+
+
+DEFAULT_CONFIGS: dict[str, bool] = {
+    # 机器人与全局功能
+    "bot.enabled": True,
+    "features.enabled": True,
+    "features.export_users": False,
+    # 用户基础功能
+    "user.register": True,
+    "user.password": True,
+    "user.info": True,
+    "user.lines": True,
+    "user.devices": True,
+    # 管理员功能与权限
+    "admin.open_registration": False,
+    "admin.permissions.groups": True,
+    "admin.permissions.stats": True,
+    "admin.permissions.open_registration": True,
+}
+
+
+async def ensure_config_defaults(session: AsyncSession) -> None:
+    """初始化配置默认键值
+
+    功能说明:
+    - 在启动时确保默认配置键存在, 不存在则以布尔类型写入默认值
+
+    输入参数:
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    for key, default in DEFAULT_CONFIGS.items():
+        current = await get_config(session, key)
+        if current is None:
+            await set_config(session, key, str(default), ConfigType.BOOLEAN)
 

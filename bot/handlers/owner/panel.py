@@ -10,7 +10,7 @@ from bot.keyboards.inline.start_owner import (
     get_features_panel_keyboard,
     get_owner_panel_keyboard,
 )
-from bot.services.config_service import list_admin_permissions, toggle_config
+from bot.services.config_service import list_admin_permissions, list_features, toggle_config
 from bot.utils.permissions import require_owner
 
 router = Router(name="owner_panel")
@@ -62,7 +62,7 @@ async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession) -> 
 
 @router.callback_query(F.data == "owner:features")
 @require_owner
-async def show_features_panel(callback: CallbackQuery) -> None:
+async def show_features_panel(callback: CallbackQuery, session: AsyncSession) -> None:
     """显示功能开关面板
 
     功能说明:
@@ -77,16 +77,8 @@ async def show_features_panel(callback: CallbackQuery) -> None:
 
     caption = "🧩 功能开关\n\n可切换全部功能或单项功能"
     # 读取当前功能开关状态并渲染状态键盘
-    if callback.message and callback.message.bot:
-        # 若需要会话, 功能列表在切换时带上 session 获取, 这里仅展示, 具体切换在 panel_features
-        pass
-    # 为保证不依赖 session 这里保持空渲染, 由切换时刷新
-    kb = get_features_panel_keyboard({
-        "features_enabled": False,
-        "feature_emby_register": False,
-        "feature_export_users": False,
-        "feature_admin_open_registration": False,
-    })
+    features = await list_features(session)
+    kb = get_features_panel_keyboard(features)
     if callback.message:
         image = get_common_image()
         await render_view(callback.message, image, caption, kb)

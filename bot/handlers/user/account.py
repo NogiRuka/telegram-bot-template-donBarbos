@@ -13,7 +13,7 @@ from bot.utils.permissions import _resolve_role
 router = Router(name="user_account")
 
 
-@router.callback_query(F.data == "start:account")
+@router.callback_query(F.data == "user:account")
 async def show_account_center(callback: CallbackQuery, session: AsyncSession) -> None:
     """展示账号中心
 
@@ -42,12 +42,11 @@ async def show_account_center(callback: CallbackQuery, session: AsyncSession) ->
 @router.callback_query(
     F.data.in_(
         {
-            "emby:register",
-            "emby:info",
-            "emby:lines",
-            "emby:devices",
-            "emby:password",
-            "admin:open_registration",
+            "user:register",
+            "user:info",
+            "user:lines",
+            "user:devices",
+            "user:password",
         }
     )
 )

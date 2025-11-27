@@ -26,7 +26,7 @@ async def toggle_all_features(callback: CallbackQuery, session: AsyncSession) ->
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "features_enabled")
+    new_val = await toggle_config(session, "features.enabled")
     features = await list_features(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
@@ -48,7 +48,7 @@ async def toggle_export_users(callback: CallbackQuery, session: AsyncSession) ->
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "feature_export_users")
+    new_val = await toggle_config(session, "features.export_users")
     features = await list_features(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
@@ -70,7 +70,7 @@ async def toggle_emby_register(callback: CallbackQuery, session: AsyncSession) -
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "feature_emby_register")
+    new_val = await toggle_config(session, "user.register")
     features = await list_features(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
@@ -92,7 +92,7 @@ async def toggle_admin_open_registration(callback: CallbackQuery, session: Async
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "feature_admin_open_registration")
+    new_val = await toggle_config(session, "admin.open_registration")
     features = await list_features(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
@@ -114,7 +114,7 @@ async def toggle_admin_perm_groups(callback: CallbackQuery, session: AsyncSessio
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "admin_perm_groups")
+    new_val = await toggle_config(session, "admin.permissions.groups")
     perms = await list_admin_permissions(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))
@@ -136,7 +136,7 @@ async def toggle_admin_perm_stats(callback: CallbackQuery, session: AsyncSession
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "admin_perm_stats")
+    new_val = await toggle_config(session, "admin.permissions.stats")
     perms = await list_admin_permissions(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))
@@ -158,7 +158,7 @@ async def toggle_admin_perm_open_registration(callback: CallbackQuery, session: 
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "admin_perm_open_registration")
+    new_val = await toggle_config(session, "admin.permissions.open_registration")
     perms = await list_admin_permissions(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))

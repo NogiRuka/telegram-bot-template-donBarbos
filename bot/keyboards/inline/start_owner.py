@@ -62,19 +62,19 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
         return "✅" if v else "❌"
     kb = InlineKeyboardBuilder()
     kb.row(InlineKeyboardButton(
-        text=f"🧲 全部功能 {status(features.get('features_enabled', False))}",
+        text=f"🧲 全部功能 {status(features.get('features.enabled', False))}",
         callback_data="owner:features:toggle:all",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"🎬 Emby 注册 {status(features.get('feature_emby_register', False))}",
+        text=f"🎬 用户注册 {status(features.get('user.register', False))}",
         callback_data="owner:features:toggle:emby_register",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"📤 导出用户 {status(features.get('feature_export_users', False))}",
+        text=f"📤 导出用户 {status(features.get('features.export_users', False))}",
         callback_data="owner:features:toggle:export_users",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"🛂 管理员开放注册权限 {status(features.get('feature_admin_open_registration', False))}",
+        text=f"🛂 管理员开放注册权限 {status(features.get('admin.open_registration', False))}",
         callback_data="owner:features:toggle:admin_open_registration",
     ))
     kb.row(
@@ -122,15 +122,15 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
         return "✅" if v else "❌"
     kb = InlineKeyboardBuilder()
     kb.row(InlineKeyboardButton(
-        text=f"👥 群组管理 {status(perms.get('admin_perm_groups', False))}",
+        text=f"👥 群组管理 {status(perms.get('admin.permissions.groups', False))}",
         callback_data="owner:admin_perms:toggle:groups",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"📊 统计数据 {status(perms.get('admin_perm_stats', False))}",
+        text=f"📊 统计数据 {status(perms.get('admin.permissions.stats', False))}",
         callback_data="owner:admin_perms:toggle:stats",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"🛂 开放注册 {status(perms.get('admin_perm_open_registration', False))}",
+        text=f"🛂 开放注册 {status(perms.get('admin.permissions.open_registration', False))}",
         callback_data="owner:admin_perms:toggle:open_registration",
     ))
     kb.row(
