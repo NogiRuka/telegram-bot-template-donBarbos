@@ -16,7 +16,7 @@ from bot.core.config import settings
 from bot.database.models import GroupConfigModel, GroupType, MessageModel, MessageSaveMode
 from bot.keyboards.inline.group_config import get_confirm_keyboard
 from bot.services.message_export import MessageExportService
-from bot.utils.permissions import require_admin_priv, require_owner
+from bot.utils.permissions import require_admin_feature, require_admin_priv, require_owner
 
 router = Router(name="admin_commands")
 MAX_MESSAGE_LENGTH = 4000
@@ -93,6 +93,7 @@ async def admin_help_command(message: Message) -> None:
 
 @router.message(Command("admin_groups"))
 @require_admin_priv
+@require_admin_feature("admin.groups")
 async def admin_groups_command(message: Message, session: AsyncSession) -> None:
     """查看所有群组配置
 
@@ -146,6 +147,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
 
 @router.message(Command("admin_enable_group"))
 @require_admin_priv
+@require_admin_feature("admin.groups")
 async def admin_enable_group_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """启用群组消息保存
 
@@ -187,6 +189,7 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
 
 @router.message(Command("admin_disable_group"))
 @require_admin_priv
+@require_admin_feature("admin.groups")
 async def admin_disable_group_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """禁用群组消息保存
 
@@ -222,6 +225,7 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
 
 @router.message(Command("admin_group_info"))
 @require_admin_priv
+@require_admin_feature("admin.groups")
 async def admin_group_info_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """查看群组详细信息
 
@@ -355,6 +359,7 @@ async def handle_cleanup_cancel(callback: CallbackQuery) -> None:
 
 
 @router.message(Command("admin_stats"))
+@require_admin_feature("admin.stats")
 async def admin_stats_command(message: Message, session: AsyncSession) -> None:
     if not is_super_admin(message.from_user.id):
         await message.answer("❌ 此命令仅限超级管理员使用")

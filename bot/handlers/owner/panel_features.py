@@ -158,7 +158,7 @@ async def toggle_admin_perm_groups(callback: CallbackQuery, session: AsyncSessio
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "admin.permissions.groups")
+    new_val = await toggle_config(session, "admin.groups")
     perms = await list_admin_permissions(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))
@@ -180,7 +180,7 @@ async def toggle_admin_perm_stats(callback: CallbackQuery, session: AsyncSession
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "admin.permissions.stats")
+    new_val = await toggle_config(session, "admin.stats")
     perms = await list_admin_permissions(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))
@@ -202,7 +202,7 @@ async def toggle_admin_perm_open_registration(callback: CallbackQuery, session: 
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "admin.permissions.open_registration")
+    new_val = await toggle_config(session, "admin.open_registration")
     perms = await list_admin_permissions(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))

@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from bot.core.config import settings
 from bot.database.models import UserExtendModel, UserRole
+from bot.services.config_service import get_config
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -132,3 +133,77 @@ def require_admin_priv(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awa
         return await func(*args, **kwargs)
 
     return wrapper
+
+
+def require_admin_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
+    """管理员功能开关装饰器
+
+    功能说明:
+    - 在调用处理器前检查管理员功能是否开启(总开关与具体功能键)
+
+    输入参数:
+    - feature_key: 配置键名, 例如 "admin.groups"、"admin.stats"
+
+    返回值:
+    - Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]: 装饰器函数
+    """
+
+    def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+        @functools.wraps(func)
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            session: AsyncSession | None = kwargs.get("session")
+            first = args[0] if args else None
+            if session is None:
+                return await func(*args, **kwargs)
+            enabled_all = bool(await get_config(session, "admin.features.enabled") or False)
+            enabled_feature = bool(await get_config(session, feature_key) or False)
+            if enabled_all and enabled_feature:
+                return await func(*args, **kwargs)
+            if isinstance(first, CallbackQuery):
+                await first.answer("❌ 功能已关闭", show_alert=True)
+                return None
+            if isinstance(first, Message):
+                await first.answer("❌ 功能已关闭")
+                return None
+            return None
+
+        return wrapper
+
+    return decorator
+
+
+def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
+    """用户功能开关装饰器
+
+    功能说明:
+    - 在处理用户功能前检查用户总开关与具体功能是否启用
+
+    输入参数:
+    - feature_key: 配置键名, 例如 "user.register"、"user.info"
+
+    返回值:
+    - Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]: 装饰器函数
+    """
+
+    def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+        @functools.wraps(func)
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            session: AsyncSession | None = kwargs.get("session")
+            first = args[0] if args else None
+            if session is None:
+                return await func(*args, **kwargs)
+            enabled_all = bool(await get_config(session, "user.features.enabled") or False)
+            enabled_feature = bool(await get_config(session, feature_key) or False)
+            if enabled_all and enabled_feature:
+                return await func(*args, **kwargs)
+            if isinstance(first, CallbackQuery):
+                await first.answer("❌ 该功能当前不可用", show_alert=True)
+                return None
+            if isinstance(first, Message):
+                await first.answer("❌ 该功能当前不可用")
+                return None
+            return None
+
+        return wrapper
+
+    return decorator

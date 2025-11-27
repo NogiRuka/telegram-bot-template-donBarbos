@@ -1,4 +1,5 @@
 import datetime
+
 from .audit_log import ActionType, AuditLogModel
 from .base import Base
 from .config import ConfigModel, ConfigType

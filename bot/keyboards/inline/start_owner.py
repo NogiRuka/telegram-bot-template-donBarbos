@@ -63,11 +63,11 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
     kb = InlineKeyboardBuilder()
     kb.row(
         InlineKeyboardButton(
-            text=f"� 机器人开关 {status(features.get('bot.features.enabled', False))}",
+            text=f"🤖 机器人开关 {status(features.get('bot.features.enabled', False))}",
             callback_data="owner:features:toggle:bot_all",
         ),
         InlineKeyboardButton(
-            text=f"� 用户总开关 {status(features.get('user.features.enabled', False))}",
+            text=f"🧲 用户总开关 {status(features.get('user.features.enabled', False))}",
             callback_data="owner:features:toggle:user_all",
         ),
     )
@@ -146,15 +146,15 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
         callback_data="owner:admin_perms:toggle:features",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"👥 群组管理 {status(perms.get('admin.permissions.groups', False))}",
+        text=f"👥 群组管理 {status(perms.get('admin.groups', False))}",
         callback_data="owner:admin_perms:toggle:groups",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"📊 统计数据 {status(perms.get('admin.permissions.stats', False))}",
+        text=f"📊 统计数据 {status(perms.get('admin.stats', False))}",
         callback_data="owner:admin_perms:toggle:stats",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"🛂 开放注册 {status(perms.get('admin.permissions.open_registration', False))}",
+        text=f"🛂 开放注册 {status(perms.get('admin.open_registration', False))}",
         callback_data="owner:admin_perms:toggle:open_registration",
     ))
     kb.row(
