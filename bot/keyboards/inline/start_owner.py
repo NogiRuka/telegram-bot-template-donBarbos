@@ -61,38 +61,42 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
     def status(v: bool) -> str:
         return "✅" if v else "❌"
     kb = InlineKeyboardBuilder()
-    kb.row(InlineKeyboardButton(
-        text=f"🧲 用户总开关 {status(features.get('user.features.enabled', False))}",
-        callback_data="owner:features:toggle:user_all",
-    ))
-    kb.row(InlineKeyboardButton(
-        text=f"🤖 机器人开关 {status(features.get('bot.features.enabled', False))}",
-        callback_data="owner:features:toggle:bot_all",
-    ))
-    kb.row(InlineKeyboardButton(
-        text=f"🎬 用户注册 {status(features.get('user.register', False))}",
-        callback_data="owner:features:toggle:user_register",
-    ))
-    kb.row(InlineKeyboardButton(
-        text=f"👤 账号信息 {status(features.get('user.info', False))}",
-        callback_data="owner:features:toggle:user_info",
-    ))
-    kb.row(InlineKeyboardButton(
-        text=f"🛰️ 线路信息 {status(features.get('user.lines', False))}",
-        callback_data="owner:features:toggle:user_lines",
-    ))
-    kb.row(InlineKeyboardButton(
-        text=f"📱 设备管理 {status(features.get('user.devices', False))}",
-        callback_data="owner:features:toggle:user_devices",
-    ))
-    kb.row(InlineKeyboardButton(
-        text=f"🔐 修改密码 {status(features.get('user.password', False))}",
-        callback_data="owner:features:toggle:user_password",
-    ))
-    kb.row(InlineKeyboardButton(
-        text=f"📤 导出用户 {status(features.get('user.export_users', False))}",
-        callback_data="owner:features:toggle:user_export_users",
-    ))
+    kb.row(
+        InlineKeyboardButton(
+            text=f"� 机器人开关 {status(features.get('bot.features.enabled', False))}",
+            callback_data="owner:features:toggle:bot_all",
+        ),
+        InlineKeyboardButton(
+            text=f"� 用户总开关 {status(features.get('user.features.enabled', False))}",
+            callback_data="owner:features:toggle:user_all",
+        ),
+    )
+    kb.row(
+        InlineKeyboardButton(
+            text=f"🎬 用户注册 {status(features.get('user.register', False))}",
+            callback_data="owner:features:toggle:user_register",
+        )
+    )
+    kb.row(
+        InlineKeyboardButton(
+            text=f"👤 账号信息 {status(features.get('user.info', False))}",
+            callback_data="owner:features:toggle:user_info",
+        ),
+        InlineKeyboardButton(
+            text=f"🛰️ 线路信息 {status(features.get('user.lines', False))}",
+            callback_data="owner:features:toggle:user_lines",
+        ),
+    )
+    kb.row(
+        InlineKeyboardButton(
+            text=f"📱 设备管理 {status(features.get('user.devices', False))}",
+            callback_data="owner:features:toggle:user_devices",
+        ),
+        InlineKeyboardButton(
+            text=f"🔐 修改密码 {status(features.get('user.password', False))}",
+            callback_data="owner:features:toggle:user_password",
+        ),
+    )
     kb.row(
         InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
         InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
