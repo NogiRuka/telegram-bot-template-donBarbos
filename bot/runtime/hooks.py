@@ -7,12 +7,15 @@ import uvicorn
 from aiogram.exceptions import TelegramAPIError, TelegramUnauthorizedError
 from aiohttp import ClientError
 from loguru import logger
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from bot.api.app import app as api_app
 from bot.api.logging import quiet_uvicorn_logs, setup_api_logging
 from bot.core.config import settings
 from bot.core.loader import bot, dp
 from bot.database.database import engine, sessionmaker
+from bot.database.models.base import Base
 from bot.handlers import get_handlers_router
 from bot.keyboards.default_commands import remove_default_commands, set_default_commands
 from bot.services.config_service import ensure_config_defaults
@@ -45,6 +48,7 @@ async def on_startup() -> None:
         logger.error("❗ 设置默认命令失败: {}", err)
         raise SystemExit(1) from err
     try:
+        await ensure_database_and_schema()
         async with sessionmaker() as session:
             await ensure_config_defaults(session)
         await start_api_server()
@@ -102,6 +106,39 @@ async def ensure_bot_token_valid(target_bot: Bot) -> None:
     except (TelegramAPIError, ClientError) as err:
         logger.error("无法验证 BOT_TOKEN, 网络或 API 异常: {}", err)
         raise SystemExit(1) from err
+
+
+async def ensure_database_and_schema() -> None:
+    """确保数据库与表结构存在
+
+    功能说明:
+    - 若数据库不存在则创建, 使用 UTF8MB4 字符集
+    - 使用 SQLAlchemy 元数据在目标数据库中创建所有模型表
+
+    输入参数:
+    - 无
+
+    返回值:
+    - None
+    """
+    # 1) 创建不指定数据库的连接, 以便执行 CREATE DATABASE
+    password = f":{settings.DB_PASS}" if settings.DB_PASS else ""
+    server_url = f"mysql+aiomysql://{settings.DB_USER}{password}@{settings.DB_HOST}:{settings.DB_PORT}/"
+    server_engine = create_async_engine(server_url, echo=False, pool_pre_ping=True)
+
+    try:
+        async with server_engine.begin() as conn:
+            create_db_sql = text(
+                f"CREATE DATABASE IF NOT EXISTS `{settings.DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            )
+            await conn.execute(create_db_sql)
+    finally:
+        with contextlib.suppress(Exception):
+            await server_engine.dispose()
+
+    # 2) 在目标数据库上创建所有模型表
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 class ApiRuntime:
