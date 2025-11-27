@@ -2,7 +2,7 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from bot.database.models.config import ConfigModel, ConfigType
@@ -178,4 +178,47 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
         current = await get_config(session, key)
         if current is None:
             await set_config(session, key, str(default), ConfigType.BOOLEAN)
+
+
+async def ensure_config_schema(session: AsyncSession) -> None:
+    """校验并迁移配置表结构
+
+    功能说明:
+    - 删除不再使用的列, 以适配精简后的模型
+
+    输入参数:
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    obsolete_cols = [
+        "default_value",
+        "description",
+        "category",
+        "display_name",
+        "is_public",
+        "is_editable",
+        "is_system",
+        "validation_rule",
+        "min_value",
+        "max_value",
+        "tags",
+        "sort_order",
+    ]
+    for col in obsolete_cols:
+        q = text(
+            "SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS "
+            "WHERE TABLE_NAME = 'configs' AND COLUMN_NAME = :col"
+        )
+        res = await session.execute(q.bindparams(col=col))
+        cnt = res.scalar_one() or 0
+        if not cnt:
+            continue
+        try:
+            await session.execute(text(f"ALTER TABLE configs DROP COLUMN `{col}`"))
+            await session.commit()
+        except SQLAlchemyError:
+            with contextlib.suppress(SQLAlchemyError):
+                await session.rollback()
 
