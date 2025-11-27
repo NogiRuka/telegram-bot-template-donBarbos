@@ -84,19 +84,37 @@ async def start_handler(message: types.Message, role: str | None = None, session
 
     if role == "owner":
         kb = get_start_owner_keyboard()
-        caption = "🌸 所有者欢迎页"
+        caption = (
+            "🌸 桜色服务助手 | 所有者控制台\n\n"
+            "欢迎回来, 你拥有完整的管理权限:\n"
+            "• 全局开关: 开启/关闭机器人\n"
+            "• 管理与统计: 群组、数据统计、清理\n\n"
+            "请选择下方菜单开始管理 ⬇️"
+        )
     elif role == "admin":
         kb = get_start_admin_keyboard()
-        caption = "🌸 管理员欢迎页"
+        caption = (
+            "🌸 桜色服务助手 | 管理员面板\n\n"
+            "• 群组工具: 消息保存与导出\n"
+            "• 管理功能: 权限配置与统计\n\n"
+            "提示: 部分功能可能需所有者授权\n\n"
+            "请选择下方菜单开始使用 ⬇️"
+        )
     else:
         kb = get_start_user_keyboard()
-        caption = "🌸 欢迎使用机器人!"
+        caption = (
+            "🌸 桜色服务助手 | 欢迎页\n\n"
+            "• 账号中心: 注册、信息、线路、设备、密码\n\n"
+            "提示: 若功能不可用, 可能是权限不足或全局关闭。\n"
+            "当总开关关闭时, 仅所有者可操作。\n\n"
+            "请选择下方菜单开始使用 ⬇️"
+        )
     image = get_common_image()
     if image:
         file = FSInputFile(image)
-        await message.answer_photo(photo=file, caption=caption, reply_markup=kb)
+        await message.answer_photo(photo=file, caption=caption, reply_markup=kb, parse_mode="Markdown")
     else:
-        await message.answer(caption, reply_markup=kb)
+        await message.answer(caption, reply_markup=kb, parse_mode="Markdown")
 
 
 @router.callback_query(lambda c: c.data == "home:back")
@@ -117,17 +135,34 @@ async def back_to_home(callback: types.CallbackQuery, session: AsyncSession) -> 
         await list_features(session)
     user_id = callback.from_user.id if callback.from_user else None
     role = await _resolve_role(session, user_id)
-    caption = "🌸 欢迎使用机器人!"
+    caption = (
+        "🌸 桜色服务助手 | 欢迎页\n\n"
+        "• 账号中心: 注册、信息、线路、设备、密码\n\n"
+        "提示: 若功能不可用, 可能是权限不足或全局关闭。\n"
+        "当总开关关闭时, 仅所有者可操作。\n\n"
+        "请选择下方菜单开始使用 ⬇️"
+    )
     image = get_common_image()
     kb = get_start_user_keyboard()
     if role == "admin":
-        caption = "🌸 管理员欢迎页"
+        caption = (
+            "🌸 桜色服务助手 | 管理员面板\n\n"
+            "• 群组工具: 消息保存与导出\n"
+            "• 管理功能: 权限配置与统计\n\n"
+            "提示: 部分功能可能需所有者授权\n\n"
+            "请选择下方菜单开始使用 ⬇️"
+        )
         kb = get_start_admin_keyboard()
     elif role == "owner":
-        caption = "🌸 所有者欢迎页"
+        caption = (
+            "🌸 桜色服务助手 | 所有者控制台\n\n"
+            "欢迎回来, 你拥有完整的管理权限:\n"
+            "• 全局开关: 开启/关闭机器人\n"
+            "• 管理与统计: 群组、数据统计、清理\n\n"
+            "请选择下方菜单开始管理 ⬇️"
+        )
         kb = get_start_owner_keyboard()
     msg = callback.message
     if isinstance(msg, types.Message):
         await render_view(msg, image, caption, kb)
     await callback.answer()
-
