@@ -11,7 +11,7 @@ from bot.utils.permissions import require_owner
 router = Router(name="owner_features")
 
 
-@router.callback_query(F.data == "owner:features:toggle:all")
+@router.callback_query(F.data == "owner:features:toggle:user_all")
 @require_owner
 async def toggle_all_features(callback: CallbackQuery, session: AsyncSession) -> None:
     """切换全部功能开关
@@ -26,14 +26,14 @@ async def toggle_all_features(callback: CallbackQuery, session: AsyncSession) ->
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "features.enabled")
+    new_val = await toggle_config(session, "user.features.enabled")
     features = await list_features(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
     await callback.answer(f"✅ 功能总开关: {'启用' if new_val else '禁用'}")
 
 
-@router.callback_query(F.data == "owner:features:toggle:export_users")
+@router.callback_query(F.data == "owner:features:toggle:user_export_users")
 @require_owner
 async def toggle_export_users(callback: CallbackQuery, session: AsyncSession) -> None:
     """切换导出用户功能
@@ -48,14 +48,14 @@ async def toggle_export_users(callback: CallbackQuery, session: AsyncSession) ->
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "features.export_users")
+    new_val = await toggle_config(session, "user.export_users")
     features = await list_features(session)
     if callback.message:
         await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
     await callback.answer(f"✅ 导出用户功能: {'启用' if new_val else '禁用'}")
 
 
-@router.callback_query(F.data == "owner:features:toggle:emby_register")
+@router.callback_query(F.data == "owner:features:toggle:user_register")
 @require_owner
 async def toggle_emby_register(callback: CallbackQuery, session: AsyncSession) -> None:
     """切换 Emby 注册功能
@@ -163,3 +163,46 @@ async def toggle_admin_perm_open_registration(callback: CallbackQuery, session: 
     if callback.message:
         await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))
     await callback.answer(f"✅ 开放注册权限: {'启用' if new_val else '禁用'}")
+
+
+@router.callback_query(F.data == "owner:admin_perms:toggle:features")
+@require_owner
+async def toggle_admin_features_enabled(callback: CallbackQuery, session: AsyncSession) -> None:
+    """切换管理员功能总开关
+
+    功能说明:
+    - 切换 `admin.features.enabled` 并刷新管理员权限面板
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    new_val = await toggle_config(session, "admin.features.enabled")
+    perms = await list_admin_permissions(session)
+    if callback.message:
+        await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))
+    await callback.answer(f"✅ 管理员功能总开关: {'启用' if new_val else '禁用'}")
+
+@router.callback_query(F.data == "owner:features:toggle:bot_all")
+@require_owner
+async def toggle_bot_features(callback: CallbackQuery, session: AsyncSession) -> None:
+    """切换机器人功能总开关
+
+    功能说明:
+    - 切换 `bot.features.enabled` 状态并刷新功能面板
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    new_val = await toggle_config(session, "bot.features.enabled")
+    features = await list_features(session)
+    if callback.message:
+        await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
+    await callback.answer(f"✅ 机器人开关: {'启用' if new_val else '禁用'}")

@@ -50,12 +50,12 @@ def get_admin_panel_keyboard(features: dict[str, bool], perms: dict[str, bool]) 
     """
     builder = InlineKeyboardBuilder()
     if perms.get("admin.permissions.groups", False):
-        builder.row(InlineKeyboardButton(text="👥 群组管理", callback_data="start:groups"))
+        builder.row(InlineKeyboardButton(text="👥 群组管理", callback_data="admin:groups"))
     if perms.get("admin.permissions.stats", False):
-        builder.row(InlineKeyboardButton(text="📊 统计数据", callback_data="start:stats"))
+        builder.row(InlineKeyboardButton(text="📊 统计数据", callback_data="admin:stats"))
     if (
         perms.get("admin.permissions.open_registration", False)
-        and features.get("features.enabled", False)
+        and features.get("user.features.enabled", False)
         and features.get("admin.open_registration", False)
     ):
         builder.row(InlineKeyboardButton(text="🛂 开放注册", callback_data="admin:open_registration"))

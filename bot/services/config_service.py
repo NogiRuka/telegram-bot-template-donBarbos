@@ -106,9 +106,9 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
     - dict[str, bool]: 功能键到布尔值的映射
     """
     keys = [
-        "bot.enabled",
-        "features.enabled",
-        "features.export_users",
+        "bot.features.enabled",
+        "user.features.enabled",
+        "user.export_users",
         "user.register",
         "user.info",
         "user.lines",
@@ -136,6 +136,7 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
     - dict[str, bool]: 管理员权限键到布尔值的映射
     """
     keys = [
+        "admin.features.enabled",
         "admin.permissions.groups",
         "admin.permissions.stats",
         "admin.permissions.open_registration",
@@ -148,18 +149,16 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
 
 
 DEFAULT_CONFIGS: dict[str, bool] = {
-    # 机器人与全局功能
-    "bot.enabled": True,
-    "features.enabled": True,
-    "features.export_users": False,
-    # 用户基础功能
+    "bot.features.enabled": True,
+    "user.features.enabled": True,
+    "user.export_users": False,
     "user.register": True,
     "user.password": True,
     "user.info": True,
     "user.lines": True,
     "user.devices": True,
-    # 管理员功能与权限
     "admin.open_registration": False,
+    "admin.features.enabled": True,
     "admin.permissions.groups": True,
     "admin.permissions.stats": True,
     "admin.permissions.open_registration": True,

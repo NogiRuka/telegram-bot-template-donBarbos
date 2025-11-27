@@ -62,16 +62,20 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
         return "✅" if v else "❌"
     kb = InlineKeyboardBuilder()
     kb.row(InlineKeyboardButton(
-        text=f"🧲 全部功能 {status(features.get('features.enabled', False))}",
-        callback_data="owner:features:toggle:all",
+        text=f"🧲 用户总开关 {status(features.get('user.features.enabled', False))}",
+        callback_data="owner:features:toggle:user_all",
+    ))
+    kb.row(InlineKeyboardButton(
+        text=f"🤖 机器人开关 {status(features.get('bot.features.enabled', False))}",
+        callback_data="owner:features:toggle:bot_all",
     ))
     kb.row(InlineKeyboardButton(
         text=f"🎬 用户注册 {status(features.get('user.register', False))}",
-        callback_data="owner:features:toggle:emby_register",
+        callback_data="owner:features:toggle:user_register",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"📤 导出用户 {status(features.get('features.export_users', False))}",
-        callback_data="owner:features:toggle:export_users",
+        text=f"📤 导出用户 {status(features.get('user.export_users', False))}",
+        callback_data="owner:features:toggle:user_export_users",
     ))
     kb.row(InlineKeyboardButton(
         text=f"🛂 管理员开放注册权限 {status(features.get('admin.open_registration', False))}",
@@ -121,6 +125,10 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
     def status(v: bool) -> str:
         return "✅" if v else "❌"
     kb = InlineKeyboardBuilder()
+    kb.row(InlineKeyboardButton(
+        text=f"🧲 管理员总开关 {status(perms.get('admin.features.enabled', False))}",
+        callback_data="owner:admin_perms:toggle:features",
+    ))
     kb.row(InlineKeyboardButton(
         text=f"👥 群组管理 {status(perms.get('admin.permissions.groups', False))}",
         callback_data="owner:admin_perms:toggle:groups",
