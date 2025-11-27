@@ -55,7 +55,7 @@ def get_start_user_keyboard() -> InlineKeyboardMarkup:
 
 def get_account_center_keyboard(
     has_emby_account: bool,
-    features: dict[str, bool] | None = None,
+    _features: dict[str, bool] | None = None,
 ) -> InlineKeyboardMarkup:
     """账号中心键盘
 
@@ -65,6 +65,7 @@ def get_account_center_keyboard(
 
     输入参数:
     - has_emby_account: 是否已有 Emby 账号
+    - features: 功能开关字典(可选), 不影响键盘展示, 仅为保持接口一致
 
     返回值:
     - InlineKeyboardMarkup: 内联键盘
@@ -83,24 +84,5 @@ def get_account_center_keyboard(
     else:
         builder.row(InlineKeyboardButton(text="🎬 开始注册", callback_data="user:register"))
         builder.row(InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"))
-    # 根据功能开关过滤显示
-    if features:
-        def enabled(k: str) -> bool:
-            return bool(features.get(k, True))
-        # 过滤行: 遍历已构建的行并移除禁用的按钮
-        rows = []
-        for row in builder.export():
-            filtered = []
-            for btn in row:
-                data = getattr(btn, "callback_data", "")
-                if data in {"home:back"}:
-                    filtered.append(btn)
-                    continue
-                key = data.replace(":", ".") if data.startswith("user:") else data
-                if key.startswith("user.") and enabled(key):
-                    filtered.append(btn)
-            if filtered:
-                rows.append(filtered)
-        builder = InlineKeyboardBuilder(markup=rows)
     return builder.as_markup()
 
