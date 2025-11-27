@@ -47,7 +47,7 @@ async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession) -> 
     """切换机器人总开关
 
     功能说明:
-    - 翻转 `bot_enabled` 状态并返回提示
+    - 翻转 `bot.features.enabled` 状态并返回提示
 
     输入参数:
     - callback: 回调对象
@@ -56,7 +56,7 @@ async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession) -> 
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "bot_enabled")
+    new_val = await toggle_config(session, "bot.features.enabled")
     await callback.answer(f"✅ 机器人总开关: {'开启' if new_val else '关闭'}")
 
 

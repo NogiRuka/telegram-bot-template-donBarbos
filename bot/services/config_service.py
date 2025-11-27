@@ -108,7 +108,6 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
     keys = [
         "bot.features.enabled",
         "user.features.enabled",
-        "user.export_users",
         "user.register",
         "user.info",
         "user.lines",
@@ -151,7 +150,6 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
 DEFAULT_CONFIGS: dict[str, bool] = {
     "bot.features.enabled": True,
     "user.features.enabled": True,
-    "user.export_users": False,
     "user.register": True,
     "user.password": True,
     "user.info": True,
