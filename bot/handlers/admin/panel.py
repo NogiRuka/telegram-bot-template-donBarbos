@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.handlers.menu import render_view
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.start_admin import get_admin_panel_keyboard
-from bot.services.config_service import list_admin_permissions, list_features
+from bot.services.config_service import list_admin_permissions
 from bot.utils.permissions import _resolve_role, require_admin_priv
 
 router = Router(name="admin_panel")
@@ -26,9 +26,8 @@ async def show_admin_panel(callback: CallbackQuery, session: AsyncSession) -> No
     返回值:
     - None
     """
-    features = await list_features(session)
     perms = await list_admin_permissions(session)
-    kb = get_admin_panel_keyboard(features, perms)
+    kb = get_admin_panel_keyboard(perms)
     user_id = callback.from_user.id if callback.from_user else None
     await _resolve_role(session, user_id)
     image = get_common_image()

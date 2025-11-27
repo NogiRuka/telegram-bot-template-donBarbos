@@ -137,9 +137,9 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
     """
     keys = [
         "admin.features.enabled",
-        "admin.permissions.groups",
-        "admin.permissions.stats",
-        "admin.permissions.open_registration",
+        "admin.groups",
+        "admin.stats",
+        "admin.open_registration",
     ]
     out: dict[str, bool] = {}
     for k in keys:
@@ -157,11 +157,10 @@ DEFAULT_CONFIGS: dict[str, bool] = {
     "user.info": True,
     "user.lines": True,
     "user.devices": True,
-    "admin.open_registration": False,
     "admin.features.enabled": True,
-    "admin.permissions.groups": True,
-    "admin.permissions.stats": True,
-    "admin.permissions.open_registration": True,
+    "admin.groups": True,
+    "admin.stats": True,
+    "admin.open_registration": False,
 }
 
 
