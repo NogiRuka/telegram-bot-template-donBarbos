@@ -118,3 +118,27 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
         out[k] = bool(val) if val is not None else False
     return out
 
+
+async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
+    """列出管理员权限开关
+
+    功能说明:
+    - 返回管理员可用功能的授权布尔值集合
+
+    输入参数:
+    - session: 异步数据库会话
+
+    返回值:
+    - dict[str, bool]: 管理员权限键到布尔值的映射
+    """
+    keys = [
+        "admin_perm_groups",
+        "admin_perm_stats",
+        "admin_perm_open_registration",
+    ]
+    out: dict[str, bool] = {}
+    for k in keys:
+        val = await get_config(session, k)
+        out[k] = bool(val) if val is not None else False
+    return out
+

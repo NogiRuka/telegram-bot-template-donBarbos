@@ -35,9 +35,9 @@ def get_owner_panel_keyboard() -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 面板主键盘
     """
     buttons = [
-        [InlineKeyboardButton(text="🚦 机器人总开关", callback_data="owner:toggle:bot")],
-        [InlineKeyboardButton(text="🧩 功能开关", callback_data="owner:features")],
         [InlineKeyboardButton(text="👮 管理员管理", callback_data="owner:admins")],
+        [InlineKeyboardButton(text="🧩 功能开关", callback_data="owner:features")],
+        [InlineKeyboardButton(text="🛡️ 管理员权限", callback_data="owner:admin_perms")],
         [InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back")],
     ]
     kb = InlineKeyboardBuilder(markup=buttons)
@@ -45,11 +45,12 @@ def get_owner_panel_keyboard() -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def get_features_panel_keyboard() -> InlineKeyboardMarkup:
+def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
     """功能开关面板键盘
 
     功能说明:
-    - 提供总功能开关与示例子功能开关, 以及返回所有者主面板
+    - 控制用户功能的开关, 使用状态 emoji (✅/❌) 清晰显示开启关闭
+    - 底部包含返回上一级与返回主面板按钮
 
     输入参数:
     - 无
@@ -57,29 +58,27 @@ def get_features_panel_keyboard() -> InlineKeyboardMarkup:
     返回值:
     - InlineKeyboardMarkup: 功能开关键盘
     """
-    btn_toggle_all = InlineKeyboardButton(
-        text="🧲 切换全部功能",
-        callback_data="owner:features:toggle:all",
-    )
-    btn_toggle_emby = InlineKeyboardButton(
-        text="🎬 切换 Emby 注册",
-        callback_data="owner:features:toggle:emby_register",
-    )
-    btn_toggle_admin_open = InlineKeyboardButton(
-        text="🛂 切换管理员开放注册权限",
-        callback_data="owner:features:toggle:admin_open_registration",
-    )
-    btn_toggle_export = InlineKeyboardButton(
-        text="📤 切换导出用户",
-        callback_data="owner:features:toggle:export_users",
-    )
-    btn_back = InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back")
+    def status(v: bool) -> str:
+        return "✅" if v else "❌"
     buttons = [
-        [btn_toggle_all],
-        [btn_toggle_emby],
-        [btn_toggle_admin_open],
-        [btn_toggle_export],
-        [btn_back],
+        [InlineKeyboardButton(
+            text=f"🧲 全部功能 {status(features.get('features_enabled', False))}",
+            callback_data="owner:features:toggle:all",
+        )],
+        [InlineKeyboardButton(
+            text=f"🎬 Emby 注册 {status(features.get('feature_emby_register', False))}",
+            callback_data="owner:features:toggle:emby_register",
+        )],
+        [InlineKeyboardButton(
+            text=f"📤 导出用户 {status(features.get('feature_export_users', False))}",
+            callback_data="owner:features:toggle:export_users",
+        )],
+        [InlineKeyboardButton(
+            text=f"🛂 管理员开放注册权限 {status(features.get('feature_admin_open_registration', False))}",
+            callback_data="owner:features:toggle:admin_open_registration",
+        )],
+        [InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel")],
+        [InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back")],
     ]
     kb = InlineKeyboardBuilder(markup=buttons)
     kb.adjust(1)
@@ -100,6 +99,43 @@ def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
     """
     buttons = [
         [InlineKeyboardButton(text="👀 查看管理员列表", callback_data="owner:admins:list")],
+        [InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel")],
+        [InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back")],
+    ]
+    kb = InlineKeyboardBuilder(markup=buttons)
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
+    """管理员权限面板键盘
+
+    功能说明:
+    - 控制管理员可使用的功能权限开关, 状态使用 emoji (✅/❌) 显示
+    - 底部包含返回上一级与返回主面板按钮
+
+    输入参数:
+    - perms: 管理员权限映射
+
+    返回值:
+    - InlineKeyboardMarkup: 管理员权限面板键盘
+    """
+    def status(v: bool) -> str:
+        return "✅" if v else "❌"
+    buttons = [
+        [InlineKeyboardButton(
+            text=f"👥 群组管理 {status(perms.get('admin_perm_groups', False))}",
+            callback_data="owner:admin_perms:toggle:groups",
+        )],
+        [InlineKeyboardButton(
+            text=f"📊 统计数据 {status(perms.get('admin_perm_stats', False))}",
+            callback_data="owner:admin_perms:toggle:stats",
+        )],
+        [InlineKeyboardButton(
+            text=f"🛂 开放注册 {status(perms.get('admin_perm_open_registration', False))}",
+            callback_data="owner:admin_perms:toggle:open_registration",
+        )],
+        [InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel")],
         [InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back")],
     ]
     kb = InlineKeyboardBuilder(markup=buttons)

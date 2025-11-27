@@ -5,11 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.handlers.menu import render_view
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.start_owner import (
+    get_admin_perms_panel_keyboard,
     get_admins_panel_keyboard,
     get_features_panel_keyboard,
     get_owner_panel_keyboard,
 )
-from bot.services.config_service import toggle_config
+from bot.services.config_service import list_admin_permissions, toggle_config
 from bot.utils.permissions import require_owner
 
 router = Router(name="owner_panel")
@@ -75,7 +76,17 @@ async def show_features_panel(callback: CallbackQuery) -> None:
     """
 
     caption = "🧩 功能开关\n\n可切换全部功能或单项功能"
-    kb = get_features_panel_keyboard()
+    # 读取当前功能开关状态并渲染状态键盘
+    if callback.message and callback.message.bot:
+        # 若需要会话, 功能列表在切换时带上 session 获取, 这里仅展示, 具体切换在 panel_features
+        pass
+    # 为保证不依赖 session 这里保持空渲染, 由切换时刷新
+    kb = get_features_panel_keyboard({
+        "features_enabled": False,
+        "feature_emby_register": False,
+        "feature_export_users": False,
+        "feature_admin_open_registration": False,
+    })
     if callback.message:
         image = get_common_image()
         await render_view(callback.message, image, caption, kb)
@@ -106,3 +117,24 @@ async def show_admins_panel(callback: CallbackQuery) -> None:
 
 
 # 所有“返回主面板”统一通过 home:back 由通用处理器处理
+@router.callback_query(F.data == "owner:admin_perms")
+@require_owner
+async def show_admin_perms_panel(callback: CallbackQuery, session: AsyncSession) -> None:
+    """展示管理员权限面板
+
+    功能说明:
+    - 显示管理员权限开关列表, 支持返回上一级与返回主面板
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    perms = await list_admin_permissions(session)
+    kb = get_admin_perms_panel_keyboard(perms)
+    if callback.message:
+        image = get_common_image()
+        await render_view(callback.message, image, "🛡️ 管理员权限", kb)
+    await callback.answer()

@@ -36,7 +36,7 @@ def get_start_admin_keyboard() -> InlineKeyboardMarkup:
     return make_home_keyboard(build_admin_home_rows())
 
 
-def get_admin_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
+def get_admin_panel_keyboard(features: dict[str, bool], perms: dict[str, bool]) -> InlineKeyboardMarkup:
     """管理员面板键盘
 
     功能说明:
@@ -49,9 +49,15 @@ def get_admin_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 内联键盘
     """
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="👥 群组管理", callback_data="start:groups"))
-    builder.row(InlineKeyboardButton(text="📊 统计数据", callback_data="start:stats"))
-    if features.get("features_enabled", False) and features.get("feature_admin_open_registration", False):
+    if perms.get("admin_perm_groups", False):
+        builder.row(InlineKeyboardButton(text="👥 群组管理", callback_data="start:groups"))
+    if perms.get("admin_perm_stats", False):
+        builder.row(InlineKeyboardButton(text="📊 统计数据", callback_data="start:stats"))
+    if (
+        perms.get("admin_perm_open_registration", False)
+        and features.get("features_enabled", False)
+        and features.get("feature_admin_open_registration", False)
+    ):
         builder.row(InlineKeyboardButton(text="🛂 开放注册", callback_data="admin:open_registration"))
     builder.row(InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"))
     return builder.as_markup()
