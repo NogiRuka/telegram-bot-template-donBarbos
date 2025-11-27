@@ -6,7 +6,7 @@ from bot.handlers.menu import render_view
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.start_owner import get_admins_panel_keyboard
 from bot.services.users import list_admins
-from bot.utils.permissions import require_owner
+from bot.utils.permissions import _resolve_role, require_owner
 
 router = Router(name="owner_admins")
 
@@ -28,10 +28,19 @@ async def list_admins_view(callback: CallbackQuery, session: AsyncSession) -> No
     """
     admins = await list_admins(session)
     lines = ["👮 管理员列表"]
-    if not admins:
+    # 过滤掉所有者角色
+    filtered: list[int] = []
+    for u in admins:
+        role = await _resolve_role(session, u.id)
+        if role != "owner":
+            filtered.append(u.id)
+    if not filtered:
         lines.append("暂无管理员")
     else:
         for u in admins[:20]:
+            role = await _resolve_role(session, u.id)
+            if role == "owner":
+                continue
             label = f"ID:{u.id} 用户名:@{u.username or '无'}"
             lines.append(label)
     caption = "\n".join(lines)
