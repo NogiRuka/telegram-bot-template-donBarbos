@@ -60,30 +60,27 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
     """
     def status(v: bool) -> str:
         return "✅" if v else "❌"
-    buttons = [
-        [InlineKeyboardButton(
-            text=f"🧲 全部功能 {status(features.get('features_enabled', False))}",
-            callback_data="owner:features:toggle:all",
-        )],
-        [InlineKeyboardButton(
-            text=f"🎬 Emby 注册 {status(features.get('feature_emby_register', False))}",
-            callback_data="owner:features:toggle:emby_register",
-        )],
-        [InlineKeyboardButton(
-            text=f"📤 导出用户 {status(features.get('feature_export_users', False))}",
-            callback_data="owner:features:toggle:export_users",
-        )],
-        [InlineKeyboardButton(
-            text=f"🛂 管理员开放注册权限 {status(features.get('feature_admin_open_registration', False))}",
-            callback_data="owner:features:toggle:admin_open_registration",
-        )],
-        [
-            InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
-            InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
-        ],
-    ]
-    kb = InlineKeyboardBuilder(markup=buttons)
-    kb.adjust(1)
+    kb = InlineKeyboardBuilder()
+    kb.row(InlineKeyboardButton(
+        text=f"🧲 全部功能 {status(features.get('features_enabled', False))}",
+        callback_data="owner:features:toggle:all",
+    ))
+    kb.row(InlineKeyboardButton(
+        text=f"🎬 Emby 注册 {status(features.get('feature_emby_register', False))}",
+        callback_data="owner:features:toggle:emby_register",
+    ))
+    kb.row(InlineKeyboardButton(
+        text=f"📤 导出用户 {status(features.get('feature_export_users', False))}",
+        callback_data="owner:features:toggle:export_users",
+    ))
+    kb.row(InlineKeyboardButton(
+        text=f"🛂 管理员开放注册权限 {status(features.get('feature_admin_open_registration', False))}",
+        callback_data="owner:features:toggle:admin_open_registration",
+    ))
+    kb.row(
+        InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
+        InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+    )
     return kb.as_markup()
 
 
@@ -99,15 +96,12 @@ def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
     返回值:
     - InlineKeyboardMarkup: 管理员面板键盘
     """
-    buttons = [
-        [InlineKeyboardButton(text="👀 查看管理员列表", callback_data="owner:admins:list")],
-        [
-            InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
-            InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
-        ],
-    ]
-    kb = InlineKeyboardBuilder(markup=buttons)
-    kb.adjust(1)
+    kb = InlineKeyboardBuilder()
+    kb.row(InlineKeyboardButton(text="👀 查看管理员列表", callback_data="owner:admins:list"))
+    kb.row(
+        InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
+        InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+    )
     return kb.as_markup()
 
 
@@ -126,24 +120,21 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
     """
     def status(v: bool) -> str:
         return "✅" if v else "❌"
-    buttons = [
-        [InlineKeyboardButton(
-            text=f"👥 群组管理 {status(perms.get('admin_perm_groups', False))}",
-            callback_data="owner:admin_perms:toggle:groups",
-        )],
-        [InlineKeyboardButton(
-            text=f"📊 统计数据 {status(perms.get('admin_perm_stats', False))}",
-            callback_data="owner:admin_perms:toggle:stats",
-        )],
-        [InlineKeyboardButton(
-            text=f"🛂 开放注册 {status(perms.get('admin_perm_open_registration', False))}",
-            callback_data="owner:admin_perms:toggle:open_registration",
-        )],
-        [
-            InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
-            InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
-        ],
-    ]
-    kb = InlineKeyboardBuilder(markup=buttons)
-    kb.adjust(1)
+    kb = InlineKeyboardBuilder()
+    kb.row(InlineKeyboardButton(
+        text=f"👥 群组管理 {status(perms.get('admin_perm_groups', False))}",
+        callback_data="owner:admin_perms:toggle:groups",
+    ))
+    kb.row(InlineKeyboardButton(
+        text=f"📊 统计数据 {status(perms.get('admin_perm_stats', False))}",
+        callback_data="owner:admin_perms:toggle:stats",
+    ))
+    kb.row(InlineKeyboardButton(
+        text=f"🛂 开放注册 {status(perms.get('admin_perm_open_registration', False))}",
+        callback_data="owner:admin_perms:toggle:open_registration",
+    ))
+    kb.row(
+        InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
+        InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+    )
     return kb.as_markup()
