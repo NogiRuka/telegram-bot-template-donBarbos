@@ -42,17 +42,21 @@ async def set_config(
     value: Any,
     config_type: ConfigType | None = None,
     default_value: Any | None = None,
+    operator_id: int | None = None,
 ) -> bool:
     """写入配置键
 
     功能说明:
     - 将指定键写入到 `config` 表, 若不存在则创建, 存在则更新
+    - 当提供 `operator_id` 时, 在创建时写入 `created_by`, 在更新时写入 `updated_by`
 
     输入参数:
     - session: 异步数据库会话
     - key: 配置键名
     - value: 要写入的值
     - config_type: 值类型, 缺省时遵循原类型或推断为字符串
+    - default_value: 默认值, 当 `value` 为空时可用作回退
+    - operator_id: 操作者用户ID, 用于审计字段 `created_by/updated_by`
 
     返回值:
     - bool: True 表示写入成功
@@ -66,6 +70,10 @@ async def set_config(
             model.value = _serialize_value(ctype, value)
             if default_value is not None:
                 model.default_value = _serialize_value(ctype, default_value)
+            if operator_id is not None:
+                with contextlib.suppress(Exception):
+                    model.created_by = operator_id
+                    model.updated_by = operator_id
             session.add(model)
         else:
             values: dict[str, Any] = {}
@@ -75,6 +83,8 @@ async def set_config(
             values["value"] = _serialize_value(ctype, value)
             if default_value is not None:
                 values["default_value"] = _serialize_value(ctype, default_value)
+            if operator_id is not None:
+                values["updated_by"] = operator_id
             await session.execute(update(ConfigModel).where(ConfigModel.key == key).values(**values))
     except SQLAlchemyError:
         with contextlib.suppress(SQLAlchemyError):
@@ -85,7 +95,7 @@ async def set_config(
         return True
 
 
-async def toggle_config(session: AsyncSession, key: str) -> bool:
+async def toggle_config(session: AsyncSession, key: str, operator_id: int | None = None) -> bool:
     """切换布尔配置键
 
     功能说明:
@@ -94,6 +104,7 @@ async def toggle_config(session: AsyncSession, key: str) -> bool:
     输入参数:
     - session: 异步数据库会话
     - key: 配置键名
+    - operator_id: 操作者用户ID, 用于写入审计字段 `updated_by`
 
     返回值:
     - bool: 新的布尔值; 若操作失败返回 False
@@ -106,7 +117,7 @@ async def toggle_config(session: AsyncSession, key: str) -> bool:
             typed = model.get_typed_value()
             current = bool(typed) if typed is not None else False
         new_value = not current
-        await set_config(session, key, new_value, ConfigType.BOOLEAN)
+        await set_config(session, key, new_value, ConfigType.BOOLEAN, operator_id=operator_id)
         return new_value
     return False
 

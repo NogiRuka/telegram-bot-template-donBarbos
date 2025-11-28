@@ -44,7 +44,8 @@ async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession) 
             await callback.answer("🔴 无效的开关项", show_alert=True)
             return
         config_key, label = mapping[key]
-        new_val = await toggle_config(session, config_key)
+        operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
+        new_val = await toggle_config(session, config_key, operator_id=operator_id)
         features = await list_features(session)
         if callback.message:
             await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
@@ -82,7 +83,8 @@ async def toggle_admin_permissions(callback: CallbackQuery, session: AsyncSessio
             await callback.answer("🔴 无效的权限项", show_alert=True)
             return
         config_key, label = mapping[key]
-        new_val = await toggle_config(session, config_key)
+        operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
+        new_val = await toggle_config(session, config_key, operator_id=operator_id)
         perms = await list_admin_permissions(session)
         if callback.message:
             await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))
