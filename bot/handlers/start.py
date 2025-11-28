@@ -61,6 +61,35 @@ def get_common_image() -> str:
     return str(target) if target.exists() else ""
 
 
+async def build_home_view(session: AsyncSession | None, user: types.User | None, role: str) -> tuple[str, types.InlineKeyboardMarkup]:
+    """构建首页文案与键盘
+
+    功能说明:
+    - 拉取一言内容并生成与首次进入一致的首页文案
+    - 根据角色返回对应的首页键盘
+
+    输入参数:
+    - session: 异步数据库会话, 可为 None
+    - user: Telegram 用户对象, 可为 None
+    - role: 角色标识("owner"|"admin"|"user")
+
+    返回值:
+    - tuple[str, InlineKeyboardMarkup]: (caption, keyboard)
+    """
+    uid = user.id if user else None
+    payload = await fetch_hitokoto(session, created_by=uid)
+    user_name = user.full_name if user else "访客"
+    caption = build_start_caption(payload, user_name, settings.PROJECT_NAME)
+
+    kb_map = {
+        "owner": get_start_owner_keyboard(),
+        "admin": get_start_admin_keyboard(),
+        "user": get_start_user_keyboard(),
+    }
+    keyboard = kb_map.get(role, kb_map["user"])
+    return caption, keyboard
+
+
 @router.message(CommandStart())
 @analytics.track_event("Sign Up")
 async def start_handler(message: types.Message, role: str | None = None, session: AsyncSession | None = None) -> None:
@@ -84,19 +113,8 @@ async def start_handler(message: types.Message, role: str | None = None, session
         if session is not None:
             await list_features(session)
 
-    # 拉取一言并按原模板构建文案
-    uid = message.from_user.id if message.from_user else None
-    payload = await fetch_hitokoto(session, created_by=uid)
-    user_name = message.from_user.full_name if message.from_user else "访客"
-    caption = build_start_caption(payload, user_name, settings.PROJECT_NAME)
-
-    # 根据角色选择键盘
-    kb_map = {
-        "owner": get_start_owner_keyboard(),
-        "admin": get_start_admin_keyboard(),
-        "user": get_start_user_keyboard(),
-    }
-    kb = kb_map.get(role, kb_map["user"])
+    # 构建与首次进入一致的首页文案与键盘
+    caption, kb = await build_home_view(session, message.from_user, role)
 
     image = get_common_image()
     if image:
@@ -133,33 +151,9 @@ async def back_to_home(callback: types.CallbackQuery, session: AsyncSession) -> 
         await list_features(session)
     user_id = callback.from_user.id if callback.from_user else None
     role = await _resolve_role(session, user_id)
-    caption = (
-        "🌸 桜色服务助手 | 欢迎页\n\n"
-        "• 账号中心: 注册、信息、线路、设备、密码\n\n"
-        "提示: 若功能不可用, 可能是权限不足或全局关闭。\n"
-        "当总开关关闭时, 仅所有者可操作。\n\n"
-        "请选择下方菜单开始使用 ⬇️"
-    )
     image = get_common_image()
-    kb = get_start_user_keyboard()
-    if role == "admin":
-        caption = (
-            "🌸 桜色服务助手 | 管理员面板\n\n"
-            "• 群组工具: 消息保存与导出\n"
-            "• 管理功能: 权限配置与统计\n\n"
-            "提示: 部分功能可能需所有者授权\n\n"
-            "请选择下方菜单开始使用 ⬇️"
-        )
-        kb = get_start_admin_keyboard()
-    elif role == "owner":
-        caption = (
-            "🌸 桜色服务助手 | 所有者控制台\n\n"
-            "欢迎回来, 你拥有完整的管理权限:\n"
-            "• 全局开关: 开启/关闭机器人\n"
-            "• 管理与统计: 群组、数据统计、清理\n\n"
-            "请选择下方菜单开始管理 ⬇️"
-        )
-        kb = get_start_owner_keyboard()
+    # 使用与开始一致的文案与键盘
+    caption, kb = await build_home_view(session, callback.from_user, role)
     msg = callback.message
     if isinstance(msg, types.Message):
         await render_view(msg, image, caption, kb)
