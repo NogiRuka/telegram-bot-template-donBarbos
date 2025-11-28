@@ -218,5 +218,8 @@ async def stop_api_server() -> None:
             await asyncio.wait_for(api_runtime.task, timeout=5.0)
         except asyncio.TimeoutError:
             logger.warning("⚠️ API 服务停止等待超时, 已忽略")
+        except SystemExit as err:
+            # uvicorn 在部分停止场景会抛出 SystemExit(1), 这里吞掉并记录
+            logger.warning("⚠️ API 服务停止返回 SystemExit: {}", err.code if hasattr(err, "code") else err)
         except (RuntimeError, asyncio.CancelledError) as err:
             logger.warning("⚠️ API 服务停止异常: {}", err)
