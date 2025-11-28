@@ -4,7 +4,7 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.handlers.menu import render_view
+from bot.utils.view import render_view
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.start_user import get_account_center_keyboard
 from bot.utils.permissions import _resolve_role, require_user_feature

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
 from loguru import logger
-from bot.handlers.menu import render_view
+from bot.utils.view import render_view
 from bot.keyboards.inline.start_admin import get_start_admin_keyboard
 from bot.keyboards.inline.start_owner import get_start_owner_keyboard
 from bot.keyboards.inline.start_user import get_start_user_keyboard
