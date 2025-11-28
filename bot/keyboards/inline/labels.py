@@ -13,27 +13,34 @@
 
 
 # 通用按钮文案常量
-HITOKOTO_LABEL = "🎴 一言管理"
-BACK_TO_HOME_LABEL = "🏠 返回主面板"
-BACK_LABEL = "↩️ 返回上一级"
-ADMIN_PANEL_LABEL = "🛡️ 管理员面板"
-OWNER_PANEL_LABEL = "👑 所有者面板"
-OWNER_ADMINS_LABEL = "👮 管理员管理"
-FEATURES_PANEL_LABEL = "🧩 功能开关"
-ADMIN_PERMS_PANEL_LABEL = "🛡️ 管理员权限"
-GROUPS_LABEL = "👥 群组管理"
-STATS_LABEL = "📊 统计数据"
-OPEN_REGISTRATION_LABEL = "🛂 开放注册"
-ROBOT_SWITCH_LABEL = "🤖 机器人开关"
-USER_FEATURES_SWITCH_LABEL = "🧲 用户总开关"
-USER_REGISTER_LABEL = "🎬 用户注册"
+# ===== 用户功能 =====
+PROFILE_LABEL = "👤 个人信息"
+ACCOUNT_CENTER_LABEL = "🧩 账号中心"
+START_REGISTER_LABEL = "🎬 开始注册"
 USER_INFO_LABEL = "👤 账号信息"
 USER_LINES_LABEL = "🛰️ 线路信息"
 USER_DEVICES_LABEL = "📱 设备管理"
 USER_PASSWORD_LABEL = "🔐 修改密码"
-PROFILE_LABEL = "👤 个人信息"
-ACCOUNT_CENTER_LABEL = "🧩 账号中心"
-START_REGISTER_LABEL = "🎬 开始注册"
+
+# ===== 管理员功能 =====
+ADMIN_PANEL_LABEL = "🛡️ 管理员面板"
+GROUPS_LABEL = "👥 群组管理"
+STATS_LABEL = "📊 统计数据"
+OPEN_REGISTRATION_LABEL = "🛂 开放注册"
+HITOKOTO_LABEL = "🎴 一言管理"
+
+# ===== 所有者功能 =====
+OWNER_PANEL_LABEL = "👑 所有者面板"
+OWNER_ADMINS_LABEL = "👮 管理员管理"
+FEATURES_PANEL_LABEL = "🧩 功能开关"
+USER_REGISTER_LABEL = "🎬 用户注册"
+ROBOT_SWITCH_LABEL = "🤖 机器人开关"
+USER_FEATURES_SWITCH_LABEL = "🧲 用户总开关"
+ADMIN_PERMS_PANEL_LABEL = "🛡️ 管理员权限"
+
+# ===== 通用导航 =====
+BACK_LABEL = "↩️ 返回上一级"
+BACK_TO_HOME_LABEL = "🏠 返回主面板"
 
 
 def format_with_status(label: str, enabled: bool) -> str:

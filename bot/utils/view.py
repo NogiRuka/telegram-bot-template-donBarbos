@@ -44,13 +44,21 @@ async def render_view(
         with contextlib.suppress(Exception):
             await message.edit_media(media=media, reply_markup=keyboard)
             return True
+        media_plain = InputMediaPhoto(media=file, caption=caption)
+        with contextlib.suppress(Exception):
+            await message.edit_media(media=media_plain, reply_markup=keyboard)
+            return True
         with contextlib.suppress(Exception):
             await message.edit_caption(caption, reply_markup=keyboard, parse_mode="MarkdownV2")
             return True
+        with contextlib.suppress(Exception):
+            await message.edit_caption(caption, reply_markup=keyboard)
+            return True
 
-    # 若图片存在但当前消息不是媒体，或图片不存在，优先编辑文本；
-    # 如果当前消息是媒体但上面失败，这里也会回退到纯文本
     with contextlib.suppress(Exception):
         await message.edit_text(text=caption, reply_markup=keyboard, parse_mode="MarkdownV2")
+        return True
+    with contextlib.suppress(Exception):
+        await message.edit_text(text=caption, reply_markup=keyboard)
         return True
     return False
