@@ -106,7 +106,7 @@ async def toggle_config(session: AsyncSession, key: str) -> bool:
             typed = model.get_typed_value()
             current = bool(typed) if typed is not None else False
         new_value = not current
-        await set_config(session, key, str(new_value), ConfigType.BOOLEAN)
+        await set_config(session, key, new_value, ConfigType.BOOLEAN)
         return new_value
     return False
 
@@ -204,7 +204,6 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
     if current_categories is None:
         await set_config(session, "admin.hitokoto.categories", None, ConfigType.LIST, default_value=["d", "i"])
 
-
 # 已移除 ensure_config_schema: 迁移逻辑改由外部管理, 保持代码简洁
 
 def _serialize_value(ctype: ConfigType, value: Any) -> str | None:
@@ -225,7 +224,14 @@ def _serialize_value(ctype: ConfigType, value: Any) -> str | None:
     if ctype in (ConfigType.JSON, ConfigType.LIST, ConfigType.DICT):
         return _json.dumps(value, ensure_ascii=False)
     if ctype == ConfigType.BOOLEAN:
-        return str(bool(value)).lower()
+        if isinstance(value, str):
+            v = value.strip().lower()
+            if v in {"true", "1", "yes", "on", "y", "t"}:
+                return "true"
+            if v in {"false", "0", "no", "off", "n", "f", ""}:
+                return "false"
+            return "true" if len(v) > 0 else "false"
+        return "true" if bool(value) else "false"
     if ctype == ConfigType.FLOAT:
         return str(float(value))
     if ctype == ConfigType.INTEGER:
