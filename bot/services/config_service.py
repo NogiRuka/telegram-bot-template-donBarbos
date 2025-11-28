@@ -1,5 +1,6 @@
 from __future__ import annotations
 import contextlib
+import json as _json
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select, update
@@ -31,7 +32,13 @@ async def get_config(session: AsyncSession, key: str) -> Any:
     return None
 
 
-async def set_config(session: AsyncSession, key: str, value: Any, config_type: ConfigType | None = None) -> bool:
+async def set_config(
+    session: AsyncSession,
+    key: str,
+    value: Any,
+    config_type: ConfigType | None = None,
+    default_value: Any | None = None,
+) -> bool:
     """写入配置键
 
     功能说明:
@@ -49,15 +56,22 @@ async def set_config(session: AsyncSession, key: str, value: Any, config_type: C
     try:
         result = await session.execute(select(ConfigModel).where(ConfigModel.key == key))
         model: ConfigModel | None = result.scalar_one_or_none()
+        ctype = config_type or (model.config_type if model else ConfigType.STRING)
         if model is None:
-            model = ConfigModel(key=key, value=str(value))
-            if config_type:
-                model.config_type = config_type
+            model = ConfigModel(key=key, config_type=ctype)
+            model.value = _serialize_value(ctype, value)
+            if default_value is not None:
+                model.default_value = _serialize_value(ctype, default_value)
             session.add(model)
         else:
-            await session.execute(
-                update(ConfigModel).where(ConfigModel.key == key).values(value=str(value))
-            )
+            values: dict[str, Any] = {}
+            if config_type:
+                values["config_type"] = config_type
+                ctype = config_type
+            values["value"] = _serialize_value(ctype, value)
+            if default_value is not None:
+                values["default_value"] = _serialize_value(ctype, default_value)
+            await session.execute(update(ConfigModel).where(ConfigModel.key == key).values(**values))
     except SQLAlchemyError:
         with contextlib.suppress(SQLAlchemyError):
             await session.rollback()
@@ -139,6 +153,7 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
         "admin.groups",
         "admin.stats",
         "admin.open_registration",
+        "admin.hitokoto",
     ]
     out: dict[str, bool] = {}
     for k in keys:
@@ -159,6 +174,7 @@ DEFAULT_CONFIGS: dict[str, bool] = {
     "admin.groups": True,
     "admin.stats": True,
     "admin.open_registration": False,
+    "admin.hitokoto": True,
 }
 
 
@@ -179,6 +195,35 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
         if current is None:
             await set_config(session, key, str(default), ConfigType.BOOLEAN)
 
+    # 初始化 Hitokoto 分类默认值
+    current_categories = await get_config(session, "admin.hitokoto.categories")
+    if current_categories is None:
+        await set_config(session, "admin.hitokoto.categories", None, ConfigType.LIST, default_value=["d", "i"])
+
 
 # 已移除 ensure_config_schema: 迁移逻辑改由外部管理, 保持代码简洁
 
+def _serialize_value(ctype: ConfigType, value: Any) -> str | None:
+    """序列化配置值
+
+    功能说明:
+    - 根据配置类型将 Python 值序列化为字符串
+
+    输入参数:
+    - ctype: 配置类型
+    - value: 原始值
+
+    返回值:
+    - str | None: 序列化后的字符串; 若入参为 None 则返回 None
+    """
+    if value is None:
+        return None
+    if ctype in (ConfigType.JSON, ConfigType.LIST, ConfigType.DICT):
+        return _json.dumps(value, ensure_ascii=False)
+    if ctype == ConfigType.BOOLEAN:
+        return str(bool(value)).lower()
+    if ctype == ConfigType.FLOAT:
+        return str(float(value))
+    if ctype == ConfigType.INTEGER:
+        return str(int(value))
+    return str(value)

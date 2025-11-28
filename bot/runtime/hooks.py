@@ -8,6 +8,7 @@ from aiogram.exceptions import TelegramAPIError, TelegramUnauthorizedError
 from aiohttp import ClientError
 from loguru import logger
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from bot.api.app import app as api_app
@@ -139,6 +140,28 @@ async def ensure_database_and_schema() -> None:
     # 2) 在目标数据库上创建所有模型表
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # 3) 保障配置表新增列 default_value 存在
+    try:
+        async with engine.begin() as conn:
+            check_sql = text(
+                """
+                SELECT COUNT(1) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = :db AND TABLE_NAME = 'configs' AND COLUMN_NAME = 'default_value'
+                """
+            )
+            result = await conn.execute(check_sql, {"db": settings.DB_NAME})
+            exists = result.scalar() or 0
+            if not exists:
+                alter_sql = text(
+                    """
+                    ALTER TABLE `configs`
+                    ADD COLUMN `default_value` TEXT NULL COMMENT '默认配置值字符串表示, 当 value 为空时回退使用'
+                    """
+                )
+                await conn.execute(alter_sql)
+    except SQLAlchemyError as err:
+        logger.warning("默认值列初始化异常: {}", err)
 
 
 class ApiRuntime:

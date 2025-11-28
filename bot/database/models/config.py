@@ -39,6 +39,12 @@ class ConfigModel(Base, BasicAuditMixin):
         comment="配置值字符串表示, 类型由 config_type 决定"
     )
 
+    default_value: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="默认配置值字符串表示, 当 value 为空时回退使用"
+    )
+
     config_type: Mapped[ConfigType] = mapped_column(
         SQLEnum(ConfigType),
         nullable=False,
@@ -67,7 +73,9 @@ class ConfigModel(Base, BasicAuditMixin):
         返回值:
         - Any: 转换后的配置值; 当 `value` 为 None 时返回类型默认值
         """
-        if self.value is None:
+        # 当 value 为空字符串或 None 时, 回退到 default_value
+        raw_val = self.value
+        if raw_val is None or (isinstance(raw_val, str) and raw_val.strip() == ""):
             defaults: dict[ConfigType, Any] = {
                 ConfigType.STRING: "",
                 ConfigType.TEXT: "",
@@ -78,7 +86,11 @@ class ConfigModel(Base, BasicAuditMixin):
                 ConfigType.LIST: [],
                 ConfigType.DICT: {},
             }
-            return defaults.get(self.config_type, None)
+            # 若存在 default_value 则优先解析默认值
+            if self.default_value is not None and self.default_value.strip() != "":
+                raw_val = self.default_value
+            else:
+                return defaults.get(self.config_type, None)
 
         converters: dict[ConfigType, Any] = {
             ConfigType.STRING: lambda v: v,
@@ -92,7 +104,7 @@ class ConfigModel(Base, BasicAuditMixin):
         }
         try:
             fn = converters.get(self.config_type, lambda v: v)
-            return fn(self.value)
+            return fn(raw_val)
         except (ValueError, json.JSONDecodeError) as e:
             msg = f"无法将配置值 '{self.value}' 转换为类型 {self.config_type.value}: {e}"
             raise ValueError(msg) from e

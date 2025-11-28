@@ -53,6 +53,8 @@ def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
         builder.row(InlineKeyboardButton(text="👥 群组管理", callback_data="admin:groups"))
     if perms.get("admin.features.enabled", False) and perms.get("admin.stats", False):
         builder.row(InlineKeyboardButton(text="📊 统计数据", callback_data="admin:stats"))
+    if perms.get("admin.features.enabled", False) and perms.get("admin.hitokoto", False):
+        builder.row(InlineKeyboardButton(text="🎴 一言管理", callback_data="admin:hitokoto"))
     if perms.get("admin.features.enabled", False) and perms.get("admin.open_registration", False):
         builder.row(InlineKeyboardButton(text="🛂 开放注册", callback_data="admin:open_registration"))
     builder.row(InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"))
