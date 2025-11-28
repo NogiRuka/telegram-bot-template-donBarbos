@@ -1,8 +1,15 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from bot.keyboards.labels import HITOKOTO_LABEL, BACK_TO_HOME_LABEL
 
 from bot.keyboards.inline.start_user import build_user_home_rows, make_home_keyboard
+from bot.keyboards.inline.labels import (
+    ADMIN_PANEL_LABEL,
+    GROUPS_LABEL,
+    STATS_LABEL,
+    HITOKOTO_LABEL,
+    OPEN_REGISTRATION_LABEL,
+    BACK_TO_HOME_LABEL,
+)
 
 
 def build_admin_home_rows() -> list[list[InlineKeyboardButton]]:
@@ -18,7 +25,7 @@ def build_admin_home_rows() -> list[list[InlineKeyboardButton]]:
     - list[list[InlineKeyboardButton]]: 按钮行集合
     """
     rows = build_user_home_rows()
-    rows.append([InlineKeyboardButton(text="🛡️ 管理员面板", callback_data="admin:panel")])
+    rows.append([InlineKeyboardButton(text=ADMIN_PANEL_LABEL, callback_data="admin:panel")])
     return rows
 
 
@@ -51,12 +58,12 @@ def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     """
     builder = InlineKeyboardBuilder()
     if perms.get("admin.features.enabled", False) and perms.get("admin.groups", False):
-        builder.row(InlineKeyboardButton(text="👥 群组管理", callback_data="admin:groups"))
+        builder.row(InlineKeyboardButton(text=GROUPS_LABEL, callback_data="admin:groups"))
     if perms.get("admin.features.enabled", False) and perms.get("admin.stats", False):
-        builder.row(InlineKeyboardButton(text="📊 统计数据", callback_data="admin:stats"))
+        builder.row(InlineKeyboardButton(text=STATS_LABEL, callback_data="admin:stats"))
     if perms.get("admin.features.enabled", False) and perms.get("admin.hitokoto", False):
         builder.row(InlineKeyboardButton(text=HITOKOTO_LABEL, callback_data="admin:hitokoto"))
     if perms.get("admin.features.enabled", False) and perms.get("admin.open_registration", False):
-        builder.row(InlineKeyboardButton(text="🛂 开放注册", callback_data="admin:open_registration"))
+        builder.row(InlineKeyboardButton(text=OPEN_REGISTRATION_LABEL, callback_data="admin:open_registration"))
     builder.row(InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"))
     return builder.as_markup()

@@ -1,5 +1,15 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from bot.keyboards.inline.labels import (
+    PROFILE_LABEL,
+    ACCOUNT_CENTER_LABEL,
+    USER_INFO_LABEL,
+    USER_LINES_LABEL,
+    USER_DEVICES_LABEL,
+    USER_PASSWORD_LABEL,
+    START_REGISTER_LABEL,
+    BACK_TO_HOME_LABEL,
+)
 
 
 def build_user_home_rows() -> list[list[InlineKeyboardButton]]:
@@ -16,8 +26,8 @@ def build_user_home_rows() -> list[list[InlineKeyboardButton]]:
     """
     return [
         [
-            InlineKeyboardButton(text="👤 个人信息", callback_data="user:profile"),
-            InlineKeyboardButton(text="🧩 账号中心", callback_data="user:account"),
+            InlineKeyboardButton(text=PROFILE_LABEL, callback_data="user:profile"),
+            InlineKeyboardButton(text=ACCOUNT_CENTER_LABEL, callback_data="user:account"),
         ],
     ]
 
@@ -71,16 +81,16 @@ def get_account_center_keyboard(
     builder = InlineKeyboardBuilder()
     if has_emby_account:
         builder.row(
-            InlineKeyboardButton(text="👤 账号信息", callback_data="user:info"),
-            InlineKeyboardButton(text="🛰️ 线路信息", callback_data="user:lines"),
+            InlineKeyboardButton(text=USER_INFO_LABEL, callback_data="user:info"),
+            InlineKeyboardButton(text=USER_LINES_LABEL, callback_data="user:lines"),
         )
         builder.row(
-            InlineKeyboardButton(text="📱 设备管理", callback_data="user:devices"),
-            InlineKeyboardButton(text="🔐 修改密码", callback_data="user:password"),
+            InlineKeyboardButton(text=USER_DEVICES_LABEL, callback_data="user:devices"),
+            InlineKeyboardButton(text=USER_PASSWORD_LABEL, callback_data="user:password"),
         )
-        builder.row(InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"))
+        builder.row(InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"))
     else:
-        builder.row(InlineKeyboardButton(text="🎬 开始注册", callback_data="user:register"))
-        builder.row(InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"))
+        builder.row(InlineKeyboardButton(text=START_REGISTER_LABEL, callback_data="user:register"))
+        builder.row(InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"))
     return builder.as_markup()
 
