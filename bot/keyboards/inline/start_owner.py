@@ -3,6 +3,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.keyboards.inline.start_admin import build_admin_home_rows
 from bot.keyboards.inline.start_user import make_home_keyboard
+from bot.keyboards.labels import HITOKOTO_LABEL, BACK_LABEL, BACK_TO_HOME_LABEL, format_with_status
 
 
 def get_start_owner_keyboard() -> InlineKeyboardMarkup:
@@ -98,8 +99,8 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
         ),
     )
     kb.row(
-        InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
-        InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+        InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel"),
+        InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"),
     )
     return kb.as_markup()
 
@@ -158,11 +159,11 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
         callback_data="owner:admin_perms:toggle:open_registration",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"🎴 一言管理 {status(perms.get('admin.hitokoto', False))}",
+        text=format_with_status(HITOKOTO_LABEL, perms.get('admin.hitokoto', False)),
         callback_data="owner:admin_perms:toggle:hitokoto",
     ))
     kb.row(
-        InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),
-        InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+        InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel"),
+        InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"),
     )
     return kb.as_markup()

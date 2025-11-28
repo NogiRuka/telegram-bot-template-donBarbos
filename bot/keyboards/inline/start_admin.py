@@ -1,5 +1,6 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from bot.keyboards.labels import HITOKOTO_LABEL, BACK_TO_HOME_LABEL
 
 from bot.keyboards.inline.start_user import build_user_home_rows, make_home_keyboard
 
@@ -54,8 +55,8 @@ def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     if perms.get("admin.features.enabled", False) and perms.get("admin.stats", False):
         builder.row(InlineKeyboardButton(text="📊 统计数据", callback_data="admin:stats"))
     if perms.get("admin.features.enabled", False) and perms.get("admin.hitokoto", False):
-        builder.row(InlineKeyboardButton(text="🎴 一言管理", callback_data="admin:hitokoto"))
+        builder.row(InlineKeyboardButton(text=HITOKOTO_LABEL, callback_data="admin:hitokoto"))
     if perms.get("admin.features.enabled", False) and perms.get("admin.open_registration", False):
         builder.row(InlineKeyboardButton(text="🛂 开放注册", callback_data="admin:open_registration"))
-    builder.row(InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"))
+    builder.row(InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"))
     return builder.as_markup()
