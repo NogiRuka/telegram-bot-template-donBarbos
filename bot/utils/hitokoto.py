@@ -13,7 +13,7 @@ from bot.services.config_service import get_config
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-async def fetch_hitokoto(session: AsyncSession, created_by: int | None = None) -> dict[str, Any] | None:
+async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = None) -> dict[str, Any] | None:
     """获取一言句子
 
     功能说明:
@@ -28,11 +28,14 @@ async def fetch_hitokoto(session: AsyncSession, created_by: int | None = None) -
     依赖:
     - aiohttp: `pip install aiohttp`
     """
-    categories: list[str] = await get_config(session, "admin.hitokoto.categories")
-    query = [("encode", "json")] + [("c", c) for c in categories]
+    if session is not None:
+        categories: list[str] | None = await get_config(session, "admin.hitokoto.categories")
+    else:
+        categories = None
+    query = [("encode", "json")] + ([("c", c) for c in categories] if categories else [])
     params = "&".join([f"{k}={v}" for k, v in query])
     url = f"https://v1.hitokoto.cn/?{params}"
-    logger.info("[Hitokoto] 请求URL={} 分类={}", url, categories)
+    logger.info(f"[Hitokoto] 请求URL={url} 分类={categories}")
     try:
         async with aiohttp.ClientSession() as http_session, http_session.get(
             url, timeout=aiohttp.ClientTimeout(total=6.0)
@@ -42,10 +45,10 @@ async def fetch_hitokoto(session: AsyncSession, created_by: int | None = None) -
             u = payload.get("uuid")
             t = payload.get("type")
             ln = payload.get("length")
-            logger.info("[Hitokoto] 拉取成功 uuid={} type={} length={}", u, t, ln)
+            logger.info(f"[Hitokoto] 拉取成功 uuid={u} type={t} length={ln}")
             try:
                 uuid = str(payload.get("uuid") or "")
-                if uuid:
+                if uuid and session is not None:
                     exists = await session.get(HitokotoModel, uuid)
                     if exists is None:
                         model = HitokotoModel(
@@ -66,7 +69,7 @@ async def fetch_hitokoto(session: AsyncSession, created_by: int | None = None) -
                         )
                         session.add(model)
                         await session.commit()
-                        logger.info("[Hitokoto] 已入库 uuid={}", uuid)
+                        logger.info(f"[Hitokoto] 已入库 uuid={uuid}")
                     else:
                         exists.hitokoto = str(payload.get("hitokoto") or exists.hitokoto)
                         exists.type = str(payload.get("type") or exists.type)
@@ -80,7 +83,7 @@ async def fetch_hitokoto(session: AsyncSession, created_by: int | None = None) -
                         exists.length = int(payload.get("length") or (exists.length or 0)) or None
                         exists.updated_by = created_by
                         await session.commit()
-                        logger.info("[Hitokoto] 已更新 uuid={}", uuid)
+                        logger.info(f"[Hitokoto] 已更新 uuid={uuid}")
             except SQLAlchemyError:
                 logger.exception("[Hitokoto] 入库失败")
             return payload
@@ -111,6 +114,6 @@ def build_start_caption(payload: dict[str, Any] | None, user_name: str, project_
     link = f"https://hitokoto.cn?uuid={uuid}" if uuid else "https://hitokoto.cn/"
     return (
         f"『 [{hitokoto}]({link}) 』\n\n"
-        f"🍃 嗨  *_{user_name}_*\n"
+        f"🍃 嗨  *{user_name}*\n"
         f"🎐 欢迎使用{project_name}~\n"
     )
