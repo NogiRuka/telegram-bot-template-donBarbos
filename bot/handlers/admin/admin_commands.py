@@ -508,7 +508,14 @@ async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession) 
             categories = [c for c in categories if c != ch]
         else:
             categories.append(ch)
-        await set_config(session, "admin.hitokoto.categories", categories, ConfigType.LIST)
+        operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
+        await set_config(
+            session,
+            "admin.hitokoto.categories",
+            categories,
+            ConfigType.LIST,
+            operator_id=operator_id,
+        )
         type_names: dict[str, str] = {
             "a": "动画",
             "b": "漫画",
