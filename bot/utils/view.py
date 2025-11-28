@@ -36,15 +36,14 @@ async def render_view(
     p = Path(image_path)
     if p.exists():
         file = FSInputFile(str(p))
-        media = InputMediaPhoto(media=file, caption=caption)
+        media = InputMediaPhoto(media=file, caption=caption, parse_mode="MarkdownV2")
         with contextlib.suppress(Exception):
             await message.edit_media(media=media, reply_markup=keyboard)
             return True
         with contextlib.suppress(Exception):
-            await message.edit_caption(caption, reply_markup=keyboard)
+            await message.edit_caption(caption, reply_markup=keyboard, parse_mode="MarkdownV2")
             return True
     with contextlib.suppress(Exception):
-        await message.edit_text(text=caption, reply_markup=keyboard)
+        await message.edit_text(text=caption, reply_markup=keyboard, parse_mode="MarkdownV2")
         return True
     return False
-
