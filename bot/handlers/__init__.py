@@ -1,6 +1,6 @@
 from aiogram import Router
 
-from . import export_users, info, menu, start, support
+from . import export_users, start, support
 from .admin import get_admin_router
 from .group import get_group_router
 from .owner import get_owner_router
@@ -18,9 +18,7 @@ except ImportError:
 def get_handlers_router() -> Router:
     router = Router()
     router.include_router(start.router)
-    router.include_router(info.router)
     router.include_router(support.router)
-    router.include_router(menu.router)
     router.include_router(export_users.router)
 
     # 群组与管理员聚合路由
