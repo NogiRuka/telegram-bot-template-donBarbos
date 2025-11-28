@@ -39,6 +39,8 @@ async def render_view(
         media = InputMediaPhoto(media=file, caption=caption, parse_mode="MarkdownV2")
         with contextlib.suppress(Exception):
             await message.edit_media(media=media, reply_markup=keyboard)
+            with contextlib.suppress(Exception):
+                await message.edit_caption(caption, reply_markup=keyboard, parse_mode="MarkdownV2")
             return True
         with contextlib.suppress(Exception):
             await message.edit_caption(caption, reply_markup=keyboard, parse_mode="MarkdownV2")
