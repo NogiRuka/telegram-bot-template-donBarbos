@@ -14,7 +14,7 @@ from bot.keyboards.inline.start_owner import get_start_owner_keyboard
 from bot.keyboards.inline.start_user import get_start_user_keyboard
 from bot.services.analytics import analytics
 from bot.services.config_service import list_features
-from bot.utils.hitokoto import build_hitokoto_caption, fetch_hitokoto
+from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
 from bot.utils.permissions import _resolve_role
 
 router = Router(name="start")
@@ -83,9 +83,10 @@ async def start_handler(message: types.Message, role: str | None = None, session
         if session is not None:
             await list_features(session)
 
-    # 拉取一言并构建文案
+    # 拉取一言并按原模板构建文案
     payload = await fetch_hitokoto(session) if session is not None else None
-    caption = build_hitokoto_caption(payload)
+    user_name = message.from_user.full_name if message.from_user else "旅人"
+    caption = build_start_caption(payload, user_name, settings.PROJECT_NAME)
 
     # 根据角色选择键盘
     kb_map = {

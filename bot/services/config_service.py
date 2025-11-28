@@ -193,7 +193,7 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
     for key, default in DEFAULT_CONFIGS.items():
         current = await get_config(session, key)
         if current is None:
-            await set_config(session, key, str(default), ConfigType.BOOLEAN)
+            await set_config(session, key, None, ConfigType.BOOLEAN, default_value=default)
 
     # 初始化 Hitokoto 分类默认值
     current_categories = await get_config(session, "admin.hitokoto.categories")
