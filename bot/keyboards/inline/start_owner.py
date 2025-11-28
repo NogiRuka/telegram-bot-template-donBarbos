@@ -154,6 +154,10 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
         callback_data="owner:admin_perms:toggle:stats",
     ))
     kb.row(InlineKeyboardButton(
+        text=f"🎴 一言管理 {status(perms.get('admin.hitokoto', False))}",
+        callback_data="owner:admin_perms:toggle:hitokoto",
+    ))
+    kb.row(InlineKeyboardButton(
         text=f"🛂 开放注册 {status(perms.get('admin.open_registration', False))}",
         callback_data="owner:admin_perms:toggle:open_registration",
     ))

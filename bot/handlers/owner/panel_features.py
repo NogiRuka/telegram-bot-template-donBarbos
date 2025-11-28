@@ -187,6 +187,28 @@ async def toggle_admin_perm_stats(callback: CallbackQuery, session: AsyncSession
     await callback.answer(f"✅ 统计数据权限: {'启用' if new_val else '禁用'}")
 
 
+@router.callback_query(F.data == "owner:admin_perms:toggle:hitokoto")
+@require_owner
+async def toggle_admin_perm_hitokoto(callback: CallbackQuery, session: AsyncSession) -> None:
+    """切换管理员权限: 一言管理
+
+    功能说明:
+    - 切换管理员是否可使用一言管理功能
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    new_val = await toggle_config(session, "admin.hitokoto")
+    perms = await list_admin_permissions(session)
+    if callback.message:
+        await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))
+    await callback.answer(f"✅ 一言管理权限: {'启用' if new_val else '禁用'}")
+
+
 @router.callback_query(F.data == "owner:admin_perms:toggle:open_registration")
 @require_owner
 async def toggle_admin_perm_open_registration(callback: CallbackQuery, session: AsyncSession) -> None:
