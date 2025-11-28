@@ -1,4 +1,3 @@
-import datetime
 
 from .audit_log import ActionType, AuditLogModel
 from .base import Base

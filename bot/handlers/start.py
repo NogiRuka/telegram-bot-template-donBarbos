@@ -14,6 +14,7 @@ from bot.keyboards.inline.start_owner import get_start_owner_keyboard
 from bot.keyboards.inline.start_user import get_start_user_keyboard
 from bot.services.analytics import analytics
 from bot.services.config_service import list_features
+from bot.utils.hitokoto import build_hitokoto_caption, fetch_hitokoto
 from bot.utils.permissions import _resolve_role
 
 router = Router(name="start")
@@ -82,39 +83,18 @@ async def start_handler(message: types.Message, role: str | None = None, session
         if session is not None:
             await list_features(session)
 
-    if role == "owner":
-        kb = get_start_owner_keyboard()
-        caption = (
-            "<b>🎴 桜色庭園 · 主殿</b> 🎴\n\n"
-            "𓍊𓋼𓍊𓋼𓍊 落樱缤纷时 𓍊𓋼𓍊𓋼𓍊\n\n"
-            "╔════════════════╗\n"
-            "   👑 樱主 · 御前\n"
-            "╚════════════════╝\n"
-            "<i>「樱吹雪落, 万物皆在掌中」</i>"
-        )
-    elif role == "admin":
-        kb = get_start_admin_keyboard()
-        caption = (
-            "<b>🎐 桜色庭園 · 守閣</b> 🎐\n\n"
-            "𓍊𓋼𓍊𓋼𓍊 夜樱守护者 𓍊𓋼𓍊𓋼𓍊\n\n"
-            "╔════════════════╗\n"
-            "   🛡️ 守阁 · 执事\n"
-            "╚════════════════╝\n"
-            "<i>「月下樱影, 静候君临」</i>"
-        )
-    else:
-        kb = get_start_user_keyboard()
-        user_name = message.from_user.full_name if message.from_user else "旅人"
-        caption = (
-            f"<b>🎏 桜色庭園 · 迎宾</b> 🎏\n\n"
-            f"𓍊𓋼𓍊𓋼𓍊 欢迎 {user_name} 𓍊𓋼𓍊𓋼𓍊\n\n"
-            "╔════════════════╗\n"
-            "    🌸 樱下邂逅\n"
-            "╚════════════════╝\n\n"
-            "<i>✨ 只有你想见我的时候</i>\n"
-            "<i>我们的相遇才有意义</i>\n\n"
-            "🎐 请选择您的旅程~"
-        )
+    # 拉取一言并构建文案
+    payload = await fetch_hitokoto(session) if session is not None else None
+    caption = build_hitokoto_caption(payload)
+
+    # 根据角色选择键盘
+    kb_map = {
+        "owner": get_start_owner_keyboard(),
+        "admin": get_start_admin_keyboard(),
+        "user": get_start_user_keyboard(),
+    }
+    kb = kb_map.get(role, kb_map["user"])
+
     image = get_common_image()
     if image:
         file = FSInputFile(image)
