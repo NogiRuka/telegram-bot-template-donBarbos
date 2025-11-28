@@ -128,8 +128,9 @@ def build_start_caption(payload: dict[str, Any] | None, user_name: str, project_
     link = f"https://hitokoto.cn?uuid={uuid}" if uuid else "https://hitokoto.cn/"
     safe_text = html_escape(hitokoto)
     safe_user = html_escape(user_name)
+    safe_project = html_escape(project_name)
     return (
         f'『 <a href="{link}">{safe_text}</a> 』\n\n'
         f"🍃 嗨  <b><i>{safe_user}</i></b>\n"
-        f"🎐 欢迎使用{project_name}~\n"
+        f"🎐 欢迎使用{safe_project}~\n"
     )
