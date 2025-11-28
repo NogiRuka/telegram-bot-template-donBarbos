@@ -34,17 +34,22 @@ async def render_view(
     - 频繁编辑可能触发限流，需注意操作节奏
     """
     p = Path(image_path)
-    if p.exists():
+    image_exists = p.exists()
+    # 仅当原消息为媒体消息时才尝试编辑媒体，否则直接编辑文本
+    is_media_message = bool(getattr(message, "photo", None) or getattr(message, "video", None) or getattr(message, "animation", None) or getattr(message, "document", None))
+
+    if image_exists and is_media_message:
         file = FSInputFile(str(p))
         media = InputMediaPhoto(media=file, caption=caption, parse_mode="MarkdownV2")
         with contextlib.suppress(Exception):
             await message.edit_media(media=media, reply_markup=keyboard)
-            with contextlib.suppress(Exception):
-                await message.edit_caption(caption, reply_markup=keyboard, parse_mode="MarkdownV2")
             return True
         with contextlib.suppress(Exception):
             await message.edit_caption(caption, reply_markup=keyboard, parse_mode="MarkdownV2")
             return True
+
+    # 若图片存在但当前消息不是媒体，或图片不存在，优先编辑文本；
+    # 如果当前消息是媒体但上面失败，这里也会回退到纯文本
     with contextlib.suppress(Exception):
         await message.edit_text(text=caption, reply_markup=keyboard, parse_mode="MarkdownV2")
         return True
