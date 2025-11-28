@@ -3,6 +3,7 @@ from .audit_log import ActionType, AuditLogModel
 from .base import Base
 from .config import ConfigModel, ConfigType
 from .group_config import GroupConfigModel, GroupType, MessageSaveMode
+from .hitokoto import HitokotoModel
 from .message import MessageModel, MessageType
 from .statistics import StatisticsModel, StatisticType
 from .user import UserModel
@@ -18,6 +19,7 @@ __all__ = [
     "ConfigType",
     "GroupConfigModel",
     "GroupType",
+    "HitokotoModel",
     "MessageModel",
     "MessageSaveMode",
     "MessageType",

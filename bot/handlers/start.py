@@ -84,8 +84,9 @@ async def start_handler(message: types.Message, role: str | None = None, session
             await list_features(session)
 
     # 拉取一言并按原模板构建文案
-    payload = await fetch_hitokoto(session) if session is not None else None
-    user_name = message.from_user.full_name if message.from_user else "旅人"
+    uid = message.from_user.id if message.from_user else None
+    payload = await fetch_hitokoto(session, created_by=uid) if session is not None else None
+    user_name = message.from_user.full_name if message.from_user else "访客"
     caption = build_start_caption(payload, user_name, settings.PROJECT_NAME)
 
     # 根据角色选择键盘

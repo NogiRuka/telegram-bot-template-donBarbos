@@ -4,14 +4,16 @@ from typing import TYPE_CHECKING, Any
 
 import aiohttp
 from aiohttp import ClientError
+from loguru import logger
+from sqlalchemy.exc import SQLAlchemyError
 
+from bot.database.models.hitokoto import HitokotoModel
 from bot.services.config_service import get_config
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-
-async def fetch_hitokoto(session: AsyncSession) -> dict[str, Any] | None:
+async def fetch_hitokoto(session: AsyncSession, created_by: int | None = None) -> dict[str, Any] | None:
     """获取一言句子
 
     功能说明:
@@ -30,13 +32,60 @@ async def fetch_hitokoto(session: AsyncSession) -> dict[str, Any] | None:
     query = [("encode", "json")] + [("c", c) for c in categories]
     params = "&".join([f"{k}={v}" for k, v in query])
     url = f"https://v1.hitokoto.cn/?{params}"
+    logger.info("[Hitokoto] 请求URL={} 分类={}", url, categories)
     try:
         async with aiohttp.ClientSession() as http_session, http_session.get(
             url, timeout=aiohttp.ClientTimeout(total=6.0)
         ) as resp:
             data = await resp.text()
-            return json.loads(data)
-    except (ClientError, TimeoutError, json.JSONDecodeError):
+            payload = json.loads(data)
+            u = payload.get("uuid")
+            t = payload.get("type")
+            ln = payload.get("length")
+            logger.info("[Hitokoto] 拉取成功 uuid={} type={} length={}", u, t, ln)
+            try:
+                uuid = str(payload.get("uuid") or "")
+                if uuid:
+                    exists = await session.get(HitokotoModel, uuid)
+                    if exists is None:
+                        model = HitokotoModel(
+                            uuid=uuid,
+                            id=int(payload.get("id") or 0) or None,
+                            hitokoto=str(payload.get("hitokoto") or ""),
+                            type=str(payload.get("type") or "") or None,
+                            from_=str(payload.get("from") or "") or None,
+                            from_who=str(payload.get("from_who") or "") or None,
+                            creator=str(payload.get("creator") or "") or None,
+                            creator_uid=int(payload.get("creator_uid") or 0) or None,
+                            reviewer=int(payload.get("reviewer") or 0) or None,
+                            commit_from=str(payload.get("commit_from") or "") or None,
+                            source_created_at=str(payload.get("created_at") or "") or None,
+                            length=int(payload.get("length") or 0) or None,
+                            created_by=created_by,
+                            updated_by=created_by,
+                        )
+                        session.add(model)
+                        await session.commit()
+                        logger.info("[Hitokoto] 已入库 uuid={}", uuid)
+                    else:
+                        exists.hitokoto = str(payload.get("hitokoto") or exists.hitokoto)
+                        exists.type = str(payload.get("type") or exists.type)
+                        exists.from_ = str(payload.get("from") or exists.from_)
+                        exists.from_who = str(payload.get("from_who") or exists.from_who)
+                        exists.creator = str(payload.get("creator") or exists.creator)
+                        exists.creator_uid = int(payload.get("creator_uid") or (exists.creator_uid or 0)) or None
+                        exists.reviewer = int(payload.get("reviewer") or (exists.reviewer or 0)) or None
+                        exists.commit_from = str(payload.get("commit_from") or exists.commit_from)
+                        exists.source_created_at = str(payload.get("created_at") or exists.source_created_at)
+                        exists.length = int(payload.get("length") or (exists.length or 0)) or None
+                        exists.updated_by = created_by
+                        await session.commit()
+                        logger.info("[Hitokoto] 已更新 uuid={}", uuid)
+            except SQLAlchemyError:
+                logger.exception("[Hitokoto] 入库失败")
+            return payload
+    except (ClientError, TimeoutError, json.JSONDecodeError) as exc:
+        logger.warning("Hitokoto 请求失败: %s", exc)
         return None
 
 
