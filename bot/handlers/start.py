@@ -86,6 +86,7 @@ async def start_handler(message: types.Message, role: str | None = None, session
     # 拉取一言并按原模板构建文案
     uid = message.from_user.id if message.from_user else None
     payload = await fetch_hitokoto(session, created_by=uid) if session is not None else None
+
     user_name = message.from_user.full_name if message.from_user else "访客"
     caption = build_start_caption(payload, user_name, settings.PROJECT_NAME)
 
@@ -100,9 +101,18 @@ async def start_handler(message: types.Message, role: str | None = None, session
     image = get_common_image()
     if image:
         file = FSInputFile(image)
-        await message.answer_photo(photo=file, caption=caption, reply_markup=kb, parse_mode="HTML")
+        await message.answer_photo(
+            photo=file,
+            caption=caption,
+            reply_markup=kb,
+            parse_mode="Markdown"
+        )
     else:
-        await message.answer(caption, reply_markup=kb, parse_mode="HTML")
+        await message.answer(
+            caption,
+            reply_markup=kb,
+            parse_mode="Markdown"
+        )
 
 
 @router.callback_query(lambda c: c.data == "home:back")
