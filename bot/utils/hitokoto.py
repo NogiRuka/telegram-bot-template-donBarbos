@@ -26,7 +26,7 @@ async def fetch_hitokoto(session: AsyncSession) -> dict[str, Any] | None:
     依赖:
     - aiohttp: `pip install aiohttp`
     """
-    categories: list[str] = await get_config(session, "admin.hitokoto.categories") or ["d", "i"]
+    categories: list[str] = await get_config(session, "admin.hitokoto.categories")
     query = [("encode", "json")] + [("c", c) for c in categories]
     params = "&".join([f"{k}={v}" for k, v in query])
     url = f"https://v1.hitokoto.cn/?{params}"
@@ -74,7 +74,7 @@ def build_start_caption(payload: dict[str, Any] | None, user_name: str, project_
     返回值:
     - str: 用于 HTML 解析模式的完整文案
     """
-    hitokoto = "主面板" if not payload else str(payload.get("hitokoto") or "主面板")
+    hitokoto = "(ง •̀_•́)ง" if not payload else str(payload.get("hitokoto") or "(ง •̀_•́)ง")
     uuid = "" if not payload else str(payload.get("uuid") or "")
     link = f"https://hitokoto.cn?uuid={uuid}" if uuid else "https://hitokoto.cn/"
     safe_text = html_escape(hitokoto)

@@ -110,7 +110,7 @@ async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession) 
     返回值:
     - None
     """
-    categories: list[str] = await get_config(session, "admin.hitokoto.categories") or ["d", "i"]
+    categories: list[str] = await get_config(session, "admin.hitokoto.categories")
     buttons: list[list[InlineKeyboardButton]] = []
     all_types = ["a","b","c","d","e","f","g","h","i","j","k","l"]
     for ch in all_types:
