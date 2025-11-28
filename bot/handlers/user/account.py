@@ -1,13 +1,15 @@
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.utils.view import render_view
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.start_user import get_account_center_keyboard
+from bot.keyboards.inline.labels import BACK_LABEL, BACK_TO_HOME_LABEL
 from bot.utils.permissions import _resolve_role, require_user_feature
 
 router = Router(name="user_account")
@@ -139,7 +141,14 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
     )
 
     image = get_common_image()
-    await render_view(msg, image, caption, None)
+    buttons = [
+        [
+            InlineKeyboardButton(text=BACK_LABEL, callback_data="user:account"),
+            InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"),
+        ]
+    ]
+    kb = InlineKeyboardBuilder(markup=buttons).as_markup()
+    await render_view(msg, image, caption, kb)
     await callback.answer()
 
 
