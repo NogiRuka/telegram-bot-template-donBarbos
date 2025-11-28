@@ -8,6 +8,7 @@ from aiogram.types import FSInputFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
+from loguru import logger
 from bot.handlers.menu import render_view
 from bot.keyboards.inline.start_admin import get_start_admin_keyboard
 from bot.keyboards.inline.start_owner import get_start_owner_keyboard
@@ -85,8 +86,7 @@ async def start_handler(message: types.Message, role: str | None = None, session
 
     # 拉取一言并按原模板构建文案
     uid = message.from_user.id if message.from_user else None
-    payload = await fetch_hitokoto(session, created_by=uid) if session is not None else None
-
+    payload = await fetch_hitokoto(session, created_by=uid)
     user_name = message.from_user.full_name if message.from_user else "访客"
     caption = build_start_caption(payload, user_name, settings.PROJECT_NAME)
 
@@ -105,13 +105,13 @@ async def start_handler(message: types.Message, role: str | None = None, session
             photo=file,
             caption=caption,
             reply_markup=kb,
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
     else:
         await message.answer(
             caption,
             reply_markup=kb,
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
 
 

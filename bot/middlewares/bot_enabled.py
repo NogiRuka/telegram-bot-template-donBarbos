@@ -78,9 +78,9 @@ class BotEnabledMiddleware(BaseMiddleware):
         # 机器人关闭: 拦截并提示
         try:
             if is_callback:
-                await first.answer("❌ 机器人已关闭, 仅所有者可操作", show_alert=True)  # type: ignore[attr-defined]
+                await first.answer("🔴 机器人已关闭", show_alert=True)  # type: ignore[attr-defined]
             elif is_message:
-                await first.answer("❌ 机器人已关闭, 仅所有者可操作")  # type: ignore[attr-defined]
+                await first.answer("🔴 机器人已关闭")  # type: ignore[attr-defined]
         except TelegramAPIError:
             pass
         return None

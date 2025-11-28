@@ -132,7 +132,7 @@ async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession) 
     for idx, ch in enumerate(all_types, start=1):
         enabled = ch in categories
         name = type_names.get(ch, ch)
-        label = f"{name} {'✅' if enabled else '❌'}"
+        label = f"{name} {'🟢' if enabled else '🔴'}"
         current_row.append(
             InlineKeyboardButton(text=label, callback_data=f"admin:hitokoto:toggle:{ch}")
         )

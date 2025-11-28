@@ -33,17 +33,29 @@ class AnalyticsService(metaclass=SingletonMeta):
         self,
         event_name: EventType,
     ) -> Callable[[Callable[..., Awaitable[_Func]]], Callable[..., Awaitable[_Func]]]:
-        """Decorator for tracking events in PostHog or Google Analytics."""
+        """Decorator for tracking events in PostHog or Google Analytics.
+
+        功能说明:
+        - 包裹 Aiogram 处理器以记录分析事件, 保持原有参数注入
+
+        输入参数:
+        - event_name: 事件名称枚举
+
+        返回值:
+        - Callable: 装饰后的异步处理器
+        """
 
         def decorator(
             handler: Callable[[Message | CallbackQuery, dict[str, Any]], Awaitable[_Func]],
         ) -> Callable[..., Awaitable[_Func]]:
             @wraps(handler)
             async def wrapper(update: Message | CallbackQuery, *args: Any, **kwargs: Any) -> Any:
+                # 无分析记录器时, 直接透传所有参数(确保 Aiogram 注入的 kwargs 不丢失)
                 if not self.logger:
-                    return await handler(update, *args)
+                    return await handler(update, *args, **kwargs)
 
-                if (isinstance(update, Message | CallbackQuery)) and update.from_user:
+                # 记录必要的用户与会话属性
+                if isinstance(update, (Message, CallbackQuery)) and update.from_user:
                     user_id = update.from_user.id
                     first_name = update.from_user.first_name
                     last_name = update.from_user.last_name

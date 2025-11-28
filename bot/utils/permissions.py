@@ -90,10 +90,10 @@ def require_owner(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitabl
         if role != "owner":
             first = args[0] if args else None
             if isinstance(first, CallbackQuery):
-                await first.answer("❌ 此操作仅所有者可用", show_alert=True)
+                await first.answer("🔴 此操作仅所有者可用", show_alert=True)
                 return None
             if isinstance(first, Message):
-                await first.answer("❌ 此操作仅所有者可用")
+                await first.answer("🔴 此操作仅所有者可用")
                 return None
             return None
         return await func(*args, **kwargs)
@@ -124,10 +124,10 @@ def require_admin_priv(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awa
         if role not in {"admin", "owner"}:
             first = args[0] if args else None
             if isinstance(first, CallbackQuery):
-                await first.answer("❌ 此操作仅限管理员或所有者", show_alert=True)
+                await first.answer("🔴 此操作仅限管理员或所有者", show_alert=True)
                 return None
             if isinstance(first, Message):
-                await first.answer("❌ 此操作仅限管理员或所有者")
+                await first.answer("🔴 此操作仅限管理员或所有者")
                 return None
             return None
         return await func(*args, **kwargs)
@@ -160,10 +160,10 @@ def require_admin_feature(feature_key: str) -> Callable[[Callable[..., Awaitable
             if enabled_all and enabled_feature:
                 return await func(*args, **kwargs)
             if isinstance(first, CallbackQuery):
-                await first.answer("❌ 功能已关闭", show_alert=True)
+                await first.answer("🔴 功能已关闭", show_alert=True)
                 return None
             if isinstance(first, Message):
-                await first.answer("❌ 功能已关闭")
+                await first.answer("🔴 功能已关闭")
                 return None
             return None
 
@@ -197,10 +197,10 @@ def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[
             if enabled_all and enabled_feature:
                 return await func(*args, **kwargs)
             if isinstance(first, CallbackQuery):
-                await first.answer("❌ 该功能当前不可用", show_alert=True)
+                await first.answer("🔴 该功能当前不可用", show_alert=True)
                 return None
             if isinstance(first, Message):
-                await first.answer("❌ 该功能当前不可用")
+                await first.answer("🔴 该功能当前不可用")
                 return None
             return None
 

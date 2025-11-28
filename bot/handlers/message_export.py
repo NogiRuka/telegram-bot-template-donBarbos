@@ -47,20 +47,20 @@ async def export_messages_command(message: Message, session: AsyncSession) -> No
     try:
         # 检查是否为群组
         if message.chat.type not in ["group", "supergroup"]:
-            await message.answer("❌ 此命令只能在群组中使用")
+            await message.answer("🔴 此命令只能在群组中使用")
             return
 
         # 检查用户权限（管理员或群主）
         chat_member = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
         if chat_member.status not in ["administrator", "creator"]:
-            await message.answer("❌ 只有群组管理员可以使用此命令")
+            await message.answer("🔴 只有群组管理员可以使用此命令")
             return
 
         # 检查群组配置
         config = await session.get(GroupConfigModel, message.chat.id)
         if not config or not config.is_message_save_enabled:
             await message.answer(
-                "❌ 此群组未启用消息保存功能\n"
+                "🔴 此群组未启用消息保存功能\n"
                 "请先使用 /group_config 命令启用消息保存"
             )
             return
@@ -75,7 +75,7 @@ async def export_messages_command(message: Message, session: AsyncSession) -> No
 
     except Exception as e:
         logger.error(f"导出消息命令处理失败: {e}")
-        await message.answer("❌ 处理命令时发生错误，请稍后重试")
+        await message.answer("🔴 处理命令时发生错误，请稍后重试")
 
 
 @router.message(Command("message_stats"))
@@ -90,14 +90,14 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
     try:
         # 检查是否为群组
         if message.chat.type not in ["group", "supergroup"]:
-            await message.answer("❌ 此命令只能在群组中使用")
+            await message.answer("🔴 此命令只能在群组中使用")
             return
 
         # 检查群组配置
         config = await session.get(GroupConfigModel, message.chat.id)
         if not config or not config.is_message_save_enabled:
             await message.answer(
-                "❌ 此群组未启用消息保存功能\n"
+                "🔴 此群组未启用消息保存功能\n"
                 "请先使用 /group_config 命令启用消息保存"
             )
             return
@@ -107,7 +107,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
         stats = await export_service.get_message_statistics(message.chat.id, days=30)
 
         if not stats:
-            await message.answer("❌ 获取统计信息失败")
+            await message.answer("🔴 获取统计信息失败")
             return
 
         # 构建统计消息
@@ -157,7 +157,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
 
     except Exception as e:
         logger.error(f"消息统计命令处理失败: {e}")
-        await message.answer("❌ 获取统计信息时发生错误，请稍后重试")
+        await message.answer("🔴 获取统计信息时发生错误，请稍后重试")
 
 
 @router.callback_query(F.data.startswith("export:"))
@@ -177,7 +177,7 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
         # 检查权限
         chat_member = await callback.bot.get_chat_member(chat_id, callback.from_user.id)
         if chat_member.status not in ["administrator", "creator"]:
-            await callback.answer("❌ 只有群组管理员可以导出消息", show_alert=True)
+            await callback.answer("🔴 只有群组管理员可以导出消息", show_alert=True)
             return
 
         await callback.answer("🔄 正在准备导出...")
@@ -213,7 +213,7 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
             filename = f"messages_{chat_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
         else:
-            await callback.message.edit_text("❌ 不支持的导出格式")
+            await callback.message.edit_text("🔴 不支持的导出格式")
             return
 
         # 发送文件
@@ -232,7 +232,7 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
 
     except Exception as e:
         logger.error(f"处理导出格式失败: {e}")
-        await callback.answer("❌ 导出失败，请稍后重试", show_alert=True)
+        await callback.answer("🔴 导出失败，请稍后重试", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("export_range:"))
@@ -252,7 +252,7 @@ async def handle_export_range(callback: CallbackQuery, session: AsyncSession) ->
         # 检查权限
         chat_member = await callback.bot.get_chat_member(chat_id, callback.from_user.id)
         if chat_member.status not in ["administrator", "creator"]:
-            await callback.answer("❌ 只有群组管理员可以导出消息", show_alert=True)
+            await callback.answer("🔴 只有群组管理员可以导出消息", show_alert=True)
             return
 
         # 计算时间范围
@@ -276,11 +276,11 @@ async def handle_export_range(callback: CallbackQuery, session: AsyncSession) ->
             parse_mode="Markdown"
         )
 
-        await callback.answer(f"✅ 已选择时间范围: {range_text}")
+        await callback.answer(f"🟢 已选择时间范围: {range_text}")
 
     except Exception as e:
         logger.error(f"处理导出时间范围失败: {e}")
-        await callback.answer("❌ 处理失败，请稍后重试", show_alert=True)
+        await callback.answer("🔴 处理失败，请稍后重试", show_alert=True)
 
 
 @router.message(Command("search_messages"))
@@ -295,13 +295,13 @@ async def search_messages_command(message: Message, state: FSMContext) -> None:
     try:
         # 检查是否为群组
         if message.chat.type not in ["group", "supergroup"]:
-            await message.answer("❌ 此命令只能在群组中使用")
+            await message.answer("🔴 此命令只能在群组中使用")
             return
 
         # 检查用户权限
         chat_member = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
         if chat_member.status not in ["administrator", "creator"]:
-            await message.answer("❌ 只有群组管理员可以搜索消息")
+            await message.answer("🔴 只有群组管理员可以搜索消息")
             return
 
         await message.answer(
@@ -315,7 +315,7 @@ async def search_messages_command(message: Message, state: FSMContext) -> None:
 
     except Exception as e:
         logger.error(f"搜索消息命令处理失败: {e}")
-        await message.answer("❌ 处理命令时发生错误，请稍后重试")
+        await message.answer("🔴 处理命令时发生错误，请稍后重试")
 
 
 @router.message(StateFilter(MessageExportStates.waiting_for_search_text))
@@ -331,14 +331,14 @@ async def handle_search_text(message: Message, state: FSMContext, session: Async
     try:
         search_text = message.text.strip()
         if not search_text:
-            await message.answer("❌ 请输入有效的搜索关键词")
+            await message.answer("🔴 请输入有效的搜索关键词")
             return
 
         data = await state.get_data()
         chat_id = data.get("chat_id")
 
         if not chat_id:
-            await message.answer("❌ 会话状态错误，请重新开始")
+            await message.answer("🔴 会话状态错误，请重新开始")
             await state.clear()
             return
 
@@ -384,7 +384,7 @@ async def handle_search_text(message: Message, state: FSMContext, session: Async
 
     except Exception as e:
         logger.error(f"处理搜索文本失败: {e}")
-        await message.answer("❌ 搜索失败，请稍后重试")
+        await message.answer("🔴 搜索失败，请稍后重试")
         await state.clear()
 
 

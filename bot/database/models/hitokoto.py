@@ -21,24 +21,27 @@ class HitokotoModel(Base, BasicAuditMixin):
 
     __tablename__ = "hitokoto"
 
-    # 使用 uuid 作为主键以避免与审计字段冲突
-    uuid: Mapped[str] = mapped_column(String(64), primary_key=True, comment="一言唯一标识UUID")
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="自增主键")
 
-    # 接口字段
-    id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True, comment="一言标识(id)")
-    hitokoto: Mapped[str] = mapped_column(Text, nullable=False, comment="一言正文")
-    type: Mapped[str | None] = mapped_column(String(2), nullable=True, index=True, comment="类型代码(type)")
-    from_: Mapped[str | None] = mapped_column("from", String(255), nullable=True, comment="出处(from)")
-    from_who: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="作者(from_who)")
-    creator: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="添加者(creator)")
-    creator_uid: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="添加者用户标识(creator_uid)")
-    reviewer: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="审核员标识(reviewer)")
-    commit_from: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="提交方式(commit_from)")
-    source_created_at: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="来源创建时间(created_at)")
-    length: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="句子长度(length)")
+    hitokoto_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True, comment="一言标识")
+    hitokoto: Mapped[str] = mapped_column(Text, nullable=False, comment="一言正文。编码方式 unicode。使用 utf-8。")
+    type: Mapped[str | None] = mapped_column(
+        String(2),
+        nullable=True,
+        index=True,
+        comment="类型。a-动画 b-漫画 c-游戏 d-文学 e-原创 f-来自网络 g-其他 h-影视 i-诗词 j-网易云 k-哲学 l-抖机灵",
+    )
+    from_: Mapped[str | None] = mapped_column("from", String(255), nullable=True, comment="一言的出处")
+    from_who: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="一言的作者")
+    creator: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="添加者")
+    creator_uid: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="添加者用户标识")
+    reviewer: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="审核员标识")
+    uuid: Mapped[str] = mapped_column(String(64), comment="一言唯一标识；可在 https://hitokoto.cn?uuid=[uuid] 查看完整信息")
+    commit_from: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="提交方式")
+    source_created_at: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="来源添加时间(created_at)")
+    length: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="句子长度")
 
     __table_args__ = (
         Index("idx_hitokoto_type", "type"),
-        Index("idx_hitokoto_id", "id"),
+        Index("idx_hitokoto_id", "hitokoto_id"),
     )
-

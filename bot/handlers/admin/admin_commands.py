@@ -119,7 +119,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
             return
         groups_text = "📋 **所有群组配置**\n\n"
         for config in configs:
-            status = "✅ 启用" if config.is_message_save_enabled else "❌ 禁用"
+            status = "🟢 启用" if config.is_message_save_enabled else "🔴 禁用"
             group_type = "超级群组" if config.group_type == GroupType.SUPERGROUP else "普通群组"
             groups_text += f"**群组 {config.chat_id}**\n"
             groups_text += f"  状态: {status}\n"
@@ -138,14 +138,14 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
             groups_text += f"  总消息数: {total_messages}\n\n"
             groups_text += "📝 **群组列表:**\n"
             for config in configs[:SUMMARY_LIMIT]:
-                status = "✅" if config.is_message_save_enabled else "❌"
+                status = "🟢" if config.is_message_save_enabled else "🔴"
                 groups_text += f"  {status} 群组 {config.chat_id} ({config.total_messages_saved} 条消息)\n"
             if len(configs) > SUMMARY_LIMIT:
                 groups_text += f"\n... 还有 {len(configs) - SUMMARY_LIMIT} 个群组"
         await message.answer(groups_text, parse_mode="Markdown")
     except SQLAlchemyError as e:
         logger.error(f"查看群组配置失败: {e}")
-        await message.answer("❌ 查看群组配置时发生错误")
+        await message.answer("🔴 查看群组配置时发生错误")
 
 
 @router.message(Command("admin_enable_group"))
@@ -166,7 +166,7 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
     - None
     """
     if not command.args:
-        await message.answer("❌ 请提供群组ID\n用法: `/admin_enable_group <chat_id>`", parse_mode="Markdown")
+        await message.answer("🔴 请提供群组ID\n用法: `/admin_enable_group <chat_id>`", parse_mode="Markdown")
         return
     try:
         chat_id = int(command.args)
@@ -182,12 +182,12 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
         else:
             config.is_message_save_enabled = True
         await session.commit()
-        await message.answer(f"✅ 已启用群组 {chat_id} 的消息保存功能")
+        await message.answer(f"🟢 已启用群组 {chat_id} 的消息保存功能")
     except ValueError:
-        await message.answer("❌ 无效的群组ID")
+        await message.answer("🔴 无效的群组ID")
     except SQLAlchemyError as e:
         logger.error(f"启用群组失败: {e}")
-        await message.answer("❌ 启用群组时发生错误")
+        await message.answer("🔴 启用群组时发生错误")
 
 
 @router.message(Command("admin_disable_group"))
@@ -208,22 +208,22 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
     - None
     """
     if not command.args:
-        await message.answer("❌ 请提供群组ID\n用法: `/admin_disable_group <chat_id>`", parse_mode="Markdown")
+        await message.answer("🔴 请提供群组ID\n用法: `/admin_disable_group <chat_id>`", parse_mode="Markdown")
         return
     try:
         chat_id = int(command.args)
         config = await session.get(GroupConfigModel, chat_id)
         if not config:
-            await message.answer(f"❌ 群组 {chat_id} 未找到配置")
+            await message.answer(f"🔴 群组 {chat_id} 未找到配置")
             return
         config.is_message_save_enabled = False
         await session.commit()
-        await message.answer(f"❌ 已禁用群组 {chat_id} 的消息保存功能")
+        await message.answer(f"🔴 已禁用群组 {chat_id} 的消息保存功能")
     except ValueError:
-        await message.answer("❌ 无效的群组ID")
+        await message.answer("🔴 无效的群组ID")
     except SQLAlchemyError as e:
         logger.error(f"禁用群组失败: {e}")
-        await message.answer("❌ 禁用群组时发生错误")
+        await message.answer("🔴 禁用群组时发生错误")
 
 
 @router.message(Command("admin_group_info"))
@@ -244,18 +244,18 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
     - None
     """
     if not command.args:
-        await message.answer("❌ 请提供群组ID\n用法: `/admin_group_info <chat_id>`", parse_mode="Markdown")
+        await message.answer("🔴 请提供群组ID\n用法: `/admin_group_info <chat_id>`", parse_mode="Markdown")
         return
     try:
         chat_id = int(command.args)
         config = await session.get(GroupConfigModel, chat_id)
         if not config:
-            await message.answer(f"❌ 群组 {chat_id} 未找到配置")
+            await message.answer(f"🔴 群组 {chat_id} 未找到配置")
             return
         export_service = MessageExportService(session)
         stats = await export_service.get_message_statistics(chat_id, days=30)
         info_text = f"📊 **群组 {chat_id} 详细信息**\n\n"
-        status = "✅ 启用" if config.is_message_save_enabled else "❌ 禁用"
+        status = "🟢 启用" if config.is_message_save_enabled else "🔴 禁用"
         group_type = "超级群组" if config.group_type == GroupType.SUPERGROUP else "普通群组"
         info_text += "**基本信息:**\n"
         info_text += f"  状态: {status}\n"
@@ -264,11 +264,11 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
         info_text += f"  创建时间: {config.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n"
         info_text += f"  更新时间: {config.updated_at.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         info_text += "**过滤设置:**\n"
-        info_text += f"  保存文本: {'✅' if config.save_text else '❌'}\n"
-        info_text += f"  保存媒体: {'✅' if config.save_media else '❌'}\n"
-        info_text += f"  保存转发: {'✅' if config.save_forwarded else '❌'}\n"
-        info_text += f"  保存回复: {'✅' if config.save_replies else '❌'}\n"
-        info_text += f"  保存机器人: {'✅' if config.save_bot_messages else '❌'}\n\n"
+        info_text += f"  保存文本: {'🟢' if config.save_text else '🔴'}\n"
+        info_text += f"  保存媒体: {'🟢' if config.save_media else '🔴'}\n"
+        info_text += f"  保存转发: {'🟢' if config.save_forwarded else '🔴'}\n"
+        info_text += f"  保存回复: {'🟢' if config.save_replies else '🔴'}\n"
+        info_text += f"  保存机器人: {'🟢' if config.save_bot_messages else '🔴'}\n\n"
         if stats:
             info_text += "**统计信息(最近30天):**\n"
             info_text += f"  总消息数: {stats.get('total_messages', 0)}\n"
@@ -280,10 +280,10 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
         info_text += f"  累计用户: {config.total_users}\n"
         await message.answer(info_text, parse_mode="Markdown")
     except ValueError:
-        await message.answer("❌ 无效的群组ID")
+        await message.answer("🔴 无效的群组ID")
     except SQLAlchemyError as e:
         logger.error(f"查看群组信息失败: {e}")
-        await message.answer("❌ 查看群组信息时发生错误")
+        await message.answer("🔴 查看群组信息时发生错误")
 
 
 @router.message(Command("admin_cleanup"))
@@ -307,7 +307,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
         result = await session.execute(count_query)
         message_count = result.scalar() or 0
         if message_count == 0:
-            await message.answer("✅ 没有需要清理的过期数据")
+            await message.answer("🟢 没有需要清理的过期数据")
             return
         await message.answer(
             f"🗑️ **数据清理确认**\n\n" f"将删除 {message_count} 条90天前的消息\n" f"此操作不可撤销, 是否继续?",
@@ -318,7 +318,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
         )
     except SQLAlchemyError as e:
         logger.error(f"数据清理失败: {e}")
-        await message.answer("❌ 数据清理时发生错误")
+        await message.answer("🔴 数据清理时发生错误")
 
 
 @router.callback_query(F.data.startswith("admin_cleanup_confirm:"))
@@ -345,19 +345,19 @@ async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession)
         await session.commit()
         deleted_count = result.rowcount
         await callback.message.edit_text(
-            f"✅ **数据清理完成**\n\n"
+            f"🟢 **数据清理完成**\n\n"
             f"已删除 {deleted_count} 条过期消息\n"
             f"清理时间: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}",
             parse_mode="Markdown",
         )
     except (ValueError, SQLAlchemyError) as e:
         logger.error(f"确认清理失败: {e}")
-        await callback.answer("❌ 清理失败", show_alert=True)
+        await callback.answer("🔴 清理失败", show_alert=True)
 
 
 @router.callback_query(F.data == "admin_cleanup_cancel")
 async def handle_cleanup_cancel(callback: CallbackQuery) -> None:
-    await callback.message.edit_text("❌ 已取消数据清理操作")
+    await callback.message.edit_text("🔴 已取消数据清理操作")
     await callback.answer("已取消")
 
 
@@ -365,7 +365,7 @@ async def handle_cleanup_cancel(callback: CallbackQuery) -> None:
 @require_admin_feature("admin.stats")
 async def admin_stats_command(message: Message, session: AsyncSession) -> None:
     if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+        await message.answer("🔴 此命令仅限超级管理员使用")
         return
     try:
         group_query = select(func.count(GroupConfigModel.chat_id))
@@ -397,11 +397,11 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         stats_text += f"  日均消息: {recent_messages/30:.1f}\n\n"
         stats_text += "**系统信息:**\n"
         stats_text += f"  统计时间: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}\n"
-        stats_text += "  运行状态: ✅ 正常"
+        stats_text += "  运行状态: 🟢 正常"
         await message.answer(stats_text, parse_mode="Markdown")
     except SQLAlchemyError as e:
         logger.error(f"查看全局统计失败: {e}")
-        await message.answer("❌ 查看统计信息时发生错误")
+        await message.answer("🔴 查看统计信息时发生错误")
 
 
 __all__ = ["router"]
@@ -420,6 +420,7 @@ def is_super_admin(user_id: int) -> bool:
     with contextlib.suppress(Exception):
         return user_id == settings.get_owner_id()
     return False
+
 @router.message(Command("admin_hitokoto"))
 @require_admin_priv
 @require_admin_feature("admin.hitokoto")
@@ -457,7 +458,7 @@ async def admin_hitokoto_command(message: Message, session: AsyncSession) -> Non
     for idx, ch in enumerate(all_types, start=1):
         enabled = ch in categories
         name = type_names.get(ch, ch)
-        label = f"{name} {'✅' if enabled else '❌'}"
+        label = f"{name} {'🟢' if enabled else '🔴'}"
         current_row.append(InlineKeyboardButton(text=label, callback_data=f"admin:hitokoto:toggle:{ch}"))
         if idx % 4 == 0:
             rows.append(current_row)
@@ -528,7 +529,7 @@ async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession) 
         for idx, t in enumerate(all_types, start=1):
             enabled = t in categories
             name = type_names.get(t, t)
-            label = f"{name} {'✅' if enabled else '❌'}"
+            label = f"{name} {'🟢' if enabled else '🔴'}"
             current_row.append(InlineKeyboardButton(text=label, callback_data=f"admin:hitokoto:toggle:{t}"))
             if idx % 4 == 0:
                 rows.append(current_row)
@@ -565,4 +566,4 @@ async def admin_hitokoto_close(callback: CallbackQuery, session: AsyncSession) -
     - None
     """
     cats: list[str] = await get_config(session, "admin.hitokoto.categories")
-    await callback.answer(f"✅ 已保存分类: {', '.join(cats)}")
+    await callback.answer(f"🟢 已保存分类: {', '.join(cats)}")

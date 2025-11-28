@@ -191,8 +191,6 @@ CREATE TABLE configs (
     default_value TEXT COMMENT '默认值',
     description TEXT COMMENT '描述',
     category VARCHAR(100) COMMENT '分类',
-    is_public TINYINT(1) NOT NULL DEFAULT 0 COMMENT '公开',
-    is_editable TINYINT(1) NOT NULL DEFAULT 1 COMMENT '可编辑',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     created_by BIGINT COMMENT '创建者ID',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

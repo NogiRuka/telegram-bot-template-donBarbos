@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
+import time
 
 import aiohttp
 from aiohttp import ClientError
@@ -8,6 +9,7 @@ from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 
 from bot.database.models.hitokoto import HitokotoModel
+from bot.database.database import sessionmaker
 from bot.services.config_service import get_config
 
 if TYPE_CHECKING:
@@ -21,6 +23,7 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
 
     输入参数:
     - session: 异步数据库会话
+    - created_by: 创建/更新操作者用户ID, 用于审计字段
 
     返回值:
     - dict[str, Any] | None: 一言返回字典; 异常或解析失败返回 None
@@ -31,12 +34,13 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
     if session is not None:
         categories: list[str] | None = await get_config(session, "admin.hitokoto.categories")
     else:
-        categories = None
+        categories = ["d", "i"]
     query = [("encode", "json")] + ([("c", c) for c in categories] if categories else [])
     params = "&".join([f"{k}={v}" for k, v in query])
     url = f"https://v1.hitokoto.cn/?{params}"
-    logger.info(f"[Hitokoto] 请求URL={url} 分类={categories}")
+    logger.info(f"🔎 [Hitokoto] 请求 URL={url} | 分类={categories}")
     try:
+        start_time = time.perf_counter()
         async with aiohttp.ClientSession() as http_session, http_session.get(
             url, timeout=aiohttp.ClientTimeout(total=6.0)
         ) as resp:
@@ -45,15 +49,46 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
             u = payload.get("uuid")
             t = payload.get("type")
             ln = payload.get("length")
-            logger.info(f"[Hitokoto] 拉取成功 uuid={u} type={t} length={ln}")
+            duration_ms = int((time.perf_counter() - start_time) * 1000)
+            snippet = str(payload.get("hitokoto") or "")
+            snippet = (snippet[:48] + "…") if len(snippet) > 48 else snippet
+            logger.info(
+                f"🟢 [Hitokoto] 响应 status={resp.status} | 耗时={duration_ms}ms"
+            )
+            logger.info(
+                f"📦 [Hitokoto] 数据 uuid={u} | type={t} | length={ln} | 片段='{snippet}'"
+            )
             try:
                 uuid = str(payload.get("uuid") or "")
-                if uuid and session is not None:
-                    exists = await session.get(HitokotoModel, uuid)
-                    if exists is None:
+                if uuid:
+                    target_session = session
+                    # 若外部没有提供会话, 使用短连接会话入库
+                    if target_session is None:
+                        async with sessionmaker() as auto_session:
+                            target_session = auto_session
+                            model = HitokotoModel(
+                                uuid=uuid,
+                                hitokoto_id=int(payload.get("id") or 0) or None,
+                                hitokoto=str(payload.get("hitokoto") or ""),
+                                type=str(payload.get("type") or "") or None,
+                                from_=str(payload.get("from") or "") or None,
+                                from_who=str(payload.get("from_who") or "") or None,
+                                creator=str(payload.get("creator") or "") or None,
+                                creator_uid=int(payload.get("creator_uid") or 0) or None,
+                                reviewer=int(payload.get("reviewer") or 0) or None,
+                                commit_from=str(payload.get("commit_from") or "") or None,
+                                source_created_at=str(payload.get("created_at") or "") or None,
+                                length=int(payload.get("length") or 0) or None,
+                                created_by=created_by,
+                                updated_by=created_by,
+                            )
+                            target_session.add(model)
+                            await target_session.commit()
+                            logger.info(f"🧾 [Hitokoto] 入库成功 id={model.id} uuid={uuid}")
+                    else:
                         model = HitokotoModel(
                             uuid=uuid,
-                            id=int(payload.get("id") or 0) or None,
+                            hitokoto_id=int(payload.get("id") or 0) or None,
                             hitokoto=str(payload.get("hitokoto") or ""),
                             type=str(payload.get("type") or "") or None,
                             from_=str(payload.get("from") or "") or None,
@@ -67,28 +102,14 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
                             created_by=created_by,
                             updated_by=created_by,
                         )
-                        session.add(model)
-                        await session.commit()
-                        logger.info(f"[Hitokoto] 已入库 uuid={uuid}")
-                    else:
-                        exists.hitokoto = str(payload.get("hitokoto") or exists.hitokoto)
-                        exists.type = str(payload.get("type") or exists.type)
-                        exists.from_ = str(payload.get("from") or exists.from_)
-                        exists.from_who = str(payload.get("from_who") or exists.from_who)
-                        exists.creator = str(payload.get("creator") or exists.creator)
-                        exists.creator_uid = int(payload.get("creator_uid") or (exists.creator_uid or 0)) or None
-                        exists.reviewer = int(payload.get("reviewer") or (exists.reviewer or 0)) or None
-                        exists.commit_from = str(payload.get("commit_from") or exists.commit_from)
-                        exists.source_created_at = str(payload.get("created_at") or exists.source_created_at)
-                        exists.length = int(payload.get("length") or (exists.length or 0)) or None
-                        exists.updated_by = created_by
-                        await session.commit()
-                        logger.info(f"[Hitokoto] 已更新 uuid={uuid}")
-            except SQLAlchemyError:
-                logger.exception("[Hitokoto] 入库失败")
+                        target_session.add(model)
+                        await target_session.commit()
+                        logger.info(f"🧾 [Hitokoto] 入库成功 id={model.id} uuid={uuid}")
+            except SQLAlchemyError as err:
+                logger.exception(f"🔴 [Hitokoto] 入库失败: {err}")
             return payload
     except (ClientError, TimeoutError, json.JSONDecodeError) as exc:
-        logger.warning("Hitokoto 请求失败: %s", exc)
+        logger.warning(f"⚠️ [Hitokoto] 请求失败: {exc}")
         return None
 
 
@@ -114,6 +135,6 @@ def build_start_caption(payload: dict[str, Any] | None, user_name: str, project_
     link = f"https://hitokoto.cn?uuid={uuid}" if uuid else "https://hitokoto.cn/"
     return (
         f"『 [{hitokoto}]({link}) 』\n\n"
-        f"🍃 嗨  *{user_name}*\n"
-        f"🎐 欢迎使用{project_name}~\n"
+        f"🍃 嗨  *_{user_name}_*\n"
+        f"🎐 欢迎使用{project_name}\n"
     )

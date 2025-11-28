@@ -49,7 +49,7 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
     """功能开关面板键盘
 
     功能说明:
-    - 控制用户功能的开关, 使用状态 emoji (✅/❌) 清晰显示开启关闭
+    - 控制用户功能的开关, 使用状态 emoji (🟢/🔴) 清晰显示开启关闭
     - 底部包含返回上一级与返回主面板按钮
 
     输入参数:
@@ -59,7 +59,7 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
     - InlineKeyboardMarkup: 功能开关键盘
     """
     def status(v: bool) -> str:
-        return "✅" if v else "❌"
+        return "🟢" if v else "🔴"
     kb = InlineKeyboardBuilder()
     kb.row(
         InlineKeyboardButton(
@@ -129,7 +129,7 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
     """管理员权限面板键盘
 
     功能说明:
-    - 控制管理员可使用的功能权限开关, 状态使用 emoji (✅/❌) 显示
+    - 控制管理员可使用的功能权限开关, 状态使用 emoji (🟢/🔴) 显示
     - 底部包含返回上一级与返回主面板按钮
 
     输入参数:
@@ -139,7 +139,7 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
     - InlineKeyboardMarkup: 管理员权限面板键盘
     """
     def status(v: bool) -> str:
-        return "✅" if v else "❌"
+        return "🟢" if v else "🔴"
     kb = InlineKeyboardBuilder()
     kb.row(InlineKeyboardButton(
         text=f"🧲 管理员总开关 {status(perms.get('admin.features.enabled', False))}",
@@ -154,12 +154,12 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
         callback_data="owner:admin_perms:toggle:stats",
     ))
     kb.row(InlineKeyboardButton(
-        text=f"🎴 一言管理 {status(perms.get('admin.hitokoto', False))}",
-        callback_data="owner:admin_perms:toggle:hitokoto",
-    ))
-    kb.row(InlineKeyboardButton(
         text=f"🛂 开放注册 {status(perms.get('admin.open_registration', False))}",
         callback_data="owner:admin_perms:toggle:open_registration",
+    ))
+    kb.row(InlineKeyboardButton(
+        text=f"🎴 一言管理 {status(perms.get('admin.hitokoto', False))}",
+        callback_data="owner:admin_perms:toggle:hitokoto",
     ))
     kb.row(
         InlineKeyboardButton(text="↩️ 返回上一级", callback_data="owner:panel"),

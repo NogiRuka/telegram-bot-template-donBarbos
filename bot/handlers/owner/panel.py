@@ -30,7 +30,7 @@ async def show_owner_panel(callback: CallbackQuery) -> None:
     返回值:
     - None
     """
-    caption = "🛠️ 管理面板\n\n可进行机器人总开关、功能开关与管理员管理"
+    caption = "👑 所有者面板"
     kb = get_owner_panel_keyboard()
     if callback.message:
         image = get_common_image()
@@ -57,7 +57,7 @@ async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession) -> 
     - None
     """
     new_val = await toggle_config(session, "bot.features.enabled")
-    await callback.answer(f"✅ 机器人总开关: {'开启' if new_val else '关闭'}")
+    await callback.answer(f"{'🟢' if new_val else '🔴'} 机器人总开关: {'开启' if new_val else '关闭'}")
 
 
 @router.callback_query(F.data == "owner:features")

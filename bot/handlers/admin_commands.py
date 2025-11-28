@@ -69,7 +69,7 @@ async def admin_help_command(message: Message) -> None:
         message: Telegram消息对象
     """
     if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+        await message.answer("🔴 此命令仅限超级管理员使用")
         return
 
     help_text = """
@@ -107,7 +107,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
         session: 数据库会话
     """
     if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+        await message.answer("🔴 此命令仅限超级管理员使用")
         return
 
     try:
@@ -124,7 +124,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
         groups_text = "📋 **所有群组配置**\n\n"
 
         for config in configs:
-            status = "✅ 启用" if config.is_message_save_enabled else "❌ 禁用"
+            status = "🟢 启用" if config.is_message_save_enabled else "🔴 禁用"
             group_type = "超级群组" if config.group_type == GroupType.SUPERGROUP else "普通群组"
 
             groups_text += f"**群组 {config.chat_id}**\n"
@@ -149,7 +149,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
 
             groups_text += "📝 **群组列表:**\n"
             for config in configs:
-                status = "✅" if config.is_message_save_enabled else "❌"
+                status = "🟢" if config.is_message_save_enabled else "🔴"
                 groups_text += f"  {status} 群组 {config.chat_id} ({config.total_messages_saved} 条消息)\n"
 
             if len(configs) > 20:
@@ -159,7 +159,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
 
     except Exception as e:
         logger.error(f"查看群组配置失败: {e}")
-        await message.answer("❌ 查看群组配置时发生错误")
+        await message.answer("🔴 查看群组配置时发生错误")
 
 
 @router.message(Command("admin_enable_group"))
@@ -173,11 +173,11 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
         session: 数据库会话
     """
     if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+        await message.answer("🔴 此命令仅限超级管理员使用")
         return
 
     if not command.args:
-        await message.answer("❌ 请提供群组ID\n用法: `/admin_enable_group <chat_id>`", parse_mode="Markdown")
+        await message.answer("🔴 请提供群组ID\n用法: `/admin_enable_group <chat_id>`", parse_mode="Markdown")
         return
 
     try:
@@ -198,13 +198,13 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
 
         await session.commit()
 
-        await message.answer(f"✅ 已启用群组 {chat_id} 的消息保存功能")
+        await message.answer(f"🟢 已启用群组 {chat_id} 的消息保存功能")
 
     except ValueError:
-        await message.answer("❌ 无效的群组ID")
+        await message.answer("🔴 无效的群组ID")
     except Exception as e:
         logger.error(f"启用群组失败: {e}")
-        await message.answer("❌ 启用群组时发生错误")
+        await message.answer("🔴 启用群组时发生错误")
 
 
 @router.message(Command("admin_disable_group"))
@@ -218,11 +218,11 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
         session: 数据库会话
     """
     if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+        await message.answer("🔴 此命令仅限超级管理员使用")
         return
 
     if not command.args:
-        await message.answer("❌ 请提供群组ID\n用法: `/admin_disable_group <chat_id>`", parse_mode="Markdown")
+        await message.answer("🔴 请提供群组ID\n用法: `/admin_disable_group <chat_id>`", parse_mode="Markdown")
         return
 
     try:
@@ -230,19 +230,19 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
 
         config = await session.get(GroupConfigModel, chat_id)
         if not config:
-            await message.answer(f"❌ 群组 {chat_id} 未找到配置")
+            await message.answer(f"🔴 群组 {chat_id} 未找到配置")
             return
 
         config.is_message_save_enabled = False
         await session.commit()
 
-        await message.answer(f"❌ 已禁用群组 {chat_id} 的消息保存功能")
+        await message.answer(f"🔴 已禁用群组 {chat_id} 的消息保存功能")
 
     except ValueError:
-        await message.answer("❌ 无效的群组ID")
+        await message.answer("🔴 无效的群组ID")
     except Exception as e:
         logger.error(f"禁用群组失败: {e}")
-        await message.answer("❌ 禁用群组时发生错误")
+        await message.answer("🔴 禁用群组时发生错误")
 
 
 @router.message(Command("admin_group_info"))
@@ -256,11 +256,11 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
         session: 数据库会话
     """
     if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+        await message.answer("🔴 此命令仅限超级管理员使用")
         return
 
     if not command.args:
-        await message.answer("❌ 请提供群组ID\n用法: `/admin_group_info <chat_id>`", parse_mode="Markdown")
+        await message.answer("🔴 请提供群组ID\n用法: `/admin_group_info <chat_id>`", parse_mode="Markdown")
         return
 
     try:
@@ -269,7 +269,7 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
         # 获取群组配置
         config = await session.get(GroupConfigModel, chat_id)
         if not config:
-            await message.answer(f"❌ 群组 {chat_id} 未找到配置")
+            await message.answer(f"🔴 群组 {chat_id} 未找到配置")
             return
 
         # 获取消息统计
@@ -280,7 +280,7 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
         info_text = f"📊 **群组 {chat_id} 详细信息**\n\n"
 
         # 基本配置
-        status = "✅ 启用" if config.is_message_save_enabled else "❌ 禁用"
+        status = "🟢 启用" if config.is_message_save_enabled else "🔴 禁用"
         group_type = "超级群组" if config.group_type == GroupType.SUPERGROUP else "普通群组"
 
         info_text += "**基本信息:**\n"
@@ -292,11 +292,11 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
 
         # 过滤设置
         info_text += "**过滤设置:**\n"
-        info_text += f"  保存文本: {'✅' if config.save_text else '❌'}\n"
-        info_text += f"  保存媒体: {'✅' if config.save_media else '❌'}\n"
-        info_text += f"  保存转发: {'✅' if config.save_forwarded else '❌'}\n"
-        info_text += f"  保存回复: {'✅' if config.save_replies else '❌'}\n"
-        info_text += f"  保存机器人: {'✅' if config.save_bot_messages else '❌'}\n\n"
+        info_text += f"  保存文本: {'🟢' if config.save_text else '🔴'}\n"
+        info_text += f"  保存媒体: {'🟢' if config.save_media else '🔴'}\n"
+        info_text += f"  保存转发: {'🟢' if config.save_forwarded else '🔴'}\n"
+        info_text += f"  保存回复: {'🟢' if config.save_replies else '🔴'}\n"
+        info_text += f"  保存机器人: {'🟢' if config.save_bot_messages else '🔴'}\n\n"
 
         # 统计信息
         if stats:
@@ -314,10 +314,10 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
         await message.answer(info_text, parse_mode="Markdown")
 
     except ValueError:
-        await message.answer("❌ 无效的群组ID")
+        await message.answer("🔴 无效的群组ID")
     except Exception as e:
         logger.error(f"查看群组信息失败: {e}")
-        await message.answer("❌ 查看群组信息时发生错误")
+        await message.answer("🔴 查看群组信息时发生错误")
 
 
 @router.message(Command("admin_cleanup"))
@@ -330,7 +330,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
         session: 数据库会话
     """
     if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+        await message.answer("🔴 此命令仅限超级管理员使用")
         return
 
     try:
@@ -345,7 +345,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
         message_count = result.scalar() or 0
 
         if message_count == 0:
-            await message.answer("✅ 没有需要清理的过期数据")
+            await message.answer("🟢 没有需要清理的过期数据")
             return
 
         # 确认清理
@@ -362,7 +362,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
 
     except Exception as e:
         logger.error(f"数据清理失败: {e}")
-        await message.answer("❌ 数据清理时发生错误")
+        await message.answer("🔴 数据清理时发生错误")
 
 
 @router.callback_query(F.data.startswith("admin_cleanup_confirm:"))
@@ -375,7 +375,7 @@ async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession)
         session: 数据库会话
     """
     if not is_super_admin(callback.from_user.id):
-        await callback.answer("❌ 此操作仅限超级管理员", show_alert=True)
+        await callback.answer("🔴 此操作仅限超级管理员", show_alert=True)
         return
 
     try:
@@ -395,7 +395,7 @@ async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession)
         deleted_count = result.rowcount
 
         await callback.message.edit_text(
-            f"✅ **数据清理完成**\n\n"
+            f"🟢 **数据清理完成**\n\n"
             f"已删除 {deleted_count} 条过期消息\n"
             f"清理时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             parse_mode="Markdown"
@@ -403,7 +403,7 @@ async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession)
 
     except Exception as e:
         logger.error(f"确认清理失败: {e}")
-        await callback.answer("❌ 清理失败", show_alert=True)
+        await callback.answer("🔴 清理失败", show_alert=True)
 
 
 @router.callback_query(F.data == "admin_cleanup_cancel")
@@ -414,7 +414,7 @@ async def handle_cleanup_cancel(callback: CallbackQuery) -> None:
     Args:
         callback: 回调查询对象
     """
-    await callback.message.edit_text("❌ 已取消数据清理操作")
+    await callback.message.edit_text("🔴 已取消数据清理操作")
     await callback.answer("已取消")
 
 
@@ -428,7 +428,7 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         session: 数据库会话
     """
     if not is_super_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅限超级管理员使用")
+        await message.answer("🔴 此命令仅限超级管理员使用")
         return
 
     try:
@@ -472,13 +472,13 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
 
         stats_text += "**系统信息:**\n"
         stats_text += f"  统计时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-        stats_text += "  运行状态: ✅ 正常"
+        stats_text += "  运行状态: 🟢 正常"
 
         await message.answer(stats_text, parse_mode="Markdown")
 
     except Exception as e:
         logger.error(f"查看全局统计失败: {e}")
-        await message.answer("❌ 查看统计信息时发生错误")
+        await message.answer("🔴 查看统计信息时发生错误")
 
 
 # 导出路由

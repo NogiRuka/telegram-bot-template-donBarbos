@@ -28,7 +28,11 @@ async def get_config(session: AsyncSession, key: str) -> Any:
     with contextlib.suppress(SQLAlchemyError):
         result = await session.execute(select(ConfigModel).where(ConfigModel.key == key))
         model: ConfigModel | None = result.scalar_one_or_none()
-        return model.get_typed_value() if model else None
+        if model:
+            typed_value = model.get_typed_value()
+            # 若value为空则取default_value
+            return typed_value if typed_value is not None else model.get_typed_default_value()
+        return None
     return None
 
 

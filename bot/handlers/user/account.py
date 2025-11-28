@@ -57,7 +57,7 @@ async def user_register(callback: CallbackQuery, session: AsyncSession) -> None:
     try:
         await callback.answer("功能建设中, 请稍后再试", show_alert=True)
     except TelegramAPIError:
-        await callback.answer("❌ 系统异常, 请稍后再试", show_alert=True)
+        await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
 
 
 @router.callback_query(F.data == "user:info")
@@ -80,7 +80,7 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
     try:
         await callback.answer("功能建设中, 请稍后再试", show_alert=True)
     except TelegramAPIError:
-        await callback.answer("❌ 系统异常, 请稍后再试", show_alert=True)
+        await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
 
 
 @router.callback_query(F.data == "user:lines")
@@ -103,7 +103,7 @@ async def user_lines(callback: CallbackQuery, session: AsyncSession) -> None:
     try:
         await callback.answer("功能建设中, 请稍后再试", show_alert=True)
     except TelegramAPIError:
-        await callback.answer("❌ 系统异常, 请稍后再试", show_alert=True)
+        await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
 
 
 @router.callback_query(F.data == "user:devices")
@@ -126,7 +126,7 @@ async def user_devices(callback: CallbackQuery, session: AsyncSession) -> None:
     try:
         await callback.answer("功能建设中, 请稍后再试", show_alert=True)
     except TelegramAPIError:
-        await callback.answer("❌ 系统异常, 请稍后再试", show_alert=True)
+        await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
 
 
 @router.callback_query(F.data == "user:password")
@@ -149,7 +149,7 @@ async def user_password(callback: CallbackQuery, session: AsyncSession) -> None:
     try:
         await callback.answer("功能建设中, 请稍后再试", show_alert=True)
     except TelegramAPIError:
-        await callback.answer("❌ 系统异常, 请稍后再试", show_alert=True)
+        await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
 
 
 @router.callback_query(F.data == "user:profile")
