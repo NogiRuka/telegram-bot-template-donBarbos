@@ -436,23 +436,49 @@ async def admin_hitokoto_command(message: Message, session: AsyncSession) -> Non
     返回值:
     - None
     """
-    categories: list[str] = await get_config(session, "admin.hitokoto.categories")
-    buttons: list[list[InlineKeyboardButton]] = []
-    all_types = ["a","b","c","d","e","f","g","h","i","j","k","l"]
-    for ch in all_types:
+    categories = await get_config(session, "admin.hitokoto.categories") or []
+    type_names: dict[str, str] = {
+        "a": "动画",
+        "b": "漫画",
+        "c": "游戏",
+        "d": "文学",
+        "e": "原创",
+        "f": "来自网络",
+        "g": "其他",
+        "h": "影视",
+        "i": "诗词",
+        "j": "网易云",
+        "k": "哲学",
+        "l": "抖机灵",
+    }
+    all_types = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"]
+    rows: list[list[InlineKeyboardButton]] = []
+    current_row: list[InlineKeyboardButton] = []
+    for idx, ch in enumerate(all_types, start=1):
         enabled = ch in categories
-        label = f"{ch.upper()} {'✅' if enabled else '❌'}"
-        buttons.append([InlineKeyboardButton(text=label, callback_data=f"admin:hitokoto:toggle:{ch}")])
-    buttons.append([InlineKeyboardButton(text="保存并关闭", callback_data="admin:hitokoto:close")])
-    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+        name = type_names.get(ch, ch)
+        label = f"{name} {'✅' if enabled else '❌'}"
+        current_row.append(InlineKeyboardButton(text=label, callback_data=f"admin:hitokoto:toggle:{ch}"))
+        if idx % 4 == 0:
+            rows.append(current_row)
+            current_row = []
+    if current_row:
+        rows.append(current_row)
+    rows.append([
+        InlineKeyboardButton(text="⬅️ 返回", callback_data="admin:panel"),
+        InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+    ])
+    kb = InlineKeyboardMarkup(inline_keyboard=rows)
+
+    current_names = [type_names.get(ch, ch) for ch in categories]
     desc = (
         "📝 一言管理\n\n"
         "选择需要纳入的分类参数(多选):\n"
         "a 动画 | b 漫画 | c 游戏 | d 文学 | e 原创\n"
         "f 来自网络 | g 其他 | h 影视 | i 诗词 | j 网易云\n"
         "k 哲学 | l 抖机灵\n\n"
-        f"当前分类: {', '.join(categories)}\n"
-        "提示: 可多次点击切换, 保存后生效。"
+        f"当前分类: {', '.join(current_names) if current_names else '未选择'}\n"
+        "提示: 可多次点击切换, 选择会即时保存。"
     )
     await message.answer(desc, reply_markup=kb)
 
@@ -476,21 +502,44 @@ async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession) 
     try:
         data = callback.data or ""
         ch = data.split(":")[-1]
-        categories: list[str] = await get_config(session, "admin.hitokoto.categories")
+        categories = await get_config(session, "admin.hitokoto.categories") or []
         if ch in categories:
             categories = [c for c in categories if c != ch]
         else:
             categories.append(ch)
         await set_config(session, "admin.hitokoto.categories", categories, ConfigType.LIST)
-        # 重新渲染键盘
-        buttons: list[list[InlineKeyboardButton]] = []
-        all_types = ["a","b","c","d","e","f","g","h","i","j","k","l"]
-        for t in all_types:
+        type_names: dict[str, str] = {
+            "a": "动画",
+            "b": "漫画",
+            "c": "游戏",
+            "d": "文学",
+            "e": "原创",
+            "f": "来自网络",
+            "g": "其他",
+            "h": "影视",
+            "i": "诗词",
+            "j": "网易云",
+            "k": "哲学",
+            "l": "抖机灵",
+        }
+        all_types = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"]
+        rows: list[list[InlineKeyboardButton]] = []
+        current_row: list[InlineKeyboardButton] = []
+        for idx, t in enumerate(all_types, start=1):
             enabled = t in categories
-            label = f"{t.upper()} {'✅' if enabled else '❌'}"
-            buttons.append([InlineKeyboardButton(text=label, callback_data=f"admin:hitokoto:toggle:{t}")])
-        buttons.append([InlineKeyboardButton(text="保存并关闭", callback_data="admin:hitokoto:close")])
-        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+            name = type_names.get(t, t)
+            label = f"{name} {'✅' if enabled else '❌'}"
+            current_row.append(InlineKeyboardButton(text=label, callback_data=f"admin:hitokoto:toggle:{t}"))
+            if idx % 4 == 0:
+                rows.append(current_row)
+                current_row = []
+        if current_row:
+            rows.append(current_row)
+        rows.append([
+            InlineKeyboardButton(text="⬅️ 返回", callback_data="admin:panel"),
+            InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+        ])
+        kb = InlineKeyboardMarkup(inline_keyboard=rows)
         msg = callback.message
         if msg:
             await msg.edit_reply_markup(reply_markup=kb)
