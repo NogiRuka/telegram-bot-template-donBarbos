@@ -44,6 +44,7 @@ class BotSettings(EnvBaseSettings):
     PROJECT_NAME: str = Field(default="", description="项目名称，用于日志与Banner")
     EMBY_BASE_URL: str | None = Field(default=None, description="Emby 服务地址, 例如 https://your-emby.com")
     EMBY_API_KEY: str | None = Field(default=None, description="Emby API Key, 通过 X-Emby-Token 传递")
+    EMBY_TEMPLATE_USER_ID: str | None = Field(default=None, description="Emby 模板用户ID，用于创建用户时复制配置")
 
     @field_validator("BOT_TOKEN")
     @classmethod
@@ -138,6 +139,24 @@ class BotSettings(EnvBaseSettings):
         - bool: 是否已配置
         """
         return bool(self.EMBY_BASE_URL and self.EMBY_API_KEY)
+
+    def get_emby_template_user_id(self) -> str | None:
+        """获取 Emby 模板用户ID
+
+        功能说明:
+        - 返回配置中的 `EMBY_TEMPLATE_USER_ID`, 若未设置返回 None
+
+        输入参数:
+        - 无
+
+        返回值:
+        - str | None: 模板用户ID
+        """
+        v = self.EMBY_TEMPLATE_USER_ID
+        if v is None:
+            return None
+        s = v.strip()
+        return s or None
 
     def get_owner_id(self) -> int:
         """获取所有者用户ID
