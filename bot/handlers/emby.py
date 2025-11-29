@@ -10,9 +10,51 @@ from bot.core.config import settings
 from bot.services.emby_client import EmbyClient
 
 router = Router(name="emby")
-CREATE_MIN_ARGS = 2
-CREATE_PASS_INDEX = 2
-DELETE_MIN_ARGS = 2
+
+
+async def get_client_or_reply(message: types.Message) -> EmbyClient | None:
+    """获取 EmbyClient 或回复缺少配置
+
+    功能说明:
+    - 从配置构建 EmbyClient, 若缺少配置则直接回复提示
+
+    输入参数:
+    - message: Telegram 消息对象
+
+    返回值:
+    - EmbyClient | None: 成功返回客户端, 失败返回 None
+    """
+    client = _get_emby_client()
+    if client is None:
+        message_text = (
+            "❌ 未配置 Emby 连接信息\n"
+            "请在 .env 文件中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
+        )
+        await message.answer(message_text)
+        return None
+    return client
+
+
+async def get_args_or_usage(message: types.Message, usage: str, min_args: int) -> list[str] | None:
+    """解析命令参数, 不足则回复用法
+
+    功能说明:
+    - 解析消息文本为空格分隔参数, 不满足最小数量则回复用法
+
+    输入参数:
+    - message: Telegram 消息对象
+    - usage: 用法提示文本
+    - min_args: 最少参数数量
+
+    返回值:
+    - list[str] | None: 参数列表, 不足返回 None
+    """
+    parts = (message.text or "").strip().split()
+    need = int(min_args)
+    if len(parts) < need:
+        await message.answer(usage)
+        return None
+    return parts
 def _get_emby_client() -> EmbyClient | None:
     """构建 Emby 客户端实例
 
@@ -53,12 +95,8 @@ async def list_emby_users(message: types.Message) -> None:
     - 频繁调用可能触发限流, 建议设置命令使用频率
     """
 
-    client = _get_emby_client()
+    client = await get_client_or_reply(message)
     if client is None:
-        await message.answer(
-            "❌ 未配置 Emby 连接信息\n"
-            "请在 .env 文件中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
-        )
         return
     try:
         users: list[dict[str, Any]] = await client.get_users()
@@ -84,19 +122,15 @@ async def create_emby_user(message: types.Message) -> None:
     返回值:
     - None
     """
-    client = _get_emby_client()
+    client = await get_client_or_reply(message)
     if client is None:
-        await message.answer(
-            "❌ 未配置 Emby 连接信息\n"
-            "请在 .env 文件中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
-        )
         return
-    parts = (message.text or "").strip().split()
-    if len(parts) < CREATE_MIN_ARGS:
-        await message.answer("用法: /emby_create <name> [password]")
+    parts = await get_args_or_usage(message, "用法: /emby_create <name> [password]", 2) or []
+    name_idx, pass_idx = 1, 2
+    if not parts:
         return
-    name = parts[1]
-    password = parts[2] if len(parts) >= CREATE_PASS_INDEX else None
+    name = parts[name_idx]
+    password = parts[pass_idx] if len(parts) > pass_idx else None
     try:
         template_id = settings.get_emby_template_user_id()
         user_copy_options = ["UserPolicy", "UserConfiguration"] if template_id else None
@@ -126,18 +160,14 @@ async def delete_emby_user(message: types.Message) -> None:
     返回值:
     - None
     """
-    client = _get_emby_client()
+    client = await get_client_or_reply(message)
     if client is None:
-        await message.answer(
-            "❌ 未配置 Emby 连接信息\n"
-            "请在 .env 文件中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
-        )
         return
-    parts = (message.text or "").strip().split()
-    if len(parts) < DELETE_MIN_ARGS:
-        await message.answer("用法: /emby_delete <user_id>")
+    parts = await get_args_or_usage(message, "用法: /emby_delete <user_id>", 2) or []
+    id_idx = 1
+    if not parts:
         return
-    user_id = parts[1]
+    user_id = parts[id_idx]
     try:
         await client.delete_user(user_id)
         await message.answer(f"✅ 已删除用户: {user_id}")
