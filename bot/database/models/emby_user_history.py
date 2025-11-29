@@ -8,28 +8,27 @@ from sqlalchemy.orm import Mapped, mapped_column
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
 
 
-class EmbyUserModel(Base, BasicAuditMixin):
-    """Emby 用户模型
+class EmbyUserHistoryModel(Base, BasicAuditMixin):
+    """Emby 用户历史模型
 
     功能说明:
-    - 存储从 Emby 创建/同步的用户基本信息
-    - 保存完整的 `UserDto` 为 JSON 文本, 便于审计与二次处理
+    - 记录 Emby 用户创建、更新、删除等历史快照
+    - 保存 `UserDto` JSON 快照与密码哈希
 
     输入参数:
-    - 无 (ORM 模型实例化时传入字段)
+    - 无 (ORM 实例化时传入字段)
 
     返回值:
     - 无
     """
 
-    __tablename__ = "emby_users"
+    __tablename__ = "emby_user_history"
 
     id: Mapped[auto_int_pk]
 
     emby_user_id: Mapped[str] = mapped_column(
         String(64),
         nullable=False,
-        unique=True,
         index=True,
         comment="Emby 用户ID(字符串)"
     )
@@ -44,7 +43,7 @@ class EmbyUserModel(Base, BasicAuditMixin):
     user_dto: Mapped[dict[str, Any] | None] = mapped_column(
         JSON,
         nullable=True,
-        comment="Emby 返回的 UserDto JSON 对象"
+        comment="UserDto JSON 快照"
     )
 
     password_hash: Mapped[str | None] = mapped_column(
@@ -53,8 +52,14 @@ class EmbyUserModel(Base, BasicAuditMixin):
         comment="密码哈希 (bcrypt)"
     )
 
-    __table_args__ = (
-        Index("idx_emby_users_name", "name"),
+    action: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        comment="动作类型(create/update/delete)"
     )
 
-    repr_cols = ("id", "emby_user_id", "name", "created_at")
+    __table_args__ = (
+        Index("idx_emby_user_history_user_action", "emby_user_id", "action"),
+    )
+
+    repr_cols = ("id", "emby_user_id", "action", "created_at")

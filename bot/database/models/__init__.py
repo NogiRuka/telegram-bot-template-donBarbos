@@ -11,6 +11,7 @@ from .user_extend import UserExtendModel, UserRole
 from .user_history import UserHistoryModel
 from .user_state import UserStateModel
 from .emby_user import EmbyUserModel
+from .emby_user_history import EmbyUserHistoryModel
 
 __all__ = [
     "ActionType",
@@ -32,4 +33,5 @@ __all__ = [
     "UserRole",
     "UserStateModel",
     "EmbyUserModel",
+    "EmbyUserHistoryModel",
 ]

@@ -1,18 +1,22 @@
 from __future__ import annotations
 import asyncio
 import datetime
-import json
 from typing import TYPE_CHECKING, Any
 
 from aiogram import Router, types
 from aiogram.filters import Command
 from aiohttp import ClientError
 from loguru import logger
+
+try:
+    import bcrypt
+except ModuleNotFoundError:  # pragma: no cover
+    bcrypt = None  # type: ignore[assignment]
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from bot.core.config import settings
-from bot.database.models import EmbyUserModel
+from bot.database.models import EmbyUserHistoryModel, EmbyUserModel
 from bot.services.emby_client import EmbyClient, get_emby_client_from_settings
 
 if TYPE_CHECKING:
@@ -136,12 +140,22 @@ async def create_emby_user(message: types.Message, session: AsyncSession) -> Non
         uid = str(res.get("Id") or "")
         created_name = str(res.get("Name") or name)
         try:
+            pwd_hash = hash_password(password)
             model = EmbyUserModel(
                 emby_user_id=uid,
                 name=created_name,
-                user_dto=json.dumps(res, ensure_ascii=False),
+                user_dto=res,
+                password_hash=pwd_hash,
+            )
+            history = EmbyUserHistoryModel(
+                emby_user_id=uid,
+                name=created_name,
+                user_dto=res,
+                password_hash=pwd_hash,
+                action="create",
             )
             session.add(model)
+            session.add(history)
             await session.commit()
         except SQLAlchemyError as e:
             logger.exception(f"写入 Emby 用户到数据库失败: {e!s}")
@@ -179,9 +193,43 @@ async def delete_emby_user(message: types.Message, session: AsyncSession) -> Non
             if model:
                 model.is_deleted = True
                 model.deleted_at = datetime.datetime.now(datetime.timezone.utc)
+                history = EmbyUserHistoryModel(
+                    emby_user_id=user_id,
+                    name=model.name,
+                    user_dto=model.user_dto,
+                    password_hash=model.password_hash,
+                    action="delete",
+                )
+                session.add(history)
                 await session.commit()
         except SQLAlchemyError as e:
             logger.exception(f"标记 Emby 用户软删除失败: {e!s}")
         await message.answer(f"✅ 已删除用户: {user_id}")
     except (ClientError, asyncio.TimeoutError) as e:
         await message.answer(f"❌ 删除失败: {e!s}")
+def hash_password(password: str | None) -> str | None:
+    """密码哈希
+
+    功能说明:
+    - 使用 bcrypt 对明文密码进行哈希处理
+
+    输入参数:
+    - password: 明文密码或 None
+
+    返回值:
+    - str | None: 哈希后的密码或 None
+
+    依赖安装:
+    - pip install bcrypt
+    """
+    if not password:
+        return None
+    try:
+        if bcrypt is None:
+            logger.exception("bcrypt 未安装")
+            return None
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    except (ValueError, TypeError) as e:
+        logger.exception(f"bcrypt 哈希失败: {e!s}")
+        return None
