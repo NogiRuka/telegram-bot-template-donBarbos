@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Any
 
-from bot.core.config import settings
 from bot.utils.http import HttpClient
 
 
@@ -83,92 +82,4 @@ class EmbyClient:
         return await self.http.request("DELETE", f"/Users/{user_id}")
 
 
-class EmbyNotConfiguredError(Exception):
-    """Emby 未配置异常
 
-    功能说明:
-    - 当未设置 EMBY_BASE_URL 或 EMBY_API_KEY 时抛出该异常
-
-    输入参数:
-    - 无
-
-    返回值:
-    - 无
-    """
-
-
-class EmbyProxy:
-    """Emby 代理对象
-
-    功能说明:
-    - 提供 `emby.方法()` 的简洁调用格式
-    - 动态代理 `EmbyClient` 的方法, 避免重复实现
-    - 对 `create_user` 进行模板参数的自动注入
-
-    输入参数:
-    - 无
-
-    返回值:
-    - 无
-    """
-
-    def _build_client(self) -> EmbyClient:
-        """构建客户端
-
-        功能说明:
-        - 从配置读取 EMBY_BASE_URL 与 EMBY_API_KEY, 构建 EmbyClient
-
-        输入参数:
-        - 无
-
-        返回值:
-        - EmbyClient: 客户端实例
-        """
-        base_url = settings.get_emby_base_url()
-        api_key = settings.get_emby_api_key()
-        if not base_url or not api_key:
-            msg = "Emby 未配置"
-            raise EmbyNotConfiguredError(msg)
-        return EmbyClient(base_url, api_key)
-
-    def __getattr__(self, name: str) -> Any:
-        """动态代理 EmbyClient 方法
-
-        功能说明:
-        - 透明转发除 `create_user` 以外的方法
-        - 对 `create_user` 注入模板用户ID与默认复制选项
-
-        输入参数:
-        - name: 方法名
-
-        返回值:
-        - Any: 被代理的方法或包装器
-        """
-        client = self._build_client()
-        attr = getattr(client, name)
-
-        if name == "create_user" and callable(attr):
-            async def wrapper(
-                name: str,
-                password: str | None = None,
-                copy_from_user_id: str | None = None,
-                user_copy_options: list[str] | None = None,
-            ) -> dict[str, Any]:
-                template_id = copy_from_user_id or settings.get_emby_template_user_id()
-                opts = user_copy_options
-                if template_id and not opts:
-                    opts = ["UserPolicy", "UserConfiguration"]
-                return await client.create_user(
-                    name=name,
-                    password=password,
-                    copy_from_user_id=template_id,
-                    user_copy_options=opts,
-                )
-
-            return wrapper
-
-        return attr
-
-
-# 简洁调用对象: emby.方法()
-emby = EmbyProxy()
