@@ -97,11 +97,13 @@ class EmbyNotConfiguredError(Exception):
     """
 
 
-class EmbyFacade:
-    """Emby 门面对象
+class EmbyProxy:
+    """Emby 代理对象
 
     功能说明:
-    - 提供 emb y.方法() 简洁调用格式, 内部按需构建 EmbyClient
+    - 提供 `emby.方法()` 的简洁调用格式
+    - 动态代理 `EmbyClient` 的方法, 避免重复实现
+    - 对 `create_user` 进行模板参数的自动注入
 
     输入参数:
     - 无
@@ -129,55 +131,44 @@ class EmbyFacade:
             raise EmbyNotConfiguredError(msg)
         return EmbyClient(base_url, api_key)
 
-    async def get_users(self) -> list[dict[str, Any]]:
-        """获取用户列表
+    def __getattr__(self, name: str) -> Any:
+        """动态代理 EmbyClient 方法
 
         功能说明:
-        - 直接调用 EmbyClient.get_users()
+        - 透明转发除 `create_user` 以外的方法
+        - 对 `create_user` 注入模板用户ID与默认复制选项
 
         输入参数:
-        - 无
+        - name: 方法名
 
         返回值:
-        - list[dict[str, Any]]: 用户对象列表
+        - Any: 被代理的方法或包装器
         """
-        return await self._build_client().get_users()
+        client = self._build_client()
+        attr = getattr(client, name)
 
-    async def create_user(self, name: str, password: str | None = None) -> dict[str, Any]:
-        """创建用户
+        if name == "create_user" and callable(attr):
+            async def wrapper(
+                name: str,
+                password: str | None = None,
+                copy_from_user_id: str | None = None,
+                user_copy_options: list[str] | None = None,
+            ) -> dict[str, Any]:
+                template_id = copy_from_user_id or settings.get_emby_template_user_id()
+                opts = user_copy_options
+                if template_id and not opts:
+                    opts = ["UserPolicy", "UserConfiguration"]
+                return await client.create_user(
+                    name=name,
+                    password=password,
+                    copy_from_user_id=template_id,
+                    user_copy_options=opts,
+                )
 
-        功能说明:
-        - 直接调用 EmbyClient.create_user(), 若配置了模板用户ID则自动复制策略与配置
+            return wrapper
 
-        输入参数:
-        - name: 用户名
-        - password: 密码, 可为 None
-
-        返回值:
-        - dict[str, Any]: 创建结果
-        """
-        template_id = settings.get_emby_template_user_id()
-        return await self._build_client().create_user(
-            name=name,
-            password=password,
-            copy_from_user_id=template_id,
-            user_copy_options=["UserPolicy", "UserConfiguration"] if template_id else None,
-        )
-
-    async def delete_user(self, user_id: str) -> Any:
-        """删除用户
-
-        功能说明:
-        - 直接调用 EmbyClient.delete_user()
-
-        输入参数:
-        - user_id: 用户ID
-
-        返回值:
-        - Any: 删除结果
-        """
-        return await self._build_client().delete_user(user_id)
+        return attr
 
 
-# 简洁调用对象: emb y.方法()
-emby = EmbyFacade()
+# 简洁调用对象: emby.方法()
+emby = EmbyProxy()
