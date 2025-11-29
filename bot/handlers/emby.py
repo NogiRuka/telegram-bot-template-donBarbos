@@ -10,6 +10,9 @@ from bot.core.config import settings
 from bot.services.emby_client import EmbyClient
 
 router = Router(name="emby")
+CREATE_MIN_ARGS = 2
+CREATE_PASS_INDEX = 2
+DELETE_MIN_ARGS = 2
 def _get_emby_client() -> EmbyClient | None:
     """构建 Emby 客户端实例
 
@@ -65,3 +68,78 @@ async def list_emby_users(message: types.Message) -> None:
         await message.answer(f"当前用户列表:\n{text}")
     except (ClientError, asyncio.TimeoutError) as e:
         await message.answer(f"❌ 获取 Emby 用户失败: {e!s}")
+
+
+@router.message(Command("emby_create"))
+async def create_emby_user(message: types.Message) -> None:
+    """创建 Emby 用户
+
+    功能说明:
+    - 使用 `/emby_create <name> [password]` 创建用户
+    - 若配置了 `EMBY_TEMPLATE_USER_ID`, 将复制该用户的策略与配置
+
+    输入参数:
+    - message: Telegram 消息对象
+
+    返回值:
+    - None
+    """
+    client = _get_emby_client()
+    if client is None:
+        await message.answer(
+            "❌ 未配置 Emby 连接信息\n"
+            "请在 .env 文件中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
+        )
+        return
+    parts = (message.text or "").strip().split()
+    if len(parts) < CREATE_MIN_ARGS:
+        await message.answer("用法: /emby_create <name> [password]")
+        return
+    name = parts[1]
+    password = parts[2] if len(parts) >= CREATE_PASS_INDEX else None
+    try:
+        template_id = settings.get_emby_template_user_id()
+        user_copy_options = ["UserPolicy", "UserConfiguration"] if template_id else None
+        res = await client.create_user(
+            name=name,
+            password=password,
+            copy_from_user_id=template_id,
+            user_copy_options=user_copy_options,
+        )
+        uid = str(res.get("Id") or "")
+        created_name = str(res.get("Name") or name)
+        await message.answer(f"✅ 创建成功: {created_name} (ID: {uid})")
+    except (ClientError, asyncio.TimeoutError) as e:
+        await message.answer(f"❌ 创建失败: {e!s}")
+
+
+@router.message(Command("emby_delete"))
+async def delete_emby_user(message: types.Message) -> None:
+    """删除 Emby 用户
+
+    功能说明:
+    - 使用 `/emby_delete <user_id>` 删除用户
+
+    输入参数:
+    - message: Telegram 消息对象
+
+    返回值:
+    - None
+    """
+    client = _get_emby_client()
+    if client is None:
+        await message.answer(
+            "❌ 未配置 Emby 连接信息\n"
+            "请在 .env 文件中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
+        )
+        return
+    parts = (message.text or "").strip().split()
+    if len(parts) < DELETE_MIN_ARGS:
+        await message.answer("用法: /emby_delete <user_id>")
+        return
+    user_id = parts[1]
+    try:
+        await client.delete_user(user_id)
+        await message.answer(f"✅ 已删除用户: {user_id}")
+    except (ClientError, asyncio.TimeoutError) as e:
+        await message.answer(f"❌ 删除失败: {e!s}")
