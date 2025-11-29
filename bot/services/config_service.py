@@ -151,6 +151,102 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
     return out
 
 
+async def get_registration_window(session: AsyncSession) -> dict[str, Any] | None:
+    """获取注册时间窗
+
+    功能说明:
+    - 从 `config` 表读取管理员设置的注册时间窗 JSON
+    - 返回结构: {"start_iso": str, "duration_minutes": int}
+
+    输入参数:
+    - session: 异步数据库会话
+
+    返回值:
+    - dict | None: 时间窗配置, 若未设置返回 None
+    """
+    try:
+        val = await get_config(session, "admin.open_registration.window")
+        if isinstance(val, dict):
+            return val
+        return None
+    except SQLAlchemyError:
+        return None
+
+
+async def set_registration_window(
+    session: AsyncSession,
+    start_iso: str | None,
+    duration_minutes: int | None,
+    operator_id: int | None = None,
+) -> bool:
+    """设置注册时间窗
+
+    功能说明:
+    - 将注册开始时间与持续分钟写入 JSON 配置 `admin.open_registration.window`
+
+    输入参数:
+    - session: 异步数据库会话
+    - start_iso: ISO8601 开始时间字符串, 为空表示立即生效
+    - duration_minutes: 持续分钟数, 为空表示不限时
+    - operator_id: 操作者用户ID
+
+    返回值:
+    - bool: True 表示写入成功
+    """
+    payload: dict[str, Any] = {}
+    if start_iso:
+        payload["start_iso"] = start_iso
+    if duration_minutes is not None:
+        payload["duration_minutes"] = int(duration_minutes)
+    return await set_config(
+        session, "admin.open_registration.window", payload or None, ConfigType.JSON, operator_id=operator_id
+    )
+
+
+async def is_registration_open(session: AsyncSession, now_ts: float | None = None) -> bool:
+    """判断注册是否开启且在时间窗内
+
+    功能说明:
+    - 综合 `admin.open_registration` 布尔开关与 `admin.open_registration.window` 时间窗
+    - 时间窗逻辑: 若设置了开始时间与持续分钟, 则仅在窗口内返回 True
+    - 若仅开启开关但未设置窗口, 则视为无限期开放
+
+    输入参数:
+    - session: 异步数据库会话
+    - now_ts: 当前时间戳(秒), 缺省使用系统当前UTC时间
+
+    返回值:
+    - bool: True 表示注册开放
+    """
+    try:
+        enabled = bool(await get_config(session, "admin.open_registration") or False)
+        if not enabled:
+            return False
+        window = await get_registration_window(session)
+        if not window:
+            return True
+        import datetime as _dt
+
+        _now = _dt.datetime.utcfromtimestamp(now_ts) if now_ts is not None else _dt.datetime.utcnow()
+        start_iso = window.get("start_iso")
+        duration = window.get("duration_minutes")
+        if not start_iso and not duration:
+            return True
+        if start_iso:
+            with contextlib.suppress(ValueError):
+                start = _dt.datetime.fromisoformat(start_iso)
+            if "start" not in locals():
+                return True
+        else:
+            start = _now
+        if duration is None:
+            return _now >= start
+        end = start + _dt.timedelta(minutes=int(duration))
+        return start <= _now <= end
+    except SQLAlchemyError:
+        return False
+
+
 async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
     """列出管理员权限开关
 

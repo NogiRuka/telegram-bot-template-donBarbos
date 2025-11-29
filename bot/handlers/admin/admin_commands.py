@@ -18,7 +18,13 @@ from bot.core.config import settings
 from bot.database.models import GroupConfigModel, GroupType, MessageModel, MessageSaveMode
 from bot.database.models.config import ConfigType
 from bot.keyboards.inline.group_config import get_confirm_keyboard
-from bot.services.config_service import get_config, set_config
+from bot.services.config_service import (
+    get_config,
+    set_config,
+    get_registration_window,
+    is_registration_open,
+    set_registration_window,
+)
 from bot.services.message_export import MessageExportService
 from bot.utils.permissions import require_admin_feature, require_admin_priv, require_owner
 
@@ -89,6 +95,9 @@ async def admin_help_command(message: Message) -> None:
 • `/admin_broadcast <消息>` - 向所有群组广播消息
 • `/admin_maintenance` - 进入维护模式
 • `/admin_status` - 查看系统状态
+• `/admin_open_registration [开始时间ISO] [持续分钟]` - 开启注册并可配置时间窗
+• `/admin_close_registration` - 关闭注册
+• `/admin_registration_status` - 查看注册开关与时间窗
 
 **注意:** 管理员命令需管理员或所有者权限; 危险操作仅所有者可执行
     """
@@ -578,3 +587,98 @@ async def admin_hitokoto_close(callback: CallbackQuery, session: AsyncSession) -
     """
     cats: list[str] = await get_config(session, "admin.hitokoto.categories")
     await callback.answer(f"🟢 已保存分类: {', '.join(cats)}")
+
+
+@router.message(Command("admin_open_registration"))
+@require_admin_priv
+@require_admin_feature("admin.open_registration")
+async def admin_open_registration_command(message: Message, session: AsyncSession) -> None:
+    """开启注册并设置时间窗
+
+    功能说明:
+    - 管理员开启注册开关, 可选设置开始时间与持续分钟
+
+    输入参数:
+    - message: 文本消息对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    try:
+        args = (message.text or "").strip().split()
+        start_iso: str | None = None
+        duration_minutes: int | None = None
+        if len(args) >= 2:
+            start_iso = args[1]
+        if len(args) >= 3:
+            try:
+                duration_minutes = int(args[2])
+            except ValueError:
+                duration_minutes = None
+        await set_config(session, "admin.open_registration", True, ConfigType.BOOLEAN, operator_id=message.from_user.id)
+        await set_registration_window(session, start_iso, duration_minutes, operator_id=message.from_user.id)
+        window = await get_registration_window(session) or {}
+        start = window.get("start_iso") or datetime.now(timezone.utc).isoformat()
+        dur = window.get("duration_minutes")
+        text = "🟢 注册已开启\n"
+        text += f"开始时间: {start}\n"
+        text += f"持续分钟: {dur or '不限'}"
+        await message.answer(text)
+    except SQLAlchemyError:
+        await message.answer("🔴 开启注册失败")
+
+
+@router.message(Command("admin_close_registration"))
+@require_admin_priv
+@require_admin_feature("admin.open_registration")
+async def admin_close_registration_command(message: Message, session: AsyncSession) -> None:
+    """关闭注册
+
+    功能说明:
+    - 管理员关闭注册开关
+
+    输入参数:
+    - message: 文本消息对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    try:
+        await set_config(
+            session, "admin.open_registration", False, ConfigType.BOOLEAN, operator_id=message.from_user.id
+        )
+        await message.answer("🔴 注册已关闭")
+    except SQLAlchemyError:
+        await message.answer("🔴 关闭注册失败")
+
+
+@router.message(Command("admin_registration_status"))
+@require_admin_priv
+@require_admin_feature("admin.open_registration")
+async def admin_registration_status_command(message: Message, session: AsyncSession) -> None:
+    """查看注册状态
+
+    功能说明:
+    - 显示注册开关与时间窗配置
+
+    输入参数:
+    - message: 文本消息对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    try:
+        open_flag = await is_registration_open(session)
+        window = await get_registration_window(session) or {}
+        start = window.get("start_iso")
+        dur = window.get("duration_minutes")
+        text = "📋 注册状态\n"
+        text += f"开关: {'🟢 开启' if open_flag else '🔴 关闭'}\n"
+        text += f"开始时间: {start or '未设置'}\n"
+        text += f"持续分钟: {dur if dur is not None else '未设置'}"
+        await message.answer(text)
+    except SQLAlchemyError:
+        await message.answer("🔴 获取注册状态失败")

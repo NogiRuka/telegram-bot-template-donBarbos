@@ -9,6 +9,7 @@ from bot.handlers.start import get_common_image
 from bot.keyboards.inline.labels import BACK_LABEL, BACK_TO_HOME_LABEL
 from bot.keyboards.inline.start_user import get_account_center_keyboard
 from bot.utils.permissions import _resolve_role, require_user_feature
+from bot.services.config_service import is_registration_open, get_registration_window
 from bot.utils.view import render_view
 
 router = Router(name="user_account")
@@ -67,7 +68,21 @@ async def user_register(callback: CallbackQuery, session: AsyncSession) -> None:
     if session is None:
         pass
     try:
-        await callback.answer("功能建设中, 请稍后再试", show_alert=True)
+        is_open = await is_registration_open(session)
+        if not is_open:
+            window = await get_registration_window(session) or {}
+            start_iso = window.get("start_iso")
+            duration = window.get("duration_minutes")
+            hint = "暂未开放注册"
+            if start_iso and duration:
+                hint = f"暂未开放注册\n开始: {start_iso}\n时长: {duration} 分钟"
+            elif start_iso:
+                hint = f"暂未开放注册\n开始: {start_iso}"
+            elif duration:
+                hint = f"暂未开放注册\n时长: {duration} 分钟"
+            await callback.answer(hint, show_alert=True)
+            return
+        await callback.answer("✅ 注册功能已开启，后续步骤建设中", show_alert=True)
     except TelegramAPIError:
         await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
 
