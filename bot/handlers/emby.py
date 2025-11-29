@@ -6,29 +6,28 @@ from aiogram import Router, types
 from aiogram.filters import Command
 
 from bot.services.emby_client import EmbyClient
-from bot.services.emby_user_service import EmbyUserService
 from bot.core.config import settings
 
 router = Router(name="emby")
 
 
-def _get_emby_service() -> EmbyUserService | None:
-    """构建 Emby 服务实例
+def _get_emby_client() -> EmbyClient | None:
+    """构建 Emby 客户端实例
 
     功能说明:
-    - 从环境变量读取 `EMBY_BASE_URL` 与 `EMBY_API_KEY`, 构建 `EmbyUserService`
+    - 从配置读取 `EMBY_BASE_URL` 与 `EMBY_API_KEY`, 构建 `EmbyClient`
 
     输入参数:
     - 无
 
     返回值:
-    - EmbyUserService | None: 成功返回服务实例, 缺少配置返回 None
+    - EmbyClient | None: 成功返回客户端实例, 缺少配置返回 None
     """
     base_url = settings.get_emby_base_url()
     api_key = settings.get_emby_api_key()
     if not base_url or not api_key:
         return None
-    return EmbyUserService(EmbyClient(base_url, api_key))
+    return EmbyClient(base_url, api_key)
 
 
 @router.message(Command("emby_users"))
@@ -51,15 +50,15 @@ async def list_emby_users(message: types.Message) -> None:
     - 单条消息长度约 4096 字符, 用户过多需分页或截断
     - 频繁调用可能触发限流, 建议设置命令使用频率
     """
-    service = _get_emby_service()
-    if service is None:
+    client = _get_emby_client()
+    if client is None:
         await message.answer(
             "❌ 未配置 Emby 连接信息\n"
             "请在环境变量中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
         )
         return
     try:
-        users: list[dict[str, Any]] = await service.list_users()
+        users: list[dict[str, Any]] = await client.get_users()
         names = [str(u.get("Name") or u.get("name") or "") for u in users]
         names = [n for n in names if n]
         text = "\n".join(names) if names else "(空)"
