@@ -5,7 +5,7 @@ from typing import Any
 from aiogram import Router, types
 from aiogram.filters import Command
 
-from bot.services.emby_client import EmbyClient
+from bot.services.emby_client import EmbyClient, EmbyNotConfiguredError, emby
 from bot.core.config import settings
 
 router = Router(name="emby")
@@ -50,18 +50,16 @@ async def list_emby_users(message: types.Message) -> None:
     - 单条消息长度约 4096 字符, 用户过多需分页或截断
     - 频繁调用可能触发限流, 建议设置命令使用频率
     """
-    client = _get_emby_client()
-    if client is None:
-        await message.answer(
-            "❌ 未配置 Emby 连接信息\n"
-            "请在环境变量中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
-        )
-        return
     try:
-        users: list[dict[str, Any]] = await client.get_users()
+        users: list[dict[str, Any]] = await emby.get_users()
         names = [str(u.get("Name") or u.get("name") or "") for u in users]
         names = [n for n in names if n]
         text = "\n".join(names) if names else "(空)"
         await message.answer(f"当前用户列表:\n{text}")
+    except EmbyNotConfiguredError:
+        await message.answer(
+            "❌ 未配置 Emby 连接信息\n"
+            "请在 .env 文件中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
+        )
     except Exception as e:
         await message.answer(f"❌ 获取 Emby 用户失败: {e!s}")
