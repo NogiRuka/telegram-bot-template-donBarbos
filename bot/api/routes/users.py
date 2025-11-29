@@ -2,6 +2,7 @@
 用户管理API路由
 提供用户数据管理接口, 调用 bot 的数据库操作服务
 """
+
 from __future__ import annotations
 from typing import Annotated, NoReturn
 
@@ -39,6 +40,7 @@ class UserResponse(BaseModel):
         deleted_at: 删除时间
         deleted_by: 删除者ID
     """
+
     id: int
     is_bot: bool
     first_name: str
@@ -68,6 +70,7 @@ class UsersListResponse(BaseModel):
         per_page: 每页数量
         pages: 总页数
     """
+
     items: list[UserResponse]
     total: int
     page: int
@@ -81,7 +84,7 @@ async def get_users_list(
     per_page: Annotated[int, Query(ge=1, le=100, description="每页数量")] = 10,
     search: Annotated[str | None, Query(description="搜索关键词")] = None,
     sort_by: Annotated[str | None, Query(description="排序字段")] = "created_at",
-    sort_order: Annotated[str, Query(description="排序方向 (asc/desc)")] = "desc"
+    sort_order: Annotated[str, Query(description="排序方向 (asc/desc)")] = "desc",
 ) -> UsersListResponse:
     """
     获取用户列表
@@ -98,7 +101,6 @@ async def get_users_list(
     """
     try:
         async with sessionmaker() as session:
-
             # 构建查询
             query = select(UserModel)
             count_query = select(func.count(UserModel.id))
@@ -108,7 +110,7 @@ async def get_users_list(
                 search_filter = or_(
                     UserModel.username.ilike(f"%{search}%"),
                     UserModel.first_name.ilike(f"%{search}%"),
-                    UserModel.last_name.ilike(f"%{search}%")
+                    UserModel.last_name.ilike(f"%{search}%"),
                 )
                 query = query.where(search_filter)
                 count_query = count_query.where(search_filter)
@@ -176,13 +178,7 @@ async def get_users_list(
             # 计算总页数
             pages = (total + per_page - 1) // per_page
 
-            return UsersListResponse(
-                items=users_data,
-                total=total,
-                page=page,
-                per_page=per_page,
-                pages=pages
-            )
+            return UsersListResponse(items=users_data, total=total, page=page, per_page=per_page, pages=pages)
 
     except Exception as err:
         logger.error(f"获取用户列表失败: {err}")
@@ -229,7 +225,7 @@ async def get_user_detail(user_id: int) -> UserResponse:
                 updated_by=user.updated_by,
                 is_deleted=user.is_deleted,
                 deleted_at=user.deleted_at.isoformat() if user.deleted_at else None,
-                deleted_by=user.deleted_by
+                deleted_by=user.deleted_by,
             )
 
     except HTTPException:
@@ -255,6 +251,8 @@ async def get_users_count() -> dict[str, int]:
     except Exception as err:
         logger.error(f"获取用户统计失败: {err}")
         raise HTTPException(status_code=500, detail="获取用户统计失败") from err
+
+
 def raise_user_not_found() -> NoReturn:
     """
     抛出404

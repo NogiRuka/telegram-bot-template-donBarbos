@@ -40,6 +40,7 @@ router = Router()
 
 class GroupConfigStates(StatesGroup):
     """群组配置状态组"""
+
     waiting_for_keywords = State()
     waiting_for_time_range = State()
     waiting_for_limits = State()
@@ -85,32 +86,28 @@ async def cmd_group_config(message: types.Message, session: AsyncSession) -> Non
 • 数据库总消息: {total_messages} 条
 
 📋 **过滤设置**
-• 文本消息: {'🟢' if config.save_text_messages else '🔴'}
-• 媒体消息: {'🟢' if config.save_media_messages else '🔴'}
-• 转发消息: {'🟢' if config.save_forwarded_messages else '🔴'}
-• 回复消息: {'🟢' if config.save_reply_messages else '🔴'}
-• 机器人消息: {'🟢' if config.save_bot_messages else '🔴'}
+• 文本消息: {"🟢" if config.save_text_messages else "🔴"}
+• 媒体消息: {"🟢" if config.save_media_messages else "🔴"}
+• 转发消息: {"🟢" if config.save_forwarded_messages else "🔴"}
+• 回复消息: {"🟢" if config.save_reply_messages else "🔴"}
+• 机器人消息: {"🟢" if config.save_bot_messages else "🔴"}
 
 ⏰ **时间设置**
-• 开始时间: {config.save_start_date.strftime('%Y-%m-%d %H:%M') if config.save_start_date else '未设置'}
-• 结束时间: {config.save_end_date.strftime('%Y-%m-%d %H:%M') if config.save_end_date else '未设置'}
+• 开始时间: {config.save_start_date.strftime("%Y-%m-%d %H:%M") if config.save_start_date else "未设置"}
+• 结束时间: {config.save_end_date.strftime("%Y-%m-%d %H:%M") if config.save_end_date else "未设置"}
 
 📏 **限制设置**
-• 每日最大消息数: {config.max_messages_per_day or '无限制'}
-• 最大文件大小: {config.max_file_size_mb or '无限制'} MB
+• 每日最大消息数: {config.max_messages_per_day or "无限制"}
+• 最大文件大小: {config.max_file_size_mb or "无限制"} MB
 
 🔍 **关键词过滤**
 • 包含关键词: {len(json.loads(config.include_keywords)) if config.include_keywords else 0} 个
 • 排除关键词: {len(json.loads(config.exclude_keywords)) if config.exclude_keywords else 0} 个
 
-📝 **备注**: {config.notes or '无'}
+📝 **备注**: {config.notes or "无"}
         """
 
-        await message.reply(
-            config_text,
-            reply_markup=get_group_config_keyboard(config.id),
-            parse_mode="Markdown"
-        )
+        await message.reply(config_text, reply_markup=get_group_config_keyboard(config.id), parse_mode="Markdown")
 
     except Exception as e:
         logger.exception(f"显示群组配置失败: {e}")
@@ -132,9 +129,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
         config_id = int(action_data[2])
 
         # 获取配置
-        result = await session.execute(
-            select(GroupConfigModel).where(GroupConfigModel.id == config_id)
-        )
+        result = await session.execute(select(GroupConfigModel).where(GroupConfigModel.id == config_id))
         config = result.scalar_one_or_none()
 
         if not config:
@@ -148,9 +143,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             await callback.answer(f"{'🟢' if config.is_message_save_enabled else '🔴'} 已{status}消息保存")
 
             # 更新键盘
-            await callback.message.edit_reply_markup(
-                reply_markup=get_group_config_keyboard(config.id)
-            )
+            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
 
         elif action == "change_mode":
             # 显示保存模式选择
@@ -162,48 +155,48 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
                 "• **仅保存重要消息**: 只保存回复和转发消息\n"
                 "• **禁用**: 停止保存消息",
                 reply_markup=get_save_mode_keyboard(config.id),
-                parse_mode="Markdown"
+                parse_mode="Markdown",
             )
 
         elif action == "toggle_text":
             config.save_text_messages = not config.save_text_messages
             await session.commit()
-            await callback.answer(f"{'🟢' if config.save_text_messages else '🔴'} 文本消息保存已{'启用' if config.save_text_messages else '禁用'}")
-            await callback.message.edit_reply_markup(
-                reply_markup=get_group_config_keyboard(config.id)
+            await callback.answer(
+                f"{'🟢' if config.save_text_messages else '🔴'} 文本消息保存已{'启用' if config.save_text_messages else '禁用'}"
             )
+            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
 
         elif action == "toggle_media":
             config.save_media_messages = not config.save_media_messages
             await session.commit()
-            await callback.answer(f"{'🟢' if config.save_media_messages else '🔴'} 媒体消息保存已{'启用' if config.save_media_messages else '禁用'}")
-            await callback.message.edit_reply_markup(
-                reply_markup=get_group_config_keyboard(config.id)
+            await callback.answer(
+                f"{'🟢' if config.save_media_messages else '🔴'} 媒体消息保存已{'启用' if config.save_media_messages else '禁用'}"
             )
+            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
 
         elif action == "toggle_forwarded":
             config.save_forwarded_messages = not config.save_forwarded_messages
             await session.commit()
-            await callback.answer(f"{'🟢' if config.save_forwarded_messages else '🔴'} 转发消息保存已{'启用' if config.save_forwarded_messages else '禁用'}")
-            await callback.message.edit_reply_markup(
-                reply_markup=get_group_config_keyboard(config.id)
+            await callback.answer(
+                f"{'🟢' if config.save_forwarded_messages else '🔴'} 转发消息保存已{'启用' if config.save_forwarded_messages else '禁用'}"
             )
+            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
 
         elif action == "toggle_reply":
             config.save_reply_messages = not config.save_reply_messages
             await session.commit()
-            await callback.answer(f"{'🟢' if config.save_reply_messages else '🔴'} 回复消息保存已{'启用' if config.save_reply_messages else '禁用'}")
-            await callback.message.edit_reply_markup(
-                reply_markup=get_group_config_keyboard(config.id)
+            await callback.answer(
+                f"{'🟢' if config.save_reply_messages else '🔴'} 回复消息保存已{'启用' if config.save_reply_messages else '禁用'}"
             )
+            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
 
         elif action == "toggle_bot":
             config.save_bot_messages = not config.save_bot_messages
             await session.commit()
-            await callback.answer(f"{'🟢' if config.save_bot_messages else '🔴'} 机器人消息保存已{'启用' if config.save_bot_messages else '禁用'}")
-            await callback.message.edit_reply_markup(
-                reply_markup=get_group_config_keyboard(config.id)
+            await callback.answer(
+                f"{'🟢' if config.save_bot_messages else '🔴'} 机器人消息保存已{'启用' if config.save_bot_messages else '禁用'}"
             )
+            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
 
         elif action == "clear_messages":
             # 显示确认对话框
@@ -212,7 +205,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
                 f"您确定要清空群组 `{config.chat_title}` 的所有已保存消息吗？\n\n"
                 "**此操作不可撤销！**",
                 reply_markup=get_confirm_keyboard(f"confirm_clear:{config.id}", f"group_config_back:{config.id}"),
-                parse_mode="Markdown"
+                parse_mode="Markdown",
             )
 
         elif action == "refresh":
@@ -240,9 +233,7 @@ async def handle_save_mode_callback(callback: types.CallbackQuery, session: Asyn
         config_id = int(action_data[2])
 
         # 获取配置
-        result = await session.execute(
-            select(GroupConfigModel).where(GroupConfigModel.id == config_id)
-        )
+        result = await session.execute(select(GroupConfigModel).where(GroupConfigModel.id == config_id))
         config = result.scalar_one_or_none()
 
         if not config:
@@ -264,7 +255,7 @@ async def handle_save_mode_callback(callback: types.CallbackQuery, session: Asyn
             "text_only": "仅保存文本",
             "media_only": "仅保存媒体",
             "important_only": "仅保存重要消息",
-            "disabled": "已禁用"
+            "disabled": "已禁用",
         }
 
         await callback.answer(f"🟢 保存模式已设置为: {mode_names[mode]}")
@@ -290,9 +281,7 @@ async def handle_confirm_clear_callback(callback: types.CallbackQuery, session: 
         config_id = int(callback.data.split(":")[1])
 
         # 获取配置
-        result = await session.execute(
-            select(GroupConfigModel).where(GroupConfigModel.id == config_id)
-        )
+        result = await session.execute(select(GroupConfigModel).where(GroupConfigModel.id == config_id))
         config = result.scalar_one_or_none()
 
         if not config:
@@ -348,10 +337,7 @@ async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None
     try:
         # 获取或创建群组配置
         result = await session.execute(
-            select(GroupConfigModel).where(
-                GroupConfigModel.chat_id == message.chat.id,
-                not GroupConfigModel.is_deleted
-            )
+            select(GroupConfigModel).where(GroupConfigModel.chat_id == message.chat.id, not GroupConfigModel.is_deleted)
         )
         config = result.scalar_one_or_none()
 
@@ -362,7 +348,7 @@ async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None
                 chat_title=message.chat.title,
                 chat_username=message.chat.username,
                 group_type=group_type,
-                configured_by_user_id=message.from_user.id
+                configured_by_user_id=message.from_user.id,
             )
             session.add(config)
 
@@ -373,10 +359,8 @@ async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None
         await session.commit()
 
         await message.reply(
-            "🟢 **消息保存已启用**\n\n"
-            "现在将自动保存此群组的所有消息。\n"
-            "使用 `/group_config` 查看详细配置。",
-            parse_mode="Markdown"
+            "🟢 **消息保存已启用**\n\n现在将自动保存此群组的所有消息。\n使用 `/group_config` 查看详细配置。",
+            parse_mode="Markdown",
         )
 
     except Exception as e:
@@ -396,10 +380,7 @@ async def cmd_save_disable(message: types.Message, session: AsyncSession) -> Non
     try:
         # 获取群组配置
         result = await session.execute(
-            select(GroupConfigModel).where(
-                GroupConfigModel.chat_id == message.chat.id,
-                not GroupConfigModel.is_deleted
-            )
+            select(GroupConfigModel).where(GroupConfigModel.chat_id == message.chat.id, not GroupConfigModel.is_deleted)
         )
         config = result.scalar_one_or_none()
 
@@ -411,10 +392,8 @@ async def cmd_save_disable(message: types.Message, session: AsyncSession) -> Non
             await session.commit()
 
             await message.reply(
-                "🔴 **消息保存已禁用**\n\n"
-                "已停止保存此群组的消息。\n"
-                "使用 `/save_enable` 重新启用。",
-                parse_mode="Markdown"
+                "🔴 **消息保存已禁用**\n\n已停止保存此群组的消息。\n使用 `/save_enable` 重新启用。",
+                parse_mode="Markdown",
             )
         else:
             await message.reply("ℹ️ 此群组尚未配置消息保存功能。")

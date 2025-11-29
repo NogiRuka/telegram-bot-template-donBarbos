@@ -29,6 +29,7 @@ async def add_user(session: AsyncSession, user: User) -> None:
     """
     try:
         user_id: int = user.id
+
         def _normalize_bool(val: bool | None) -> bool | None:
             """布尔值归一化
 
@@ -56,6 +57,7 @@ async def add_user(session: AsyncSession, user: User) -> None:
         session.add(new_user)
         # 同步写入 user_extend（首次交互）
         import datetime
+
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
         if ext is None:
@@ -91,8 +93,6 @@ async def get_first_name(session: AsyncSession, user_id: int) -> str:
 
     first_name = result.scalar_one_or_none()
     return first_name or ""
-
-
 
     await session.commit()
     return None
@@ -132,6 +132,7 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
     - None
     """
     try:
+
         def _normalize_bool(val: bool | None) -> bool | None:
             """布尔值归一化
 
@@ -210,6 +211,7 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
     - None
     """
     try:
+
         def _normalize_bool(val: bool | None) -> bool | None:
             """布尔值归一化
 
@@ -255,6 +257,7 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
         ext = ext_res.scalar_one_or_none()
         if ext is None:
             import datetime
+
             session.add(
                 UserExtendModel(
                     user_id=user.id,

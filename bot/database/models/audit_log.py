@@ -28,51 +28,51 @@ class ActionType(str, Enum):
     """
 
     # ==================== 用户相关操作 ====================
-    USER_CREATE = "user_create"        # 用户注册/创建
-    USER_UPDATE = "user_update"        # 用户信息更新
-    USER_DELETE = "user_delete"        # 用户删除/注销
-    USER_BLOCK = "user_block"          # 用户封禁
-    USER_UNBLOCK = "user_unblock"      # 用户解封
-    USER_PROMOTE = "user_promote"      # 用户提权（如设为管理员）
-    USER_DEMOTE = "user_demote"        # 用户降权（如取消管理员）
-    USER_LOGIN = "user_login"          # 用户登录
-    USER_LOGOUT = "user_logout"        # 用户登出
+    USER_CREATE = "user_create"  # 用户注册/创建
+    USER_UPDATE = "user_update"  # 用户信息更新
+    USER_DELETE = "user_delete"  # 用户删除/注销
+    USER_BLOCK = "user_block"  # 用户封禁
+    USER_UNBLOCK = "user_unblock"  # 用户解封
+    USER_PROMOTE = "user_promote"  # 用户提权（如设为管理员）
+    USER_DEMOTE = "user_demote"  # 用户降权（如取消管理员）
+    USER_LOGIN = "user_login"  # 用户登录
+    USER_LOGOUT = "user_logout"  # 用户登出
 
     # ==================== 消息相关操作 ====================
-    MESSAGE_SEND = "message_send"      # 发送消息
+    MESSAGE_SEND = "message_send"  # 发送消息
     MESSAGE_DELETE = "message_delete"  # 删除消息
-    MESSAGE_EDIT = "message_edit"      # 编辑消息
-    MESSAGE_FORWARD = "message_forward" # 转发消息
-    MESSAGE_REPLY = "message_reply"    # 回复消息
+    MESSAGE_EDIT = "message_edit"  # 编辑消息
+    MESSAGE_FORWARD = "message_forward"  # 转发消息
+    MESSAGE_REPLY = "message_reply"  # 回复消息
 
     # ==================== 配置相关操作 ====================
-    CONFIG_CREATE = "config_create"    # 创建配置项
-    CONFIG_UPDATE = "config_update"    # 更新配置项
-    CONFIG_DELETE = "config_delete"    # 删除配置项
-    CONFIG_RESET = "config_reset"      # 重置配置项
+    CONFIG_CREATE = "config_create"  # 创建配置项
+    CONFIG_UPDATE = "config_update"  # 更新配置项
+    CONFIG_DELETE = "config_delete"  # 删除配置项
+    CONFIG_RESET = "config_reset"  # 重置配置项
 
     # ==================== 系统相关操作 ====================
-    SYSTEM_START = "system_start"      # 系统启动
-    SYSTEM_STOP = "system_stop"        # 系统停止
+    SYSTEM_START = "system_start"  # 系统启动
+    SYSTEM_STOP = "system_stop"  # 系统停止
     SYSTEM_RESTART = "system_restart"  # 系统重启
-    SYSTEM_BACKUP = "system_backup"    # 系统备份
+    SYSTEM_BACKUP = "system_backup"  # 系统备份
     SYSTEM_RESTORE = "system_restore"  # 系统恢复
 
     # ==================== 管理相关操作 ====================
-    ADMIN_LOGIN = "admin_login"        # 管理员登录
-    ADMIN_LOGOUT = "admin_logout"      # 管理员登出
-    ADMIN_ACTION = "admin_action"      # 管理员操作
-    ADMIN_QUERY = "admin_query"        # 管理员查询
-    ADMIN_EXPORT = "admin_export"      # 管理员导出数据
+    ADMIN_LOGIN = "admin_login"  # 管理员登录
+    ADMIN_LOGOUT = "admin_logout"  # 管理员登出
+    ADMIN_ACTION = "admin_action"  # 管理员操作
+    ADMIN_QUERY = "admin_query"  # 管理员查询
+    ADMIN_EXPORT = "admin_export"  # 管理员导出数据
 
     # ==================== 安全相关操作 ====================
-    SECURITY_LOGIN_FAIL = "security_login_fail"        # 登录失败
-    SECURITY_SUSPICIOUS = "security_suspicious"        # 可疑行为
-    SECURITY_RATE_LIMIT = "security_rate_limit"        # 触发限流
+    SECURITY_LOGIN_FAIL = "security_login_fail"  # 登录失败
+    SECURITY_SUSPICIOUS = "security_suspicious"  # 可疑行为
+    SECURITY_RATE_LIMIT = "security_rate_limit"  # 触发限流
     SECURITY_PERMISSION_DENY = "security_permission_deny"  # 权限拒绝
 
     # ==================== 其他操作 ====================
-    OTHER = "other"                    # 其他未分类操作
+    OTHER = "other"  # 其他未分类操作
 
 
 class AuditLogModel(Base, TimestampMixin):
@@ -100,9 +100,7 @@ class AuditLogModel(Base, TimestampMixin):
 
     # ==================== 主键字段 ====================
 
-    id: Mapped[auto_int_pk] = mapped_column(
-        comment="审计日志的唯一标识符，自增主键，用于唯一标识每条日志记录"
-    )
+    id: Mapped[auto_int_pk] = mapped_column(comment="审计日志的唯一标识符，自增主键，用于唯一标识每条日志记录")
 
     # ==================== 操作者信息 ====================
 
@@ -110,20 +108,15 @@ class AuditLogModel(Base, TimestampMixin):
         BigInteger,
         nullable=True,
         index=True,
-        comment="操作者ID，可选字段，执行操作的用户ID，关联到users表，系统操作时可为空"
+        comment="操作者ID，可选字段，执行操作的用户ID，关联到users表，系统操作时可为空",
     )
 
     operator_name: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
-        comment="操作者名称，可选字段，用于记录操作者的显示名称或系统标识"
+        String(255), nullable=True, comment="操作者名称，可选字段，用于记录操作者的显示名称或系统标识"
     )
 
     user_id: Mapped[int | None] = mapped_column(
-        BigInteger,
-        nullable=True,
-        index=True,
-        comment="被操作用户ID，可选字段，关联到users表，记录操作的目标用户"
+        BigInteger, nullable=True, index=True, comment="被操作用户ID，可选字段，关联到users表，记录操作的目标用户"
     )
 
     # ==================== 操作信息 ====================
@@ -132,33 +125,29 @@ class AuditLogModel(Base, TimestampMixin):
         SQLEnum(ActionType),
         nullable=False,
         index=True,
-        comment="操作类型，必填字段，使用ActionType枚举值，用于分类和统计操作"
+        comment="操作类型，必填字段，使用ActionType枚举值，用于分类和统计操作",
     )
 
     target_type: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
         index=True,
-        comment="目标对象类型，可选字段，如user、message、config等，用于标识操作的目标类型"
+        comment="目标对象类型，可选字段，如user、message、config等，用于标识操作的目标类型",
     )
 
     target_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
         index=True,
-        comment="目标对象ID，可选字段，目标对象的唯一标识符，支持字符串格式以兼容不同类型的ID"
+        comment="目标对象ID，可选字段，目标对象的唯一标识符，支持字符串格式以兼容不同类型的ID",
     )
 
     description: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        comment="操作描述，必填字段，详细描述本次操作的内容和目的，支持长文本"
+        Text, nullable=False, comment="操作描述，必填字段，详细描述本次操作的内容和目的，支持长文本"
     )
 
     details: Mapped[dict | None] = mapped_column(
-        JSON,
-        nullable=True,
-        comment="操作详情，可选字段，JSON格式存储操作的详细信息、参数、结果等扩展数据"
+        JSON, nullable=True, comment="操作详情，可选字段，JSON格式存储操作的详细信息、参数、结果等扩展数据"
     )
 
     # ==================== 请求信息 ====================
@@ -167,47 +156,44 @@ class AuditLogModel(Base, TimestampMixin):
         String(45),
         nullable=True,
         index=True,
-        comment="客户端IP地址，可选字段，支持IPv4和IPv6格式，用于安全审计和地理位置分析"
+        comment="客户端IP地址，可选字段，支持IPv4和IPv6格式，用于安全审计和地理位置分析",
     )
 
     user_agent: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        comment="用户代理字符串，可选字段，记录客户端浏览器或应用信息，用于设备识别"
+        Text, nullable=True, comment="用户代理字符串，可选字段，记录客户端浏览器或应用信息，用于设备识别"
     )
 
     session_id: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
-        comment="会话ID，可选字段，用于关联同一会话中的多个操作，便于行为分析"
+        String(255), nullable=True, comment="会话ID，可选字段，用于关联同一会话中的多个操作，便于行为分析"
     )
 
     # ==================== 结果信息 ====================
 
     is_success: Mapped[bool] = mapped_column(
-        default=True,
-        index=True,
-        comment="操作是否成功，默认True，用于统计成功率和识别失败操作"
+        default=True, index=True, comment="操作是否成功，默认True，用于统计成功率和识别失败操作"
     )
 
     error_message: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        comment="错误信息，可选字段，当操作失败时记录具体的错误描述"
+        Text, nullable=True, comment="错误信息，可选字段，当操作失败时记录具体的错误描述"
     )
 
     duration_ms: Mapped[int | None] = mapped_column(
-        nullable=True,
-        comment="操作耗时，可选字段，单位毫秒，用于性能分析和优化"
+        nullable=True, comment="操作耗时，可选字段，单位毫秒，用于性能分析和优化"
     )
 
     # ==================== 数据库索引定义 ====================
 
     __table_args__ = (
         # 索引定义 - 用于提高查询性能和支持复杂查询
-        Index("idx_audit_logs_operator_created", "operator_id", "created_at"),  # 操作者历史索引，用于查询特定操作者的操作记录
-        Index("idx_audit_logs_user_created", "user_id", "created_at"),  # 被操作用户历史索引，用于查询特定用户的被操作记录
-        Index("idx_audit_logs_action_created", "action_type", "created_at"),  # 操作类型时间索引，用于按操作类型和时间查询
+        Index(
+            "idx_audit_logs_operator_created", "operator_id", "created_at"
+        ),  # 操作者历史索引，用于查询特定操作者的操作记录
+        Index(
+            "idx_audit_logs_user_created", "user_id", "created_at"
+        ),  # 被操作用户历史索引，用于查询特定用户的被操作记录
+        Index(
+            "idx_audit_logs_action_created", "action_type", "created_at"
+        ),  # 操作类型时间索引，用于按操作类型和时间查询
         Index("idx_audit_logs_target", "target_type", "target_id"),  # 目标对象索引，用于查询特定对象的操作历史
         Index("idx_audit_logs_created", "created_at"),  # 创建时间索引，用于时间范围查询和日志清理
         Index("idx_audit_logs_ip_created", "ip_address", "created_at"),  # IP地址时间索引，用于安全分析和异常检测

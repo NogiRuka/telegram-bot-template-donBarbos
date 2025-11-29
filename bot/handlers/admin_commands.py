@@ -26,6 +26,7 @@ from bot.services.message_export import MessageExportService
 
 router = Router(name="admin_commands")
 
+
 @lru_cache(maxsize=1)
 def get_super_admin_ids() -> list[int]:
     """
@@ -187,10 +188,7 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
         config = await session.get(GroupConfigModel, chat_id)
         if not config:
             config = GroupConfigModel(
-                chat_id=chat_id,
-                group_type=GroupType.SUPERGROUP,
-                is_enabled=True,
-                save_mode=MessageSaveMode.ALL
+                chat_id=chat_id, group_type=GroupType.SUPERGROUP, is_enabled=True, save_mode=MessageSaveMode.ALL
             )
             session.add(config)
         else:
@@ -338,9 +336,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
         cleanup_date = datetime.now() - timedelta(days=90)
 
         # 统计要删除的消息数
-        count_query = select(func.count(MessageModel.id)).where(
-            MessageModel.created_at < cleanup_date
-        )
+        count_query = select(func.count(MessageModel.id)).where(MessageModel.created_at < cleanup_date)
         result = await session.execute(count_query)
         message_count = result.scalar() or 0
 
@@ -350,14 +346,9 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
 
         # 确认清理
         await message.answer(
-            f"🗑️ **数据清理确认**\n\n"
-            f"将删除 {message_count} 条90天前的消息\n"
-            f"此操作不可撤销，是否继续？",
-            reply_markup=get_confirm_keyboard(
-                f"admin_cleanup_confirm:{message_count}",
-                "admin_cleanup_cancel"
-            ),
-            parse_mode="Markdown"
+            f"🗑️ **数据清理确认**\n\n将删除 {message_count} 条90天前的消息\n此操作不可撤销，是否继续？",
+            reply_markup=get_confirm_keyboard(f"admin_cleanup_confirm:{message_count}", "admin_cleanup_cancel"),
+            parse_mode="Markdown",
         )
 
     except Exception as e:
@@ -385,9 +376,7 @@ async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession)
 
         # 执行清理
         cleanup_date = datetime.now() - timedelta(days=90)
-        delete_query = delete(MessageModel).where(
-            MessageModel.created_at < cleanup_date
-        )
+        delete_query = delete(MessageModel).where(MessageModel.created_at < cleanup_date)
 
         result = await session.execute(delete_query)
         await session.commit()
@@ -398,7 +387,7 @@ async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession)
             f"🟢 **数据清理完成**\n\n"
             f"已删除 {deleted_count} 条过期消息\n"
             f"清理时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            parse_mode="Markdown"
+            parse_mode="Markdown",
         )
 
     except Exception as e:
@@ -437,9 +426,7 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         group_result = await session.execute(group_query)
         total_groups = group_result.scalar() or 0
 
-        enabled_query = select(func.count(GroupConfigModel.chat_id)).where(
-            GroupConfigModel.is_message_save_enabled
-        )
+        enabled_query = select(func.count(GroupConfigModel.chat_id)).where(GroupConfigModel.is_message_save_enabled)
         enabled_result = await session.execute(enabled_query)
         enabled_groups = enabled_result.scalar() or 0
 
@@ -450,9 +437,7 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
 
         # 最近30天消息
         recent_date = datetime.now() - timedelta(days=30)
-        recent_query = select(func.count(MessageModel.id)).where(
-            MessageModel.created_at >= recent_date
-        )
+        recent_query = select(func.count(MessageModel.id)).where(MessageModel.created_at >= recent_date)
         recent_result = await session.execute(recent_query)
         recent_messages = recent_result.scalar() or 0
 
@@ -463,12 +448,14 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         stats_text += f"  总群组数: {total_groups}\n"
         stats_text += f"  启用群组: {enabled_groups}\n"
         stats_text += f"  禁用群组: {total_groups - enabled_groups}\n"
-        stats_text += f"  启用率: {(enabled_groups/total_groups*100):.1f}%\n\n" if total_groups > 0 else "  启用率: 0%\n\n"
+        stats_text += (
+            f"  启用率: {(enabled_groups / total_groups * 100):.1f}%\n\n" if total_groups > 0 else "  启用率: 0%\n\n"
+        )
 
         stats_text += "**消息统计:**\n"
         stats_text += f"  总消息数: {total_messages:,}\n"
         stats_text += f"  最近30天: {recent_messages:,}\n"
-        stats_text += f"  日均消息: {recent_messages/30:.1f}\n\n"
+        stats_text += f"  日均消息: {recent_messages / 30:.1f}\n\n"
 
         stats_text += "**系统信息:**\n"
         stats_text += f"  统计时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"

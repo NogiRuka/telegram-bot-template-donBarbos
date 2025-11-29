@@ -101,4 +101,3 @@ def get_emby_client_from_settings() -> EmbyClient | None:
     if not base_url or not api_key:
         return None
     return EmbyClient(base_url, api_key)
-

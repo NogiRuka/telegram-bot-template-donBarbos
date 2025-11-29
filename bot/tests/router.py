@@ -3,6 +3,7 @@
 
 将测试相关的handler注册到主路由中
 """
+
 from aiogram import Router
 
 from bot.tests.chat_info_handler import router as chat_info_router

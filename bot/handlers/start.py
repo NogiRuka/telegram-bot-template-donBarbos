@@ -1,4 +1,3 @@
-
 import contextlib
 from pathlib import Path
 
@@ -8,8 +7,6 @@ from aiogram.types import FSInputFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
-from loguru import logger
-from bot.utils.view import render_view
 from bot.keyboards.inline.start_admin import get_start_admin_keyboard
 from bot.keyboards.inline.start_owner import get_start_owner_keyboard
 from bot.keyboards.inline.start_user import get_start_user_keyboard
@@ -17,6 +14,7 @@ from bot.services.analytics import analytics
 from bot.services.config_service import list_features
 from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
 from bot.utils.permissions import _resolve_role
+from bot.utils.view import render_view
 
 router = Router(name="start")
 
@@ -61,7 +59,9 @@ def get_common_image() -> str:
     return str(target) if target.exists() else ""
 
 
-async def build_home_view(session: AsyncSession | None, user: types.User | None, role: str) -> tuple[str, types.InlineKeyboardMarkup]:
+async def build_home_view(
+    session: AsyncSession | None, user: types.User | None, role: str
+) -> tuple[str, types.InlineKeyboardMarkup]:
     """构建首页文案与键盘
 
     功能说明:
@@ -119,18 +119,9 @@ async def start_handler(message: types.Message, role: str | None = None, session
     image = get_common_image()
     if image:
         file = FSInputFile(image)
-        await message.answer_photo(
-            photo=file,
-            caption=caption,
-            reply_markup=kb,
-            parse_mode="MarkdownV2"
-        )
+        await message.answer_photo(photo=file, caption=caption, reply_markup=kb, parse_mode="MarkdownV2")
     else:
-        await message.answer(
-            caption,
-            reply_markup=kb,
-            parse_mode="MarkdownV2"
-        )
+        await message.answer(caption, reply_markup=kb, parse_mode="MarkdownV2")
 
 
 @router.callback_query(lambda c: c.data == "home:back")

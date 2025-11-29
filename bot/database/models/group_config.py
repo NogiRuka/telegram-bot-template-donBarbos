@@ -27,9 +27,9 @@ class GroupType(str, Enum):
     定义了Telegram支持的群组类型。
     """
 
-    GROUP = "group"                        # 普通群组
-    SUPERGROUP = "supergroup"              # 超级群组
-    CHANNEL = "channel"                    # 频道
+    GROUP = "group"  # 普通群组
+    SUPERGROUP = "supergroup"  # 超级群组
+    CHANNEL = "channel"  # 频道
 
 
 class MessageSaveMode(str, Enum):
@@ -39,11 +39,11 @@ class MessageSaveMode(str, Enum):
     定义了不同的消息保存策略。
     """
 
-    ALL = "all"                           # 保存所有消息
-    TEXT_ONLY = "text_only"               # 仅保存文本消息
-    MEDIA_ONLY = "media_only"             # 仅保存媒体消息
-    IMPORTANT_ONLY = "important_only"     # 仅保存重要消息（置顶、回复等）
-    DISABLED = "disabled"                 # 禁用消息保存
+    ALL = "all"  # 保存所有消息
+    TEXT_ONLY = "text_only"  # 仅保存文本消息
+    MEDIA_ONLY = "media_only"  # 仅保存媒体消息
+    IMPORTANT_ONLY = "important_only"  # 仅保存重要消息（置顶、回复等）
+    DISABLED = "disabled"  # 禁用消息保存
 
 
 class GroupConfigModel(Base, BasicAuditMixin):
@@ -72,10 +72,7 @@ class GroupConfigModel(Base, BasicAuditMixin):
     # ==================== 主键字段 ====================
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        autoincrement=True,
-        comment="群组配置ID，自增主键，唯一标识一条群组配置记录"
+        Integer, primary_key=True, autoincrement=True, comment="群组配置ID，自增主键，唯一标识一条群组配置记录"
     )
 
     # ==================== Telegram标识字段 ====================
@@ -85,138 +82,100 @@ class GroupConfigModel(Base, BasicAuditMixin):
         nullable=False,
         unique=True,
         index=True,
-        comment="聊天ID，必填字段，群组的Telegram聊天ID，确保唯一性"
+        comment="聊天ID，必填字段，群组的Telegram聊天ID，确保唯一性",
     )
 
     chat_title: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
-        comment="群组标题，可选字段，群组的显示名称"
+        String(255), nullable=True, comment="群组标题，可选字段，群组的显示名称"
     )
 
     chat_username: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
-        index=True,
-        comment="群组用户名，可选字段，群组的@用户名（如果有）"
+        String(100), nullable=True, index=True, comment="群组用户名，可选字段，群组的@用户名（如果有）"
     )
 
     group_type: Mapped[GroupType] = mapped_column(
-        SQLEnum(GroupType),
-        nullable=False,
-        index=True,
-        comment="群组类型，必填字段，使用GroupType枚举值标识群组类型"
+        SQLEnum(GroupType), nullable=False, index=True, comment="群组类型，必填字段，使用GroupType枚举值标识群组类型"
     )
 
     # ==================== 消息保存配置字段 ====================
 
     is_message_save_enabled: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        index=True,
-        comment="是否启用消息保存，默认False，True表示该群组启用消息保存功能"
+        Boolean, default=False, index=True, comment="是否启用消息保存，默认False，True表示该群组启用消息保存功能"
     )
 
     message_save_mode: Mapped[MessageSaveMode] = mapped_column(
         SQLEnum(MessageSaveMode),
         default=MessageSaveMode.DISABLED,
         index=True,
-        comment="消息保存模式，默认DISABLED，定义该群组的消息保存策略"
+        comment="消息保存模式，默认DISABLED，定义该群组的消息保存策略",
     )
 
     save_start_date: Mapped[datetime.datetime | None] = mapped_column(
-        nullable=True,
-        comment="保存开始时间，可选字段，从什么时间开始保存消息"
+        nullable=True, comment="保存开始时间，可选字段，从什么时间开始保存消息"
     )
 
     save_end_date: Mapped[datetime.datetime | None] = mapped_column(
-        nullable=True,
-        comment="保存结束时间，可选字段，到什么时间停止保存消息"
+        nullable=True, comment="保存结束时间，可选字段，到什么时间停止保存消息"
     )
 
     max_messages_per_day: Mapped[int | None] = mapped_column(
-        Integer,
-        nullable=True,
-        comment="每日最大消息数，可选字段，限制每天保存的消息数量，0表示无限制"
+        Integer, nullable=True, comment="每日最大消息数，可选字段，限制每天保存的消息数量，0表示无限制"
     )
 
     max_file_size_mb: Mapped[int | None] = mapped_column(
-        Integer,
-        nullable=True,
-        comment="最大文件大小(MB)，可选字段，限制保存的文件大小，0表示无限制"
+        Integer, nullable=True, comment="最大文件大小(MB)，可选字段，限制保存的文件大小，0表示无限制"
     )
 
     # ==================== 过滤配置字段 ====================
 
     save_text_messages: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        comment="保存文本消息，默认True，是否保存文本类型的消息"
+        Boolean, default=True, comment="保存文本消息，默认True，是否保存文本类型的消息"
     )
 
     save_media_messages: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        comment="保存媒体消息，默认True，是否保存图片、视频等媒体消息"
+        Boolean, default=True, comment="保存媒体消息，默认True，是否保存图片、视频等媒体消息"
     )
 
     save_forwarded_messages: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        comment="保存转发消息，默认True，是否保存转发的消息"
+        Boolean, default=True, comment="保存转发消息，默认True，是否保存转发的消息"
     )
 
     save_reply_messages: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        comment="保存回复消息，默认True，是否保存回复其他消息的消息"
+        Boolean, default=True, comment="保存回复消息，默认True，是否保存回复其他消息的消息"
     )
 
     save_bot_messages: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        comment="保存机器人消息，默认False，是否保存机器人发送的消息"
+        Boolean, default=False, comment="保存机器人消息，默认False，是否保存机器人发送的消息"
     )
 
     # ==================== 关键词过滤字段 ====================
 
     include_keywords: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        comment="包含关键词，可选字段，JSON格式存储，只保存包含这些关键词的消息"
+        Text, nullable=True, comment="包含关键词，可选字段，JSON格式存储，只保存包含这些关键词的消息"
     )
 
     exclude_keywords: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        comment="排除关键词，可选字段，JSON格式存储，不保存包含这些关键词的消息"
+        Text, nullable=True, comment="排除关键词，可选字段，JSON格式存储，不保存包含这些关键词的消息"
     )
 
     # ==================== 统计字段 ====================
 
     total_messages_saved: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="已保存消息总数，默认0，该群组已保存的消息数量统计"
+        Integer, default=0, comment="已保存消息总数，默认0，该群组已保存的消息数量统计"
     )
 
     last_message_date: Mapped[datetime.datetime | None] = mapped_column(
-        nullable=True,
-        comment="最后消息时间，可选字段，该群组最后一条保存消息的时间"
+        nullable=True, comment="最后消息时间，可选字段，该群组最后一条保存消息的时间"
     )
 
     # ==================== 管理字段 ====================
 
     configured_by_user_id: Mapped[int | None] = mapped_column(
-        BigInteger,
-        nullable=True,
-        comment="配置者用户ID，可选字段，配置该群组设置的管理员用户ID"
+        BigInteger, nullable=True, comment="配置者用户ID，可选字段，配置该群组设置的管理员用户ID"
     )
 
     notes: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        comment="备注信息，可选字段，关于该群组配置的备注说明"
+        Text, nullable=True, comment="备注信息，可选字段，关于该群组配置的备注说明"
     )
 
     # ==================== 数据库索引配置 ====================
@@ -227,15 +186,12 @@ class GroupConfigModel(Base, BasicAuditMixin):
         Index("idx_group_configs_enabled", "is_message_save_enabled"),  # 启用状态索引，用于查询启用消息保存的群组
         Index("idx_group_configs_mode", "message_save_mode"),  # 保存模式索引，用于按保存模式分组查询
         Index("idx_group_configs_type", "group_type"),  # 群组类型索引，用于按群组类型查询
-
         # 时间范围索引
         Index("idx_group_configs_save_dates", "save_start_date", "save_end_date"),  # 保存时间范围索引
         Index("idx_group_configs_last_message", "last_message_date"),  # 最后消息时间索引
-
         # 组合索引
         Index("idx_group_configs_enabled_type", "is_message_save_enabled", "group_type"),  # 启用状态和群组类型组合索引
         Index("idx_group_configs_username", "chat_username"),  # 用户名索引，用于通过用户名查找群组
-
         # 统计索引
         Index("idx_group_configs_stats", "total_messages_saved", "last_message_date"),  # 统计信息索引
     )
@@ -275,8 +231,9 @@ class GroupConfigModel(Base, BasicAuditMixin):
         # 检查结束时间
         return not (self.save_end_date and check_time > self.save_end_date)
 
-    def should_save_message(self, message_type: str, is_forwarded: bool = False,
-                          is_reply: bool = False, is_from_bot: bool = False) -> bool:
+    def should_save_message(
+        self, message_type: str, is_forwarded: bool = False, is_reply: bool = False, is_from_bot: bool = False
+    ) -> bool:
         """
         判断是否应该保存指定类型的消息
 
@@ -349,7 +306,7 @@ class GroupConfigModel(Base, BasicAuditMixin):
             MessageSaveMode.TEXT_ONLY: "仅保存文本",
             MessageSaveMode.MEDIA_ONLY: "仅保存媒体",
             MessageSaveMode.IMPORTANT_ONLY: "仅保存重要消息",
-            MessageSaveMode.DISABLED: "已禁用"
+            MessageSaveMode.DISABLED: "已禁用",
         }
 
         return mode_display.get(self.message_save_mode, "未知模式")
@@ -375,7 +332,7 @@ class GroupConfigModel(Base, BasicAuditMixin):
         chat_username: str | None = None,
         group_type: GroupType = GroupType.GROUP,
         configured_by_user_id: int | None = None,
-        **kwargs
+        **kwargs,
     ) -> GroupConfigModel:
         """
         为群组创建配置记录
@@ -397,16 +354,12 @@ class GroupConfigModel(Base, BasicAuditMixin):
             chat_username=chat_username,
             group_type=group_type,
             configured_by_user_id=configured_by_user_id,
-            **kwargs
+            **kwargs,
         )
-
 
     @classmethod
     def enable_message_save(
-        cls,
-        chat_id: int,
-        save_mode: MessageSaveMode = MessageSaveMode.ALL,
-        **kwargs
+        cls, chat_id: int, save_mode: MessageSaveMode = MessageSaveMode.ALL, **kwargs
     ) -> GroupConfigModel:
         """
         启用群组消息保存

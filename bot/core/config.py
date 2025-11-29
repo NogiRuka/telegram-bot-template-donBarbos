@@ -6,6 +6,7 @@
 - 数据库配置
 - API 服务配置
 """
+
 from __future__ import annotations
 import json
 from pathlib import Path
@@ -93,7 +94,7 @@ class BotSettings(EnvBaseSettings):
         if v is None or not v.strip():
             return None
         s = v.strip()
-        if not (s.startswith("http://") or s.startswith("https://")):
+        if not (s.startswith(("http://", "https://"))):
             msg = "EMBY_BASE_URL 必须以 http:// 或 https:// 开头"
             raise ValueError(msg)
         return s.rstrip("/")

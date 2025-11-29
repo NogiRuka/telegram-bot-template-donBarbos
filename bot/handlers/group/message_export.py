@@ -1,6 +1,7 @@
 """
 消息导出处理器模块（子包）
 """
+
 from datetime import datetime, timedelta
 
 from aiogram import F, Router
@@ -38,12 +39,10 @@ async def export_messages_command(message: Message, session: AsyncSession) -> No
             return
         config = await session.get(GroupConfigModel, message.chat.id)
         if not config or not config.is_message_save_enabled:
-            await message.answer(
-                "❌ 此群组未启用消息保存功能\n" "请先使用 /group_config 命令启用消息保存"
-            )
+            await message.answer("❌ 此群组未启用消息保存功能\n请先使用 /group_config 命令启用消息保存")
             return
         await message.answer(
-            "📤 **消息导出功能**\n\n" "请选择导出格式和时间范围：",
+            "📤 **消息导出功能**\n\n请选择导出格式和时间范围：",
             reply_markup=get_message_export_keyboard(message.chat.id),
             parse_mode="Markdown",
         )
@@ -60,9 +59,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
             return
         config = await session.get(GroupConfigModel, message.chat.id)
         if not config or not config.is_message_save_enabled:
-            await message.answer(
-                "❌ 此群组未启用消息保存功能\n" "请先使用 /group_config 命令启用消息保存"
-            )
+            await message.answer("❌ 此群组未启用消息保存功能\n请先使用 /group_config 命令启用消息保存")
             return
         export_service = MessageExportService(session)
         stats = await export_service.get_message_statistics(message.chat.id, days=30)
@@ -169,7 +166,7 @@ async def handle_export_range(callback: CallbackQuery, session: AsyncSession) ->
         elif range_type == "all":
             range_text = "全部消息"
         await callback.message.edit_text(
-            f"📤 **消息导出功能**\n\n" f"已选择时间范围: **{range_text}**\n" f"请选择导出格式：",
+            f"📤 **消息导出功能**\n\n已选择时间范围: **{range_text}**\n请选择导出格式：",
             reply_markup=get_message_export_keyboard(chat_id),
             parse_mode="Markdown",
         )
@@ -189,7 +186,7 @@ async def search_messages_command(message: Message, state: FSMContext) -> None:
         if chat_member.status not in ["administrator", "creator"]:
             await message.answer("❌ 只有群组管理员可以搜索消息")
             return
-        await message.answer("🔍 **消息搜索功能**\n\n" "请输入要搜索的关键词：", parse_mode="Markdown")
+        await message.answer("🔍 **消息搜索功能**\n\n请输入要搜索的关键词：", parse_mode="Markdown")
         await state.set_state(MessageExportStates.waiting_for_search_text)
         await state.update_data(chat_id=message.chat.id)
     except Exception as e:

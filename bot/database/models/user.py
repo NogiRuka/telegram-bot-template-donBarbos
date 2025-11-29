@@ -55,8 +55,9 @@ class UserModel(Base, BasicAuditMixin):
 
     is_premium: Mapped[bool | None] = mapped_column(nullable=True, comment="是否 Telegram Premium 用户（可空）")
 
-    added_to_attachment_menu: Mapped[bool | None] = mapped_column(nullable=True, comment="是否把 bot 加入附件菜单（可空）")
-
+    added_to_attachment_menu: Mapped[bool | None] = mapped_column(
+        nullable=True, comment="是否把 bot 加入附件菜单（可空）"
+    )
 
     # ==================== 数据库索引定义 ====================
 

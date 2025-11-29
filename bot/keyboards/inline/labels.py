@@ -11,7 +11,6 @@
 - 常量使用大写加下划线
 """
 
-
 # 通用按钮文案常量
 # ===== 用户功能 =====
 PROFILE_LABEL = "👤 个人信息"
@@ -57,4 +56,3 @@ def format_with_status(label: str, enabled: bool) -> str:
     - str: 格式化后的文案
     """
     return f"{label} {'🟢' if enabled else '🔴'}"
-

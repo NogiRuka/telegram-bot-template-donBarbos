@@ -2,6 +2,7 @@
 管理员API路由
 提供管理员数据接口, 调用 bot 的数据库操作服务
 """
+
 from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, NoReturn
@@ -33,6 +34,7 @@ class AdminResponse(BaseModel):
         updated_at: 更新时间
         roles: 角色列表
     """
+
     id: int
     username: str | None
     first_name: str
@@ -54,6 +56,7 @@ class AdminsListResponse(BaseModel):
         per_page: 每页数量
         pages: 总页数
     """
+
     items: list[AdminResponse]
     total: int
     page: int
@@ -64,7 +67,7 @@ class AdminsListResponse(BaseModel):
 @router.get("/admins", response_model=AdminsListResponse)
 async def get_admins_list(
     page: Annotated[int, Query(ge=1, description="页码")] = 1,
-    per_page: Annotated[int, Query(ge=1, le=100, description="每页数量")] = 10
+    per_page: Annotated[int, Query(ge=1, le=100, description="每页数量")] = 10,
 ) -> AdminsListResponse:
     """
     获取管理员列表
@@ -78,7 +81,6 @@ async def get_admins_list(
     """
     try:
         async with sessionmaker() as session:
-
             # 获取所有用户, 然后筛选管理员
             all_users = await get_all_users(session)
             admin_users = [user for user in all_users if await is_admin(session, user.id)]
@@ -98,35 +100,27 @@ async def get_admins_list(
                     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
                     is_active = admin.updated_at >= week_ago
 
-                admins_data.append(AdminResponse(
-                    id=admin.id,
-                    username=admin.username,
-                    first_name=admin.first_name or "未知",
-                    last_name=admin.last_name,
-                    is_active=is_active,
-                    created_at=(
-                        admin.created_at.isoformat()
-                        if admin.created_at
-                        else datetime.now(timezone.utc).isoformat()
-                    ),
-                    updated_at=(
-                        admin.updated_at.isoformat()
-                        if admin.updated_at
-                        else datetime.now(timezone.utc).isoformat()
-                    ),
-                    roles=["admin"]  # 基础角色, 可以根据需要扩展
-                ))
+                admins_data.append(
+                    AdminResponse(
+                        id=admin.id,
+                        username=admin.username,
+                        first_name=admin.first_name or "未知",
+                        last_name=admin.last_name,
+                        is_active=is_active,
+                        created_at=(
+                            admin.created_at.isoformat() if admin.created_at else datetime.now(timezone.utc).isoformat()
+                        ),
+                        updated_at=(
+                            admin.updated_at.isoformat() if admin.updated_at else datetime.now(timezone.utc).isoformat()
+                        ),
+                        roles=["admin"],  # 基础角色, 可以根据需要扩展
+                    )
+                )
 
             # 计算总页数
             pages = (total + per_page - 1) // per_page
 
-            return AdminsListResponse(
-                items=admins_data,
-                total=total,
-                page=page,
-                per_page=per_page,
-                pages=pages
-            )
+            return AdminsListResponse(items=admins_data, total=total, page=page, per_page=per_page, pages=pages)
 
     except Exception as err:
         logger.error(f"获取管理员列表失败: {err}")
@@ -171,7 +165,7 @@ async def get_admin_detail(admin_id: int) -> AdminResponse:
                 is_active=is_active,
                 created_at=admin.created_at.isoformat() if admin.created_at else datetime.now(timezone.utc).isoformat(),
                 updated_at=admin.updated_at.isoformat() if admin.updated_at else datetime.now(timezone.utc).isoformat(),
-                roles=["admin"]
+                roles=["admin"],
             )
 
     except HTTPException:
@@ -203,6 +197,8 @@ async def get_admins_count() -> dict[str, int]:
     except SQLAlchemyError as err:
         logger.error(f"获取管理员统计失败: {err}")
         raise HTTPException(status_code=500, detail="获取管理员统计失败") from err
+
+
 def raise_admin_not_found() -> NoReturn:
     """
     抛出404

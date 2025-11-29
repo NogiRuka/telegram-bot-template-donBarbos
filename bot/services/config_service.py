@@ -215,7 +215,9 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
     if current_categories is None:
         await set_config(session, "admin.hitokoto.categories", None, ConfigType.LIST, default_value=["d", "i"])
 
+
 # 已移除 ensure_config_schema: 迁移逻辑改由外部管理, 保持代码简洁
+
 
 def _serialize_value(ctype: ConfigType, value: Any) -> str | None:
     """序列化配置值

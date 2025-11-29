@@ -18,4 +18,3 @@ def get_user_router() -> Router:
     router = Router(name="user")
     router.include_router(account_router)
     return router
-

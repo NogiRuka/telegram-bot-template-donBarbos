@@ -50,9 +50,7 @@ async def _resolve_role(session: AsyncSession | None, user_id: int | None) -> st
     """
     if session and user_id is not None:
         with contextlib.suppress(Exception):
-            result = await session.execute(
-                select(UserExtendModel.role).where(UserExtendModel.user_id == user_id)
-            )
+            result = await session.execute(select(UserExtendModel.role).where(UserExtendModel.user_id == user_id))
             r = result.scalar_one_or_none()
             if r == UserRole.owner:
                 return "owner"
@@ -79,6 +77,7 @@ def require_owner(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitabl
     返回值:
     - Callable[..., Awaitable[Any]]: 包装后的处理器函数
     """
+
     @functools.wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
         role: str | None = kwargs.get("role")
@@ -113,6 +112,7 @@ def require_admin_priv(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awa
     返回值:
     - Callable[..., Awaitable[Any]]: 包装后的处理器函数
     """
+
     @functools.wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
         role: str | None = kwargs.get("role")

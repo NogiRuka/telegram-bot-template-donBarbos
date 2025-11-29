@@ -3,6 +3,7 @@ Chat ID 信息测试模块
 
 使用 aiogram 测试通过 chat_id 能获取到什么信息
 """
+
 import asyncio
 from typing import TYPE_CHECKING, Any
 
@@ -44,7 +45,7 @@ class ChatInfoTester:
             "error": None,
             "chat_info": None,
             "chat_member_info": None,
-            "available_methods": []
+            "available_methods": [],
         }
 
         try:
@@ -74,7 +75,9 @@ class ChatInfoTester:
                 "location": getattr(chat, "location", None),
                 "join_to_send_messages": getattr(chat, "join_to_send_messages", None),
                 "join_by_request": getattr(chat, "join_by_request", None),
-                "has_restricted_voice_and_video_messages": getattr(chat, "has_restricted_voice_and_video_messages", None),
+                "has_restricted_voice_and_video_messages": getattr(
+                    chat, "has_restricted_voice_and_video_messages", None
+                ),
                 "is_forum": getattr(chat, "is_forum", None),
                 "active_usernames": getattr(chat, "active_usernames", None),
                 "emoji_status_custom_emoji_id": getattr(chat, "emoji_status_custom_emoji_id", None),
@@ -103,9 +106,11 @@ class ChatInfoTester:
                             "is_premium": getattr(chat_member.user, "is_premium", None),
                             "added_to_attachment_menu": getattr(chat_member.user, "added_to_attachment_menu", None),
                             "can_join_groups": getattr(chat_member.user, "can_join_groups", None),
-                            "can_read_all_group_messages": getattr(chat_member.user, "can_read_all_group_messages", None),
+                            "can_read_all_group_messages": getattr(
+                                chat_member.user, "can_read_all_group_messages", None
+                            ),
                             "supports_inline_queries": getattr(chat_member.user, "supports_inline_queries", None),
-                        }
+                        },
                     }
 
                     result["chat_member_info"] = member_dict
@@ -203,7 +208,7 @@ class ChatInfoTester:
             "total_tested": len(chat_ids),
             "successful": sum(1 for r in results.values() if r["success"]),
             "failed": sum(1 for r in results.values() if not r["success"]),
-            "results": results
+            "results": results,
         }
 
     async def get_message_info(self, chat_id: int | str, message_id: int) -> dict:
@@ -223,7 +228,7 @@ class ChatInfoTester:
             "message_id": message_id,
             "message_info": None,
             "error": None,
-            "available_methods": []
+            "available_methods": [],
         }
 
         try:
@@ -236,7 +241,7 @@ class ChatInfoTester:
                     chat_id=chat_id,  # 转发到同一个聊天
                     from_chat_id=chat_id,
                     message_id=message_id,
-                    disable_notification=True
+                    disable_notification=True,
                 )
 
                 # 立即删除转发的消息
@@ -406,7 +411,9 @@ class ChatInfoTester:
                             "first_name": message.forward_from.first_name,
                             "username": getattr(message.forward_from, "username", None),
                         },
-                        "date": message.forward_date.isoformat() if hasattr(message, "forward_date") and message.forward_date else None,
+                        "date": message.forward_date.isoformat()
+                        if hasattr(message, "forward_date") and message.forward_date
+                        else None,
                     }
                 elif hasattr(message, "forward_from_chat") and message.forward_from_chat:
                     message_data["forward_info"] = {
@@ -417,7 +424,9 @@ class ChatInfoTester:
                             "title": getattr(message.forward_from_chat, "title", None),
                             "username": getattr(message.forward_from_chat, "username", None),
                         },
-                        "date": message.forward_date.isoformat() if hasattr(message, "forward_date") and message.forward_date else None,
+                        "date": message.forward_date.isoformat()
+                        if hasattr(message, "forward_date") and message.forward_date
+                        else None,
                         "message_id": getattr(message, "forward_from_message_id", None),
                     }
 

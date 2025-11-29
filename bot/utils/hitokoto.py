@@ -1,19 +1,20 @@
 from __future__ import annotations
 import json
-from typing import TYPE_CHECKING, Any
 import time
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 from aiohttp import ClientError
 from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 
-from bot.database.models.hitokoto import HitokotoModel
 from bot.database.database import sessionmaker
+from bot.database.models.hitokoto import HitokotoModel
 from bot.services.config_service import get_config
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
 
 async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = None) -> dict[str, Any] | None:
     """获取一言句子
@@ -41,9 +42,10 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
     logger.info(f"🔎 [Hitokoto] 请求 URL={url} | 分类={categories}")
     try:
         start_time = time.perf_counter()
-        async with aiohttp.ClientSession() as http_session, http_session.get(
-            url, timeout=aiohttp.ClientTimeout(total=6.0)
-        ) as resp:
+        async with (
+            aiohttp.ClientSession() as http_session,
+            http_session.get(url, timeout=aiohttp.ClientTimeout(total=6.0)) as resp,
+        ):
             data = await resp.text()
             payload = json.loads(data)
             u = payload.get("uuid")
@@ -52,12 +54,8 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
             duration_ms = int((time.perf_counter() - start_time) * 1000)
             snippet = str(payload.get("hitokoto") or "")
             snippet = (snippet[:48] + "…") if len(snippet) > 48 else snippet
-            logger.info(
-                f"🟢 [Hitokoto] 响应 status={resp.status} | 耗时={duration_ms}ms"
-            )
-            logger.info(
-                f"📦 [Hitokoto] 数据 uuid={u} | type={t} | length={ln} | 片段='{snippet}'"
-            )
+            logger.info(f"🟢 [Hitokoto] 响应 status={resp.status} | 耗时={duration_ms}ms")
+            logger.info(f"📦 [Hitokoto] 数据 uuid={u} | type={t} | length={ln} | 片段='{snippet}'")
             try:
                 uuid = str(payload.get("uuid") or "")
                 if uuid:
@@ -133,8 +131,4 @@ def build_start_caption(payload: dict[str, Any] | None, user_name: str, project_
     hitokoto = "(ง •̀_•́)ง" if not payload else str(payload.get("hitokoto") or "(ง •̀_•́)ง")
     uuid = "" if not payload else str(payload.get("uuid") or "")
     link = f"https://hitokoto.cn?uuid={uuid}" if uuid else "https://hitokoto.cn/"
-    return (
-        f"『 [{hitokoto}]({link}) 』\n\n"
-        f"🍃 嗨  *_{user_name}_*\n"
-        f"🎐 欢迎使用{project_name}\n"
-    )
+    return f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name}_*\n🎐 欢迎使用{project_name}\n"

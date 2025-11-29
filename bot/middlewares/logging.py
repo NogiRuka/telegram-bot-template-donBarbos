@@ -124,7 +124,6 @@ class LoggingMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-
         # 定义：(属性名, 日志前缀, 处理函数)
         event_handlers = [
             ("message", "收到消息", self.process_message),
@@ -147,11 +146,11 @@ class LoggingMiddleware(BaseMiddleware):
             event_type = type(event).__name__
 
             if event_type == "Message":
-                self._log_event("收到消息", self.process_message(event)) # type: ignore
+                self._log_event("收到消息", self.process_message(event))  # type: ignore
             elif event_type == "CallbackQuery":
-                self._log_event("收到按钮回调", self.process_callback_query(event)) # type: ignore
+                self._log_event("收到按钮回调", self.process_callback_query(event))  # type: ignore
             elif event_type == "InlineQuery":
-                self._log_event("收到内联搜索", self.process_inline_query(event)) # type: ignore
+                self._log_event("收到内联搜索", self.process_inline_query(event))  # type: ignore
             # ... 其他类型如有需要可继续添加
 
         return await handler(event, data)

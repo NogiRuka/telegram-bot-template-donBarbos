@@ -4,6 +4,7 @@
 
 可以直接运行此脚本来测试aiogram获取chat信息的功能
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -96,7 +97,6 @@ async def interactive_test() -> None:
             result = await tester.get_chat_info(chat_id)
 
             if result["success"]:
-
                 if result["chat_info"]:
                     chat_info = result["chat_info"]
 
@@ -115,7 +115,6 @@ async def interactive_test() -> None:
 
                 if result.get("administrators"):
                     pass
-
 
                 # 询问是否显示详细信息
                 show_detail = input("是否显示详细JSON信息? (y/N): ").strip().lower()
@@ -216,16 +215,15 @@ async def main() -> None:
     # 检查配置
     try:
         from bot.core.config import settings
+
         if not settings.BOT_TOKEN:
             return
-
 
     except Exception:
         return
 
     # 显示菜单
     while True:
-
         try:
             choice = input("\n请输入选择 (1-6): ").strip()
 

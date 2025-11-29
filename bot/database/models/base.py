@@ -19,15 +19,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 # ==================== 通用字段类型定义 ====================
 
 # 主键字段类型
-int_pk = Annotated[
-    int,
-    mapped_column(
-        primary_key=True,
-        unique=True,
-        autoincrement=False,
-        comment="整型主键，不自增"
-    )
-]
+int_pk = Annotated[int, mapped_column(primary_key=True, unique=True, autoincrement=False, comment="整型主键，不自增")]
 
 # 大整型主键字段类型（适用于Telegram ID等大数值）
 big_int_pk = Annotated[
@@ -37,28 +29,17 @@ big_int_pk = Annotated[
         unique=True,
         autoincrement=False,
         type_=BigInteger,
-        comment="大整型主键，适用于Telegram ID等大数值，不自增"
-    )
+        comment="大整型主键，适用于Telegram ID等大数值，不自增",
+    ),
 ]
 
 # 自增主键字段类型
-auto_int_pk = Annotated[
-    int,
-    mapped_column(
-        primary_key=True,
-        autoincrement=True,
-        comment="自增整型主键"
-    )
-]
+auto_int_pk = Annotated[int, mapped_column(primary_key=True, autoincrement=True, comment="自增整型主键")]
 
 # 创建时间字段类型
 created_at = Annotated[
     datetime.datetime,
-    mapped_column(
-        server_default=text("NOW()"),
-        nullable=False,
-        comment="记录创建时间，自动设置为当前时间"
-    )
+    mapped_column(server_default=text("NOW()"), nullable=False, comment="记录创建时间，自动设置为当前时间"),
 ]
 
 # 更新时间字段类型
@@ -68,87 +49,48 @@ updated_at = Annotated[
         server_default=text("NOW()"),
         onupdate=text("NOW()"),
         nullable=False,
-        comment="记录更新时间，创建时设置为当前时间，更新时自动更新"
-    )
+        comment="记录更新时间，创建时设置为当前时间，更新时自动更新",
+    ),
 ]
 
 # 软删除字段类型
 deleted_at = Annotated[
     datetime.datetime | None,
-    mapped_column(
-        nullable=True,
-        default=None,
-        comment="软删除时间，NULL表示未删除，有值表示删除时间"
-    )
+    mapped_column(nullable=True, default=None, comment="软删除时间，NULL表示未删除，有值表示删除时间"),
 ]
 
 # 软删除标志字段类型
 is_deleted = Annotated[
     bool,
     mapped_column(
-        Boolean,
-        default=False,
-        nullable=False,
-        index=True,
-        comment="软删除标志，False表示未删除，True表示已删除"
-    )
+        Boolean, default=False, nullable=False, index=True, comment="软删除标志，False表示未删除，True表示已删除"
+    ),
 ]
 
 # 创建者ID字段类型
 created_by = Annotated[
-    int | None,
-    mapped_column(
-        BigInteger,
-        nullable=True,
-        index=True,
-        comment="创建者用户ID，NULL表示系统创建"
-    )
+    int | None, mapped_column(BigInteger, nullable=True, index=True, comment="创建者用户ID，NULL表示系统创建")
 ]
 
 # 更新者ID字段类型
 updated_by = Annotated[
-    int | None,
-    mapped_column(
-        BigInteger,
-        nullable=True,
-        index=True,
-        comment="最后更新者用户ID，NULL表示系统更新"
-    )
+    int | None, mapped_column(BigInteger, nullable=True, index=True, comment="最后更新者用户ID，NULL表示系统更新")
 ]
 
 # 删除者ID字段类型
 deleted_by = Annotated[
-    int | None,
-    mapped_column(
-        BigInteger,
-        nullable=True,
-        index=True,
-        comment="删除者用户ID，NULL表示系统删除"
-    )
+    int | None, mapped_column(BigInteger, nullable=True, index=True, comment="删除者用户ID，NULL表示系统删除")
 ]
 
 # 版本号字段类型（用于乐观锁）
-version = Annotated[
-    int,
-    mapped_column(
-        default=1,
-        nullable=False,
-        comment="记录版本号，用于乐观锁控制并发更新"
-    )
-]
+version = Annotated[int, mapped_column(default=1, nullable=False, comment="记录版本号，用于乐观锁控制并发更新")]
 
 # 备注字段类型（TEXT）
-remark = Annotated[
-    str | None,
-    mapped_column(
-        Text,
-        nullable=True,
-        comment="备注（长文本）"
-    )
-]
+remark = Annotated[str | None, mapped_column(Text, nullable=True, comment="备注（长文本）")]
 
 
 # ==================== 基类定义 ====================
+
 
 class Base(DeclarativeBase):
     """

@@ -12,6 +12,7 @@
 
 命名风格: 统一 snake_case
 """
+
 import asyncio
 import contextlib
 import os
@@ -74,6 +75,7 @@ def read_web_port(default_port: int = 3000) -> int:
     try:
         text = cfg.read_text(encoding="utf-8")
         import re
+
         m = re.search(r"server:\s*\{[\s\S]*?port:\s*(\d+)", text)
         if m:
             return int(m.group(1))

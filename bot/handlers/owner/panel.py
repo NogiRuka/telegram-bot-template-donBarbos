@@ -2,7 +2,6 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.utils.view import render_view
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.start_owner import (
     get_admin_perms_panel_keyboard,
@@ -12,6 +11,7 @@ from bot.keyboards.inline.start_owner import (
 )
 from bot.services.config_service import list_admin_permissions, list_features, toggle_config
 from bot.utils.permissions import require_owner
+from bot.utils.view import render_view
 
 router = Router(name="owner_panel")
 

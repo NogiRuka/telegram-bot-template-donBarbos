@@ -22,4 +22,3 @@ def get_owner_router() -> Router:
     router.include_router(owner_features_router)
     router.include_router(owner_admins_router)
     return router
-

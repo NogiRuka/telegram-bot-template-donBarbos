@@ -55,9 +55,8 @@ class UserHistoryModel(Base, BasicAuditMixin):
     added_to_attachment_menu: Mapped[bool | None] = mapped_column(nullable=True, comment="是否加入附件菜单")
 
     # 快照时间
-    snapshot_at: Mapped[datetime.datetime] = mapped_column(nullable=False, default=datetime.datetime.now, comment="快照时间")
-
-
-    __table_args__ = (
-        Index("idx_user_history_user_snapshot", "user_id", "snapshot_at"),
+    snapshot_at: Mapped[datetime.datetime] = mapped_column(
+        nullable=False, default=datetime.datetime.now, comment="快照时间"
     )
+
+    __table_args__ = (Index("idx_user_history_user_snapshot", "user_id", "snapshot_at"),)

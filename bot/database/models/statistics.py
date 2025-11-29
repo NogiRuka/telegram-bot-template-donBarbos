@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 from enum import Enum
 from typing import TYPE_CHECKING, Any
-from datetime import date, datetime
 
 from sqlalchemy import BigInteger, Date, Float, Index, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
@@ -22,7 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from bot.database.models.base import Base, BasicAuditMixin
 
 if TYPE_CHECKING:
-    pass
+    from datetime import date, datetime
 
 
 class StatisticType(str, Enum):
@@ -34,53 +33,53 @@ class StatisticType(str, Enum):
     """
 
     # ==================== 用户相关统计 ====================
-    DAILY_USERS = "daily_users"                    # 日活跃用户数统计
-    DAILY_NEW_USERS = "daily_new_users"            # 日新增用户数统计
-    DAILY_ACTIVE_USERS = "daily_active_users"      # 日活跃用户数统计
-    WEEKLY_USERS = "weekly_users"                  # 周活跃用户数统计
-    WEEKLY_NEW_USERS = "weekly_new_users"          # 周新增用户数统计
-    MONTHLY_USERS = "monthly_users"                # 月活跃用户数统计
-    MONTHLY_NEW_USERS = "monthly_new_users"        # 月新增用户数统计
-    USER_RETENTION = "user_retention"              # 用户留存率统计
-    USER_CHURN = "user_churn"                      # 用户流失率统计
+    DAILY_USERS = "daily_users"  # 日活跃用户数统计
+    DAILY_NEW_USERS = "daily_new_users"  # 日新增用户数统计
+    DAILY_ACTIVE_USERS = "daily_active_users"  # 日活跃用户数统计
+    WEEKLY_USERS = "weekly_users"  # 周活跃用户数统计
+    WEEKLY_NEW_USERS = "weekly_new_users"  # 周新增用户数统计
+    MONTHLY_USERS = "monthly_users"  # 月活跃用户数统计
+    MONTHLY_NEW_USERS = "monthly_new_users"  # 月新增用户数统计
+    USER_RETENTION = "user_retention"  # 用户留存率统计
+    USER_CHURN = "user_churn"  # 用户流失率统计
 
     # ==================== 消息相关统计 ====================
-    DAILY_MESSAGES = "daily_messages"              # 日消息数量统计
-    WEEKLY_MESSAGES = "weekly_messages"            # 周消息数量统计
-    MONTHLY_MESSAGES = "monthly_messages"          # 月消息数量统计
+    DAILY_MESSAGES = "daily_messages"  # 日消息数量统计
+    WEEKLY_MESSAGES = "weekly_messages"  # 周消息数量统计
+    MONTHLY_MESSAGES = "monthly_messages"  # 月消息数量统计
     MESSAGE_TYPE_DISTRIBUTION = "message_type_distribution"  # 消息类型分布统计
-    AVERAGE_MESSAGE_LENGTH = "average_message_length"        # 平均消息长度统计
+    AVERAGE_MESSAGE_LENGTH = "average_message_length"  # 平均消息长度统计
 
     # ==================== 功能使用统计 ====================
-    COMMAND_USAGE = "command_usage"                # 命令使用次数统计
-    FEATURE_USAGE = "feature_usage"                # 功能使用次数统计
-    BUTTON_CLICKS = "button_clicks"                # 按钮点击次数统计
-    CALLBACK_USAGE = "callback_usage"              # 回调查询使用统计
+    COMMAND_USAGE = "command_usage"  # 命令使用次数统计
+    FEATURE_USAGE = "feature_usage"  # 功能使用次数统计
+    BUTTON_CLICKS = "button_clicks"  # 按钮点击次数统计
+    CALLBACK_USAGE = "callback_usage"  # 回调查询使用统计
 
     # ==================== 系统性能统计 ====================
-    RESPONSE_TIME = "response_time"                # 响应时间统计
-    ERROR_COUNT = "error_count"                    # 错误次数统计
-    ERROR_RATE = "error_rate"                      # 错误率统计
-    API_CALLS = "api_calls"                        # API调用次数统计
-    DATABASE_QUERIES = "database_queries"          # 数据库查询次数统计
-    MEMORY_USAGE = "memory_usage"                  # 内存使用量统计
-    CPU_USAGE = "cpu_usage"                        # CPU使用率统计
+    RESPONSE_TIME = "response_time"  # 响应时间统计
+    ERROR_COUNT = "error_count"  # 错误次数统计
+    ERROR_RATE = "error_rate"  # 错误率统计
+    API_CALLS = "api_calls"  # API调用次数统计
+    DATABASE_QUERIES = "database_queries"  # 数据库查询次数统计
+    MEMORY_USAGE = "memory_usage"  # 内存使用量统计
+    CPU_USAGE = "cpu_usage"  # CPU使用率统计
 
     # ==================== 业务指标统计 ====================
-    CONVERSION_RATE = "conversion_rate"            # 转化率统计
-    ENGAGEMENT_RATE = "engagement_rate"            # 参与度统计
-    SESSION_DURATION = "session_duration"          # 会话时长统计
-    BOUNCE_RATE = "bounce_rate"                    # 跳出率统计
+    CONVERSION_RATE = "conversion_rate"  # 转化率统计
+    ENGAGEMENT_RATE = "engagement_rate"  # 参与度统计
+    SESSION_DURATION = "session_duration"  # 会话时长统计
+    BOUNCE_RATE = "bounce_rate"  # 跳出率统计
 
     # ==================== 内容统计 ====================
-    CONTENT_VIEWS = "content_views"                # 内容查看次数统计
-    CONTENT_SHARES = "content_shares"              # 内容分享次数统计
-    SEARCH_QUERIES = "search_queries"              # 搜索查询次数统计
+    CONTENT_VIEWS = "content_views"  # 内容查看次数统计
+    CONTENT_SHARES = "content_shares"  # 内容分享次数统计
+    SEARCH_QUERIES = "search_queries"  # 搜索查询次数统计
 
     # ==================== 自定义统计 ====================
-    CUSTOM_METRIC = "custom_metric"                # 自定义指标统计
-    BUSINESS_KPI = "business_kpi"                  # 业务关键指标统计
-    OTHER = "other"                                # 其他类型统计
+    CUSTOM_METRIC = "custom_metric"  # 自定义指标统计
+    BUSINESS_KPI = "business_kpi"  # 业务关键指标统计
+    OTHER = "other"  # 其他类型统计
 
 
 class StatisticPeriod(str, Enum):
@@ -90,12 +89,12 @@ class StatisticPeriod(str, Enum):
     定义了统计数据的时间周期类型。
     """
 
-    HOURLY = "hourly"      # 小时级统计
-    DAILY = "daily"        # 日级统计
-    WEEKLY = "weekly"      # 周级统计
-    MONTHLY = "monthly"    # 月级统计
+    HOURLY = "hourly"  # 小时级统计
+    DAILY = "daily"  # 日级统计
+    WEEKLY = "weekly"  # 周级统计
+    MONTHLY = "monthly"  # 月级统计
     QUARTERLY = "quarterly"  # 季度级统计
-    YEARLY = "yearly"      # 年级统计
+    YEARLY = "yearly"  # 年级统计
     REAL_TIME = "real_time"  # 实时统计
 
 
@@ -125,10 +124,7 @@ class StatisticsModel(Base, BasicAuditMixin):
     # ==================== 主键字段 ====================
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        autoincrement=True,
-        comment="统计记录ID，自增主键，唯一标识一条统计记录"
+        Integer, primary_key=True, autoincrement=True, comment="统计记录ID，自增主键，唯一标识一条统计记录"
     )
 
     # ==================== 统计标识字段 ====================
@@ -137,7 +133,7 @@ class StatisticsModel(Base, BasicAuditMixin):
         SQLEnum(StatisticType),
         nullable=False,
         index=True,
-        comment="统计类型，必填字段，使用StatisticType枚举值标识统计指标的类型"
+        comment="统计类型，必填字段，使用StatisticType枚举值标识统计指标的类型",
     )
 
     period: Mapped[StatisticPeriod] = mapped_column(
@@ -145,14 +141,11 @@ class StatisticsModel(Base, BasicAuditMixin):
         nullable=False,
         default=StatisticPeriod.DAILY,
         index=True,
-        comment="统计周期，必填字段，标识统计数据的时间粒度，默认为日级统计"
+        comment="统计周期，必填字段，标识统计数据的时间粒度，默认为日级统计",
     )
 
     date: Mapped[date] = mapped_column(
-        Date,
-        nullable=False,
-        index=True,
-        comment="统计日期，必填字段，标识统计数据对应的日期"
+        Date, nullable=False, index=True, comment="统计日期，必填字段，标识统计数据对应的日期"
     )
 
     # ==================== 统计维度字段 ====================
@@ -161,100 +154,71 @@ class StatisticsModel(Base, BasicAuditMixin):
         String(255),
         nullable=True,
         index=True,
-        comment="统计键，可选字段，用于细分统计维度，如命令名称、错误类型、用户分组等"
+        comment="统计键，可选字段，用于细分统计维度，如命令名称、错误类型、用户分组等",
     )
 
     category: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
-        index=True,
-        comment="统计分类，可选字段，用于对统计指标进行分组管理"
+        String(100), nullable=True, index=True, comment="统计分类，可选字段，用于对统计指标进行分组管理"
     )
 
     sub_category: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
-        comment="统计子分类，可选字段，用于更细粒度的分类管理"
+        String(100), nullable=True, comment="统计子分类，可选字段，用于更细粒度的分类管理"
     )
 
     # ==================== 统计数值字段 ====================
 
     value: Mapped[int] = mapped_column(
-        BigInteger,
-        nullable=False,
-        default=0,
-        index=True,
-        comment="统计值，必填字段，存储统计指标的数值，默认为0"
+        BigInteger, nullable=False, default=0, index=True, comment="统计值，必填字段，存储统计指标的数值，默认为0"
     )
 
     float_value: Mapped[float | None] = mapped_column(
-        Float,
-        nullable=True,
-        comment="浮点统计值，可选字段，用于存储需要小数精度的统计指标"
+        Float, nullable=True, comment="浮点统计值，可选字段，用于存储需要小数精度的统计指标"
     )
 
     count: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        default=1,
-        comment="计数值，必填字段，记录统计样本的数量，用于计算平均值等，默认为1"
+        Integer, nullable=False, default=1, comment="计数值，必填字段，记录统计样本的数量，用于计算平均值等，默认为1"
     )
 
     min_value: Mapped[float | None] = mapped_column(
-        Float,
-        nullable=True,
-        comment="最小值，可选字段，记录统计周期内的最小值"
+        Float, nullable=True, comment="最小值，可选字段，记录统计周期内的最小值"
     )
 
     max_value: Mapped[float | None] = mapped_column(
-        Float,
-        nullable=True,
-        comment="最大值，可选字段，记录统计周期内的最大值"
+        Float, nullable=True, comment="最大值，可选字段，记录统计周期内的最大值"
     )
 
     sum_value: Mapped[float | None] = mapped_column(
-        Float,
-        nullable=True,
-        comment="总和值，可选字段，记录统计周期内的累计值"
+        Float, nullable=True, comment="总和值，可选字段，记录统计周期内的累计值"
     )
 
     # ==================== 扩展数据字段 ====================
 
     extra_data: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        comment="扩展数据，可选字段，JSON格式存储额外的统计元数据和详细信息"
+        Text, nullable=True, comment="扩展数据，可选字段，JSON格式存储额外的统计元数据和详细信息"
     )
 
     tags: Mapped[str | None] = mapped_column(
-        String(500),
-        nullable=True,
-        comment="标签，可选字段，逗号分隔的标签列表，用于统计数据的标记和搜索"
+        String(500), nullable=True, comment="标签，可选字段，逗号分隔的标签列表，用于统计数据的标记和搜索"
     )
 
     # ==================== 时间范围字段 ====================
 
     start_time: Mapped[datetime | None] = mapped_column(
-        nullable=True,
-        comment="开始时间，可选字段，统计周期的开始时间，用于精确的时间范围统计"
+        nullable=True, comment="开始时间，可选字段，统计周期的开始时间，用于精确的时间范围统计"
     )
 
     end_time: Mapped[datetime | None] = mapped_column(
-        nullable=True,
-        comment="结束时间，可选字段，统计周期的结束时间，用于精确的时间范围统计"
+        nullable=True, comment="结束时间，可选字段，统计周期的结束时间，用于精确的时间范围统计"
     )
 
     # ==================== 状态字段 ====================
 
     is_processed: Mapped[bool] = mapped_column(
-        default=True,
-        index=True,
-        comment="是否已处理，默认True，False表示统计数据还在处理中"
+        default=True, index=True, comment="是否已处理，默认True，False表示统计数据还在处理中"
     )
 
     is_aggregated: Mapped[bool] = mapped_column(
-        default=False,
-        comment="是否已聚合，默认False，True表示此数据是由其他数据聚合而来"
+        default=False, comment="是否已聚合，默认False，True表示此数据是由其他数据聚合而来"
     )
 
     # ==================== 数据库索引定义 ====================
@@ -262,28 +226,20 @@ class StatisticsModel(Base, BasicAuditMixin):
     __table_args__ = (
         # 类型日期索引，用于按类型和日期查询统计数据
         Index("idx_statistics_type_date", "statistic_type", "date"),
-
         # 类型键日期索引，用于细分维度查询
         Index("idx_statistics_type_key_date", "statistic_type", "key", "date"),
-
         # 周期日期索引，用于按周期查询
         Index("idx_statistics_period_date", "period", "date"),
-
         # 分类索引，用于按分类查询
         Index("idx_statistics_category", "category", "sub_category"),
-
         # 数值索引，用于按数值范围查询
         Index("idx_statistics_value", "value", "float_value"),
-
         # 时间范围索引，用于精确时间查询
         Index("idx_statistics_time_range", "start_time", "end_time"),
-
         # 处理状态索引，用于查询待处理数据
         Index("idx_statistics_processed", "is_processed", "is_aggregated"),
-
         # 组合查询索引，用于复杂查询优化
         Index("idx_statistics_complex", "statistic_type", "period", "category", "date"),
-
         # 软删除相关索引（继承自BasicAuditMixin）
         Index("idx_statistics_deleted", "is_deleted"),
         Index("idx_statistics_updated", "updated_at"),
@@ -432,7 +388,7 @@ class StatisticsModel(Base, BasicAuditMixin):
             StatisticPeriod.MONTHLY: "月",
             StatisticPeriod.QUARTERLY: "季度",
             StatisticPeriod.YEARLY: "年",
-            StatisticPeriod.REAL_TIME: "实时"
+            StatisticPeriod.REAL_TIME: "实时",
         }
         return period_names.get(self.period, "未知")
 
@@ -470,7 +426,7 @@ class StatisticsModel(Base, BasicAuditMixin):
             StatisticType.API_CALLS,
             StatisticType.DATABASE_QUERIES,
             StatisticType.MEMORY_USAGE,
-            StatisticType.CPU_USAGE
+            StatisticType.CPU_USAGE,
         }
         return self.statistic_type in performance_types
 
@@ -487,7 +443,7 @@ class StatisticsModel(Base, BasicAuditMixin):
             StatisticType.USER_RETENTION,
             StatisticType.USER_CHURN,
             StatisticType.BOUNCE_RATE,
-            StatisticType.BUSINESS_KPI
+            StatisticType.BUSINESS_KPI,
         }
         return self.statistic_type in business_types
 
@@ -501,7 +457,7 @@ class StatisticsModel(Base, BasicAuditMixin):
         period: StatisticPeriod = StatisticPeriod.DAILY,
         category: str | None = None,
         extra_data: dict[str, Any] | None = None,
-        **kwargs
+        **kwargs,
     ) -> StatisticsModel:
         """
         创建统计记录
@@ -521,14 +477,7 @@ class StatisticsModel(Base, BasicAuditMixin):
         返回:
             StatisticsModel: 新创建的统计实例
         """
-        statistic = cls(
-            statistic_type=statistic_type,
-            date=date,
-            key=key,
-            period=period,
-            category=category,
-            **kwargs
-        )
+        statistic = cls(statistic_type=statistic_type, date=date, key=key, period=period, category=category, **kwargs)
 
         # 设置统计值
         statistic.update_value(value)

@@ -1,14 +1,15 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+
 from bot.keyboards.inline.labels import (
-    PROFILE_LABEL,
     ACCOUNT_CENTER_LABEL,
+    BACK_TO_HOME_LABEL,
+    PROFILE_LABEL,
+    START_REGISTER_LABEL,
+    USER_DEVICES_LABEL,
     USER_INFO_LABEL,
     USER_LINES_LABEL,
-    USER_DEVICES_LABEL,
     USER_PASSWORD_LABEL,
-    START_REGISTER_LABEL,
-    BACK_TO_HOME_LABEL,
 )
 
 
@@ -93,4 +94,3 @@ def get_account_center_keyboard(
         builder.row(InlineKeyboardButton(text=START_REGISTER_LABEL, callback_data="user:register"))
         builder.row(InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"))
     return builder.as_markup()
-

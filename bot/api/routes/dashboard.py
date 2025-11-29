@@ -2,6 +2,7 @@
 仪表板API路由
 提供仪表板统计数据接口, 调用 bot 的数据库操作服务
 """
+
 from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
@@ -26,39 +27,32 @@ async def get_user_stats() -> dict[str, Any]:
     """
     try:
         async with sessionmaker() as session:
-
             # 总用户数 - 使用bot的服务层
             total_users = await get_user_count(session)
 
             # 今日新用户(最近24小时)
             today = datetime.now(timezone.utc) - timedelta(days=1)
             new_users_today_result = await session.execute(
-                select(func.count(UserModel.id))
-                .where(UserModel.created_at >= today)
+                select(func.count(UserModel.id)).where(UserModel.created_at >= today)
             )
             new_users_today = new_users_today_result.scalar() or 0
 
             # 活跃用户(最近7天注册的用户, 因为没有 updated_at 字段)
             week_ago = datetime.now(timezone.utc) - timedelta(days=7)
             active_users_result = await session.execute(
-                select(func.count(UserModel.id))
-                .where(UserModel.created_at >= week_ago)
+                select(func.count(UserModel.id)).where(UserModel.created_at >= week_ago)
             )
             active_users = active_users_result.scalar() or 0
 
             # 本周新用户
             week_start = datetime.now(timezone.utc) - timedelta(days=7)
             new_users_week_result = await session.execute(
-                select(func.count(UserModel.id))
-                .where(UserModel.created_at >= week_start)
+                select(func.count(UserModel.id)).where(UserModel.created_at >= week_start)
             )
             new_users_week = new_users_week_result.scalar() or 0
 
             # 高级用户数
-            premium_users_result = await session.execute(
-                select(func.count(UserModel.id))
-                .where(UserModel.is_premium)
-            )
+            premium_users_result = await session.execute(select(func.count(UserModel.id)).where(UserModel.is_premium))
             premium_users = premium_users_result.scalar() or 0
 
             return {
@@ -66,7 +60,7 @@ async def get_user_stats() -> dict[str, Any]:
                 "active_users": active_users,
                 "new_users_today": new_users_today,
                 "new_users_week": new_users_week,
-                "premium_users": premium_users
+                "premium_users": premium_users,
             }
 
     except Exception as err:
@@ -112,7 +106,7 @@ async def get_dashboard_stats(user_stats: Annotated[dict[str, Any], Depends(get_
             "trends": {
                 "users_growth": round(users_growth, 2),
                 "activity_rate": round(activity_rate, 2),
-                "premium_rate": round(premium_rate, 2)
+                "premium_rate": round(premium_rate, 2),
             },
             "recent_activity": [
                 {
@@ -120,25 +114,24 @@ async def get_dashboard_stats(user_stats: Annotated[dict[str, Any], Depends(get_
                     "type": "user_joined",
                     "message": f"今日新增 {new_users_today} 位用户",
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "count": new_users_today
+                    "count": new_users_today,
                 },
                 {
                     "id": 2,
                     "type": "user_active",
                     "message": f"本周活跃用户 {active_users} 位",
                     "timestamp": (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(),
-                    "count": active_users
+                    "count": active_users,
                 },
                 {
                     "id": 3,
                     "type": "premium_users",
                     "message": f"高级用户 {premium_users} 位",
                     "timestamp": (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat(),
-                    "count": premium_users
-                }
-            ]
+                    "count": premium_users,
+                },
+            ],
         }
-
 
     except Exception as err:
         logger.error(f"获取仪表板统计数据失败: {err}")
@@ -155,7 +148,6 @@ async def get_user_growth() -> dict[str, Any]:
     """
     try:
         async with sessionmaker() as session:
-
             # 获取最近7天的用户增长数据
             growth_data = []
             for i in range(7):
@@ -170,10 +162,7 @@ async def get_user_growth() -> dict[str, Any]:
                 )
                 daily_users = daily_users_result.scalar() or 0
 
-                growth_data.append({
-                    "date": start_of_day.strftime("%Y-%m-%d"),
-                    "new_users": daily_users
-                })
+                growth_data.append({"date": start_of_day.strftime("%Y-%m-%d"), "new_users": daily_users})
 
             # 反转数据, 使其按时间顺序排列
             growth_data.reverse()

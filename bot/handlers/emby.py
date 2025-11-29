@@ -39,10 +39,7 @@ async def get_client_or_reply(message: types.Message) -> EmbyClient | None:
     """
     client = get_emby_client_from_settings()
     if client is None:
-        message_text = (
-            "❌ 未配置 Emby 连接信息\n"
-            "请在 .env 文件中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
-        )
+        message_text = "❌ 未配置 Emby 连接信息\n请在 .env 文件中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
         await message.answer(message_text)
         return None
     return client
@@ -68,7 +65,6 @@ async def get_args_or_usage(message: types.Message, usage: str, min_args: int) -
         await message.answer(usage)
         return None
     return parts
-
 
 
 @router.message(Command("emby_users"))
@@ -207,6 +203,8 @@ async def delete_emby_user(message: types.Message, session: AsyncSession) -> Non
         await message.answer(f"✅ 已删除用户: {user_id}")
     except (ClientError, asyncio.TimeoutError) as e:
         await message.answer(f"❌ 删除失败: {e!s}")
+
+
 def hash_password(password: str | None) -> str | None:
     """密码哈希
 

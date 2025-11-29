@@ -36,7 +36,9 @@ class HitokotoModel(Base, BasicAuditMixin):
     creator: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="添加者")
     creator_uid: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="添加者用户标识")
     reviewer: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="审核员标识")
-    uuid: Mapped[str] = mapped_column(String(64), comment="一言唯一标识；可在 https://hitokoto.cn?uuid=[uuid] 查看完整信息")
+    uuid: Mapped[str] = mapped_column(
+        String(64), comment="一言唯一标识；可在 https://hitokoto.cn?uuid=[uuid] 查看完整信息"
+    )
     commit_from: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="提交方式")
     source_created_at: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="来源添加时间(created_at)")
     length: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="句子长度")

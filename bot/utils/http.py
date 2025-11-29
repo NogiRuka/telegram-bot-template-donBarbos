@@ -1,5 +1,4 @@
 from __future__ import annotations
-import asyncio
 from typing import Any
 
 import aiohttp
@@ -59,4 +58,3 @@ class HttpClient:
                 if "application/json" in ctype:
                     return await resp.json()
                 return await resp.text()
-

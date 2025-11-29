@@ -144,62 +144,78 @@ class GroupMessageSaver:
         }
         if message.photo:
             largest_photo = max(message.photo, key=lambda x: x.file_size or 0)
-            file_info.update({
-                "file_id": largest_photo.file_id,
-                "file_unique_id": largest_photo.file_unique_id,
-                "file_size": largest_photo.file_size,
-            })
+            file_info.update(
+                {
+                    "file_id": largest_photo.file_id,
+                    "file_unique_id": largest_photo.file_unique_id,
+                    "file_size": largest_photo.file_size,
+                }
+            )
         elif message.video:
-            file_info.update({
-                "file_id": message.video.file_id,
-                "file_unique_id": message.video.file_unique_id,
-                "file_size": message.video.file_size,
-                "file_name": message.video.file_name,
-                "mime_type": message.video.mime_type,
-            })
+            file_info.update(
+                {
+                    "file_id": message.video.file_id,
+                    "file_unique_id": message.video.file_unique_id,
+                    "file_size": message.video.file_size,
+                    "file_name": message.video.file_name,
+                    "mime_type": message.video.mime_type,
+                }
+            )
         elif message.audio:
-            file_info.update({
-                "file_id": message.audio.file_id,
-                "file_unique_id": message.audio.file_unique_id,
-                "file_size": message.audio.file_size,
-                "file_name": message.audio.file_name,
-                "mime_type": message.audio.mime_type,
-            })
+            file_info.update(
+                {
+                    "file_id": message.audio.file_id,
+                    "file_unique_id": message.audio.file_unique_id,
+                    "file_size": message.audio.file_size,
+                    "file_name": message.audio.file_name,
+                    "mime_type": message.audio.mime_type,
+                }
+            )
         elif message.voice:
-            file_info.update({
-                "file_id": message.voice.file_id,
-                "file_unique_id": message.voice.file_unique_id,
-                "file_size": message.voice.file_size,
-                "mime_type": message.voice.mime_type,
-            })
+            file_info.update(
+                {
+                    "file_id": message.voice.file_id,
+                    "file_unique_id": message.voice.file_unique_id,
+                    "file_size": message.voice.file_size,
+                    "mime_type": message.voice.mime_type,
+                }
+            )
         elif message.document:
-            file_info.update({
-                "file_id": message.document.file_id,
-                "file_unique_id": message.document.file_unique_id,
-                "file_size": message.document.file_size,
-                "file_name": message.document.file_name,
-                "mime_type": message.document.mime_type,
-            })
+            file_info.update(
+                {
+                    "file_id": message.document.file_id,
+                    "file_unique_id": message.document.file_unique_id,
+                    "file_size": message.document.file_size,
+                    "file_name": message.document.file_name,
+                    "mime_type": message.document.mime_type,
+                }
+            )
         elif message.sticker:
-            file_info.update({
-                "file_id": message.sticker.file_id,
-                "file_unique_id": message.sticker.file_unique_id,
-                "file_size": message.sticker.file_size,
-            })
+            file_info.update(
+                {
+                    "file_id": message.sticker.file_id,
+                    "file_unique_id": message.sticker.file_unique_id,
+                    "file_size": message.sticker.file_size,
+                }
+            )
         elif message.animation:
-            file_info.update({
-                "file_id": message.animation.file_id,
-                "file_unique_id": message.animation.file_unique_id,
-                "file_size": message.animation.file_size,
-                "file_name": message.animation.file_name,
-                "mime_type": message.animation.mime_type,
-            })
+            file_info.update(
+                {
+                    "file_id": message.animation.file_id,
+                    "file_unique_id": message.animation.file_unique_id,
+                    "file_size": message.animation.file_size,
+                    "file_name": message.animation.file_name,
+                    "mime_type": message.animation.mime_type,
+                }
+            )
         elif message.video_note:
-            file_info.update({
-                "file_id": message.video_note.file_id,
-                "file_unique_id": message.video_note.file_unique_id,
-                "file_size": message.video_note.file_size,
-            })
+            file_info.update(
+                {
+                    "file_id": message.video_note.file_id,
+                    "file_unique_id": message.video_note.file_unique_id,
+                    "file_size": message.video_note.file_size,
+                }
+            )
         return file_info
 
     def check_keywords(self, text: str, include_keywords: str | None, exclude_keywords: str | None) -> bool:
@@ -243,15 +259,20 @@ class GroupMessageSaver:
                             "last_name": entity.user.last_name,
                             "username": entity.user.username,
                         }
-                elif entity.type in [
-                    "bold",
-                    "italic",
-                    "underline",
-                    "strikethrough",
-                    "spoiler",
-                    "code",
-                    "pre",
-                ] and entity.type == "pre" and hasattr(entity, "language"):
+                elif (
+                    entity.type
+                    in [
+                        "bold",
+                        "italic",
+                        "underline",
+                        "strikethrough",
+                        "spoiler",
+                        "code",
+                        "pre",
+                    ]
+                    and entity.type == "pre"
+                    and hasattr(entity, "language")
+                ):
                     entity_dict["language"] = entity.language
                 entities_data.append(entity_dict)
             return json.dumps(entities_data, ensure_ascii=False) if entities_data else None
@@ -367,9 +388,7 @@ async def handle_edited_group_message(message: types.Message, session: AsyncSess
             existing_message.caption = message.caption[:1000] if message.caption else None
             existing_message.mark_as_edited(message.edit_date)
             await session.commit()
-            logger.debug(
-                f"更新了编辑消息: 群组={message.chat.id}, 消息ID={message.message_id}"
-            )
+            logger.debug(f"更新了编辑消息: 群组={message.chat.id}, 消息ID={message.message_id}")
     except Exception as e:
         logger.exception(f"处理编辑消息时发生错误: {e}")
         await session.rollback()

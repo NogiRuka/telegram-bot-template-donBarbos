@@ -24,33 +24,18 @@ class ConfigType(str, Enum):
 
 
 class ConfigModel(Base, BasicAuditMixin):
-
     __tablename__ = "configs"
 
-    key: Mapped[str] = mapped_column(
-        String(255),
-        primary_key=True,
-        comment="配置键名"
-    )
+    key: Mapped[str] = mapped_column(String(255), primary_key=True, comment="配置键名")
 
-    value: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        comment="配置值字符串表示, 类型由 config_type 决定"
-    )
+    value: Mapped[str | None] = mapped_column(Text, nullable=True, comment="配置值字符串表示, 类型由 config_type 决定")
 
     default_value: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        comment="默认配置值字符串表示, 当 value 为空时回退使用"
+        Text, nullable=True, comment="默认配置值字符串表示, 当 value 为空时回退使用"
     )
 
     config_type: Mapped[ConfigType] = mapped_column(
-        SQLEnum(ConfigType),
-        nullable=False,
-        default=ConfigType.STRING,
-        index=True,
-        comment="配置值类型"
+        SQLEnum(ConfigType), nullable=False, default=ConfigType.STRING, index=True, comment="配置值类型"
     )
 
     __table_args__ = (

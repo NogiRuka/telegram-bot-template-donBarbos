@@ -1,15 +1,15 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.keyboards.inline.start_user import build_user_home_rows, make_home_keyboard
 from bot.keyboards.inline.labels import (
     ADMIN_PANEL_LABEL,
+    BACK_TO_HOME_LABEL,
     GROUPS_LABEL,
-    STATS_LABEL,
     HITOKOTO_LABEL,
     OPEN_REGISTRATION_LABEL,
-    BACK_TO_HOME_LABEL,
+    STATS_LABEL,
 )
+from bot.keyboards.inline.start_user import build_user_home_rows, make_home_keyboard
 
 
 def build_admin_home_rows() -> list[list[InlineKeyboardButton]]:

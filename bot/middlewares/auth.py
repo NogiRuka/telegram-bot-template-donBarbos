@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 
 
 class AuthMiddleware(BaseMiddleware):
-
     async def _get_role_from_db(self, session: AsyncSession, user_id: int) -> str:
         """判定用户角色
 
@@ -30,9 +29,7 @@ class AuthMiddleware(BaseMiddleware):
         返回值:
         - str: 角色标识, 取值为 "owner" | "admin" | "user"
         """
-        result = await session.execute(
-            select(UserExtendModel.role).where(UserExtendModel.user_id == user_id)
-        )
+        result = await session.execute(select(UserExtendModel.role).where(UserExtendModel.user_id == user_id))
         role = result.scalar_one_or_none()
         if role == UserRole.owner:
             return "owner"

@@ -7,7 +7,6 @@
 from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
-from datetime import datetime
 
 from sqlalchemy import JSON, ForeignKey, Index, String
 from sqlalchemy import Enum as SAEnum
@@ -16,11 +15,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
 
 if TYPE_CHECKING:
-    pass
+    from datetime import datetime
 
 
 class UserRole(Enum):
     """用户角色枚举"""
+
     user = "user"
     admin = "admin"
     owner = "owner"
@@ -56,24 +56,21 @@ class UserExtendModel(Base, BasicAuditMixin):
 
     # 角色权限
     role: Mapped[UserRole] = mapped_column(
-        SAEnum(UserRole, name="userrole"),
-        default=UserRole.user,
-        nullable=False,
-        index=True,
-        comment="用户角色权限"
+        SAEnum(UserRole, name="userrole"), default=UserRole.user, nullable=False, index=True, comment="用户角色权限"
     )
 
     # 电话与简介
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True, comment="电话号码（可空）")
     bio: Mapped[str | None] = mapped_column(String(512), nullable=True, comment="用户简介（可空）")
 
-    # IP 列表与最后交互时间
-    ip_list: Mapped[dict | list | None] = mapped_column(JSON, nullable=True, comment="访问过的IP数组")
-    last_interaction_at: Mapped[datetime | None] = mapped_column(
-        nullable=True,
-        comment="最后与机器人交互的时间"
+    # Emby 用户ID（字符串）
+    emby_user_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True, comment="Emby 用户ID(字符串)"
     )
 
+    # IP 列表与最后交互时间
+    ip_list: Mapped[dict | list | None] = mapped_column(JSON, nullable=True, comment="访问过的IP数组")
+    last_interaction_at: Mapped[datetime | None] = mapped_column(nullable=True, comment="最后与机器人交互的时间")
 
     __table_args__ = (
         Index("idx_user_extend_role", "role"),

@@ -1,6 +1,6 @@
 from aiogram import Router
 
-from . import export_users, start, support, emby
+from . import emby, export_users, start, support
 from .admin import get_admin_router
 from .group import get_group_router
 from .owner import get_owner_router
@@ -10,6 +10,7 @@ from bot.core.config import settings
 # 导入测试模块(仅在开发模式下)
 try:
     from bot.tests.router import test_router
+
     TESTS_AVAILABLE = True
 except ImportError:
     TESTS_AVAILABLE = False

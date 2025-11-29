@@ -1,12 +1,12 @@
-from aiogram import F, Router
+from aiogram import Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.utils.view import render_view
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.start_owner import get_admin_perms_panel_keyboard, get_features_panel_keyboard
 from bot.services.config_service import list_admin_permissions, list_features, toggle_config
 from bot.utils.permissions import require_owner
+from bot.utils.view import render_view
 
 router = Router(name="owner_features")
 
@@ -48,7 +48,9 @@ async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession) 
         new_val = await toggle_config(session, config_key, operator_id=operator_id)
         features = await list_features(session)
         if callback.message:
-            await render_view(callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
+            await render_view(
+                callback.message, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features)
+            )
         await callback.answer(f"{'🟢' if new_val else '🔴'} {label}: {'启用' if new_val else '禁用'}")
     except Exception:
         await callback.answer("🔴 操作失败，请稍后重试", show_alert=True)
@@ -87,7 +89,9 @@ async def toggle_admin_permissions(callback: CallbackQuery, session: AsyncSessio
         new_val = await toggle_config(session, config_key, operator_id=operator_id)
         perms = await list_admin_permissions(session)
         if callback.message:
-            await render_view(callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms))
+            await render_view(
+                callback.message, get_common_image(), "🛡️ 管理员权限", get_admin_perms_panel_keyboard(perms)
+            )
         await callback.answer(f"{'🟢' if new_val else '🔴'} {label}: {'启用' if new_val else '禁用'}")
     except Exception:
         await callback.answer("🔴 操作失败，请稍后重试", show_alert=True)

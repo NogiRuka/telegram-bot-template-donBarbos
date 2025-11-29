@@ -36,7 +36,12 @@ async def render_view(
     p = Path(image_path)
     image_exists = p.exists()
     # 仅当原消息为媒体消息时才尝试编辑媒体，否则直接编辑文本
-    is_media_message = bool(getattr(message, "photo", None) or getattr(message, "video", None) or getattr(message, "animation", None) or getattr(message, "document", None))
+    is_media_message = bool(
+        getattr(message, "photo", None)
+        or getattr(message, "video", None)
+        or getattr(message, "animation", None)
+        or getattr(message, "document", None)
+    )
 
     if image_exists and is_media_message:
         file = FSInputFile(str(p))

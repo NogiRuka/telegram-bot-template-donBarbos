@@ -23,5 +23,5 @@ __all__ = [
     "get_message_export_keyboard",
     "get_message_filter_keyboard",
     "get_pagination_keyboard",
-    "get_save_mode_keyboard"
+    "get_save_mode_keyboard",
 ]

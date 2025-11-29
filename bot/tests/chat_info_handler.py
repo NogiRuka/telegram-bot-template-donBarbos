@@ -3,6 +3,7 @@ Chat信息测试Handler
 
 通过bot命令来测试获取chat信息
 """
+
 import json
 
 from aiogram import Router
@@ -138,7 +139,9 @@ async def cmd_test_chat(message: Message) -> None:
                     response += f"<b>描述:</b> {chat_info['description'][:100]}{'...' if len(chat_info['description']) > 100 else ''}\n"
 
                 if chat_info.get("bio"):
-                    response += f"<b>个人简介:</b> {chat_info['bio'][:100]}{'...' if len(chat_info['bio']) > 100 else ''}\n"
+                    response += (
+                        f"<b>个人简介:</b> {chat_info['bio'][:100]}{'...' if len(chat_info['bio']) > 100 else ''}\n"
+                    )
 
             if result.get("member_count"):
                 response += f"<b>成员数量:</b> {result['member_count']}\n"
@@ -326,7 +329,7 @@ async def cmd_message_info(message: Message) -> None:
 
             # 实体信息
             if msg_info.get("entities"):
-                entities = [f"{e['type']}({e['offset']}-{e['offset']+e['length']})" for e in msg_info["entities"]]
+                entities = [f"{e['type']}({e['offset']}-{e['offset'] + e['length']})" for e in msg_info["entities"]]
                 response_parts.append(f"<b>格式化实体:</b> {', '.join(entities)}")
 
             # 其他信息
@@ -341,12 +344,12 @@ async def cmd_message_info(message: Message) -> None:
 
             # 分割长消息
             if len(response) > 4000:
-                parts = [response[i:i+4000] for i in range(0, len(response), 4000)]
+                parts = [response[i : i + 4000] for i in range(0, len(response), 4000)]
                 for i, part in enumerate(parts):
                     if i == 0:
                         await message.answer(part)
                     else:
-                        await message.answer(f"<b>续 {i+1}:</b>\n{part}")
+                        await message.answer(f"<b>续 {i + 1}:</b>\n{part}")
             else:
                 await message.answer(response)
         else:

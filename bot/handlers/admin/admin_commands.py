@@ -1,6 +1,7 @@
 """
 管理员命令处理器模块(子包)
 """
+
 import contextlib
 from datetime import datetime, timedelta, timezone
 
@@ -310,10 +311,8 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
             await message.answer("🟢 没有需要清理的过期数据")
             return
         await message.answer(
-            f"🗑️ **数据清理确认**\n\n" f"将删除 {message_count} 条90天前的消息\n" f"此操作不可撤销, 是否继续?",
-            reply_markup=get_confirm_keyboard(
-                f"admin_cleanup_confirm:{message_count}", "admin_cleanup_cancel"
-            ),
+            f"🗑️ **数据清理确认**\n\n将删除 {message_count} 条90天前的消息\n此操作不可撤销, 是否继续?",
+            reply_markup=get_confirm_keyboard(f"admin_cleanup_confirm:{message_count}", "admin_cleanup_cancel"),
             parse_mode="Markdown",
         )
     except SQLAlchemyError as e:
@@ -371,9 +370,7 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         group_query = select(func.count(GroupConfigModel.chat_id))
         group_result = await session.execute(group_query)
         total_groups = group_result.scalar() or 0
-        enabled_query = select(func.count(GroupConfigModel.chat_id)).where(
-            GroupConfigModel.is_message_save_enabled
-        )
+        enabled_query = select(func.count(GroupConfigModel.chat_id)).where(GroupConfigModel.is_message_save_enabled)
         enabled_result = await session.execute(enabled_query)
         enabled_groups = enabled_result.scalar() or 0
         message_query = select(func.count(MessageModel.id))
@@ -389,12 +386,12 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         stats_text += f"  启用群组: {enabled_groups}\n"
         stats_text += f"  禁用群组: {total_groups - enabled_groups}\n"
         stats_text += (
-            f"  启用率: {(enabled_groups/total_groups*100):.1f}%\n\n" if total_groups > 0 else "  启用率: 0%\n\n"
+            f"  启用率: {(enabled_groups / total_groups * 100):.1f}%\n\n" if total_groups > 0 else "  启用率: 0%\n\n"
         )
         stats_text += "**消息统计:**\n"
         stats_text += f"  总消息数: {total_messages:,}\n"
         stats_text += f"  最近30天: {recent_messages:,}\n"
-        stats_text += f"  日均消息: {recent_messages/30:.1f}\n\n"
+        stats_text += f"  日均消息: {recent_messages / 30:.1f}\n\n"
         stats_text += "**系统信息:**\n"
         stats_text += f"  统计时间: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}\n"
         stats_text += "  运行状态: 🟢 正常"
@@ -405,6 +402,8 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
 
 
 __all__ = ["router"]
+
+
 def is_super_admin(user_id: int) -> bool:
     """判断是否为超级管理员
 
@@ -420,6 +419,7 @@ def is_super_admin(user_id: int) -> bool:
     with contextlib.suppress(Exception):
         return user_id == settings.get_owner_id()
     return False
+
 
 @router.message(Command("admin_hitokoto"))
 @require_admin_priv
@@ -465,10 +465,12 @@ async def admin_hitokoto_command(message: Message, session: AsyncSession) -> Non
             current_row = []
     if current_row:
         rows.append(current_row)
-    rows.append([
-        InlineKeyboardButton(text="⬅️ 返回", callback_data="admin:panel"),
-        InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
-    ])
+    rows.append(
+        [
+            InlineKeyboardButton(text="⬅️ 返回", callback_data="admin:panel"),
+            InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+        ]
+    )
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
 
     current_names = [type_names.get(ch, ch) for ch in categories]
@@ -543,10 +545,12 @@ async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession) 
                 current_row = []
         if current_row:
             rows.append(current_row)
-        rows.append([
-            InlineKeyboardButton(text="⬅️ 返回", callback_data="admin:panel"),
-            InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
-        ])
+        rows.append(
+            [
+                InlineKeyboardButton(text="⬅️ 返回", callback_data="admin:panel"),
+                InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+            ]
+        )
         kb = InlineKeyboardMarkup(inline_keyboard=rows)
         msg = callback.message
         if msg:

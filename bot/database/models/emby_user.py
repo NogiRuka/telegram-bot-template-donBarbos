@@ -27,34 +27,17 @@ class EmbyUserModel(Base, BasicAuditMixin):
     id: Mapped[auto_int_pk]
 
     emby_user_id: Mapped[str] = mapped_column(
-        String(64),
-        nullable=False,
-        unique=True,
-        index=True,
-        comment="Emby 用户ID(字符串)"
+        String(64), nullable=False, unique=True, index=True, comment="Emby 用户ID(字符串)"
     )
 
-    name: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        index=True,
-        comment="Emby 用户名"
-    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True, comment="Emby 用户名")
 
     user_dto: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON,
-        nullable=True,
-        comment="Emby 返回的 UserDto JSON 对象"
+        JSON, nullable=True, comment="Emby 返回的 UserDto JSON 对象"
     )
 
-    password_hash: Mapped[str | None] = mapped_column(
-        String(128),
-        nullable=True,
-        comment="密码哈希 (bcrypt)"
-    )
+    password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, comment="密码哈希 (bcrypt)")
 
-    __table_args__ = (
-        Index("idx_emby_users_name", "name"),
-    )
+    __table_args__ = (Index("idx_emby_users_name", "name"),)
 
     repr_cols = ("id", "emby_user_id", "name", "created_at")

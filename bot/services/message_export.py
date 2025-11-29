@@ -46,7 +46,7 @@ class MessageExportService:
         user_id: int | None = None,
         include_forwarded: bool = True,
         include_replies: bool = True,
-        include_bot_messages: bool = True
+        include_bot_messages: bool = True,
     ) -> tuple[list[MessageModel], int]:
         """
         查询群组消息
@@ -129,11 +129,7 @@ class MessageExportService:
             logger.error(f"查询消息失败: {e}")
             return [], 0
 
-    async def export_to_txt(
-        self,
-        chat_id: int,
-        **kwargs
-    ) -> BytesIO:
+    async def export_to_txt(self, chat_id: int, **kwargs) -> BytesIO:
         """
         导出消息为TXT格式
 
@@ -198,11 +194,7 @@ class MessageExportService:
             logger.error(f"导出TXT失败: {e}")
             raise
 
-    async def export_to_csv(
-        self,
-        chat_id: int,
-        **kwargs
-    ) -> BytesIO:
+    async def export_to_csv(self, chat_id: int, **kwargs) -> BytesIO:
         """
         导出消息为CSV格式
 
@@ -221,10 +213,24 @@ class MessageExportService:
 
             # 写入表头
             headers = [
-                "消息ID", "用户ID", "聊天ID", "消息类型", "文本内容",
-                "媒体说明", "文件ID", "文件名", "文件大小", "是否转发",
-                "回复消息ID", "是否编辑", "字符数", "单词数", "语言代码",
-                "情感分数", "创建时间", "更新时间"
+                "消息ID",
+                "用户ID",
+                "聊天ID",
+                "消息类型",
+                "文本内容",
+                "媒体说明",
+                "文件ID",
+                "文件名",
+                "文件大小",
+                "是否转发",
+                "回复消息ID",
+                "是否编辑",
+                "字符数",
+                "单词数",
+                "语言代码",
+                "情感分数",
+                "创建时间",
+                "更新时间",
             ]
             writer.writerow(headers)
 
@@ -248,7 +254,7 @@ class MessageExportService:
                     message.language_code or "",
                     message.sentiment_score or 0.0,
                     message.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    message.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+                    message.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
                 ]
                 writer.writerow(row)
 
@@ -266,11 +272,7 @@ class MessageExportService:
             logger.error(f"导出CSV失败: {e}")
             raise
 
-    async def export_to_json(
-        self,
-        chat_id: int,
-        **kwargs
-    ) -> BytesIO:
+    async def export_to_json(self, chat_id: int, **kwargs) -> BytesIO:
         """
         导出消息为JSON格式
 
@@ -290,9 +292,9 @@ class MessageExportService:
                     "chat_id": chat_id,
                     "export_time": datetime.now().isoformat(),
                     "total_messages": total_count,
-                    "exported_messages": len(messages)
+                    "exported_messages": len(messages),
                 },
-                "messages": []
+                "messages": [],
             }
 
             for message in messages:
@@ -307,24 +309,26 @@ class MessageExportService:
                         "file_id": message.file_id,
                         "file_name": message.file_name,
                         "file_size": message.file_size,
-                        "mime_type": message.mime_type
-                    } if message.file_id else None,
+                        "mime_type": message.mime_type,
+                    }
+                    if message.file_id
+                    else None,
                     "flags": {
                         "is_forwarded": message.is_forwarded,
                         "is_edited": message.is_edited,
-                        "is_bot": message.is_bot
+                        "is_bot": message.is_bot,
                     },
                     "reply_to_message_id": message.reply_to_message_id,
                     "statistics": {
                         "char_count": message.char_count,
                         "word_count": message.word_count,
                         "language_code": message.language_code,
-                        "sentiment_score": message.sentiment_score
+                        "sentiment_score": message.sentiment_score,
                     },
                     "timestamps": {
                         "created_at": message.created_at.isoformat(),
-                        "updated_at": message.updated_at.isoformat()
-                    }
+                        "updated_at": message.updated_at.isoformat(),
+                    },
                 }
                 export_data["messages"].append(message_data)
 
@@ -342,11 +346,7 @@ class MessageExportService:
             logger.error(f"导出JSON失败: {e}")
             raise
 
-    async def get_message_statistics(
-        self,
-        chat_id: int,
-        days: int = 30
-    ) -> dict[str, Any]:
+    async def get_message_statistics(self, chat_id: int, days: int = 30) -> dict[str, Any]:
         """
         获取消息统计信息
 
@@ -361,29 +361,15 @@ class MessageExportService:
             start_date = datetime.now() - timedelta(days=days)
 
             # 总消息数
-            total_query = (
-                func.count(MessageModel.id)
-                .filter(
-                    and_(
-                        MessageModel.chat_id == chat_id,
-                        MessageModel.created_at >= start_date
-                    )
-                )
+            total_query = func.count(MessageModel.id).filter(
+                and_(MessageModel.chat_id == chat_id, MessageModel.created_at >= start_date)
             )
             total_messages = await self.session.scalar(total_query) or 0
 
             # 按类型统计
             type_query = (
-                self.session.query(
-                    MessageModel.message_type,
-                    func.count(MessageModel.id).label("count")
-                )
-                .filter(
-                    and_(
-                        MessageModel.chat_id == chat_id,
-                        MessageModel.created_at >= start_date
-                    )
-                )
+                self.session.query(MessageModel.message_type, func.count(MessageModel.id).label("count"))
+                .filter(and_(MessageModel.chat_id == chat_id, MessageModel.created_at >= start_date))
                 .group_by(MessageModel.message_type)
             )
 
@@ -392,48 +378,28 @@ class MessageExportService:
 
             # 活跃用户统计
             user_query = (
-                self.session.query(
-                    MessageModel.user_id,
-                    func.count(MessageModel.id).label("count")
-                )
-                .filter(
-                    and_(
-                        MessageModel.chat_id == chat_id,
-                        MessageModel.created_at >= start_date
-                    )
-                )
+                self.session.query(MessageModel.user_id, func.count(MessageModel.id).label("count"))
+                .filter(and_(MessageModel.chat_id == chat_id, MessageModel.created_at >= start_date))
                 .group_by(MessageModel.user_id)
                 .order_by(desc("count"))
                 .limit(10)
             )
 
             user_result = await self.session.execute(user_query)
-            top_users = [
-                {"user_id": row.user_id, "message_count": row.count}
-                for row in user_result
-            ]
+            top_users = [{"user_id": row.user_id, "message_count": row.count} for row in user_result]
 
             # 按日期统计
             daily_query = (
                 self.session.query(
-                    func.date(MessageModel.created_at).label("date"),
-                    func.count(MessageModel.id).label("count")
+                    func.date(MessageModel.created_at).label("date"), func.count(MessageModel.id).label("count")
                 )
-                .filter(
-                    and_(
-                        MessageModel.chat_id == chat_id,
-                        MessageModel.created_at >= start_date
-                    )
-                )
+                .filter(and_(MessageModel.chat_id == chat_id, MessageModel.created_at >= start_date))
                 .group_by(func.date(MessageModel.created_at))
                 .order_by("date")
             )
 
             daily_result = await self.session.execute(daily_query)
-            daily_stats = [
-                {"date": row.date.isoformat(), "count": row.count}
-                for row in daily_result
-            ]
+            daily_stats = [{"date": row.date.isoformat(), "count": row.count} for row in daily_result]
 
             return {
                 "chat_id": chat_id,
@@ -442,7 +408,7 @@ class MessageExportService:
                 "message_types": type_stats,
                 "top_users": top_users,
                 "daily_statistics": daily_stats,
-                "generated_at": datetime.now().isoformat()
+                "generated_at": datetime.now().isoformat(),
             }
 
         except Exception as e:

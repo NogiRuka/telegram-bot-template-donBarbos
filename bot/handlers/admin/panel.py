@@ -2,11 +2,11 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.utils.view import render_view
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.start_admin import get_admin_panel_keyboard
 from bot.services.config_service import get_config, list_admin_permissions
 from bot.utils.permissions import _resolve_role, require_admin_feature, require_admin_priv
+from bot.utils.view import render_view
 
 router = Router(name="admin_panel")
 
@@ -133,9 +133,7 @@ async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession) 
         enabled = ch in categories
         name = type_names.get(ch, ch)
         label = f"{name} {'🟢' if enabled else '🔴'}"
-        current_row.append(
-            InlineKeyboardButton(text=label, callback_data=f"admin:hitokoto:toggle:{ch}")
-        )
+        current_row.append(InlineKeyboardButton(text=label, callback_data=f"admin:hitokoto:toggle:{ch}"))
         if idx % 4 == 0:
             rows.append(current_row)
             current_row = []

@@ -71,10 +71,7 @@ class GroupMessageSaver:
         """
         try:
             result = await session.execute(
-                select(GroupConfigModel).where(
-                    GroupConfigModel.chat_id == chat_id,
-                    not GroupConfigModel.is_deleted
-                )
+                select(GroupConfigModel).where(GroupConfigModel.chat_id == chat_id, not GroupConfigModel.is_deleted)
             )
             return result.scalar_one_or_none()
         except Exception as e:
@@ -111,7 +108,7 @@ class GroupMessageSaver:
                 chat_username=chat.username,
                 group_type=group_type,
                 is_message_save_enabled=False,  # 默认禁用
-                message_save_mode=MessageSaveMode.DISABLED
+                message_save_mode=MessageSaveMode.DISABLED,
             )
 
             session.add(config)
@@ -184,79 +181,88 @@ class GroupMessageSaver:
         Returns:
             Dict: 文件信息字典
         """
-        file_info = {
-            "file_id": None,
-            "file_unique_id": None,
-            "file_size": None,
-            "file_name": None,
-            "mime_type": None
-        }
+        file_info = {"file_id": None, "file_unique_id": None, "file_size": None, "file_name": None, "mime_type": None}
 
         # 根据消息类型提取文件信息
         if message.photo:
             # 选择最大尺寸的图片
             largest_photo = max(message.photo, key=lambda x: x.file_size or 0)
-            file_info.update({
-                "file_id": largest_photo.file_id,
-                "file_unique_id": largest_photo.file_unique_id,
-                "file_size": largest_photo.file_size
-            })
+            file_info.update(
+                {
+                    "file_id": largest_photo.file_id,
+                    "file_unique_id": largest_photo.file_unique_id,
+                    "file_size": largest_photo.file_size,
+                }
+            )
         elif message.video:
-            file_info.update({
-                "file_id": message.video.file_id,
-                "file_unique_id": message.video.file_unique_id,
-                "file_size": message.video.file_size,
-                "file_name": message.video.file_name,
-                "mime_type": message.video.mime_type
-            })
+            file_info.update(
+                {
+                    "file_id": message.video.file_id,
+                    "file_unique_id": message.video.file_unique_id,
+                    "file_size": message.video.file_size,
+                    "file_name": message.video.file_name,
+                    "mime_type": message.video.mime_type,
+                }
+            )
         elif message.audio:
-            file_info.update({
-                "file_id": message.audio.file_id,
-                "file_unique_id": message.audio.file_unique_id,
-                "file_size": message.audio.file_size,
-                "file_name": message.audio.file_name,
-                "mime_type": message.audio.mime_type
-            })
+            file_info.update(
+                {
+                    "file_id": message.audio.file_id,
+                    "file_unique_id": message.audio.file_unique_id,
+                    "file_size": message.audio.file_size,
+                    "file_name": message.audio.file_name,
+                    "mime_type": message.audio.mime_type,
+                }
+            )
         elif message.voice:
-            file_info.update({
-                "file_id": message.voice.file_id,
-                "file_unique_id": message.voice.file_unique_id,
-                "file_size": message.voice.file_size,
-                "mime_type": message.voice.mime_type
-            })
+            file_info.update(
+                {
+                    "file_id": message.voice.file_id,
+                    "file_unique_id": message.voice.file_unique_id,
+                    "file_size": message.voice.file_size,
+                    "mime_type": message.voice.mime_type,
+                }
+            )
         elif message.document:
-            file_info.update({
-                "file_id": message.document.file_id,
-                "file_unique_id": message.document.file_unique_id,
-                "file_size": message.document.file_size,
-                "file_name": message.document.file_name,
-                "mime_type": message.document.mime_type
-            })
+            file_info.update(
+                {
+                    "file_id": message.document.file_id,
+                    "file_unique_id": message.document.file_unique_id,
+                    "file_size": message.document.file_size,
+                    "file_name": message.document.file_name,
+                    "mime_type": message.document.mime_type,
+                }
+            )
         elif message.sticker:
-            file_info.update({
-                "file_id": message.sticker.file_id,
-                "file_unique_id": message.sticker.file_unique_id,
-                "file_size": message.sticker.file_size
-            })
+            file_info.update(
+                {
+                    "file_id": message.sticker.file_id,
+                    "file_unique_id": message.sticker.file_unique_id,
+                    "file_size": message.sticker.file_size,
+                }
+            )
         elif message.animation:
-            file_info.update({
-                "file_id": message.animation.file_id,
-                "file_unique_id": message.animation.file_unique_id,
-                "file_size": message.animation.file_size,
-                "file_name": message.animation.file_name,
-                "mime_type": message.animation.mime_type
-            })
+            file_info.update(
+                {
+                    "file_id": message.animation.file_id,
+                    "file_unique_id": message.animation.file_unique_id,
+                    "file_size": message.animation.file_size,
+                    "file_name": message.animation.file_name,
+                    "mime_type": message.animation.mime_type,
+                }
+            )
         elif message.video_note:
-            file_info.update({
-                "file_id": message.video_note.file_id,
-                "file_unique_id": message.video_note.file_unique_id,
-                "file_size": message.video_note.file_size
-            })
+            file_info.update(
+                {
+                    "file_id": message.video_note.file_id,
+                    "file_unique_id": message.video_note.file_unique_id,
+                    "file_size": message.video_note.file_size,
+                }
+            )
 
         return file_info
 
-    def check_keywords(self, text: str, include_keywords: str | None,
-                      exclude_keywords: str | None) -> bool:
+    def check_keywords(self, text: str, include_keywords: str | None, exclude_keywords: str | None) -> bool:
         """
         检查关键词过滤
 
@@ -309,11 +315,7 @@ class GroupMessageSaver:
         try:
             entities_data = []
             for entity in entities:
-                entity_dict = {
-                    "type": entity.type,
-                    "offset": entity.offset,
-                    "length": entity.length
-                }
+                entity_dict = {"type": entity.type, "offset": entity.offset, "length": entity.length}
 
                 # 根据实体类型添加额外信息
                 if entity.type in {"url", "text_link"}:
@@ -324,7 +326,7 @@ class GroupMessageSaver:
                             "id": entity.user.id,
                             "first_name": entity.user.first_name,
                             "last_name": entity.user.last_name,
-                            "username": entity.user.username
+                            "username": entity.user.username,
                         }
                 elif entity.type == "mention":
                     # @username 提及
@@ -342,8 +344,7 @@ class GroupMessageSaver:
             logger.exception(f"提取实体信息失败: {e}")
             return None
 
-    async def save_message(self, message: types.Message, config: GroupConfigModel,
-                          session: AsyncSession) -> bool:
+    async def save_message(self, message: types.Message, config: GroupConfigModel, session: AsyncSession) -> bool:
         """
         保存消息到数据库
 
@@ -365,10 +366,7 @@ class GroupMessageSaver:
             is_from_bot = message.from_user and message.from_user.is_bot
 
             if not config.should_save_message(
-                message_type=message_type.value,
-                is_forwarded=is_forwarded,
-                is_reply=is_reply,
-                is_from_bot=is_from_bot
+                message_type=message_type.value, is_forwarded=is_forwarded, is_reply=is_reply, is_from_bot=is_from_bot
             ):
                 return False
 
@@ -381,14 +379,19 @@ class GroupMessageSaver:
             file_info = self.extract_file_info(message)
 
             # 检查文件大小限制
-            if (config.max_file_size_mb and file_info["file_size"] and
-                file_info["file_size"] > config.max_file_size_mb * 1024 * 1024):
+            if (
+                config.max_file_size_mb
+                and file_info["file_size"]
+                and file_info["file_size"] > config.max_file_size_mb * 1024 * 1024
+            ):
                 logger.info(f"消息 {message.message_id} 文件大小超过限制，跳过保存")
                 return False
 
             # 提取消息实体信息
             entities_json = self.extract_entities(message.entities) if message.entities else None
-            caption_entities_json = self.extract_entities(message.caption_entities) if message.caption_entities else None
+            caption_entities_json = (
+                self.extract_entities(message.caption_entities) if message.caption_entities else None
+            )
 
             # 创建消息记录
             message_record = MessageModel.create_from_telegram(
@@ -406,7 +409,7 @@ class GroupMessageSaver:
                 file_name=file_info["file_name"],
                 mime_type=file_info["mime_type"],
                 is_forwarded=is_forwarded,
-                is_reply=is_reply
+                is_reply=is_reply,
             )
 
             # 设置转发信息
@@ -432,7 +435,9 @@ class GroupMessageSaver:
 
             await session.commit()
 
-            logger.debug(f"成功保存消息: 群组={message.chat.id}, 消息ID={message.message_id}, 类型={message_type.value}")
+            logger.debug(
+                f"成功保存消息: 群组={message.chat.id}, 消息ID={message.message_id}, 类型={message_type.value}"
+            )
 
             # 分析事件通过装饰器自动处理
 
@@ -496,7 +501,7 @@ async def handle_edited_group_message(message: types.Message, session: AsyncSess
             select(MessageModel).where(
                 MessageModel.message_id == message.message_id,
                 MessageModel.chat_id == message.chat.id,
-                not MessageModel.is_deleted
+                not MessageModel.is_deleted,
             )
         )
 

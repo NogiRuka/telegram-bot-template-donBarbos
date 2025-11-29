@@ -1,7 +1,8 @@
-
 from .audit_log import ActionType, AuditLogModel
 from .base import Base
 from .config import ConfigModel, ConfigType
+from .emby_user import EmbyUserModel
+from .emby_user_history import EmbyUserHistoryModel
 from .group_config import GroupConfigModel, GroupType, MessageSaveMode
 from .hitokoto import HitokotoModel
 from .message import MessageModel, MessageType
@@ -10,8 +11,6 @@ from .user import UserModel
 from .user_extend import UserExtendModel, UserRole
 from .user_history import UserHistoryModel
 from .user_state import UserStateModel
-from .emby_user import EmbyUserModel
-from .emby_user_history import EmbyUserHistoryModel
 
 __all__ = [
     "ActionType",
@@ -19,6 +18,8 @@ __all__ = [
     "Base",
     "ConfigModel",
     "ConfigType",
+    "EmbyUserHistoryModel",
+    "EmbyUserModel",
     "GroupConfigModel",
     "GroupType",
     "HitokotoModel",
@@ -32,6 +33,4 @@ __all__ = [
     "UserModel",
     "UserRole",
     "UserStateModel",
-    "EmbyUserModel",
-    "EmbyUserHistoryModel",
 ]

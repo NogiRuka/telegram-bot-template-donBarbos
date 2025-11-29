@@ -30,6 +30,7 @@ router = Router(name="message_export")
 
 class MessageExportStates(StatesGroup):
     """消息导出状态组"""
+
     waiting_for_search_text = State()
     waiting_for_date_range = State()
     waiting_for_user_id = State()
@@ -59,18 +60,14 @@ async def export_messages_command(message: Message, session: AsyncSession) -> No
         # 检查群组配置
         config = await session.get(GroupConfigModel, message.chat.id)
         if not config or not config.is_message_save_enabled:
-            await message.answer(
-                "🔴 此群组未启用消息保存功能\n"
-                "请先使用 /group_config 命令启用消息保存"
-            )
+            await message.answer("🔴 此群组未启用消息保存功能\n请先使用 /group_config 命令启用消息保存")
             return
 
         # 显示导出选项
         await message.answer(
-            "📤 **消息导出功能**\n\n"
-            "请选择导出格式和时间范围：",
+            "📤 **消息导出功能**\n\n请选择导出格式和时间范围：",
             reply_markup=get_message_export_keyboard(message.chat.id),
-            parse_mode="Markdown"
+            parse_mode="Markdown",
         )
 
     except Exception as e:
@@ -96,10 +93,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
         # 检查群组配置
         config = await session.get(GroupConfigModel, message.chat.id)
         if not config or not config.is_message_save_enabled:
-            await message.answer(
-                "🔴 此群组未启用消息保存功能\n"
-                "请先使用 /group_config 命令启用消息保存"
-            )
+            await message.answer("🔴 此群组未启用消息保存功能\n请先使用 /group_config 命令启用消息保存")
             return
 
         # 获取统计信息
@@ -129,7 +123,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
                 "location": "位置消息",
                 "contact": "联系人消息",
                 "poll": "投票消息",
-                "other": "其他消息"
+                "other": "其他消息",
             }
 
             for msg_type, count in stats["message_types"].items():
@@ -189,27 +183,15 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
         start_date = datetime.now() - timedelta(days=30)
 
         if export_format == "txt":
-            file_content = await export_service.export_to_txt(
-                chat_id,
-                start_date=start_date,
-                limit=5000
-            )
+            file_content = await export_service.export_to_txt(chat_id, start_date=start_date, limit=5000)
             filename = f"messages_{chat_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
 
         elif export_format == "csv":
-            file_content = await export_service.export_to_csv(
-                chat_id,
-                start_date=start_date,
-                limit=5000
-            )
+            file_content = await export_service.export_to_csv(chat_id, start_date=start_date, limit=5000)
             filename = f"messages_{chat_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
 
         elif export_format == "json":
-            file_content = await export_service.export_to_json(
-                chat_id,
-                start_date=start_date,
-                limit=5000
-            )
+            file_content = await export_service.export_to_json(chat_id, start_date=start_date, limit=5000)
             filename = f"messages_{chat_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
         else:
@@ -222,9 +204,9 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
         await callback.message.answer_document(
             document=document,
             caption=f"📤 群组消息导出完成\n"
-                   f"格式: {export_format.upper()}\n"
-                   f"时间范围: 最近30天\n"
-                   f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            f"格式: {export_format.upper()}\n"
+            f"时间范围: 最近30天\n"
+            f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         )
 
         # 删除原消息
@@ -269,11 +251,9 @@ async def handle_export_range(callback: CallbackQuery, session: AsyncSession) ->
 
         # 更新消息显示选择的时间范围
         await callback.message.edit_text(
-            f"📤 **消息导出功能**\n\n"
-            f"已选择时间范围: **{range_text}**\n"
-            f"请选择导出格式：",
+            f"📤 **消息导出功能**\n\n已选择时间范围: **{range_text}**\n请选择导出格式：",
             reply_markup=get_message_export_keyboard(chat_id),
-            parse_mode="Markdown"
+            parse_mode="Markdown",
         )
 
         await callback.answer(f"🟢 已选择时间范围: {range_text}")
@@ -304,11 +284,7 @@ async def search_messages_command(message: Message, state: FSMContext) -> None:
             await message.answer("🔴 只有群组管理员可以搜索消息")
             return
 
-        await message.answer(
-            "🔍 **消息搜索功能**\n\n"
-            "请输入要搜索的关键词：",
-            parse_mode="Markdown"
-        )
+        await message.answer("🔍 **消息搜索功能**\n\n请输入要搜索的关键词：", parse_mode="Markdown")
 
         await state.set_state(MessageExportStates.waiting_for_search_text)
         await state.update_data(chat_id=message.chat.id)
@@ -350,7 +326,7 @@ async def handle_search_text(message: Message, state: FSMContext, session: Async
             chat_id=chat_id,
             search_text=search_text,
             limit=20,
-            start_date=datetime.now() - timedelta(days=30)  # 搜索最近30天
+            start_date=datetime.now() - timedelta(days=30),  # 搜索最近30天
         )
 
         if not messages:

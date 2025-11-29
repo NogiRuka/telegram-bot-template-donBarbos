@@ -1,16 +1,15 @@
-
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.utils.view import render_view
 from bot.handlers.start import get_common_image
-from bot.keyboards.inline.start_user import get_account_center_keyboard
 from bot.keyboards.inline.labels import BACK_LABEL, BACK_TO_HOME_LABEL
+from bot.keyboards.inline.start_user import get_account_center_keyboard
 from bot.utils.permissions import _resolve_role, require_user_feature
+from bot.utils.view import render_view
 
 router = Router(name="user_account")
 
@@ -29,11 +28,21 @@ async def show_account_center(callback: CallbackQuery, session: AsyncSession) ->
     返回值:
     - None
     """
-    has_emby_account = True
+    uid = callback.from_user.id if callback.from_user else None
+    has_emby_account = False
+    try:
+        if uid:
+            from bot.database.models import UserExtendModel
+
+            res = await session.execute(select(UserExtendModel.emby_user_id).where(UserExtendModel.user_id == uid))
+            emby_id = res.scalar_one_or_none()
+            has_emby_account = bool(emby_id)
+    except Exception:
+        has_emby_account = False
+
     kb = get_account_center_keyboard(has_emby_account)
     msg = callback.message
     if msg:
-        uid = callback.from_user.id if callback.from_user else None
         await _resolve_role(session, uid)
         image = get_common_image()
         await render_view(msg, image, "🧩 账号中心", kb)
@@ -105,6 +114,7 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
 
     # 查询用户账号信息
     from bot.database.models import UserExtendModel, UserModel
+
     user_res = await session.execute(select(UserModel).where(UserModel.id == uid))
     user = user_res.scalar_one_or_none()
     ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == uid))
