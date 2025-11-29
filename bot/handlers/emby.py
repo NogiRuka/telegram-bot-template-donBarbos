@@ -7,6 +7,7 @@ from aiogram.filters import Command
 
 from bot.services.emby_client import EmbyClient
 from bot.services.emby_user_service import EmbyUserService
+from bot.core.config import settings
 
 router = Router(name="emby")
 
@@ -23,8 +24,8 @@ def _get_emby_service() -> EmbyUserService | None:
     返回值:
     - EmbyUserService | None: 成功返回服务实例, 缺少配置返回 None
     """
-    base_url = os.getenv("EMBY_BASE_URL")
-    api_key = os.getenv("EMBY_API_KEY")
+    base_url = settings.get_emby_base_url()
+    api_key = settings.get_emby_api_key()
     if not base_url or not api_key:
         return None
     return EmbyUserService(EmbyClient(base_url, api_key))
@@ -65,4 +66,3 @@ async def list_emby_users(message: types.Message) -> None:
         await message.answer(f"当前用户列表:\n{text}")
     except Exception as e:
         await message.answer(f"❌ 获取 Emby 用户失败: {e!s}")
-

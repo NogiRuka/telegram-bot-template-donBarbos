@@ -42,6 +42,8 @@ class BotSettings(EnvBaseSettings):
     ADMIN_IDS: str = Field(default="", description="管理员ID列表（逗号分隔）")
     SUPER_ADMIN_IDS: str = Field(default="", description="兼容旧字段：超级管理员ID列表（逗号分隔）")
     PROJECT_NAME: str = Field(default="", description="项目名称，用于日志与Banner")
+    EMBY_BASE_URL: str | None = Field(default=None, description="Emby 服务地址, 例如 https://your-emby.com")
+    EMBY_API_KEY: str | None = Field(default=None, description="Emby API Key, 通过 X-Emby-Token 传递")
 
     @field_validator("BOT_TOKEN")
     @classmethod
@@ -72,6 +74,70 @@ class BotSettings(EnvBaseSettings):
             msg = "SUPER_ADMIN_IDS 必须全为数字，用逗号分隔"
             raise ValueError(msg)
         return v
+
+    @field_validator("EMBY_BASE_URL")
+    @classmethod
+    def validate_emby_base_url(cls, v: str | None) -> str | None:
+        """校验 Emby 基础地址
+
+        功能说明:
+        - 确保 `EMBY_BASE_URL` 以 http/https 开头, 为空时允许
+
+        输入参数:
+        - v: 环境变量读取到的字符串或 None
+
+        返回值:
+        - str | None: 合法的地址或 None
+        """
+        if v is None or not v.strip():
+            return None
+        s = v.strip()
+        if not (s.startswith("http://") or s.startswith("https://")):
+            msg = "EMBY_BASE_URL 必须以 http:// 或 https:// 开头"
+            raise ValueError(msg)
+        return s.rstrip("/")
+
+    def get_emby_base_url(self) -> str | None:
+        """获取 Emby 基础地址
+
+        功能说明:
+        - 返回配置中的 `EMBY_BASE_URL`, 若未设置返回 None
+
+        输入参数:
+        - 无
+
+        返回值:
+        - str | None: Emby 服务地址
+        """
+        return self.EMBY_BASE_URL
+
+    def get_emby_api_key(self) -> str | None:
+        """获取 Emby API Key
+
+        功能说明:
+        - 返回配置中的 `EMBY_API_KEY`, 若未设置返回 None
+
+        输入参数:
+        - 无
+
+        返回值:
+        - str | None: Emby API Key
+        """
+        return self.EMBY_API_KEY
+
+    def has_emby_config(self) -> bool:
+        """判断是否已配置 Emby 连接信息
+
+        功能说明:
+        - 确认 `EMBY_BASE_URL` 与 `EMBY_API_KEY` 同时存在
+
+        输入参数:
+        - 无
+
+        返回值:
+        - bool: 是否已配置
+        """
+        return bool(self.EMBY_BASE_URL and self.EMBY_API_KEY)
 
     def get_owner_id(self) -> int:
         """获取所有者用户ID
