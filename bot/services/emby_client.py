@@ -49,6 +49,7 @@ class EmbyClient:
         功能说明:
         - 调用 `POST /Users/New` 创建新用户
         - 支持模板用户复制: `CopyFromUserId` 与 `UserCopyOptions`
+        - 若未传入 `copy_from_user_id`, 自动使用配置 `EMBY_TEMPLATE_USER_ID`
 
         输入参数:
         - name: 用户名
@@ -62,8 +63,9 @@ class EmbyClient:
         payload: dict[str, Any] = {"Name": name}
         if password:
             payload["Password"] = password
-        if copy_from_user_id:
-            payload["CopyFromUserId"] = copy_from_user_id
+        template_id = copy_from_user_id or settings.get_emby_template_user_id()
+        if template_id:
+            payload["CopyFromUserId"] = template_id
             opts = user_copy_options or ["UserPolicy", "UserConfiguration"]
             payload["UserCopyOptions"] = opts
         return await self.http.request("POST", "/Users/New", json=payload)
@@ -101,5 +103,4 @@ def get_emby_client_from_settings() -> EmbyClient | None:
     if not base_url or not api_key:
         return None
     return EmbyClient(base_url, api_key)
-
 
