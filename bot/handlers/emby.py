@@ -1,13 +1,22 @@
 from __future__ import annotations
 import asyncio
-from typing import Any
+import datetime
+import json
+from typing import TYPE_CHECKING, Any
 
 from aiogram import Router, types
 from aiogram.filters import Command
 from aiohttp import ClientError
+from loguru import logger
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from bot.core.config import settings
+from bot.database.models import EmbyUserModel
 from bot.services.emby_client import EmbyClient, get_emby_client_from_settings
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 router = Router(name="emby")
 
@@ -93,7 +102,7 @@ async def list_emby_users(message: types.Message) -> None:
 
 
 @router.message(Command("emby_create"))
-async def create_emby_user(message: types.Message) -> None:
+async def create_emby_user(message: types.Message, session: AsyncSession) -> None:
     """创建 Emby 用户
 
     功能说明:
@@ -126,13 +135,23 @@ async def create_emby_user(message: types.Message) -> None:
         )
         uid = str(res.get("Id") or "")
         created_name = str(res.get("Name") or name)
+        try:
+            model = EmbyUserModel(
+                emby_user_id=uid,
+                name=created_name,
+                user_dto=json.dumps(res, ensure_ascii=False),
+            )
+            session.add(model)
+            await session.commit()
+        except SQLAlchemyError as e:
+            logger.exception(f"写入 Emby 用户到数据库失败: {e!s}")
         await message.answer(f"✅ 创建成功: {created_name} (ID: {uid})")
     except (ClientError, asyncio.TimeoutError) as e:
         await message.answer(f"❌ 创建失败: {e!s}")
 
 
 @router.message(Command("emby_delete"))
-async def delete_emby_user(message: types.Message) -> None:
+async def delete_emby_user(message: types.Message, session: AsyncSession) -> None:
     """删除 Emby 用户
 
     功能说明:
@@ -154,6 +173,15 @@ async def delete_emby_user(message: types.Message) -> None:
     user_id = parts[id_idx]
     try:
         await client.delete_user(user_id)
+        try:
+            res = await session.execute(select(EmbyUserModel).where(EmbyUserModel.emby_user_id == user_id))
+            model = res.scalar_one_or_none()
+            if model:
+                model.is_deleted = True
+                model.deleted_at = datetime.datetime.now(datetime.timezone.utc)
+                await session.commit()
+        except SQLAlchemyError as e:
+            logger.exception(f"标记 Emby 用户软删除失败: {e!s}")
         await message.answer(f"✅ 已删除用户: {user_id}")
     except (ClientError, asyncio.TimeoutError) as e:
         await message.answer(f"❌ 删除失败: {e!s}")

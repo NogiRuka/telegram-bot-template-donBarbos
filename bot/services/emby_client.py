@@ -66,8 +66,6 @@ class EmbyClient:
         template_id = copy_from_user_id or settings.get_emby_template_user_id()
         if template_id:
             payload["CopyFromUserId"] = template_id
-            opts = user_copy_options or ["UserPolicy", "UserConfiguration"]
-            payload["UserCopyOptions"] = opts
         return await self.http.request("POST", "/Users/New", json=payload)
 
     async def delete_user(self, user_id: str) -> Any:
