@@ -7,7 +7,7 @@ from aiogram.filters import Command
 from aiohttp import ClientError
 
 from bot.core.config import settings
-from bot.services.emby_client import EmbyClient
+from bot.services.emby_client import EmbyClient, get_emby_client_from_settings
 
 router = Router(name="emby")
 
@@ -24,7 +24,7 @@ async def get_client_or_reply(message: types.Message) -> EmbyClient | None:
     返回值:
     - EmbyClient | None: 成功返回客户端, 失败返回 None
     """
-    client = _get_emby_client()
+    client = get_emby_client_from_settings()
     if client is None:
         message_text = (
             "❌ 未配置 Emby 连接信息\n"
@@ -55,23 +55,7 @@ async def get_args_or_usage(message: types.Message, usage: str, min_args: int) -
         await message.answer(usage)
         return None
     return parts
-def _get_emby_client() -> EmbyClient | None:
-    """构建 Emby 客户端实例
 
-    功能说明:
-    - 从配置读取 `EMBY_BASE_URL` 与 `EMBY_API_KEY`, 构建 `EmbyClient`
-
-    输入参数:
-    - 无
-
-    返回值:
-    - EmbyClient | None: 成功返回客户端实例, 缺少配置返回 None
-    """
-    base_url = settings.get_emby_base_url()
-    api_key = settings.get_emby_api_key()
-    if not base_url or not api_key:
-        return None
-    return EmbyClient(base_url, api_key)
 
 
 @router.message(Command("emby_users"))

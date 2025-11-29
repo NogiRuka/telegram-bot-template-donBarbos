@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Any
 
+from bot.core.config import settings
 from bot.utils.http import HttpClient
 
 
@@ -81,5 +82,24 @@ class EmbyClient:
         """
         return await self.http.request("DELETE", f"/Users/{user_id}")
 
+
+def get_emby_client_from_settings() -> EmbyClient | None:
+    """从配置构建 EmbyClient
+
+    功能说明:
+    - 读取 `EMBY_BASE_URL` 与 `EMBY_API_KEY`, 构建 `EmbyClient`
+    - 任一缺失则返回 None
+
+    输入参数:
+    - 无
+
+    返回值:
+    - EmbyClient | None: 成功返回客户端实例, 缺少配置返回 None
+    """
+    base_url = settings.get_emby_base_url()
+    api_key = settings.get_emby_api_key()
+    if not base_url or not api_key:
+        return None
+    return EmbyClient(base_url, api_key)
 
 
