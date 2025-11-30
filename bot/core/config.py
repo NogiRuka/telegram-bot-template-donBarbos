@@ -46,6 +46,7 @@ class BotSettings(EnvBaseSettings):
     EMBY_BASE_URL: str | None = Field(default=None, description="Emby 服务地址, 例如 https://your-emby.com")
     EMBY_API_KEY: str | None = Field(default=None, description="Emby API Key, 通过 X-Emby-Token 传递")
     EMBY_TEMPLATE_USER_ID: str | None = Field(default=None, description="Emby 模板用户ID，用于创建用户时复制配置")
+    EMBY_API_PREFIX: str | None = Field(default="/emby", description="Emby API 路径前缀, 例如 /emby; 可为空")
 
     @field_validator("BOT_TOKEN")
     @classmethod
@@ -126,6 +127,43 @@ class BotSettings(EnvBaseSettings):
         - str | None: Emby API Key
         """
         return self.EMBY_API_KEY
+
+    @field_validator("EMBY_API_PREFIX")
+    @classmethod
+    def validate_emby_api_prefix(cls, v: str | None) -> str | None:
+        """校验 Emby API 路径前缀
+
+        功能说明:
+        - 允许为空或以 `/` 开头的简短路径, 自动去除末尾的 `/`
+
+        输入参数:
+        - v: 环境变量读取到的字符串或 None
+
+        返回值:
+        - str | None: 规范化后的前缀或 None
+        """
+        if v is None:
+            return None
+        s = v.strip()
+        if not s:
+            return None
+        if not s.startswith("/"):
+            s = "/" + s
+        return s.rstrip("/")
+
+    def get_emby_api_prefix(self) -> str | None:
+        """获取 Emby API 路径前缀
+
+        功能说明:
+        - 返回配置中的 `EMBY_API_PREFIX`, 若为空返回 None
+
+        输入参数:
+        - 无
+
+        返回值:
+        - str | None: 路径前缀, 例如 "/emby" 或 None
+        """
+        return self.EMBY_API_PREFIX
 
     def has_emby_config(self) -> bool:
         """判断是否已配置 Emby 连接信息

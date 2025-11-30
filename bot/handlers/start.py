@@ -4,9 +4,11 @@ from pathlib import Path
 from aiogram import Router, types
 from aiogram.filters import CommandStart
 from aiogram.types import FSInputFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
+from bot.database.models import UserModel
 from bot.keyboards.inline.start_admin import get_start_admin_keyboard
 from bot.keyboards.inline.start_owner import get_start_owner_keyboard
 from bot.keyboards.inline.start_user import get_start_user_keyboard
@@ -39,9 +41,6 @@ def determine_role(user_id: int) -> str:
     return "user"
 
 
-# 移除本地首页键盘构建函数, 统一复用键盘模块的构建函数
-
-
 def get_common_image() -> str:
     """通用图片选择器
 
@@ -59,28 +58,32 @@ def get_common_image() -> str:
     return str(target) if target.exists() else ""
 
 
-async def build_home_view(
-    session: AsyncSession | None, user: types.User | None, role: str
-) -> tuple[str, types.InlineKeyboardMarkup]:
+async def build_home_view(session: AsyncSession | None, user_id: int | None) -> tuple[str, types.InlineKeyboardMarkup]:
     """构建首页文案与键盘
 
     功能说明:
-    - 拉取一言内容并生成与首次进入一致的首页文案
-    - 根据角色返回对应的首页键盘
+    - 拉取一言内容并生成首页文案(含项目名)
+    - 根据数据库中的用户角色返回对应首页键盘
 
     输入参数:
     - session: 异步数据库会话, 可为 None
-    - user: Telegram 用户对象, 可为 None
-    - role: 角色标识("owner"|"admin"|"user")
+    - user_id: Telegram 用户ID, 可为 None
 
     返回值:
     - tuple[str, InlineKeyboardMarkup]: (caption, keyboard)
     """
-    uid = user.id if user else None
-    payload = await fetch_hitokoto(session, created_by=uid)
-    user_name = user.full_name if user else "访客"
+    payload = await fetch_hitokoto(session, created_by=user_id)
+    user_name = "访客"
+    if session is not None and user_id is not None:
+        with contextlib.suppress(Exception):
+            result = await session.execute(select(UserModel).where(UserModel.id == user_id))
+            user = result.scalar_one_or_none()
+            if user is not None:
+                user_name = user.get_full_name()
+
     caption = build_start_caption(payload, user_name, settings.PROJECT_NAME)
 
+    role = await _resolve_role(session, user_id)
     kb_map = {
         "owner": get_start_owner_keyboard(),
         "admin": get_start_admin_keyboard(),
@@ -92,29 +95,25 @@ async def build_home_view(
 
 @router.message(CommandStart())
 @analytics.track_event("Sign Up")
-async def start_handler(message: types.Message, role: str | None = None, session: AsyncSession | None = None) -> None:
+async def start_handler(message: types.Message, session: AsyncSession) -> None:
     """欢迎消息处理器
 
     功能说明:
-    - 根据角色显示不同首页界面与按钮
+    - 根据数据库中记录的用户角色显示首页界面与按钮
 
     输入参数:
     - message: Telegram消息对象
-    - role: 用户角色标识
+    - session: 异步数据库会话
 
     返回值:
     - None
     """
-    if role is None:
-        user = message.from_user
-        uid = user.id if user else None
-        role = determine_role(uid) if uid else "user"
+    uid = message.from_user.id if message.from_user else None
     with contextlib.suppress(Exception):
-        if session is not None:
-            await list_features(session)
+        await list_features(session)
 
     # 构建与首次进入一致的首页文案与键盘
-    caption, kb = await build_home_view(session, message.from_user, role)
+    caption, kb = await build_home_view(session, uid)
 
     image = get_common_image()
     if image:
@@ -140,11 +139,10 @@ async def back_to_home(callback: types.CallbackQuery, session: AsyncSession) -> 
     """
     with contextlib.suppress(Exception):
         await list_features(session)
-    user_id = callback.from_user.id if callback.from_user else None
-    role = await _resolve_role(session, user_id)
     image = get_common_image()
     # 使用与开始一致的文案与键盘
-    caption, kb = await build_home_view(session, callback.from_user, role)
+    uid = callback.from_user.id if callback.from_user else None
+    caption, kb = await build_home_view(session, uid)
     msg = callback.message
     if isinstance(msg, types.Message):
         await render_view(msg, image, caption, kb)

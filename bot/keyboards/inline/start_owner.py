@@ -1,6 +1,14 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from bot.keyboards.inline.common_buttons import (
+    ACCOUNT_CENTER_BUTTON,
+    ADMIN_PANEL_BUTTON,
+    BACK_BUTTON,
+    BACK_TO_HOME_BUTTON,
+    OWNER_PANEL_BUTTON,
+    PROFILE_BUTTON,
+)
 from bot.keyboards.inline.labels import (
     ADMIN_PERMS_PANEL_LABEL,
     BACK_LABEL,
@@ -10,7 +18,6 @@ from bot.keyboards.inline.labels import (
     HITOKOTO_LABEL,
     OPEN_REGISTRATION_LABEL,
     OWNER_ADMINS_LABEL,
-    OWNER_PANEL_LABEL,
     ROBOT_SWITCH_LABEL,
     STATS_LABEL,
     USER_DEVICES_LABEL,
@@ -21,15 +28,13 @@ from bot.keyboards.inline.labels import (
     USER_REGISTER_LABEL,
     format_with_status,
 )
-from bot.keyboards.inline.start_admin import build_admin_home_rows
-from bot.keyboards.inline.start_user import make_home_keyboard
 
 
 def get_start_owner_keyboard() -> InlineKeyboardMarkup:
     """所有者首页键盘
 
     功能说明:
-    - 复用管理员首页并追加所有者面板入口
+    - 使用 menu 风格布局, 提供用户基础入口、管理员面板与所有者面板入口
 
     输入参数:
     - 无
@@ -37,9 +42,15 @@ def get_start_owner_keyboard() -> InlineKeyboardMarkup:
     返回值:
     - InlineKeyboardMarkup: 内联键盘
     """
-    rows = build_admin_home_rows()
-    rows.append([InlineKeyboardButton(text=OWNER_PANEL_LABEL, callback_data="owner:panel")])
-    return make_home_keyboard(rows)
+    buttons = [
+        [PROFILE_BUTTON],
+        [ACCOUNT_CENTER_BUTTON],
+        [ADMIN_PANEL_BUTTON],
+        [OWNER_PANEL_BUTTON],
+    ]
+    kb = InlineKeyboardBuilder(markup=buttons)
+    kb.adjust(1, 1, 2)
+    return kb.as_markup()
 
 
 def get_owner_panel_keyboard() -> InlineKeyboardMarkup:
@@ -58,7 +69,7 @@ def get_owner_panel_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text=OWNER_ADMINS_LABEL, callback_data="owner:admins")],
         [InlineKeyboardButton(text=FEATURES_PANEL_LABEL, callback_data="owner:features")],
         [InlineKeyboardButton(text=ADMIN_PERMS_PANEL_LABEL, callback_data="owner:admin_perms")],
-        [InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")],
+        [BACK_TO_HOME_BUTTON],
     ]
     kb = InlineKeyboardBuilder(markup=buttons)
     kb.adjust(1)
@@ -82,48 +93,51 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
     def status(v: bool) -> str:
         return "🟢" if v else "🔴"
 
-    kb = InlineKeyboardBuilder()
-    kb.row(
-        InlineKeyboardButton(
-            text=f"{ROBOT_SWITCH_LABEL} {status(features.get('bot.features.enabled', False))}",
-            callback_data="owner:features:toggle:bot_all",
-        ),
-        InlineKeyboardButton(
-            text=f"{USER_FEATURES_SWITCH_LABEL} {status(features.get('user.features.enabled', False))}",
-            callback_data="owner:features:toggle:user_all",
-        ),
-    )
-    kb.row(
-        InlineKeyboardButton(
-            text=f"{USER_REGISTER_LABEL} {status(features.get('user.register', False))}",
-            callback_data="owner:features:toggle:user_register",
-        )
-    )
-    kb.row(
-        InlineKeyboardButton(
-            text=f"{USER_INFO_LABEL} {status(features.get('user.info', False))}",
-            callback_data="owner:features:toggle:user_info",
-        ),
-        InlineKeyboardButton(
-            text=f"{USER_LINES_LABEL} {status(features.get('user.lines', False))}",
-            callback_data="owner:features:toggle:user_lines",
-        ),
-    )
-    kb.row(
-        InlineKeyboardButton(
-            text=f"{USER_DEVICES_LABEL} {status(features.get('user.devices', False))}",
-            callback_data="owner:features:toggle:user_devices",
-        ),
-        InlineKeyboardButton(
-            text=f"{USER_PASSWORD_LABEL} {status(features.get('user.password', False))}",
-            callback_data="owner:features:toggle:user_password",
-        ),
-    )
-    kb.row(
-        InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel"),
-        InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"),
-    )
-    return kb.as_markup()
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=f"{ROBOT_SWITCH_LABEL} {status(features.get('bot.features.enabled', False))}",
+                callback_data="owner:features:toggle:bot_all",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=f"{USER_FEATURES_SWITCH_LABEL} {status(features.get('user.features.enabled', False))}",
+                callback_data="owner:features:toggle:user_all",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=f"{USER_REGISTER_LABEL} {status(features.get('user.register', False))}",
+                callback_data="owner:features:toggle:user_register",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=f"{USER_INFO_LABEL} {status(features.get('user.info', False))}",
+                callback_data="owner:features:toggle:user_info",
+            ),
+            InlineKeyboardButton(
+                text=f"{USER_LINES_LABEL} {status(features.get('user.lines', False))}",
+                callback_data="owner:features:toggle:user_lines",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text=f"{USER_DEVICES_LABEL} {status(features.get('user.devices', False))}",
+                callback_data="owner:features:toggle:user_devices",
+            ),
+            InlineKeyboardButton(
+                text=f"{USER_PASSWORD_LABEL} {status(features.get('user.password', False))}",
+                callback_data="owner:features:toggle:user_password",
+            ),
+        ],
+        [BACK_BUTTON],
+        [BACK_TO_HOME_BUTTON],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    keyboard.adjust(2, 1, 2, 2, 1)
+    return keyboard.as_markup()
 
 
 def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
@@ -138,13 +152,14 @@ def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
     返回值:
     - InlineKeyboardMarkup: 管理员面板键盘
     """
-    kb = InlineKeyboardBuilder()
-    kb.row(InlineKeyboardButton(text="👀 查看管理员列表", callback_data="owner:admins:list"))
-    kb.row(
-        InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel"),
-        InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"),
-    )
-    return kb.as_markup()
+    buttons = [
+        [InlineKeyboardButton(text="👀 查看管理员列表", callback_data="owner:admins:list")],
+        [InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel")],
+        [InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    keyboard.adjust(1, 2)
+    return keyboard.as_markup()
 
 
 def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
@@ -164,39 +179,40 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
     def status(v: bool) -> str:
         return "🟢" if v else "🔴"
 
-    kb = InlineKeyboardBuilder()
-    kb.row(
-        InlineKeyboardButton(
-            text=f"🧲 管理员总开关 {status(perms.get('admin.features.enabled', False))}",
-            callback_data="owner:admin_perms:toggle:features",
-        )
-    )
-    kb.row(
-        InlineKeyboardButton(
-            text=format_with_status(GROUPS_LABEL, perms.get("admin.groups", False)),
-            callback_data="owner:admin_perms:toggle:groups",
-        )
-    )
-    kb.row(
-        InlineKeyboardButton(
-            text=format_with_status(STATS_LABEL, perms.get("admin.stats", False)),
-            callback_data="owner:admin_perms:toggle:stats",
-        )
-    )
-    kb.row(
-        InlineKeyboardButton(
-            text=format_with_status(OPEN_REGISTRATION_LABEL, perms.get("admin.open_registration", False)),
-            callback_data="owner:admin_perms:toggle:open_registration",
-        )
-    )
-    kb.row(
-        InlineKeyboardButton(
-            text=format_with_status(HITOKOTO_LABEL, perms.get("admin.hitokoto", False)),
-            callback_data="owner:admin_perms:toggle:hitokoto",
-        )
-    )
-    kb.row(
-        InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel"),
-        InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"),
-    )
-    return kb.as_markup()
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=f"🧲 管理员总开关 {status(perms.get('admin.features.enabled', False))}",
+                callback_data="owner:admin_perms:toggle:features",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=format_with_status(GROUPS_LABEL, perms.get("admin.groups", False)),
+                callback_data="owner:admin_perms:toggle:groups",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=format_with_status(STATS_LABEL, perms.get("admin.stats", False)),
+                callback_data="owner:admin_perms:toggle:stats",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=format_with_status(OPEN_REGISTRATION_LABEL, perms.get("admin.open_registration", False)),
+                callback_data="owner:admin_perms:toggle:open_registration",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=format_with_status(HITOKOTO_LABEL, perms.get("admin.hitokoto", False)),
+                callback_data="owner:admin_perms:toggle:hitokoto",
+            )
+        ],
+        [InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel")],
+        [InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    keyboard.adjust(1, 2)
+    return keyboard.as_markup()

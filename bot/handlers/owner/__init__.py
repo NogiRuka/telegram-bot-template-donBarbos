@@ -1,8 +1,9 @@
 from aiogram import Router
 
-from .panel import router as owner_panel_router
-from .panel_admins import router as owner_admins_router
-from .panel_features import router as owner_features_router
+from .admin_perms import router as owner_admin_perms_router
+from .admins import router as owner_admins_router
+from .features import router as owner_features_router
+from .home import router as owner_home_router
 
 
 def get_owner_router() -> Router:
@@ -18,7 +19,8 @@ def get_owner_router() -> Router:
     - Router: 所有者聚合路由
     """
     router = Router(name="owner")
-    router.include_router(owner_panel_router)
+    router.include_router(owner_home_router)
     router.include_router(owner_features_router)
     router.include_router(owner_admins_router)
+    router.include_router(owner_admin_perms_router)
     return router

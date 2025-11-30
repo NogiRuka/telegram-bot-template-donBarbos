@@ -57,7 +57,28 @@ async def main() -> None:
         retention=None,
         enqueue=True,
         compression=None,
+        backtrace=True,
+        diagnose=True,
     )
+
+    def _excepthook(exc_type, exc_value, exc_traceback) -> None:
+        """全局异常钩子，记录未捕获异常到日志文件
+
+        功能说明:
+        - 捕获未处理异常并使用 loguru 记录到错误日志
+
+        输入参数:
+        - exc_type: 异常类型
+        - exc_value: 异常实例
+        - exc_traceback: 堆栈信息
+
+        返回值:
+        - None
+        """
+        if issubclass(exc_type, KeyboardInterrupt):
+            return
+        logger.opt(exception=(exc_type, exc_value, exc_traceback)).error("未捕获异常")
+    sys.excepthook = _excepthook
     label = os.getenv("BOOT_BANNER_LABEL", "Bot & API")
     print_boot_banner(label)
     await ensure_bot_token_valid(bot)
@@ -67,7 +88,7 @@ async def main() -> None:
     dp.shutdown.register(on_shutdown)
 
     try:
-        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+        await dp.start_polling(bot)
     except asyncio.CancelledError:
         return
     except Exception as e:

@@ -1,4 +1,4 @@
-from aiogram import F, Router
+from aiogram import F, Router, types
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,29 @@ from bot.utils.permissions import _resolve_role, require_owner
 from bot.utils.view import render_view
 
 router = Router(name="owner_admins")
+
+
+@router.callback_query(F.data == "owner:admins")
+@require_owner
+async def show_admins_panel(callback: CallbackQuery) -> None:
+    """显示管理员管理面板
+
+    功能说明:
+    - 跳转到管理员管理子面板
+
+    输入参数:
+    - callback: 回调对象
+
+    返回值:
+    - None
+    """
+    caption = "👮 管理员管理\n\n可查看管理员列表与管理权限"
+    kb = get_admins_panel_keyboard()
+    msg = callback.message
+    if isinstance(msg, types.Message):
+        image = get_common_image()
+        await render_view(msg, image, caption, kb)
+    await callback.answer()
 
 
 @router.callback_query(F.data == "owner:admins:list")
@@ -28,7 +51,6 @@ async def list_admins_view(callback: CallbackQuery, session: AsyncSession) -> No
     """
     admins = await list_admins(session)
     lines = ["👮 管理员列表"]
-    # 过滤掉所有者角色
     filtered: list[int] = []
     for u in admins:
         role = await _resolve_role(session, u.id)
@@ -44,7 +66,9 @@ async def list_admins_view(callback: CallbackQuery, session: AsyncSession) -> No
             label = f"ID:{u.id} 用户名:@{u.username or '无'}"
             lines.append(label)
     caption = "\n".join(lines)
-    if callback.message:
+    msg = callback.message
+    if isinstance(msg, types.Message):
         image = get_common_image()
-        await render_view(callback.message, image, caption, get_admins_panel_keyboard())
+        await render_view(msg, image, caption, get_admins_panel_keyboard())
     await callback.answer()
+

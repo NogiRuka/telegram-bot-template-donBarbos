@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from enum import Enum
 from typing import TYPE_CHECKING, Any
-from datetime import date, datetime
+import datetime
 
 from sqlalchemy import BigInteger, Date, Float, Index, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
@@ -145,7 +145,7 @@ class StatisticsModel(Base, BasicAuditMixin):
         comment="统计周期，必填字段，标识统计数据的时间粒度，默认为日级统计",
     )
 
-    date: Mapped[date] = mapped_column(
+    date: Mapped[datetime.date] = mapped_column(
         Date, nullable=False, index=True, comment="统计日期，必填字段，标识统计数据对应的日期"
     )
 
@@ -204,11 +204,11 @@ class StatisticsModel(Base, BasicAuditMixin):
 
     # ==================== 时间范围字段 ====================
 
-    start_time: Mapped[datetime | None] = mapped_column(
+    start_time: Mapped[datetime.datetime | None] = mapped_column(
         nullable=True, comment="开始时间，可选字段，统计周期的开始时间，用于精确的时间范围统计"
     )
 
-    end_time: Mapped[datetime | None] = mapped_column(
+    end_time: Mapped[datetime.datetime | None] = mapped_column(
         nullable=True, comment="结束时间，可选字段，统计周期的结束时间，用于精确的时间范围统计"
     )
 
@@ -297,7 +297,8 @@ class StatisticsModel(Base, BasicAuditMixin):
             return {}
 
         try:
-            return json.loads(self.extra_data)
+            obj = json.loads(self.extra_data)
+            return obj if isinstance(obj, dict) else {}
         except (json.JSONDecodeError, TypeError):
             return {}
 
@@ -452,7 +453,7 @@ class StatisticsModel(Base, BasicAuditMixin):
     def create_statistic(
         cls,
         statistic_type: StatisticType,
-        date: date,
+        for_date: datetime.date,
         value: float,
         key: str | None = None,
         period: StatisticPeriod = StatisticPeriod.DAILY,
@@ -478,7 +479,9 @@ class StatisticsModel(Base, BasicAuditMixin):
         返回:
             StatisticsModel: 新创建的统计实例
         """
-        statistic = cls(statistic_type=statistic_type, date=date, key=key, period=period, category=category, **kwargs)
+        statistic = cls(
+            statistic_type=statistic_type, date=for_date, key=key, period=period, category=category, **kwargs
+        )
 
         # 设置统计值
         statistic.update_value(value)

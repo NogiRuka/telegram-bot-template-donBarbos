@@ -6,8 +6,8 @@
 
 from __future__ import annotations
 from enum import Enum
-from typing import TYPE_CHECKING
-from datetime import datetime
+from typing import TYPE_CHECKING, Any
+import datetime
 
 from sqlalchemy import JSON, ForeignKey, Index, String
 from sqlalchemy import Enum as SAEnum
@@ -70,8 +70,8 @@ class UserExtendModel(Base, BasicAuditMixin):
     )
 
     # IP 列表与最后交互时间
-    ip_list: Mapped[dict | list | None] = mapped_column(JSON, nullable=True, comment="访问过的IP数组")
-    last_interaction_at: Mapped[datetime | None] = mapped_column(nullable=True, comment="最后与机器人交互的时间")
+    ip_list: Mapped[dict[str, Any] | list[Any] | None] = mapped_column(JSON, nullable=True, comment="访问过的IP数组")
+    last_interaction_at: Mapped[datetime.datetime | None] = mapped_column(nullable=True, comment="最后与机器人交互的时间")
 
     __table_args__ = (
         Index("idx_user_extend_role", "role"),

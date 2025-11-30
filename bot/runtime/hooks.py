@@ -19,6 +19,7 @@ from bot.database.models.base import Base
 from bot.handlers import get_handlers_router
 from bot.keyboards.default_commands import remove_default_commands, set_default_commands
 from bot.services.config_service import ensure_config_defaults
+from bot.services.emby_service import save_all_emby_users
 
 if TYPE_CHECKING:
     from aiogram import Bot
@@ -51,6 +52,10 @@ async def on_startup() -> None:
         await ensure_database_and_schema()
         async with sessionmaker() as session:
             await ensure_config_defaults(session)
+            try:
+                await save_all_emby_users(session)
+            except Exception as err:
+                logger.warning("⚠️ 启动时同步 Emby 用户失败: {}", err)
         await start_api_server()
     except (OSError, ValueError, RuntimeError) as err:
         logger.error("❗ API 服务启动失败: {}", err)
@@ -159,6 +164,7 @@ class ApiRuntime:
     def __init__(self) -> None:
         self.server: Any | None = None
         self.task: asyncio.Task[Any] | None = None
+        self.proc: asyncio.subprocess.Process | None = None
 
 
 api_runtime = ApiRuntime()
@@ -180,6 +186,25 @@ async def start_api_server() -> None:
     quiet_uvicorn_logs()
     setup_api_logging(debug=settings.DEBUG)
 
+    # 优先使用外部进程方式启动 uvicorn，避免内部 Server 抛出 SystemExit 影响主循环
+    import shutil
+    uvicorn_bin = shutil.which("uvicorn")
+    if uvicorn_bin:
+        api_runtime.proc = await asyncio.create_subprocess_exec(
+            uvicorn_bin,
+            "bot.api.app:app",
+            "--host",
+            str(settings.API_HOST),
+            "--port",
+            str(settings.API_PORT),
+            "--log-level",
+            "critical",
+            "--no-access-log",
+        )
+        logger.info("🌐 API 地址: http://{}:{}", settings.API_HOST, settings.API_PORT)
+        return
+
+    # 回退到内嵌方式
     config = uvicorn.Config(
         app=api_app,
         host=settings.API_HOST,
@@ -209,6 +234,15 @@ async def stop_api_server() -> None:
     返回值:
     - None
     """
+    # 优先停止外部进程
+    if api_runtime.proc is not None:
+        with contextlib.suppress(ProcessLookupError):
+            api_runtime.proc.terminate()
+        with contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(api_runtime.proc.wait(), timeout=5.0)
+        api_runtime.proc = None
+        return
+
     if api_runtime.server is None:
         return
     with contextlib.suppress(AttributeError):

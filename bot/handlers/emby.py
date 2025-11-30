@@ -17,10 +17,12 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from bot.core.config import settings
 from bot.database.models import EmbyUserHistoryModel, EmbyUserModel
-from bot.services.emby_client import EmbyClient, get_emby_client_from_settings
+from bot.services.emby_service import get_client
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
+    from bot.core.emby import EmbyClient
 
 router = Router(name="emby")
 
@@ -37,7 +39,7 @@ async def get_client_or_reply(message: types.Message) -> EmbyClient | None:
     返回值:
     - EmbyClient | None: 成功返回客户端, 失败返回 None
     """
-    client = get_emby_client_from_settings()
+    client = get_client()
     if client is None:
         message_text = "❌ 未配置 Emby 连接信息\n请在 .env 文件中设置 EMBY_BASE_URL 与 EMBY_API_KEY"
         await message.answer(message_text)
@@ -126,12 +128,9 @@ async def create_emby_user(message: types.Message, session: AsyncSession) -> Non
     password = parts[pass_idx] if len(parts) > pass_idx else None
     try:
         template_id = settings.get_emby_template_user_id()
-        user_copy_options = ["UserPolicy", "UserConfiguration"] if template_id else None
         res = await client.create_user(
             name=name,
-            password=password,
             copy_from_user_id=template_id,
-            user_copy_options=user_copy_options,
         )
         uid = str(res.get("Id") or "")
         created_name = str(res.get("Name") or name)

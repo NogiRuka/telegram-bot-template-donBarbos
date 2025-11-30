@@ -29,10 +29,9 @@ async def get_config(session: AsyncSession, key: str) -> Any:
         result = await session.execute(select(ConfigModel).where(ConfigModel.key == key))
         model: ConfigModel | None = result.scalar_one_or_none()
         if model:
-            typed_value = model.get_typed_value()
+            return model.get_typed_value()
             # 若value为空则取default_value
             return typed_value if typed_value is not None else model.get_typed_default_value()
-        return None
     return None
 
 
@@ -142,7 +141,6 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
         "user.lines",
         "user.devices",
         "user.password",
-        "admin.open_registration",
     ]
     out: dict[str, bool] = {}
     for k in keys:
@@ -171,6 +169,49 @@ async def get_registration_window(session: AsyncSession) -> dict[str, Any] | Non
         return None
     except SQLAlchemyError:
         return None
+
+
+async def get_free_registration_status(session: AsyncSession) -> bool:
+    """获取自由注册开关状态
+
+    功能说明:
+    - 读取配置 `registration.free_open` 表示是否处于自由注册状态
+
+    输入参数:
+    - session: 异步数据库会话
+
+    返回值:
+    - bool: True 表示自由注册开启
+    """
+    try:
+        val = await get_config(session, "registration.free_open")
+        return bool(val) if val is not None else False
+    except SQLAlchemyError:
+        return False
+
+
+async def set_free_registration_status(session: AsyncSession, enabled: bool, operator_id: int | None = None) -> bool:
+    """设置自由注册开关状态
+
+    功能说明:
+    - 将配置 `registration.free_open` 写入布尔值, 默认值为 False
+
+    输入参数:
+    - session: 异步数据库会话
+    - enabled: 是否开启自由注册
+    - operator_id: 操作者用户ID
+
+    返回值:
+    - bool: True 表示写入成功
+    """
+    return await set_config(
+        session,
+        "registration.free_open",
+        bool(enabled),
+        ConfigType.BOOLEAN,
+        default_value=False,
+        operator_id=operator_id,
+    )
 
 
 async def set_registration_window(
@@ -207,9 +248,8 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
     """判断注册是否开启且在时间窗内
 
     功能说明:
-    - 综合 `admin.open_registration` 布尔开关与 `admin.open_registration.window` 时间窗
-    - 时间窗逻辑: 若设置了开始时间与持续分钟, 则仅在窗口内返回 True
-    - 若仅开启开关但未设置窗口, 则视为无限期开放
+    - 综合 `registration.free_open` 自由开关与 `admin.open_registration.window` 时间窗
+    - 逻辑: 若自由开关为 True 则直接开放; 否则基于时间窗判断当前是否在可注册区间
 
     输入参数:
     - session: 异步数据库会话
@@ -219,29 +259,51 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
     - bool: True 表示注册开放
     """
     try:
-        enabled = bool(await get_config(session, "admin.open_registration") or False)
-        if not enabled:
-            return False
+        # 自由注册开关优先
+        free_open = await get_free_registration_status(session)
+        if free_open:
+            return True
+
+        # 无自由开关则按时间窗判断
         window = await get_registration_window(session)
         if not window:
-            return True
-        import datetime as _dt
+            return False
 
-        _now = _dt.datetime.utcfromtimestamp(now_ts) if now_ts is not None else _dt.datetime.utcnow()
+        from datetime import datetime, timedelta, timezone
+
+        # 统一使用带时区的 UTC 时间
+        _now = (
+            datetime.fromtimestamp(now_ts, tz=timezone.utc) if now_ts is not None else datetime.now(timezone.utc)
+        )
+
         start_iso = window.get("start_iso")
         duration = window.get("duration_minutes")
-        if not start_iso and not duration:
-            return True
-        if start_iso:
-            with contextlib.suppress(ValueError):
-                start = _dt.datetime.fromisoformat(start_iso)
-            if "start" not in locals():
-                return True
-        else:
-            start = _now
+        if not start_iso and duration is None:
+            return False
+
+        def _parse_iso_to_utc(text: str) -> datetime | None:
+            """解析 ISO8601 字符串为 UTC 时间"""
+            try:
+                s = (text or "").strip()
+                if not s:
+                    return None
+                if s.endswith("Z"):
+                    s = s[:-1] + "+00:00"
+                dt = datetime.fromisoformat(s)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt.astimezone(timezone.utc)
+            except ValueError:
+                return None
+
+        start = _parse_iso_to_utc(start_iso) if start_iso else _now
+        if start is None:
+            return False
+
         if duration is None:
             return _now >= start
-        end = start + _dt.timedelta(minutes=int(duration))
+
+        end = start + timedelta(minutes=int(duration))
         return start <= _now <= end
     except SQLAlchemyError:
         return False
@@ -284,7 +346,8 @@ DEFAULT_CONFIGS: dict[str, bool] = {
     "admin.features.enabled": True,
     "admin.groups": True,
     "admin.stats": True,
-    "admin.open_registration": False,
+    "admin.open_registration": True,
+    "registration.free_open": False,
     "admin.hitokoto": True,
 }
 

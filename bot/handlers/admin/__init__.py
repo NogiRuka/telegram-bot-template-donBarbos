@@ -1,7 +1,11 @@
 from aiogram import Router
 
 from .admin_commands import router as admin_commands_router
-from .panel import router as admin_panel_router
+from .groups import router as admin_groups_router
+from .hitokoto import router as admin_hitokoto_router
+from .home import router as admin_home_router
+from .registration import router as admin_registration_router
+from .stats import router as admin_stats_router
 
 
 def get_admin_router() -> Router:
@@ -19,5 +23,9 @@ def get_admin_router() -> Router:
     """
     router = Router(name="admin")
     router.include_router(admin_commands_router)
-    router.include_router(admin_panel_router)
+    router.include_router(admin_home_router)
+    router.include_router(admin_groups_router)
+    router.include_router(admin_stats_router)
+    router.include_router(admin_registration_router)
+    router.include_router(admin_hitokoto_router)
     return router

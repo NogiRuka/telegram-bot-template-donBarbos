@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from loguru import logger
 from sqlalchemy import func, select, update
 
 from bot.cache import build_key, cached, clear_cache
@@ -423,3 +424,156 @@ async def list_admins(session: AsyncSession) -> list[UserModel]:
     result = await session.execute(query)
     users = result.scalars()
     return list(users)
+
+
+async def create_and_bind_emby_user(
+    session: AsyncSession, user_id: int, base_name: str | None = None
+) -> tuple[bool, dict[str, str] | None, str | None]:
+    """创建 Emby 用户并绑定到用户扩展表
+
+    功能说明:
+    - 检查是否已绑定 Emby 账号, 若未绑定则创建 Emby 用户并持久化本地快照
+    - 将新创建的 `emby_user_id` 写入 `user_extend.emby_user_id`
+
+    输入参数:
+    - session: 异步数据库会话
+    - user_id: Telegram 用户ID
+    - base_name: 生成 Emby 用户名的基础片段(可选), 会自动清洗并与 `user_id` 拼接保证唯一
+
+    返回值:
+    - tuple[bool, dict[str, str] | None, str | None]:
+      - 第1项: 是否成功
+      - 第2项: 成功时返回字典 `{"name": 用户名, "password": 明文密码}`; 失败为 None
+      - 第3项: 失败时的错误信息字符串; 成功为 None
+
+    依赖安装:
+    - pip install "aiohttp[speedups]"  # Emby API 请求
+    - pip install bcrypt                # 密码哈希
+
+    异步/同步:
+    - 本函数为异步函数; Emby API 与数据库操作均需 `await`
+    - 密码生成使用标准库 `secrets`/`string`, 为同步操作
+
+    错误处理:
+    - 捕获网络与数据库异常, 返回错误信息而非抛出, 避免上层崩溃
+    """
+    try:
+        import asyncio as _asyncio
+        import secrets as _secrets
+        import string as _string
+
+        from aiohttp import ClientError
+        from sqlalchemy import select as _select
+        from sqlalchemy.exc import SQLAlchemyError
+
+        from bot.database.models import EmbyUserHistoryModel, EmbyUserModel
+        from bot.handlers.emby import hash_password
+        from bot.services.emby_service import get_client
+        from bot.utils.http import HttpRequestError
+
+        client = get_client()
+        if client is None:
+            logger.error("Emby 客户端未配置: user_id={}", user_id)
+            return False, None, "未配置 Emby 连接信息"
+
+        # 已绑定检查
+        res_ext = await session.execute(_select(UserExtendModel).where(UserExtendModel.user_id == user_id))
+        ext = res_ext.scalar_one_or_none()
+        if ext and getattr(ext, "emby_user_id", None):
+            logger.info("用户已绑定 Emby 账号: user_id={} emby_user_id={}", user_id, getattr(ext, "emby_user_id", None))
+            return False, None, "已绑定 Emby 账号"
+
+        # 生成用户名
+        clean = (base_name or "user").strip().replace(" ", "_")
+        name = f"{clean}-{user_id}"
+
+        # 生成密码
+        alphabet = _string.ascii_letters + _string.digits
+        password = "".join(_secrets.choice(alphabet) for _ in range(12))
+
+        # 创建 Emby 用户
+        try:
+            emby_res = await client.create_user(name=name, password=password)
+        except HttpRequestError as e:
+            snippet = (e.body[:300] + ("…" if len(e.body) > 300 else "")) if e.body else ""
+            logger.error(
+                "Emby 创建失败: user_id={} name={} status={} url={} body={}",
+                user_id,
+                name,
+                e.status,
+                e.url,
+                snippet,
+            )
+            return False, None, f"Emby 创建失败: {e.status}"
+        except (ClientError, _asyncio.TimeoutError) as e:
+            logger.error("Emby 创建失败: user_id={} name={} err={}", user_id, name, str(e))
+            return False, None, f"Emby 创建失败: {e!s}"
+
+        emby_id = str(emby_res.get("Id") or "")
+        created_name = str(emby_res.get("Name") or name)
+
+        # 持久化与绑定
+        try:
+            pwd_hash = hash_password(password)
+            model = EmbyUserModel(emby_user_id=emby_id, name=created_name, user_dto=emby_res, password_hash=pwd_hash)
+            history = EmbyUserHistoryModel(
+                emby_user_id=emby_id,
+                name=created_name,
+                user_dto=emby_res,
+                password_hash=pwd_hash,
+                action="create",
+            )
+            session.add(model)
+            session.add(history)
+
+            if ext is None:
+                ext = UserExtendModel(user_id=user_id, emby_user_id=emby_id)
+                session.add(ext)
+            else:
+                ext.emby_user_id = emby_id
+
+            await session.commit()
+        except SQLAlchemyError as e:
+            logger.exception("写入数据库失败: user_id={} emby_user_id={} err={}", user_id, emby_id, str(e))
+            return False, None, f"写入数据库失败: {e!s}"
+
+        return True, {"name": created_name, "password": password}, None
+    except Exception as e:
+        logger.exception("注册流程系统异常: user_id={} err={}", user_id, str(e))
+        return False, None, f"系统异常: {e!s}"
+async def has_emby_account(session: AsyncSession, user_id: int) -> bool:
+    """检查是否已绑定 Emby 账号
+
+    功能说明:
+    - 查询 `user_extend.emby_user_id` 是否存在
+
+    输入参数:
+    - session: 异步数据库会话
+    - user_id: Telegram 用户ID
+
+    返回值:
+    - bool: True 表示已绑定
+    """
+    res = await session.execute(select(UserExtendModel.emby_user_id).where(UserExtendModel.user_id == user_id))
+    emby_id = res.scalar_one_or_none()
+    return bool(emby_id)
+
+
+async def get_user_and_extend(session: AsyncSession, user_id: int) -> tuple[UserModel | None, UserExtendModel | None]:
+    """获取用户与扩展信息
+
+    功能说明:
+    - 同时查询 `users` 与 `user_extend` 模型，便于视图层构建信息
+
+    输入参数:
+    - session: 异步数据库会话
+    - user_id: Telegram 用户ID
+
+    返回值:
+    - tuple[UserModel | None, UserExtendModel | None]: 用户与扩展模型
+    """
+    user_res = await session.execute(select(UserModel).where(UserModel.id == user_id))
+    user = user_res.scalar_one_or_none()
+    ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user_id))
+    ext = ext_res.scalar_one_or_none()
+    return user, ext

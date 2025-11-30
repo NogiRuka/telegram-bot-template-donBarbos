@@ -1,15 +1,17 @@
-from aiogram import F, Router
+from aiogram import F, Router, types
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from sqlalchemy import select
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.labels import BACK_LABEL, BACK_TO_HOME_LABEL
 from bot.keyboards.inline.start_user import get_account_center_keyboard
+from bot.services.config_service import get_registration_window, is_registration_open
+from bot.services.users import create_and_bind_emby_user
 from bot.utils.permissions import _resolve_role, require_user_feature
-from bot.services.config_service import is_registration_open, get_registration_window
+from bot.utils.text import escape_markdown_v2, safe_alert_text, safe_message_text
 from bot.utils.view import render_view
 
 router = Router(name="user_account")
@@ -33,17 +35,13 @@ async def show_account_center(callback: CallbackQuery, session: AsyncSession) ->
     has_emby_account = False
     try:
         if uid:
-            from bot.database.models import UserExtendModel
-
-            res = await session.execute(select(UserExtendModel.emby_user_id).where(UserExtendModel.user_id == uid))
-            emby_id = res.scalar_one_or_none()
-            has_emby_account = bool(emby_id)
+            has_emby_account = await has_emby_account(session, uid)
     except Exception:
         has_emby_account = False
 
     kb = get_account_center_keyboard(has_emby_account)
     msg = callback.message
-    if msg:
+    if isinstance(msg, types.Message):
         await _resolve_role(session, uid)
         image = get_common_image()
         await render_view(msg, image, "🧩 账号中心", kb)
@@ -53,37 +51,44 @@ async def show_account_center(callback: CallbackQuery, session: AsyncSession) ->
 @router.callback_query(F.data == "user:register")
 @require_user_feature("user.register")
 async def user_register(callback: CallbackQuery, session: AsyncSession) -> None:
-    """开始注册
-
-    功能说明:
-    - 进入注册流程入口, 当前为占位实现
-
-    输入参数:
-    - callback: 回调对象
-    - session: 异步数据库会话
-
-    返回值:
-    - None
-    """
-    if session is None:
-        pass
+    """开始注册"""
     try:
-        is_open = await is_registration_open(session)
-        if not is_open:
+        if not await is_registration_open(session):
             window = await get_registration_window(session) or {}
-            start_iso = window.get("start_iso")
-            duration = window.get("duration_minutes")
-            hint = "暂未开放注册"
-            if start_iso and duration:
-                hint = f"暂未开放注册\n开始: {start_iso}\n时长: {duration} 分钟"
-            elif start_iso:
-                hint = f"暂未开放注册\n开始: {start_iso}"
-            elif duration:
-                hint = f"暂未开放注册\n时长: {duration} 分钟"
-            await callback.answer(hint, show_alert=True)
-            return
-        await callback.answer("✅ 注册功能已开启，后续步骤建设中", show_alert=True)
-    except TelegramAPIError:
+            hint = "🚫 暂未开放注册"
+            if (start := window.get("start_iso")) and (dur := window.get("duration_minutes")):
+                hint += f"\n开始: {start}\n时长: {dur} 分钟"
+            elif start:
+                hint += f"\n开始: {start}"
+            elif dur:
+                hint += f"\n时长: {dur} 分钟"
+            return await callback.answer(safe_alert_text(hint), show_alert=True)
+
+        if not (uid := callback.from_user.id if callback.from_user else None):
+            return await callback.answer("🔴 无法获取用户ID", show_alert=True)
+
+        base_name = (
+            callback.from_user.username
+            or callback.from_user.first_name
+            or callback.from_user.last_name
+            or None
+        )
+        ok, details, err = await create_and_bind_emby_user(session, uid, base_name)
+        if not ok:
+            return await callback.answer(safe_alert_text(f"❌ {err or '注册失败'}"), show_alert=True)
+
+        if isinstance(msg := callback.message, types.Message) and details:
+            text = f"✅ 注册成功\n\nEmby 用户名: {details.get('name', '')}\nEmby 密码: {details.get('password', '')}\n"
+            await msg.answer(safe_message_text(text))
+        await callback.answer("✅ 已为您创建 Emby 账号", show_alert=False)
+
+    except TelegramAPIError as e:
+        uid = callback.from_user.id if callback.from_user else None
+        logger.exception(f"注册流程 TelegramAPIError: user_id={uid} err={e!r}")
+        await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
+    except Exception as e:
+        uid = callback.from_user.id if callback.from_user else None
+        logger.exception(f"注册流程未知异常: user_id={uid} err={e!r}")
         await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
 
 
@@ -103,7 +108,7 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
     - None
     """
     msg = callback.message
-    if not msg:
+    if not isinstance(msg, types.Message):
         await callback.answer("🔴 无法获取消息对象", show_alert=True)
         return
 
@@ -112,28 +117,10 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
         await callback.answer("🔴 无法获取用户ID", show_alert=True)
         return
 
-    def _escape_md(text: str) -> str:
-        """MarkdownV2 文本转义
-
-        功能说明:
-        - 转义 Telegram MarkdownV2 中的特殊字符，避免渲染异常
-
-        输入参数:
-        - text: 原始字符串
-
-        返回值:
-        - str: 已转义字符串
-        """
-        specials = r"_()*[]~`>#+-=|{}.!"
-        return "".join(f"\\{ch}" if ch in specials else ch for ch in (text or ""))
+    from bot.services.users import get_user_and_extend
 
     # 查询用户账号信息
-    from bot.database.models import UserExtendModel, UserModel
-
-    user_res = await session.execute(select(UserModel).where(UserModel.id == uid))
-    user = user_res.scalar_one_or_none()
-    ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == uid))
-    ext = ext_res.scalar_one_or_none()
+    user, ext = await get_user_and_extend(session, uid)
 
     # 角色与状态
     role = await _resolve_role(session, uid)
@@ -141,7 +128,7 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
 
     # 字段整理
     username = f"@{callback.from_user.username}" if callback.from_user and callback.from_user.username else "未设置"
-    username_md = _escape_md(username)
+    username_md = escape_markdown_v2(username)
     created_at = getattr(user, "created_at", None)
     created_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else "未知"
     is_premium = getattr(user, "is_premium", None)
@@ -160,8 +147,8 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
         f"├ 注册时间: {created_str}\n"
         f"├ 最后交互: {last_interaction_str}\n"
         f"├ Premium: {premium_str}\n"
-        f"├ 电话: {_escape_md(phone)}\n"
-        f"├ 简介: {_escape_md(bio)}\n"
+        f"├ 电话: {escape_markdown_v2(phone)}\n"
+        f"├ 简介: {escape_markdown_v2(bio)}\n"
         f"└ 状态: {status_text}"
     )
 

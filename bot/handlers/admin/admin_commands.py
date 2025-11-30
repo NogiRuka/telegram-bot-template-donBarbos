@@ -20,9 +20,11 @@ from bot.database.models.config import ConfigType
 from bot.keyboards.inline.group_config import get_confirm_keyboard
 from bot.services.config_service import (
     get_config,
-    set_config,
+    get_free_registration_status,
     get_registration_window,
     is_registration_open,
+    set_config,
+    set_free_registration_status,
     set_registration_window,
 )
 from bot.services.message_export import MessageExportService
@@ -592,40 +594,55 @@ async def admin_hitokoto_close(callback: CallbackQuery, session: AsyncSession) -
 @router.message(Command("admin_open_registration"))
 @require_admin_priv
 @require_admin_feature("admin.open_registration")
-async def admin_open_registration_command(message: Message, session: AsyncSession) -> None:
+async def admin_open_registration_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """开启注册并设置时间窗
 
     功能说明:
     - 管理员开启注册开关, 可选设置开始时间与持续分钟
+    - 命令格式: /admin_open_registration [开始时间ISO] [持续分钟]
+    - 示例: /admin_open_registration 2025-06-25T12:00:00 120
 
     输入参数:
     - message: 文本消息对象
+    - command: 命令对象，包含解析后的参数
     - session: 异步数据库会话
 
     返回值:
     - None
     """
     try:
-        args = (message.text or "").strip().split()
+        # 解析命令参数
+        args = (command.args or "").strip().split()
         start_iso: str | None = None
         duration_minutes: int | None = None
+
+        # 第一个参数为开始时间（ISO格式）
+        if len(args) >= 1:
+            start_iso = args[0]
+        # 第二个参数为持续分钟数
         if len(args) >= 2:
-            start_iso = args[1]
-        if len(args) >= 3:
             try:
-                duration_minutes = int(args[2])
+                duration_minutes = int(args[1])
             except ValueError:
-                duration_minutes = None
-        await set_config(session, "admin.open_registration", True, ConfigType.BOOLEAN, operator_id=message.from_user.id)
+                await message.answer("🔴 持续分钟数必须是整数")
+                return
+
+        # 设置注册窗口
         await set_registration_window(session, start_iso, duration_minutes, operator_id=message.from_user.id)
+        # 获取最新窗口配置
         window = await get_registration_window(session) or {}
         start = window.get("start_iso") or datetime.now(timezone.utc).isoformat()
         dur = window.get("duration_minutes")
-        text = "🟢 注册已开启\n"
+
+        # 构造回复文本
+        text = "🟢 已配置注册时间窗\n"
         text += f"开始时间: {start}\n"
-        text += f"持续分钟: {dur or '不限'}"
+        text += f"持续分钟: {dur if dur is not None else '不限'}\n"
+        text += f"自由注册: {'🟢 开启' if await get_free_registration_status(session) else '🔴 关闭'}"
         await message.answer(text)
+
     except SQLAlchemyError:
+        logger.error("开启注册失败")
         await message.answer("🔴 开启注册失败")
 
 
@@ -646,10 +663,9 @@ async def admin_close_registration_command(message: Message, session: AsyncSessi
     - None
     """
     try:
-        await set_config(
-            session, "admin.open_registration", False, ConfigType.BOOLEAN, operator_id=message.from_user.id
-        )
-        await message.answer("🔴 注册已关闭")
+        await set_free_registration_status(session, False, operator_id=message.from_user.id)
+        await set_registration_window(session, None, None, operator_id=message.from_user.id)
+        await message.answer("🔴 已关闭自由注册并清除时间窗")
     except SQLAlchemyError:
         await message.answer("🔴 关闭注册失败")
 
@@ -672,13 +688,59 @@ async def admin_registration_status_command(message: Message, session: AsyncSess
     """
     try:
         open_flag = await is_registration_open(session)
+        free_open = await get_free_registration_status(session)
         window = await get_registration_window(session) or {}
         start = window.get("start_iso")
         dur = window.get("duration_minutes")
         text = "📋 注册状态\n"
         text += f"开关: {'🟢 开启' if open_flag else '🔴 关闭'}\n"
+        text += f"自由注册: {'🟢 开启' if free_open else '🔴 关闭'}\n"
         text += f"开始时间: {start or '未设置'}\n"
         text += f"持续分钟: {dur if dur is not None else '未设置'}"
         await message.answer(text)
     except SQLAlchemyError:
         await message.answer("🔴 获取注册状态失败")
+@router.message(Command("admin_open_free_registration"))
+@require_admin_priv
+@require_admin_feature("admin.open_registration")
+async def admin_open_free_registration_command(message: Message, session: AsyncSession) -> None:
+    """开启自由注册
+
+    功能说明:
+    - 设置 `registration.free_open = True`, 不修改时间窗
+
+    输入参数:
+    - message: 文本消息对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    try:
+        await set_free_registration_status(session, True, operator_id=message.from_user.id)
+        await message.answer("🟢 已开启自由注册")
+    except SQLAlchemyError:
+        await message.answer("🔴 开启自由注册失败")
+
+
+@router.message(Command("admin_close_free_registration"))
+@require_admin_priv
+@require_admin_feature("admin.open_registration")
+async def admin_close_free_registration_command(message: Message, session: AsyncSession) -> None:
+    """关闭自由注册
+
+    功能说明:
+    - 设置 `registration.free_open = False`
+
+    输入参数:
+    - message: 文本消息对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    try:
+        await set_free_registration_status(session, False, operator_id=message.from_user.id)
+        await message.answer("🔴 已关闭自由注册")
+    except SQLAlchemyError:
+        await message.answer("🔴 关闭自由注册失败")
