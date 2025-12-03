@@ -5,6 +5,7 @@ from .auth import AuthMiddleware
 from .bot_enabled import BotEnabledMiddleware
 from .database import DatabaseMiddleware
 from .logging import LoggingMiddleware
+from .main_message import MainMessageMiddleware
 from .throttling import ThrottlingMiddleware
 
 
@@ -12,6 +13,8 @@ def register_middlewares(dp: Dispatcher) -> None:
     dp.message.outer_middleware(ThrottlingMiddleware())
 
     dp.update.outer_middleware(LoggingMiddleware())
+
+    dp.update.outer_middleware(MainMessageMiddleware())
 
     dp.update.outer_middleware(DatabaseMiddleware())
 

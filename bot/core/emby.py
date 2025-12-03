@@ -117,5 +117,37 @@ class EmbyClient:
         """
         return await self.http.request("DELETE", f"/Users/{user_id}")
 
+    async def get_sessions(
+        self,
+        controllable_by_user_id: str | None = None,
+        device_id: str | None = None,
+        session_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """获取会话列表
+
+        功能说明:
+        - 调用 `GET /Sessions` 获取当前会话列表, 需要用户身份认证
+
+        输入参数:
+        - controllable_by_user_id: 可远程控制的用户ID, 可选
+        - device_id: 设备ID过滤, 可选
+        - session_id: 会话ID过滤, 可选
+
+        返回值:
+        - list[dict[str, Any]]: 会话字典列表
+        """
+        params: dict[str, Any] = {}
+        if controllable_by_user_id:
+            params["ControllableByUserId"] = str(controllable_by_user_id)
+        if device_id:
+            params["DeviceId"] = str(device_id)
+        if session_id:
+            params["Id"] = str(session_id)
+
+        data = await self.http.request("GET", "/Sessions", params=params)
+        if isinstance(data, list):
+            return [x for x in data if isinstance(x, dict)]
+        return []
+
 
 # 注意: 统一由服务层 `bot/services/emby_service.py:get_client` 负责从配置构建客户端

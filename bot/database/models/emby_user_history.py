@@ -1,11 +1,14 @@
 from __future__ import annotations
 from typing import Any
+import datetime
 
 from sqlalchemy import Index, String
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
+
+ 
 
 
 class EmbyUserHistoryModel(Base, BasicAuditMixin):
@@ -33,6 +36,17 @@ class EmbyUserHistoryModel(Base, BasicAuditMixin):
     user_dto: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True, comment="UserDto JSON 快照")
 
     password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, comment="密码哈希 (bcrypt)")
+
+    # 额外的时间字段快照
+    date_created: Mapped[datetime.datetime | None] = mapped_column(
+        nullable=True, comment="用户创建时间快照(Emby DateCreated)"
+    )
+    last_login_date: Mapped[datetime.datetime | None] = mapped_column(
+        nullable=True, comment="最后登录时间快照(Emby LastLoginDate)"
+    )
+    last_activity_date: Mapped[datetime.datetime | None] = mapped_column(
+        nullable=True, comment="最后活动时间快照(Emby LastActivityDate)"
+    )
 
     action: Mapped[str] = mapped_column(String(32), nullable=False, comment="动作类型(create/update/delete)")
 

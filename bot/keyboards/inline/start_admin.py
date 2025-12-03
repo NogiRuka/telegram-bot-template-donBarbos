@@ -48,7 +48,7 @@ def get_start_admin_keyboard() -> InlineKeyboardMarkup:
     """
     buttons = build_admin_home_buttons()
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(1, 1, 1)
+    keyboard.adjust(2, 1)
     return keyboard.as_markup()
 
 

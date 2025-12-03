@@ -27,6 +27,7 @@ GROUPS_LABEL = "👥 群组管理"
 STATS_LABEL = "📊 统计数据"
 OPEN_REGISTRATION_LABEL = "🛂 开放注册"
 HITOKOTO_LABEL = "🎴 一言管理"
+ADMIN_LIST_LABEL = "👀 查看管理员列表"
 
 # ===== 所有者功能 =====
 OWNER_PANEL_LABEL = "👑 所有者面板"
@@ -36,6 +37,7 @@ USER_REGISTER_LABEL = "🎬 用户注册"
 ROBOT_SWITCH_LABEL = "🤖 机器人开关"
 USER_FEATURES_SWITCH_LABEL = "🧲 用户总开关"
 ADMIN_PERMS_PANEL_LABEL = "🛡️ 管理员权限"
+ADMIN_FEATURES_SWITCH_LABEL = "🧲 管理员总开关"
 
 # ===== 通用导航 =====
 BACK_LABEL = "↩️ 返回上一级"

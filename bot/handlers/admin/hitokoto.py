@@ -2,10 +2,9 @@ from aiogram import F, Router, types
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.handlers.start import get_common_image
 from bot.services.config_service import get_config
+from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_admin_feature, require_admin_priv
-from bot.utils.view import render_view
 
 router = Router(name="admin_hitokoto")
 
@@ -13,7 +12,7 @@ router = Router(name="admin_hitokoto")
 @router.callback_query(F.data == "admin:hitokoto")
 @require_admin_priv
 @require_admin_feature("admin.hitokoto")
-async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession) -> None:
+async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """打开一言管理功能
 
     功能说明:
@@ -76,6 +75,5 @@ async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession) 
     )
     msg = callback.message
     if isinstance(msg, types.Message):
-        await render_view(msg, get_common_image(), desc, kb)
+        await main_msg.update_by_message(msg, desc, kb)
     await callback.answer()
-

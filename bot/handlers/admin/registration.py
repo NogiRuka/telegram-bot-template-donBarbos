@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from aiogram import F, Router, types
-from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram import F, Router
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,17 +13,20 @@ from bot.services.config_service import (
     set_free_registration_status,
     set_registration_window,
 )
+from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_admin_feature, require_admin_priv
-from bot.utils.view import edit_message_content, edit_message_content_by_id
 
 router = Router(name="admin_registration")
-_last_panel_message: dict[int, tuple[int, int]] = {}
 
 
 @router.callback_query(F.data == "admin:open_registration")
 @require_admin_priv
 @require_admin_feature("admin.open_registration")
-async def open_registration_feature(callback: CallbackQuery, session: AsyncSession) -> None:
+async def open_registration_feature(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService,
+) -> None:
     """打开开放注册面板
 
     功能说明:
@@ -37,30 +40,22 @@ async def open_registration_feature(callback: CallbackQuery, session: AsyncSessi
     返回值:
     - None
     """
-    msg = callback.message
-    if not isinstance(msg, types.Message):
-        await callback.answer("无法展示面板", show_alert=True)
-        return
 
     caption, kb = await _build_registration_caption_and_keyboard(session)
-    ok = await edit_message_content(msg, caption, kb)
-    if not ok:
-        with logger.catch():
-            image_path = get_common_image()
-            file = FSInputFile(image_path)
-            new_msg = await msg.answer_photo(file, caption=caption, reply_markup=kb)
-            await msg.delete()
-            msg = new_msg
-    # 记录面板消息, 供文本输入后回写
-    if callback.from_user:
-        _last_panel_message[callback.from_user.id] = (msg.chat.id, msg.message_id)
+    logger.debug(f"[open_registration_feature] caption内容: {caption}")
+
+    await main_msg.update_on_callback(callback, caption, kb, get_common_image())
     await callback.answer()
 
 
 @router.callback_query(F.data == "admin:open_registration:toggle_free")
 @require_admin_priv
 @require_admin_feature("admin.open_registration")
-async def toggle_free_registration(callback: CallbackQuery, session: AsyncSession) -> None:
+async def toggle_free_registration(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService,
+) -> None:
     """切换自由注册开关
 
     功能说明:
@@ -76,19 +71,15 @@ async def toggle_free_registration(callback: CallbackQuery, session: AsyncSessio
     current = await get_free_registration_status(session)
     new_val = not current
     await set_free_registration_status(session, new_val, operator_id=callback.from_user.id)
-    msg = callback.message
-    if isinstance(msg, types.Message):
-        caption, kb = await _build_registration_caption_and_keyboard(session)
-        await edit_message_content(msg, caption, kb)
-        if callback.from_user:
-            _last_panel_message[callback.from_user.id] = (msg.chat.id, msg.message_id)
+    caption, kb = await _build_registration_caption_and_keyboard(session)
+    await main_msg.update_on_callback(callback, caption, kb, get_common_image())
     await callback.answer(f"{'🟢' if new_val else '🔴'} 自由注册已{'开启' if new_val else '关闭'}")
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("admin:open_registration:set:"))
 @require_admin_priv
 @require_admin_feature("admin.open_registration")
-async def set_registration_preset(callback: CallbackQuery, session: AsyncSession) -> None:
+async def set_registration_preset(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """设置预设注册时间窗
 
     功能说明:
@@ -111,19 +102,15 @@ async def set_registration_preset(callback: CallbackQuery, session: AsyncSession
     start_dt = datetime.now(beijing)
     start_iso = start_dt.isoformat()
     await set_registration_window(session, start_iso, duration, operator_id=callback.from_user.id)
-    msg = callback.message
-    if isinstance(msg, types.Message):
-        caption, kb = await _build_registration_caption_and_keyboard(session)
-        await edit_message_content(msg, caption, kb)
-        if callback.from_user:
-            _last_panel_message[callback.from_user.id] = (msg.chat.id, msg.message_id)
+    caption, kb = await _build_registration_caption_and_keyboard(session)
+    await main_msg.update_on_callback(callback, caption, kb, get_common_image())
     await callback.answer(f"🟢 已设置时间窗: {duration} 分钟")
 
 
 @router.message(F.text.regexp(r"^\d{8}\.\d{4}\.\d{1,4}$"))
 @require_admin_priv
 @require_admin_feature("admin.open_registration")
-async def input_registration_window(message: Message, session: AsyncSession) -> None:
+async def input_registration_window(message: Message, session: AsyncSession, main_msg: MainMessageService) -> None:
     """解析管理员输入的时间窗并应用
 
     功能说明:
@@ -155,17 +142,14 @@ async def input_registration_window(message: Message, session: AsyncSession) -> 
     start_iso = start_dt.isoformat()
     await set_registration_window(session, start_iso, duration, operator_id=message.from_user.id)
     with logger.catch():
-        await message.delete()
+        await main_msg.delete_input(message)
 
-    # 编辑上次打开的面板消息
+    # 更新主消息内容
     uid = message.from_user.id if message.from_user else None
     if uid is None:
         return
-    chat_id, mid = _last_panel_message.get(uid, (None, None))
-    if chat_id is None or mid is None:
-        return
     caption, kb = await _build_registration_caption_and_keyboard(session)
-    await edit_message_content_by_id(message.bot, chat_id, mid, caption, kb)
+    await main_msg.update(uid, caption, kb)
 
 
 async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tuple[str, InlineKeyboardMarkup]:
@@ -181,18 +165,27 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
     返回值:
     - tuple[str, InlineKeyboardMarkup]: (caption文本, 内联键盘)
     """
+    logger.debug("[_build_registration_caption_and_keyboard] 开始读取配置...")
     free_open = await get_free_registration_status(session)
+    logger.debug(f"[_build_registration_caption_and_keyboard] free_open={free_open}")
+
     window = await get_registration_window(session) or {}
+    logger.debug(f"[_build_registration_caption_and_keyboard] window={window}")
+
     start_iso = window.get("start_iso")
     duration = window.get("duration_minutes")
+
     # 计算结束时间
     end_str = "未设置"
     if start_iso and duration is not None:
-        # 解析 ISO, 保持用户时区信息
-        with logger.catch():
+        logger.debug(f"[_build_registration_caption_and_keyboard] 开始解析 start_iso={start_iso}, duration={duration}")
+        try:
             dt = datetime.fromisoformat(start_iso)
             end_dt = dt + timedelta(minutes=int(duration))
             end_str = end_dt.isoformat()
+            logger.debug(f"[_build_registration_caption_and_keyboard] 计算结束时间成功: {end_str}")
+        except (ValueError, TypeError) as e:
+            logger.exception(f"[_build_registration_caption_and_keyboard] 计算结束时间失败: {e}")
 
     status_line = f"{OPEN_REGISTRATION_LABEL}: {'🟢 开启' if free_open else '🔴 关闭'}\n"
     caption = (
@@ -203,6 +196,7 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
         + f"持续分钟: {duration if duration is not None else '不限'}\n\n"
         + "输入格式示例: 20251130.2300.10 (默认为北京时间)"
     )
+    logger.debug("[_build_registration_caption_and_keyboard] 生成 caption 成功")
 
     rows: list[list[InlineKeyboardButton]] = []
     rows.append([
@@ -222,5 +216,5 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
         InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
     ])
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
+    logger.debug("[_build_registration_caption_and_keyboard] 键盘构建完成")
     return caption, kb
-

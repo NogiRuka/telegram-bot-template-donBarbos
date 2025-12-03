@@ -10,6 +10,8 @@ from bot.keyboards.inline.common_buttons import (
     PROFILE_BUTTON,
 )
 from bot.keyboards.inline.labels import (
+    ADMIN_FEATURES_SWITCH_LABEL,
+    ADMIN_LIST_LABEL,
     ADMIN_PERMS_PANEL_LABEL,
     BACK_LABEL,
     BACK_TO_HOME_LABEL,
@@ -49,7 +51,7 @@ def get_start_owner_keyboard() -> InlineKeyboardMarkup:
         [OWNER_PANEL_BUTTON],
     ]
     kb = InlineKeyboardBuilder(markup=buttons)
-    kb.adjust(1, 1, 2)
+    kb.adjust(2, 1, 1)
     return kb.as_markup()
 
 
@@ -136,7 +138,7 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
         [BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(2, 1, 2, 2, 1)
+    keyboard.adjust(2, 1, 2, 2, 2)
     return keyboard.as_markup()
 
 
@@ -153,7 +155,7 @@ def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 管理员面板键盘
     """
     buttons = [
-        [InlineKeyboardButton(text="👀 查看管理员列表", callback_data="owner:admins:list")],
+        [InlineKeyboardButton(text=ADMIN_LIST_LABEL, callback_data="owner:admins:list")],
         [InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel")],
         [InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")],
     ]
@@ -182,7 +184,7 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
     buttons = [
         [
             InlineKeyboardButton(
-                text=f"🧲 管理员总开关 {status(perms.get('admin.features.enabled', False))}",
+                text=format_with_status(ADMIN_FEATURES_SWITCH_LABEL, perms.get("admin.features.enabled", False)),
                 callback_data="owner:admin_perms:toggle:features",
             )
         ],

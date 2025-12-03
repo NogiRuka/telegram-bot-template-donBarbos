@@ -3,7 +3,6 @@ from pathlib import Path
 
 from aiogram import Router, types
 from aiogram.filters import CommandStart
-from aiogram.types import FSInputFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,9 +13,9 @@ from bot.keyboards.inline.start_owner import get_start_owner_keyboard
 from bot.keyboards.inline.start_user import get_start_user_keyboard
 from bot.services.analytics import analytics
 from bot.services.config_service import list_features
+from bot.services.main_message import MainMessageService
 from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
 from bot.utils.permissions import _resolve_role
-from bot.utils.view import render_view
 
 router = Router(name="start")
 
@@ -73,7 +72,7 @@ async def build_home_view(session: AsyncSession | None, user_id: int | None) -> 
     - tuple[str, InlineKeyboardMarkup]: (caption, keyboard)
     """
     payload = await fetch_hitokoto(session, created_by=user_id)
-    user_name = "访客"
+    user_name = "(ง •̀_•́)ง"
     if session is not None and user_id is not None:
         with contextlib.suppress(Exception):
             result = await session.execute(select(UserModel).where(UserModel.id == user_id))
@@ -95,7 +94,7 @@ async def build_home_view(session: AsyncSession | None, user_id: int | None) -> 
 
 @router.message(CommandStart())
 @analytics.track_event("Sign Up")
-async def start_handler(message: types.Message, session: AsyncSession) -> None:
+async def start_handler(message: types.Message, session: AsyncSession, main_msg: MainMessageService) -> None:
     """欢迎消息处理器
 
     功能说明:
@@ -116,15 +115,11 @@ async def start_handler(message: types.Message, session: AsyncSession) -> None:
     caption, kb = await build_home_view(session, uid)
 
     image = get_common_image()
-    if image:
-        file = FSInputFile(image)
-        await message.answer_photo(photo=file, caption=caption, reply_markup=kb, parse_mode="MarkdownV2")
-    else:
-        await message.answer(caption, reply_markup=kb, parse_mode="MarkdownV2")
+    await main_msg.send_main(message, image or None, caption, kb)
 
 
 @router.callback_query(lambda c: c.data == "home:back")
-async def back_to_home(callback: types.CallbackQuery, session: AsyncSession) -> None:
+async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """返回主面板
 
     功能说明:
@@ -137,13 +132,9 @@ async def back_to_home(callback: types.CallbackQuery, session: AsyncSession) -> 
     返回值:
     - None
     """
-    with contextlib.suppress(Exception):
-        await list_features(session)
-    image = get_common_image()
-    # 使用与开始一致的文案与键盘
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)
-    msg = callback.message
-    if isinstance(msg, types.Message):
-        await render_view(msg, image, caption, kb)
+
+    await main_msg.update_on_callback(callback, caption, kb, get_common_image())
+
     await callback.answer()
