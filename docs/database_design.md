@@ -10,24 +10,18 @@
 
 ## 1. 用户表 (users)
 
-存储 Telegram 用户信息和状态。
+存储 Telegram 用户基本信息（与 aiogram User 对应）。
 
 | 字段名 | 类型 | 长度 | 空值 | 默认值 | 索引 | 注释 |
 |--------|------|------|------|--------|------|------|
-| id | BIGINT | - | NO | - | PK | 用户ID |
+| id | BIGINT | - | NO | - | PK | Telegram 用户 ID |
+| is_bot | TINYINT | 1 | NO | 0 | - | 是否为机器人 |
 | first_name | VARCHAR | 255 | NO | - | - | 名字 |
 | last_name | VARCHAR | 255 | YES | NULL | - | 姓氏 |
 | username | VARCHAR | 255 | YES | NULL | IDX | 用户名 |
-| phone_number | VARCHAR | 20 | YES | NULL | - | 电话 |
-| bio | TEXT | - | YES | NULL | - | 简介 |
-| language_code | VARCHAR | 10 | YES | NULL | - | 语言 |
-| last_activity_at | DATETIME | - | YES | NULL | IDX | 最后活动 |
-| is_admin | TINYINT | 1 | NO | 0 | IDX | 管理员 |
-| is_suspicious | TINYINT | 1 | NO | 0 | IDX | 可疑用户 |
-| is_block | TINYINT | 1 | NO | 0 | IDX | 封禁 |
-| is_premium | TINYINT | 1 | NO | 0 | IDX | 高级用户 |
-| is_bot | TINYINT | 1 | NO | 0 | - | 机器人 |
-| message_count | INT | - | NO | 0 | - | 消息数 |
+| language_code | VARCHAR | 32 | YES | NULL | - | 语言代码 |
+| is_premium | TINYINT | 1 | YES | NULL | - | 是否 Premium 用户 |
+| added_to_attachment_menu | TINYINT | 1 | YES | NULL | - | 是否加入附件菜单 |
 | created_at | DATETIME | - | NO | NOW() | IDX | 创建时间 |
 | created_by | BIGINT | - | YES | NULL | IDX | 创建者ID |
 | updated_at | DATETIME | - | NO | NOW() | IDX | 更新时间 |
@@ -38,21 +32,14 @@
 
 ```sql
 CREATE TABLE users (
-    id BIGINT NOT NULL COMMENT '用户ID',
+    id BIGINT NOT NULL COMMENT 'Telegram 用户 ID',
+    is_bot TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否为机器人',
     first_name VARCHAR(255) NOT NULL COMMENT '名字',
     last_name VARCHAR(255) COMMENT '姓氏',
     username VARCHAR(255) COMMENT '用户名',
-    phone_number VARCHAR(20) COMMENT '电话',
-    bio TEXT COMMENT '简介',
-    language_code VARCHAR(10) COMMENT '语言',
-
-    last_activity_at DATETIME COMMENT '最后活动',
-    is_admin TINYINT(1) NOT NULL DEFAULT 0 COMMENT '管理员',
-    is_suspicious TINYINT(1) NOT NULL DEFAULT 0 COMMENT '可疑用户',
-    is_block TINYINT(1) NOT NULL DEFAULT 0 COMMENT '封禁',
-    is_premium TINYINT(1) NOT NULL DEFAULT 0 COMMENT '高级用户',
-    is_bot TINYINT(1) NOT NULL DEFAULT 0 COMMENT '机器人',
-    message_count INT NOT NULL DEFAULT 0 COMMENT '消息数',
+    language_code VARCHAR(32) COMMENT '语言代码',
+    is_premium TINYINT(1) COMMENT '是否 Premium 用户',
+    added_to_attachment_menu TINYINT(1) COMMENT '是否加入附件菜单',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     created_by BIGINT COMMENT '创建者ID',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -61,19 +48,10 @@ CREATE TABLE users (
     deleted_at DATETIME COMMENT '删除时间',
     deleted_by BIGINT COMMENT '删除者ID',
     PRIMARY KEY (id),
-    INDEX ix_users_username (username),
-    INDEX ix_users_last_activity_at (last_activity_at),
-    INDEX ix_users_is_admin (is_admin),
-    INDEX ix_users_is_suspicious (is_suspicious),
-    INDEX ix_users_is_block (is_block),
-    INDEX ix_users_is_premium (is_premium),
-    INDEX ix_users_is_deleted (is_deleted),
-    INDEX ix_users_created_at (created_at),
-    INDEX ix_users_created_by (created_by),
-    INDEX ix_users_updated_at (updated_at),
-    INDEX ix_users_updated_by (updated_by),
-    INDEX ix_users_deleted_at (deleted_at),
-    INDEX ix_users_deleted_by (deleted_by)
+    INDEX idx_users_username (username),
+    INDEX idx_users_created_at (created_at),
+    INDEX idx_users_updated_at (updated_at),
+    INDEX idx_users_is_deleted (is_deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
@@ -316,25 +294,364 @@ CREATE TABLE statistics (
 
 ---
 
-## 7. 外键约束
+## 7. 用户扩展表 (user_extend)
+
+存储用户的扩展信息，如角色权限、电话、简介等（与 users 表分离）。
+
+| 字段名 | 类型 | 长度 | 空值 | 默认值 | 索引 | 注释 |
+|--------|------|------|------|--------|------|------|
+| user_id | BIGINT | - | NO | - | PK,FK | 用户ID（关联 users.id） |
+| role | ENUM | - | NO | 'user' | IDX | 用户角色（user/admin/owner） |
+| phone | VARCHAR | 32 | YES | NULL | - | 电话号码 |
+| bio | VARCHAR | 512 | YES | NULL | - | 用户简介 |
+| emby_user_id | VARCHAR | 64 | YES | NULL | IDX | Emby 用户ID |
+| ip_list | JSON | - | YES | NULL | - | 访问过的 IP 数组 |
+| last_interaction_at | DATETIME | - | YES | NULL | IDX | 最后与机器人交互的时间 |
+| created_at | DATETIME | - | NO | NOW() | IDX | 创建时间 |
+| created_by | BIGINT | - | YES | NULL | - | 创建者ID |
+| updated_at | DATETIME | - | NO | NOW() | IDX | 更新时间 |
+| updated_by | BIGINT | - | YES | NULL | - | 更新者ID |
+| is_deleted | TINYINT | 1 | NO | 0 | IDX | 已删除 |
+| deleted_at | DATETIME | - | YES | NULL | - | 删除时间 |
+| deleted_by | BIGINT | - | YES | NULL | - | 删除者ID |
+
+```sql
+CREATE TABLE user_extend (
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    role ENUM('user','admin','owner') NOT NULL DEFAULT 'user' COMMENT '用户角色权限',
+    phone VARCHAR(32) COMMENT '电话号码',
+    bio VARCHAR(512) COMMENT '用户简介',
+    emby_user_id VARCHAR(64) COMMENT 'Emby 用户ID',
+    ip_list JSON COMMENT '访问过的IP数组',
+    last_interaction_at DATETIME COMMENT '最后与机器人交互的时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    created_by BIGINT COMMENT '创建者ID',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    updated_by BIGINT COMMENT '更新者ID',
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '已删除',
+    deleted_at DATETIME COMMENT '删除时间',
+    deleted_by BIGINT COMMENT '删除者ID',
+    PRIMARY KEY (user_id),
+    INDEX idx_user_extend_role (role),
+    INDEX idx_user_extend_emby_user_id (emby_user_id),
+    INDEX idx_user_extend_last_interaction (last_interaction_at),
+    CONSTRAINT fk_user_extend_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+---
+
+## 8. 用户历史表 (user_history)
+
+存储用户信息的历史快照，用于追踪用户信息变更。
+
+| 字段名 | 类型 | 长度 | 空值 | 默认值 | 索引 | 注释 |
+|--------|------|------|------|--------|------|------|
+| history_id | BIGINT | - | NO | AUTO | PK | 主键ID |
+| user_id | BIGINT | - | NO | - | IDX | 用户ID |
+| is_bot | TINYINT | 1 | NO | 0 | - | 是否机器人 |
+| first_name | VARCHAR | 255 | NO | - | - | 名字 |
+| last_name | VARCHAR | 255 | YES | NULL | - | 姓氏 |
+| username | VARCHAR | 255 | YES | NULL | - | 用户名 |
+| language_code | VARCHAR | 32 | YES | NULL | - | 语言代码 |
+| is_premium | TINYINT | 1 | YES | NULL | - | 是否 Premium 用户 |
+| added_to_attachment_menu | TINYINT | 1 | YES | NULL | - | 是否加入附件菜单 |
+| snapshot_at | DATETIME | - | NO | NOW() | IDX | 快照时间 |
+| created_at | DATETIME | - | NO | NOW() | - | 创建时间 |
+| created_by | BIGINT | - | YES | NULL | - | 创建者ID |
+| updated_at | DATETIME | - | NO | NOW() | - | 更新时间 |
+| updated_by | BIGINT | - | YES | NULL | - | 更新者ID |
+| is_deleted | TINYINT | 1 | NO | 0 | - | 已删除 |
+| deleted_at | DATETIME | - | YES | NULL | - | 删除时间 |
+| deleted_by | BIGINT | - | YES | NULL | - | 删除者ID |
+
+```sql
+CREATE TABLE user_history (
+    history_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    is_bot TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否机器人',
+    first_name VARCHAR(255) NOT NULL COMMENT '名字',
+    last_name VARCHAR(255) COMMENT '姓氏',
+    username VARCHAR(255) COMMENT '用户名',
+    language_code VARCHAR(32) COMMENT '语言代码',
+    is_premium TINYINT(1) COMMENT '是否 Premium 用户',
+    added_to_attachment_menu TINYINT(1) COMMENT '是否加入附件菜单',
+    snapshot_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '快照时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    created_by BIGINT COMMENT '创建者ID',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    updated_by BIGINT COMMENT '更新者ID',
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '已删除',
+    deleted_at DATETIME COMMENT '删除时间',
+    deleted_by BIGINT COMMENT '删除者ID',
+    PRIMARY KEY (history_id),
+    INDEX idx_user_history_user_id (user_id),
+    INDEX idx_user_history_user_snapshot (user_id, snapshot_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+---
+
+## 9. 群组配置表 (group_configs)
+
+存储群组的消息保存配置和相关设置。
+
+| 字段名 | 类型 | 长度 | 空值 | 默认值 | 索引 | 注释 |
+|--------|------|------|------|--------|------|------|
+| id | INT | - | NO | AUTO | PK | 群组配置ID |
+| chat_id | BIGINT | - | NO | - | UNI | 聊天ID |
+| chat_title | VARCHAR | 255 | YES | NULL | - | 群组标题 |
+| chat_username | VARCHAR | 100 | YES | NULL | IDX | 群组用户名 |
+| group_type | ENUM | - | NO | - | IDX | 群组类型 |
+| is_message_save_enabled | TINYINT | 1 | NO | 0 | IDX | 是否启用消息保存 |
+| message_save_mode | ENUM | - | NO | 'disabled' | IDX | 消息保存模式 |
+| save_start_date | DATETIME | - | YES | NULL | - | 保存开始时间 |
+| save_end_date | DATETIME | - | YES | NULL | - | 保存结束时间 |
+| max_messages_per_day | INT | - | YES | NULL | - | 每日最大消息数 |
+| max_file_size_mb | INT | - | YES | NULL | - | 最大文件大小(MB) |
+| save_text_messages | TINYINT | 1 | NO | 1 | - | 保存文本消息 |
+| save_media_messages | TINYINT | 1 | NO | 1 | - | 保存媒体消息 |
+| save_forwarded_messages | TINYINT | 1 | NO | 1 | - | 保存转发消息 |
+| save_reply_messages | TINYINT | 1 | NO | 1 | - | 保存回复消息 |
+| save_bot_messages | TINYINT | 1 | NO | 0 | - | 保存机器人消息 |
+| include_keywords | TEXT | - | YES | NULL | - | 包含关键词(JSON) |
+| exclude_keywords | TEXT | - | YES | NULL | - | 排除关键词(JSON) |
+| total_messages_saved | INT | - | NO | 0 | - | 已保存消息总数 |
+| last_message_date | DATETIME | - | YES | NULL | IDX | 最后消息时间 |
+| configured_by_user_id | BIGINT | - | YES | NULL | - | 配置者用户ID |
+| notes | TEXT | - | YES | NULL | - | 备注信息 |
+| created_at | DATETIME | - | NO | NOW() | IDX | 创建时间 |
+| created_by | BIGINT | - | YES | NULL | - | 创建者ID |
+| updated_at | DATETIME | - | NO | NOW() | IDX | 更新时间 |
+| updated_by | BIGINT | - | YES | NULL | - | 更新者ID |
+| is_deleted | TINYINT | 1 | NO | 0 | IDX | 已删除 |
+| deleted_at | DATETIME | - | YES | NULL | - | 删除时间 |
+| deleted_by | BIGINT | - | YES | NULL | - | 删除者ID |
+
+```sql
+CREATE TABLE group_configs (
+    id INT NOT NULL AUTO_INCREMENT COMMENT '群组配置ID',
+    chat_id BIGINT NOT NULL COMMENT '聊天ID',
+    chat_title VARCHAR(255) COMMENT '群组标题',
+    chat_username VARCHAR(100) COMMENT '群组用户名',
+    group_type ENUM('group','supergroup','channel') NOT NULL COMMENT '群组类型',
+    is_message_save_enabled TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否启用消息保存',
+    message_save_mode ENUM('all','text_only','media_only','important_only','disabled') NOT NULL DEFAULT 'disabled' COMMENT '消息保存模式',
+    save_start_date DATETIME COMMENT '保存开始时间',
+    save_end_date DATETIME COMMENT '保存结束时间',
+    max_messages_per_day INT COMMENT '每日最大消息数',
+    max_file_size_mb INT COMMENT '最大文件大小(MB)',
+    save_text_messages TINYINT(1) NOT NULL DEFAULT 1 COMMENT '保存文本消息',
+    save_media_messages TINYINT(1) NOT NULL DEFAULT 1 COMMENT '保存媒体消息',
+    save_forwarded_messages TINYINT(1) NOT NULL DEFAULT 1 COMMENT '保存转发消息',
+    save_reply_messages TINYINT(1) NOT NULL DEFAULT 1 COMMENT '保存回复消息',
+    save_bot_messages TINYINT(1) NOT NULL DEFAULT 0 COMMENT '保存机器人消息',
+    include_keywords TEXT COMMENT '包含关键词(JSON)',
+    exclude_keywords TEXT COMMENT '排除关键词(JSON)',
+    total_messages_saved INT NOT NULL DEFAULT 0 COMMENT '已保存消息总数',
+    last_message_date DATETIME COMMENT '最后消息时间',
+    configured_by_user_id BIGINT COMMENT '配置者用户ID',
+    notes TEXT COMMENT '备注信息',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    created_by BIGINT COMMENT '创建者ID',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    updated_by BIGINT COMMENT '更新者ID',
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '已删除',
+    deleted_at DATETIME COMMENT '删除时间',
+    deleted_by BIGINT COMMENT '删除者ID',
+    PRIMARY KEY (id),
+    UNIQUE INDEX idx_group_configs_chat_id (chat_id),
+    INDEX idx_group_configs_username (chat_username),
+    INDEX idx_group_configs_type (group_type),
+    INDEX idx_group_configs_enabled (is_message_save_enabled),
+    INDEX idx_group_configs_mode (message_save_mode),
+    INDEX idx_group_configs_last_message (last_message_date),
+    INDEX idx_group_configs_is_deleted (is_deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+---
+
+## 10. Emby 用户表 (emby_users)
+
+存储从 Emby 创建/同步的用户基本信息。
+
+| 字段名 | 类型 | 长度 | 空值 | 默认值 | 索引 | 注释 |
+|--------|------|------|------|--------|------|------|
+| id | INT | - | NO | AUTO | PK | 自增主键 |
+| emby_user_id | VARCHAR | 64 | NO | - | UNI | Emby 用户ID |
+| name | VARCHAR | 255 | NO | - | IDX | Emby 用户名 |
+| user_dto | JSON | - | YES | NULL | - | Emby 返回的 UserDto JSON |
+| password_hash | VARCHAR | 128 | YES | NULL | - | 密码哈希 (bcrypt) |
+| date_created | DATETIME | - | YES | NULL | - | 用户创建时间(来自 Emby) |
+| last_login_date | DATETIME | - | YES | NULL | - | 最后登录时间(来自 Emby) |
+| last_activity_date | DATETIME | - | YES | NULL | - | 最后活动时间(来自 Emby) |
+| created_at | DATETIME | - | NO | NOW() | IDX | 创建时间 |
+| created_by | BIGINT | - | YES | NULL | - | 创建者ID |
+| updated_at | DATETIME | - | NO | NOW() | IDX | 更新时间 |
+| updated_by | BIGINT | - | YES | NULL | - | 更新者ID |
+| is_deleted | TINYINT | 1 | NO | 0 | IDX | 已删除 |
+| deleted_at | DATETIME | - | YES | NULL | - | 删除时间 |
+| deleted_by | BIGINT | - | YES | NULL | - | 删除者ID |
+
+```sql
+CREATE TABLE emby_users (
+    id INT NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+    emby_user_id VARCHAR(64) NOT NULL COMMENT 'Emby 用户ID(字符串)',
+    name VARCHAR(255) NOT NULL COMMENT 'Emby 用户名',
+    user_dto JSON COMMENT 'Emby 返回的 UserDto JSON 对象',
+    password_hash VARCHAR(128) COMMENT '密码哈希 (bcrypt)',
+    date_created DATETIME COMMENT '用户创建时间(来自 Emby)',
+    last_login_date DATETIME COMMENT '最后登录时间(来自 Emby)',
+    last_activity_date DATETIME COMMENT '最后活动时间(来自 Emby)',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    created_by BIGINT COMMENT '创建者ID',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    updated_by BIGINT COMMENT '更新者ID',
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '已删除',
+    deleted_at DATETIME COMMENT '删除时间',
+    deleted_by BIGINT COMMENT '删除者ID',
+    PRIMARY KEY (id),
+    UNIQUE INDEX idx_emby_users_emby_user_id (emby_user_id),
+    INDEX idx_emby_users_name (name),
+    INDEX idx_emby_users_is_deleted (is_deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+---
+
+## 11. Emby 用户历史表 (emby_user_history)
+
+记录 Emby 用户创建、更新、删除等历史快照。
+
+| 字段名 | 类型 | 长度 | 空值 | 默认值 | 索引 | 注释 |
+|--------|------|------|------|--------|------|------|
+| id | INT | - | NO | AUTO | PK | 自增主键 |
+| emby_user_id | VARCHAR | 64 | NO | - | IDX | Emby 用户ID |
+| name | VARCHAR | 255 | NO | - | IDX | Emby 用户名 |
+| user_dto | JSON | - | YES | NULL | - | UserDto JSON 快照 |
+| password_hash | VARCHAR | 128 | YES | NULL | - | 密码哈希 |
+| date_created | DATETIME | - | YES | NULL | - | 用户创建时间快照 |
+| last_login_date | DATETIME | - | YES | NULL | - | 最后登录时间快照 |
+| last_activity_date | DATETIME | - | YES | NULL | - | 最后活动时间快照 |
+| action | VARCHAR | 32 | NO | - | IDX | 动作类型(create/update/delete) |
+| created_at | DATETIME | - | NO | NOW() | IDX | 创建时间 |
+| created_by | BIGINT | - | YES | NULL | - | 创建者ID |
+| updated_at | DATETIME | - | NO | NOW() | - | 更新时间 |
+| updated_by | BIGINT | - | YES | NULL | - | 更新者ID |
+| is_deleted | TINYINT | 1 | NO | 0 | - | 已删除 |
+| deleted_at | DATETIME | - | YES | NULL | - | 删除时间 |
+| deleted_by | BIGINT | - | YES | NULL | - | 删除者ID |
+
+```sql
+CREATE TABLE emby_user_history (
+    id INT NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+    emby_user_id VARCHAR(64) NOT NULL COMMENT 'Emby 用户ID(字符串)',
+    name VARCHAR(255) NOT NULL COMMENT 'Emby 用户名',
+    user_dto JSON COMMENT 'UserDto JSON 快照',
+    password_hash VARCHAR(128) COMMENT '密码哈希 (bcrypt)',
+    date_created DATETIME COMMENT '用户创建时间快照',
+    last_login_date DATETIME COMMENT '最后登录时间快照',
+    last_activity_date DATETIME COMMENT '最后活动时间快照',
+    action VARCHAR(32) NOT NULL COMMENT '动作类型(create/update/delete)',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    created_by BIGINT COMMENT '创建者ID',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    updated_by BIGINT COMMENT '更新者ID',
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '已删除',
+    deleted_at DATETIME COMMENT '删除时间',
+    deleted_by BIGINT COMMENT '删除者ID',
+    PRIMARY KEY (id),
+    INDEX idx_emby_user_history_emby_user_id (emby_user_id),
+    INDEX idx_emby_user_history_name (name),
+    INDEX idx_emby_user_history_action (action),
+    INDEX idx_emby_user_history_user_action (emby_user_id, action)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+---
+
+## 12. 一言表 (hitokoto)
+
+存储从 Hitokoto 接口获取的一言信息。
+
+| 字段名 | 类型 | 长度 | 空值 | 默认值 | 索引 | 注释 |
+|--------|------|------|------|--------|------|------|
+| id | INT | - | NO | AUTO | PK | 自增主键 |
+| hitokoto_id | INT | - | YES | NULL | IDX | 一言标识 |
+| hitokoto | TEXT | - | NO | - | - | 一言正文 |
+| type | VARCHAR | 2 | YES | NULL | IDX | 类型(a-动画/b-漫画/c-游戏等) |
+| from | VARCHAR | 255 | YES | NULL | - | 一言的出处 |
+| from_who | VARCHAR | 255 | YES | NULL | - | 一言的作者 |
+| creator | VARCHAR | 255 | YES | NULL | - | 添加者 |
+| creator_uid | INT | - | YES | NULL | - | 添加者用户标识 |
+| reviewer | INT | - | YES | NULL | - | 审核员标识 |
+| uuid | VARCHAR | 64 | NO | - | UNI | 一言唯一标识 |
+| commit_from | VARCHAR | 64 | YES | NULL | - | 提交方式 |
+| source_created_at | VARCHAR | 64 | YES | NULL | - | 来源添加时间 |
+| length | INT | - | YES | NULL | - | 句子长度 |
+| created_at | DATETIME | - | NO | NOW() | IDX | 创建时间 |
+| created_by | BIGINT | - | YES | NULL | - | 创建者ID |
+| updated_at | DATETIME | - | NO | NOW() | - | 更新时间 |
+| updated_by | BIGINT | - | YES | NULL | - | 更新者ID |
+| is_deleted | TINYINT | 1 | NO | 0 | - | 已删除 |
+| deleted_at | DATETIME | - | YES | NULL | - | 删除时间 |
+| deleted_by | BIGINT | - | YES | NULL | - | 删除者ID |
+
+```sql
+CREATE TABLE hitokoto (
+    id INT NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+    hitokoto_id INT COMMENT '一言标识',
+    hitokoto TEXT NOT NULL COMMENT '一言正文(utf-8编码)',
+    type VARCHAR(2) COMMENT '类型(a-动画 b-漫画 c-游戏 d-文学 e-原创 f-来自网络 g-其他 h-影视 i-诗词 j-网易云 k-哲学 l-抖机灵)',
+    `from` VARCHAR(255) COMMENT '一言的出处',
+    from_who VARCHAR(255) COMMENT '一言的作者',
+    creator VARCHAR(255) COMMENT '添加者',
+    creator_uid INT COMMENT '添加者用户标识',
+    reviewer INT COMMENT '审核员标识',
+    uuid VARCHAR(64) NOT NULL COMMENT '一言唯一标识',
+    commit_from VARCHAR(64) COMMENT '提交方式',
+    source_created_at VARCHAR(64) COMMENT '来源添加时间',
+    length INT COMMENT '句子长度',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    created_by BIGINT COMMENT '创建者ID',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    updated_by BIGINT COMMENT '更新者ID',
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '已删除',
+    deleted_at DATETIME COMMENT '删除时间',
+    deleted_by BIGINT COMMENT '删除者ID',
+    PRIMARY KEY (id),
+    INDEX idx_hitokoto_id (hitokoto_id),
+    INDEX idx_hitokoto_type (type),
+    UNIQUE INDEX idx_hitokoto_uuid (uuid)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+---
+
+## 13. 外键约束
 
 ```sql
 -- 消息关联
-ALTER TABLE messages ADD CONSTRAINT fk_messages_user_id 
+ALTER TABLE messages ADD CONSTRAINT fk_messages_user_id
 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
 -- 用户状态关联
-ALTER TABLE user_states ADD CONSTRAINT fk_user_states_user_id 
+ALTER TABLE user_states ADD CONSTRAINT fk_user_states_user_id
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- 用户扩展关联
+ALTER TABLE user_extend ADD CONSTRAINT fk_user_extend_user_id
 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
 -- 审计日志关联
-ALTER TABLE audit_logs ADD CONSTRAINT fk_audit_logs_user_id 
+ALTER TABLE audit_logs ADD CONSTRAINT fk_audit_logs_user_id
 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
 ```
 
 ---
 
-## 8. 初始化脚本
+## 14. 初始化脚本
 
 ```sql
 -- 创建数据库
@@ -350,7 +667,7 @@ SET time_zone = '+00:00';
 
 ---
 
-## 9. 字段含义说明
+## 15. 字段含义说明
 
 ### 操作者字段说明
 
@@ -373,5 +690,28 @@ SET time_zone = '+00:00';
 
 ---
 
-**版本**: 1.1  
-**更新**: 2025-10-21
+## 16. 表关系图
+
+```text
+users (1) ──────────────────┬──── (N) messages
+  │                         │
+  │                         ├──── (N) user_states
+  │                         │
+  └── (1) user_extend       └──── (N) audit_logs
+  │
+  └── (N) user_history
+
+
+emby_users (1) ──── (N) emby_user_history
+
+
+group_configs (独立表，存储群组配置)
+
+
+hitokoto (独立表，存储一言数据)
+```
+
+---
+
+**版本**: 2.0
+**更新**: 2025-12-04
