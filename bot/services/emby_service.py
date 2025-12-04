@@ -226,17 +226,13 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 changed = False
                 changed_fields: list[str] = []
 
+                # 先保存所有旧值，用于写入 history 表
                 old_name = model.name
-                if name and name != model.name:
-                    model.name = name
-                    changed = True
-                    changed_fields.append("name")
-
-                # 比较字典是否有变化
-                if (it or {}) != (model.user_dto or {}):
-                    model.user_dto = it
-                    changed = True
-                    changed_fields.append("user_dto")
+                old_user_dto = model.user_dto
+                old_dc = model.date_created
+                old_ll = model.last_login_date
+                old_la = model.last_activity_date
+                old_password_hash = model.password_hash
 
                 def eq_dt(a: datetime.datetime | None, b: datetime.datetime | None) -> bool:
                     """比较两个时间是否等价(容差 1 秒)
@@ -257,19 +253,28 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         return False
                     return abs((a - b).total_seconds()) < 1.0
 
-                old_dc = model.date_created
+                # 检测并更新各字段
+                if name and name != model.name:
+                    model.name = name
+                    changed = True
+                    changed_fields.append("name")
+
+                # 比较字典是否有变化
+                if (it or {}) != (model.user_dto or {}):
+                    model.user_dto = it
+                    changed = True
+                    changed_fields.append("user_dto")
+
                 if not eq_dt(model.date_created, date_created):
                     model.date_created = date_created
                     changed = True
                     changed_fields.append("date_created")
 
-                old_ll = model.last_login_date
                 if not eq_dt(model.last_login_date, last_login_date):
                     model.last_login_date = last_login_date
                     changed = True
                     changed_fields.append("last_login_date")
 
-                old_la = model.last_activity_date
                 if not eq_dt(model.last_activity_date, last_activity_date):
                     model.last_activity_date = last_activity_date
                     changed = True
@@ -310,19 +315,21 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                     if "user_dto" in changed_fields:
                         remark_parts.append("user_dto: changed")
 
-                    model.remark = f"更新字段: {', '.join(changed_fields)}; " + "; ".join(remark_parts)
+                    remark = f"更新字段: {', '.join(changed_fields)}; " + "; ".join(remark_parts)
+                    model.remark = remark
 
+                    # 写入历史表时使用旧值，保存变更前的快照
                     session.add(
                         EmbyUserHistoryModel(
                             emby_user_id=eid,
-                            name=model.name,
-                            user_dto=model.user_dto,
-                            password_hash=model.password_hash,
+                            name=old_name,
+                            user_dto=old_user_dto,
+                            password_hash=old_password_hash,
                             action="update",
-                            date_created=model.date_created,
-                            last_login_date=model.last_login_date,
-                            last_activity_date=model.last_activity_date,
-                            remark=model.remark,
+                            date_created=old_dc,
+                            last_login_date=old_ll,
+                            last_activity_date=old_la,
+                            remark=remark,
                         )
                     )
 
