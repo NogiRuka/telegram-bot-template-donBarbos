@@ -11,6 +11,27 @@ if TYPE_CHECKING:
 
     from aiogram.types import TelegramObject
 
+# 模块级单例，确保所有请求共享同一个实例
+_main_message_service: MainMessageService | None = None
+
+
+def get_main_message_service() -> MainMessageService:
+    """获取 MainMessageService 单例
+
+    功能说明:
+    - 返回全局唯一的 MainMessageService 实例
+
+    输入参数:
+    - 无
+
+    返回值:
+    - MainMessageService: 单例服务实例
+    """
+    global _main_message_service
+    if _main_message_service is None:
+        _main_message_service = MainMessageService(bot)
+    return _main_message_service
+
 
 class MainMessageMiddleware(BaseMiddleware):
     async def __call__(
@@ -33,9 +54,5 @@ class MainMessageMiddleware(BaseMiddleware):
         返回值:
         - Any: 下游处理器返回值
         """
-        # 单例服务实例, 绑定到全局bot
-        service = data.get("main_msg")
-        if not isinstance(service, MainMessageService):
-            service = MainMessageService(bot)
-            data["main_msg"] = service
+        data["main_msg"] = get_main_message_service()
         return await handler(event, data)

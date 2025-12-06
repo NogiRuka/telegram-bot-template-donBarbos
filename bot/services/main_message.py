@@ -107,6 +107,7 @@ class MainMessageService:
         with logger.catch():
             uid = user_id or msg.chat.id
             self._messages[uid] = (msg.chat.id, msg.message_id)
+            logger.debug(f"🔍 remember: uid={uid}, chat_id={msg.chat.id}, message_id={msg.message_id}")
 
     async def update(self, user_id: int, caption: str, kb: types.InlineKeyboardMarkup) -> bool:
         """更新主消息内容
@@ -123,11 +124,15 @@ class MainMessageService:
         - bool: 是否更新成功
         """
         ids = self.get_main_msg(user_id)
+        logger.debug(f"🔍 update: user_id={user_id}, ids={ids}, _messages={self._messages}")
         if not ids:
+            logger.warning(f"⚠️ update: 未找到用户 {user_id} 的主消息")
             return False
         chat_id, message_id = ids
         with logger.catch():
-            return await edit_message_content_by_id(self.bot, chat_id, message_id, caption, kb)
+            result = await edit_message_content_by_id(self.bot, chat_id, message_id, caption, kb)
+            logger.debug(f"🔍 update: edit result={result}")
+            return result
         return False
 
     async def delete_input(self, input_message: types.Message) -> None:
