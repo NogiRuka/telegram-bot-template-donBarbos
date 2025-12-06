@@ -86,7 +86,7 @@ class EmbyClient:
 
         输入参数:
         - name: 用户名
-        - password: 密码, 可为 None
+        - password: 密码, 可为 None（Emby 将创建无密码用户）
         - copy_from_user_id: 模板用户ID, 可为 None
         - user_copy_options: 复制选项, 可为 None; 常用值: ["UserPolicy", "UserConfiguration"]
 

@@ -130,6 +130,7 @@ async def create_emby_user(message: types.Message, session: AsyncSession) -> Non
         template_id = settings.get_emby_template_user_id()
         res = await client.create_user(
             name=name,
+            password=password,
             copy_from_user_id=template_id,
         )
         uid = str(res.get("Id") or "")
