@@ -118,14 +118,14 @@ async def create_user(
                 if template_policy and isinstance(template_policy, dict):
                     await client.update_user_policy(user_id, template_policy)
             except Exception as e:  # noqa: BLE001
-                logger.warning("复制模板用户配置失败: {}", str(e))
+                logger.warning("⚠️ 复制模板用户配置失败: {}", str(e))
 
         # Step 4: 设置密码
         if password:
             try:
                 await client.update_user_password(user_id, password)
             except Exception as e:  # noqa: BLE001
-                logger.warning("设置用户密码失败: {}", str(e))
+                logger.warning("⚠️ 设置用户密码失败: {}", str(e))
 
         # 重新获取最新的用户信息
         try:
@@ -178,7 +178,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
     """
     client = get_client()
     if client is None:
-        logger.warning("未配置 Emby 连接信息, 跳过用户同步")
+        logger.warning("⚠️ 未配置 Emby 连接信息, 跳过用户同步")
         return 0, 0
 
     inserted = 0
@@ -197,7 +197,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 break
 
         if not all_items:
-            logger.info("Emby 返回空用户列表, 无数据可同步")
+            logger.info("📭 Emby 返回空用户列表, 无数据可同步")
             return 0, 0
 
         ids: list[str] = []
@@ -237,7 +237,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                     dt = dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
                 return dt
             except ValueError:
-                logger.debug(f"无法解析日期字段: {s}")
+                logger.debug(f"🔍 无法解析日期字段: {s}")
                 return None
 
         for it in all_items:
@@ -374,10 +374,10 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                     )
 
         await session.commit()
-        logger.info("Emby 用户同步完成: 插入 {}, 更新 {}", inserted, updated)
+        logger.info("✅ Emby 用户同步完成: 插入 {}, 更新 {}", inserted, updated)
         return inserted, updated
     except Exception as e:  # noqa: BLE001
-        logger.error("Emby 用户同步失败: {}", str(e))
+        logger.error("❌ Emby 用户同步失败: {}", str(e))
         with logger.catch():
             await session.rollback()
         return 0, 0
