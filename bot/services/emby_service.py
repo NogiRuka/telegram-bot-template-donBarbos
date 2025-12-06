@@ -73,30 +73,70 @@ async def list_users(
 async def create_user(
     name: str,
     password: str | None = None,
-    copy_from_user_id: str | None = None,
+    template_user_id: str | None = None,
 ) -> tuple[bool, dict[str, Any] | None, str | None]:
-    """创建 Emby 用户
+    """创建 Emby 用户（完整流程）
 
     功能说明:
-    - 使用客户端调用 `POST /Users/New` 创建用户
+    - 完整的用户创建流程:
+      1. 调用 `POST /Users/New` 创建无密码用户
+      2. 从模板用户获取 Configuration 和 Policy
+      3. 更新新用户的 Configuration 和 Policy
+      4. 设置用户密码
 
     输入参数:
     - name: 用户名
-    - password: 密码, 可为 None
-    - copy_from_user_id: 模板用户ID, 可为 None
+    - password: 密码, 可为 None（不设置密码）
+    - template_user_id: 模板用户ID, 可为 None（使用配置中的默认模板）
 
     返回值:
-    - tuple[bool, dict[str, Any] | None, str | None]: (是否成功, 成功结果, 失败原因)
+    - tuple[bool, dict[str, Any] | None, str | None]: (是否成功, UserDto, 失败原因)
     """
     client = get_client()
     if client is None:
         return False, None, "未配置 Emby 连接信息"
+
     try:
-        data = await client.create_user(name=name, password=password, copy_from_user_id=copy_from_user_id)
+        # Step 1: 创建无密码用户
+        user_dto = await client.create_user(name=name)
+        user_id = str(user_dto.get("Id") or "")
+        if not user_id:
+            return False, None, "创建用户失败: 未返回用户ID"
+
+        # Step 2: 获取模板用户的 Configuration 和 Policy
+        tid = template_user_id or settings.get_emby_template_user_id()
+        if tid:
+            try:
+                template_user = await client.get_user(tid)
+                template_config = template_user.get("Configuration")
+                template_policy = template_user.get("Policy")
+
+                # Step 3: 更新新用户的 Configuration 和 Policy
+                if template_config and isinstance(template_config, dict):
+                    await client.update_user_configuration(user_id, template_config)
+
+                if template_policy and isinstance(template_policy, dict):
+                    await client.update_user_policy(user_id, template_policy)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("复制模板用户配置失败: {}", str(e))
+
+        # Step 4: 设置密码
+        if password:
+            try:
+                await client.update_user_password(user_id, password)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("设置用户密码失败: {}", str(e))
+
+        # 重新获取最新的用户信息
+        try:
+            user_dto = await client.get_user(user_id)
+        except Exception:  # noqa: BLE001
+            pass  # 使用创建时返回的 user_dto
+
+        return True, user_dto, None
+
     except Exception as e:  # noqa: BLE001
         return False, None, str(e)
-    else:
-        return True, data, None
 
 
 async def delete_user(user_id: str) -> tuple[bool, Any | None, str | None]:

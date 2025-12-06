@@ -73,7 +73,6 @@ class EmbyClient:
     async def create_user(
         self,
         name: str,
-        password: str | None = None,
         copy_from_user_id: str | None = None,
         user_copy_options: list[str] | None = None,
     ) -> dict[str, Any]:
@@ -86,7 +85,6 @@ class EmbyClient:
 
         输入参数:
         - name: 用户名
-        - password: 密码, 可为 None（Emby 将创建无密码用户）
         - copy_from_user_id: 模板用户ID, 可为 None
         - user_copy_options: 复制选项, 可为 None; 常用值: ["UserPolicy", "UserConfiguration"]
 
@@ -94,8 +92,6 @@ class EmbyClient:
         - dict[str, Any]: 创建结果
         """
         payload: dict[str, Any] = {"Name": name}
-        if password:
-            payload["Password"] = password
         template_id = copy_from_user_id or settings.get_emby_template_user_id()
         if template_id:
             payload["CopyFromUserId"] = template_id
@@ -116,6 +112,78 @@ class EmbyClient:
         - Any: 删除结果(可能为空)
         """
         return await self.http.request("DELETE", f"/Users/{user_id}")
+
+    async def get_user(self, user_id: str) -> dict[str, Any]:
+        """获取用户信息
+
+        功能说明:
+        - 调用 `GET /Users/{Id}` 获取指定用户的详细信息(UserDto)
+
+        输入参数:
+        - user_id: 用户ID
+
+        返回值:
+        - dict[str, Any]: UserDto 对象, 包含 Configuration 和 Policy
+        """
+        data = await self.http.request("GET", f"/Users/{user_id}")
+        return cast("dict[str, Any]", data) if isinstance(data, dict) else {}
+
+    async def update_user_configuration(
+        self, user_id: str, configuration: dict[str, Any]
+    ) -> Any:
+        """更新用户配置
+
+        功能说明:
+        - 调用 `POST /Users/{Id}/Configuration` 更新用户的 Configuration
+
+        输入参数:
+        - user_id: 用户ID
+        - configuration: UserConfiguration 字典, 包含音频/字幕偏好等设置
+
+        返回值:
+        - Any: 响应结果(通常为空)
+        """
+        return await self.http.request(
+            "POST", f"/Users/{user_id}/Configuration", json=configuration
+        )
+
+    async def update_user_policy(self, user_id: str, policy: dict[str, Any]) -> Any:
+        """更新用户策略
+
+        功能说明:
+        - 调用 `POST /Users/{Id}/Policy` 更新用户的 Policy
+
+        输入参数:
+        - user_id: 用户ID
+        - policy: UserPolicy 字典, 包含权限、限制等策略设置
+
+        返回值:
+        - Any: 响应结果(通常为空)
+        """
+        return await self.http.request("POST", f"/Users/{user_id}/Policy", json=policy)
+
+    async def update_user_password(
+        self, user_id: str, new_password: str, reset_password: bool = False
+    ) -> Any:
+        """更新用户密码
+
+        功能说明:
+        - 调用 `POST /Users/{Id}/Password` 更新用户密码
+
+        输入参数:
+        - user_id: 用户ID
+        - new_password: 新密码
+        - reset_password: 是否重置密码, 默认 False
+
+        返回值:
+        - Any: 响应结果(通常为空)
+        """
+        payload = {
+            "Id": user_id,
+            "NewPw": new_password,
+            "ResetPassword": reset_password,
+        }
+        return await self.http.request("POST", f"/Users/{user_id}/Password", json=payload)
 
     async def get_sessions(
         self,
