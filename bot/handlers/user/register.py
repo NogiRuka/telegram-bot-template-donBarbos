@@ -147,7 +147,7 @@ async def cancel_register(
 
         if uid:
             user_has_emby = await has_emby_account(session, uid)
-            await main_msg.update(uid, "🧩 账号中心", get_account_center_keyboard(user_has_emby))
+            await main_msg.update_on_callback(callback, "🧩 账号中心", get_account_center_keyboard(user_has_emby))
 
         await callback.answer("✅ 已取消注册")
         logger.info("ℹ️ 用户取消注册: user_id={}", uid)

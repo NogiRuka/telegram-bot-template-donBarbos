@@ -90,21 +90,23 @@ class MainMessageService:
         """
         return self._messages.get(user_id)
 
-    async def remember(self, msg: types.Message) -> None:
+    async def remember(self, msg: types.Message, user_id: int | None = None) -> None:
         """记录当前消息为主消息
 
         功能说明:
         - 将传入的消息作为用户的主消息保存, 便于后续按ID更新
+        - 私聊中使用 chat.id 作为用户标识（私聊 chat.id 等于用户 ID）
 
         输入参数:
         - msg: Telegram 消息对象
+        - user_id: 用户ID, 可选; 若不传则使用 chat.id
 
         返回值:
         - None
         """
         with logger.catch():
-            if msg.from_user:
-                self._messages[msg.from_user.id] = (msg.chat.id, msg.message_id)
+            uid = user_id or msg.chat.id
+            self._messages[uid] = (msg.chat.id, msg.message_id)
 
     async def update(self, user_id: int, caption: str, kb: types.InlineKeyboardMarkup) -> bool:
         """更新主消息内容
