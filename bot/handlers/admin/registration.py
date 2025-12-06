@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.handlers.start import get_common_image
+from bot.utils.images import get_common_image
 from bot.keyboards.inline.labels import OPEN_REGISTRATION_LABEL
 from bot.services.config_service import (
     get_free_registration_status,

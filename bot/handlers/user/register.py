@@ -50,6 +50,8 @@ async def user_register(
     - None
     """
     uid = callback.from_user.id if callback.from_user else None
+    
+    logger.info("用户开始注册: user_id={}", uid)
     try:
         if not await is_registration_open(session):
             window = await get_registration_window(session) or {}
@@ -76,7 +78,8 @@ async def user_register(
             "示例：myuser mypassword123\n\n"
             f"⏰ 请在 {REGISTER_TIMEOUT_SECONDS // 60} 分钟内完成输入"
         )
-        await main_msg.update(uid, caption, get_register_input_keyboard())
+        
+        await main_msg.update_on_callback(callback, caption, get_register_input_keyboard())
 
         # 设置 FSM 状态
         await state.set_state(RegisterStates.waiting_for_credentials)

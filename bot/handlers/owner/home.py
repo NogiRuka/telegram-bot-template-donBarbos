@@ -1,7 +1,7 @@
 from aiogram import F, Router, types
 from aiogram.types import CallbackQuery
 
-from bot.handlers.start import get_common_image
+from bot.utils.images import get_common_image
 from bot.keyboards.inline.start_owner import get_owner_panel_keyboard
 from bot.utils.permissions import require_owner
 from bot.utils.view import render_view

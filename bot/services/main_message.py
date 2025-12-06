@@ -5,6 +5,7 @@ from aiogram import types
 from aiogram.types import FSInputFile
 from loguru import logger
 
+from bot.utils.images import get_common_image
 from bot.utils.view import edit_message_content_by_id, render_view
 
 if TYPE_CHECKING:
@@ -192,6 +193,8 @@ class MainMessageService:
         """
         msg = callback.message if isinstance(callback.message, types.Message) else None
         uid = callback.from_user.id if callback.from_user else None
+        
+        image_path = get_common_image()
         if msg is not None:
             is_media = bool(
                 getattr(msg, "photo", None)

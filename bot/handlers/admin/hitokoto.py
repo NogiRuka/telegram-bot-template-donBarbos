@@ -6,7 +6,7 @@ from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_admin_feature, require_admin_priv
 from loguru import logger
-from bot.handlers.start import get_common_image
+from bot.utils.images import get_common_image
 
 router = Router(name="admin_hitokoto")
 

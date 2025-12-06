@@ -2,7 +2,7 @@ from aiogram import F, Router, types
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.handlers.start import get_common_image
+from bot.utils.images import get_common_image
 from bot.keyboards.inline.start_owner import get_features_panel_keyboard
 from bot.services.config_service import list_features, toggle_config
 from bot.utils.permissions import require_owner
