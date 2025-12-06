@@ -427,18 +427,20 @@ async def list_admins(session: AsyncSession) -> list[UserModel]:
 
 
 async def create_and_bind_emby_user(
-    session: AsyncSession, user_id: int, base_name: str | None = None
+    session: AsyncSession, user_id: int, name: str, password: str
 ) -> tuple[bool, dict[str, str] | None, str | None]:
     """创建 Emby 用户并绑定到用户扩展表
 
     功能说明:
     - 检查是否已绑定 Emby 账号, 若未绑定则创建 Emby 用户并持久化本地快照
     - 将新创建的 `emby_user_id` 写入 `user_extend.emby_user_id`
+    - 使用 emby_service.create_user 进行完整创建流程（含模板配置复制）
 
     输入参数:
     - session: 异步数据库会话
     - user_id: Telegram 用户ID
-    - base_name: 生成 Emby 用户名的基础片段(可选), 会自动清洗并与 `user_id` 拼接保证唯一
+    - name: Emby 用户名
+    - password: Emby 密码
 
     返回值:
     - tuple[bool, dict[str, str] | None, str | None]:
@@ -452,29 +454,17 @@ async def create_and_bind_emby_user(
 
     异步/同步:
     - 本函数为异步函数; Emby API 与数据库操作均需 `await`
-    - 密码生成使用标准库 `secrets`/`string`, 为同步操作
 
     错误处理:
     - 捕获网络与数据库异常, 返回错误信息而非抛出, 避免上层崩溃
     """
     try:
-        import asyncio as _asyncio
-        import secrets as _secrets
-        import string as _string
-
-        from aiohttp import ClientError
         from sqlalchemy import select as _select
         from sqlalchemy.exc import SQLAlchemyError
 
         from bot.database.models import EmbyUserHistoryModel, EmbyUserModel
         from bot.handlers.emby import hash_password
-        from bot.services.emby_service import get_client
-        from bot.utils.http import HttpRequestError
-
-        client = get_client()
-        if client is None:
-            logger.error("❌ Emby 客户端未配置: user_id={}", user_id)
-            return False, None, "未配置 Emby 连接信息"
+        from bot.services import emby_service
 
         # 已绑定检查
         res_ext = await session.execute(_select(UserExtendModel).where(UserExtendModel.user_id == user_id))
@@ -483,43 +473,23 @@ async def create_and_bind_emby_user(
             logger.info("ℹ️ 用户已绑定 Emby 账号: user_id={} emby_user_id={}", user_id, getattr(ext, "emby_user_id", None))
             return False, None, "已绑定 Emby 账号"
 
-        # 生成用户名
-        clean = (base_name or "user").strip().replace(" ", "_")
-        name = f"{clean}-{user_id}"
+        # 调用 emby_service.create_user 完整流程
+        ok, user_dto, err = await emby_service.create_user(name=name, password=password)
+        if not ok or user_dto is None:
+            logger.error("❌ Emby 创建失败: user_id={} name={} err={}", user_id, name, err)
+            return False, None, err or "Emby 创建失败"
 
-        # 生成密码
-        alphabet = _string.ascii_letters + _string.digits
-        password = "".join(_secrets.choice(alphabet) for _ in range(12))
-
-        # 创建 Emby 用户
-        try:
-            emby_res = await client.create_user(name=name, password=password)
-        except HttpRequestError as e:
-            snippet = (e.body[:300] + ("…" if len(e.body) > 300 else "")) if e.body else ""
-            logger.error(
-                "❌ Emby 创建失败: user_id={} name={} status={} url={} body={}",
-                user_id,
-                name,
-                e.status,
-                e.url,
-                snippet,
-            )
-            return False, None, f"Emby 创建失败: {e.status}"
-        except (ClientError, _asyncio.TimeoutError) as e:
-            logger.error("❌ Emby 创建失败: user_id={} name={} err={}", user_id, name, str(e))
-            return False, None, f"Emby 创建失败: {e!s}"
-
-        emby_id = str(emby_res.get("Id") or "")
-        created_name = str(emby_res.get("Name") or name)
+        emby_id = str(user_dto.get("Id") or "")
+        created_name = str(user_dto.get("Name") or name)
 
         # 持久化与绑定
         try:
             pwd_hash = hash_password(password)
-            model = EmbyUserModel(emby_user_id=emby_id, name=created_name, user_dto=emby_res, password_hash=pwd_hash)
+            model = EmbyUserModel(emby_user_id=emby_id, name=created_name, user_dto=user_dto, password_hash=pwd_hash)
             history = EmbyUserHistoryModel(
                 emby_user_id=emby_id,
                 name=created_name,
-                user_dto=emby_res,
+                user_dto=user_dto,
                 password_hash=pwd_hash,
                 action="create",
             )
@@ -533,6 +503,7 @@ async def create_and_bind_emby_user(
                 ext.emby_user_id = emby_id
 
             await session.commit()
+            logger.info("✅ Emby 用户创建并绑定成功: user_id={} emby_user_id={} name={}", user_id, emby_id, created_name)
         except SQLAlchemyError as e:
             logger.exception("❌ 写入数据库失败: user_id={} emby_user_id={} err={}", user_id, emby_id, str(e))
             return False, None, f"写入数据库失败: {e!s}"
