@@ -16,6 +16,7 @@
 PROFILE_LABEL = "👤 个人信息"
 ACCOUNT_CENTER_LABEL = "🧩 账号中心"
 START_REGISTER_LABEL = "🎬 开始注册"
+CANCEL_REGISTER_LABEL = "❌ 取消注册"
 USER_INFO_LABEL = "👤 账号信息"
 USER_LINES_LABEL = "🛰️ 线路信息"
 USER_DEVICES_LABEL = "📱 设备管理"

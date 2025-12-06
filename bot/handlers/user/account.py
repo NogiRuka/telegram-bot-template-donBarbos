@@ -2,16 +2,14 @@ from aiogram import F, Router, types
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.labels import BACK_LABEL, BACK_TO_HOME_LABEL
 from bot.keyboards.inline.start_user import get_account_center_keyboard
-from bot.services.config_service import get_registration_window, is_registration_open
-from bot.services.users import create_and_bind_emby_user
+from bot.services.users import has_emby_account
 from bot.utils.permissions import _resolve_role, require_user_feature
-from bot.utils.text import escape_markdown_v2, safe_alert_text, safe_message_text
+from bot.utils.text import escape_markdown_v2
 from bot.utils.view import render_view
 
 router = Router(name="user_account")
@@ -32,64 +30,20 @@ async def show_account_center(callback: CallbackQuery, session: AsyncSession) ->
     - None
     """
     uid = callback.from_user.id if callback.from_user else None
-    has_emby_account = False
+    user_has_emby = False
     try:
         if uid:
-            has_emby_account = await has_emby_account(session, uid)
+            user_has_emby = await has_emby_account(session, uid)
     except Exception:
-        has_emby_account = False
+        user_has_emby = False
 
-    kb = get_account_center_keyboard(has_emby_account)
+    kb = get_account_center_keyboard(user_has_emby)
     msg = callback.message
     if isinstance(msg, types.Message):
         await _resolve_role(session, uid)
         image = get_common_image()
         await render_view(msg, image, "🧩 账号中心", kb)
     await callback.answer()
-
-
-@router.callback_query(F.data == "user:register")
-@require_user_feature("user.register")
-async def user_register(callback: CallbackQuery, session: AsyncSession) -> None:
-    """开始注册"""
-    try:
-        if not await is_registration_open(session):
-            window = await get_registration_window(session) or {}
-            hint = "🚫 暂未开放注册"
-            if (start := window.get("start_iso")) and (dur := window.get("duration_minutes")):
-                hint += f"\n开始: {start}\n时长: {dur} 分钟"
-            elif start:
-                hint += f"\n开始: {start}"
-            elif dur:
-                hint += f"\n时长: {dur} 分钟"
-            return await callback.answer(safe_alert_text(hint), show_alert=True)
-
-        if not (uid := callback.from_user.id if callback.from_user else None):
-            return await callback.answer("🔴 无法获取用户ID", show_alert=True)
-
-        base_name = (
-            callback.from_user.username
-            or callback.from_user.first_name
-            or callback.from_user.last_name
-            or None
-        )
-        ok, details, err = await create_and_bind_emby_user(session, uid, base_name)
-        if not ok:
-            return await callback.answer(safe_alert_text(f"❌ {err or '注册失败'}"), show_alert=True)
-
-        if isinstance(msg := callback.message, types.Message) and details:
-            text = f"✅ 注册成功\n\nEmby 用户名: {details.get('name', '')}\nEmby 密码: {details.get('password', '')}\n"
-            await msg.answer(safe_message_text(text))
-        await callback.answer("✅ 已为您创建 Emby 账号", show_alert=False)
-
-    except TelegramAPIError as e:
-        uid = callback.from_user.id if callback.from_user else None
-        logger.exception(f"❌ 注册流程 TelegramAPIError: user_id={uid} err={e!r}")
-        await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
-    except Exception as e:
-        uid = callback.from_user.id if callback.from_user else None
-        logger.exception(f"❌ 注册流程未知异常: user_id={uid} err={e!r}")
-        await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
 
 
 @router.callback_query(F.data == "user:info")

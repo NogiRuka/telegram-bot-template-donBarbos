@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.keyboards.inline.common_buttons import (
@@ -11,6 +11,7 @@ from bot.keyboards.inline.common_buttons import (
     USER_LINES_BUTTON,
     USER_PASSWORD_BUTTON,
 )
+from bot.keyboards.inline.labels import CANCEL_REGISTER_LABEL
 
 
 def get_start_user_keyboard() -> InlineKeyboardMarkup:
@@ -64,4 +65,23 @@ def get_account_center_keyboard(has_emby_account: bool) -> InlineKeyboardMarkup:
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     keyboard.adjust(1, 1)
+    return keyboard.as_markup()
+
+
+def get_register_input_keyboard() -> InlineKeyboardMarkup:
+    """注册输入等待键盘
+
+    功能说明:
+    - 用户点击开始注册后展示, 仅包含取消注册按钮
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 内联键盘
+    """
+    buttons = [
+        [InlineKeyboardButton(text=CANCEL_REGISTER_LABEL, callback_data="user:cancel_register")],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
