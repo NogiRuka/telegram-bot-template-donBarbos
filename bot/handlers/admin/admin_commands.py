@@ -156,7 +156,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
                 groups_text += f"\n... 还有 {len(configs) - SUMMARY_LIMIT} 个群组"
         await message.answer(groups_text, parse_mode="Markdown")
     except SQLAlchemyError as e:
-        logger.error(f"查看群组配置失败: {e}")
+        logger.error(f"❌ 查看群组配置失败: {e}")
         await message.answer("🔴 查看群组配置时发生错误")
 
 
@@ -198,7 +198,7 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
     except ValueError:
         await message.answer("🔴 无效的群组ID")
     except SQLAlchemyError as e:
-        logger.error(f"启用群组失败: {e}")
+        logger.error(f"❌ 启用群组失败: {e}")
         await message.answer("🔴 启用群组时发生错误")
 
 
@@ -234,7 +234,7 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
     except ValueError:
         await message.answer("🔴 无效的群组ID")
     except SQLAlchemyError as e:
-        logger.error(f"禁用群组失败: {e}")
+        logger.error(f"❌ 禁用群组失败: {e}")
         await message.answer("🔴 禁用群组时发生错误")
 
 
@@ -294,7 +294,7 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
     except ValueError:
         await message.answer("🔴 无效的群组ID")
     except SQLAlchemyError as e:
-        logger.error(f"查看群组信息失败: {e}")
+        logger.error(f"❌ 查看群组信息失败: {e}")
         await message.answer("🔴 查看群组信息时发生错误")
 
 
@@ -327,7 +327,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
             parse_mode="Markdown",
         )
     except SQLAlchemyError as e:
-        logger.error(f"数据清理失败: {e}")
+        logger.error(f"❌ 数据清理失败: {e}")
         await message.answer("🔴 数据清理时发生错误")
 
 
@@ -361,7 +361,7 @@ async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession)
             parse_mode="Markdown",
         )
     except (ValueError, SQLAlchemyError) as e:
-        logger.error(f"确认清理失败: {e}")
+        logger.error(f"❌ 确认清理失败: {e}")
         await callback.answer("🔴 清理失败", show_alert=True)
 
 
@@ -408,7 +408,7 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         stats_text += "  运行状态: 🟢 正常"
         await message.answer(stats_text, parse_mode="Markdown")
     except SQLAlchemyError as e:
-        logger.error(f"查看全局统计失败: {e}")
+        logger.error(f"❌ 查看全局统计失败: {e}")
         await message.answer("🔴 查看统计信息时发生错误")
 
 
@@ -642,7 +642,7 @@ async def admin_open_registration_command(message: Message, command: CommandObje
         await message.answer(text)
 
     except SQLAlchemyError:
-        logger.error("开启注册失败")
+        logger.error("❌ 开启注册失败")
         await message.answer("🔴 开启注册失败")
 
 

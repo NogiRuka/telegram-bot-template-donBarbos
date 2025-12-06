@@ -38,7 +38,7 @@ def get_super_admin_ids() -> list[int]:
     try:
         return settings.get_super_admin_ids()
     except Exception as e:
-        logger.warning(f"获取超级管理员ID列表失败: {e}")
+        logger.warning(f"⚠️ 获取超级管理员ID列表失败: {e}")
         return []
 
 
@@ -159,7 +159,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
         await message.answer(groups_text, parse_mode="Markdown")
 
     except Exception as e:
-        logger.error(f"查看群组配置失败: {e}")
+        logger.error(f"❌ 查看群组配置失败: {e}")
         await message.answer("🔴 查看群组配置时发生错误")
 
 
@@ -201,7 +201,7 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
     except ValueError:
         await message.answer("🔴 无效的群组ID")
     except Exception as e:
-        logger.error(f"启用群组失败: {e}")
+        logger.error(f"❌ 启用群组失败: {e}")
         await message.answer("🔴 启用群组时发生错误")
 
 
@@ -239,7 +239,7 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
     except ValueError:
         await message.answer("🔴 无效的群组ID")
     except Exception as e:
-        logger.error(f"禁用群组失败: {e}")
+        logger.error(f"❌ 禁用群组失败: {e}")
         await message.answer("🔴 禁用群组时发生错误")
 
 
@@ -314,7 +314,7 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
     except ValueError:
         await message.answer("🔴 无效的群组ID")
     except Exception as e:
-        logger.error(f"查看群组信息失败: {e}")
+        logger.error(f"❌ 查看群组信息失败: {e}")
         await message.answer("🔴 查看群组信息时发生错误")
 
 
@@ -352,7 +352,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
         )
 
     except Exception as e:
-        logger.error(f"数据清理失败: {e}")
+        logger.error(f"❌ 数据清理失败: {e}")
         await message.answer("🔴 数据清理时发生错误")
 
 
@@ -391,7 +391,7 @@ async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession)
         )
 
     except Exception as e:
-        logger.error(f"确认清理失败: {e}")
+        logger.error(f"❌ 确认清理失败: {e}")
         await callback.answer("🔴 清理失败", show_alert=True)
 
 
@@ -464,7 +464,7 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         await message.answer(stats_text, parse_mode="Markdown")
 
     except Exception as e:
-        logger.error(f"查看全局统计失败: {e}")
+        logger.error(f"❌ 查看全局统计失败: {e}")
         await message.answer("🔴 查看统计信息时发生错误")
 
 

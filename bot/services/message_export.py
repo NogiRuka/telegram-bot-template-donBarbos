@@ -126,7 +126,7 @@ class MessageExportService:
             return list(messages), total_count or 0
 
         except Exception as e:
-            logger.error(f"查询消息失败: {e}")
+            logger.error(f"❌ 查询消息失败: {e}")
             return [], 0
 
     async def export_to_txt(self, chat_id: int, **kwargs) -> BytesIO:
@@ -191,7 +191,7 @@ class MessageExportService:
             return bytes_output
 
         except Exception as e:
-            logger.error(f"导出TXT失败: {e}")
+            logger.error(f"❌ 导出TXT失败: {e}")
             raise
 
     async def export_to_csv(self, chat_id: int, **kwargs) -> BytesIO:
@@ -269,7 +269,7 @@ class MessageExportService:
             return bytes_output
 
         except Exception as e:
-            logger.error(f"导出CSV失败: {e}")
+            logger.error(f"❌ 导出CSV失败: {e}")
             raise
 
     async def export_to_json(self, chat_id: int, **kwargs) -> BytesIO:
@@ -343,7 +343,7 @@ class MessageExportService:
             return bytes_output
 
         except Exception as e:
-            logger.error(f"导出JSON失败: {e}")
+            logger.error(f"❌ 导出JSON失败: {e}")
             raise
 
     async def get_message_statistics(self, chat_id: int, days: int = 30) -> dict[str, Any]:
@@ -412,7 +412,7 @@ class MessageExportService:
             }
 
         except Exception as e:
-            logger.error(f"获取消息统计失败: {e}")
+            logger.error(f"❌ 获取消息统计失败: {e}")
             return {}
 
 

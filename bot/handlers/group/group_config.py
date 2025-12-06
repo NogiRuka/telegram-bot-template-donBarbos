@@ -110,7 +110,7 @@ async def cmd_group_config(message: types.Message, session: AsyncSession) -> Non
         await message.reply(config_text, reply_markup=get_group_config_keyboard(config.id), parse_mode="Markdown")
 
     except Exception as e:
-        logger.exception(f"显示群组配置失败: {e}")
+        logger.exception(f"❌ 显示群组配置失败: {e}")
         await message.reply("❌ 获取群组配置失败，请稍后重试。")
 
 
@@ -204,7 +204,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             await callback.answer("🔄 配置已刷新")
 
     except Exception as e:
-        logger.exception(f"处理群组配置回调失败: {e}")
+        logger.exception(f"❌ 处理群组配置回调失败: {e}")
         await callback.answer("❌ 操作失败，请稍后重试")
 
 
@@ -254,7 +254,7 @@ async def handle_save_mode_callback(callback: types.CallbackQuery, session: Asyn
         await cmd_group_config(callback.message, session)
 
     except Exception as e:
-        logger.exception(f"处理保存模式回调失败: {e}")
+        logger.exception(f"❌ 处理保存模式回调失败: {e}")
         await callback.answer("❌ 操作失败，请稍后重试")
 
 
@@ -293,7 +293,7 @@ async def handle_confirm_clear_callback(callback: types.CallbackQuery, session: 
         await cmd_group_config(callback.message, session)
 
     except Exception as e:
-        logger.exception(f"清空消息失败: {e}")
+        logger.exception(f"❌ 清空消息失败: {e}")
         await callback.answer("❌ 清空失败，请稍后重试")
 
 
@@ -311,7 +311,7 @@ async def handle_group_config_back_callback(callback: types.CallbackQuery, sessi
         await cmd_group_config(callback.message, session)
 
     except Exception as e:
-        logger.exception(f"返回群组配置失败: {e}")
+        logger.exception(f"❌ 返回群组配置失败: {e}")
         await callback.answer("❌ 操作失败，请稍后重试")
 
 
@@ -354,7 +354,7 @@ async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None
         )
 
     except Exception as e:
-        logger.exception(f"启用消息保存失败: {e}")
+        logger.exception(f"❌ 启用消息保存失败: {e}")
         await message.reply("❌ 启用失败，请稍后重试。")
 
 
@@ -389,7 +389,7 @@ async def cmd_save_disable(message: types.Message, session: AsyncSession) -> Non
             await message.reply("ℹ️ 此群组尚未配置消息保存功能。")
 
     except Exception as e:
-        logger.exception(f"禁用消息保存失败: {e}")
+        logger.exception(f"❌ 禁用消息保存失败: {e}")
         await message.reply("❌ 禁用失败，请稍后重试。")
 
 

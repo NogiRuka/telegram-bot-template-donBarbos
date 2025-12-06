@@ -5,6 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_admin_feature, require_admin_priv
+from loguru import logger
+from bot.handlers.start import get_common_image
 
 router = Router(name="admin_hitokoto")
 
@@ -64,7 +66,7 @@ async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession, 
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
 
     current_names = [type_names.get(ch, ch) for ch in categories]
-    desc = (
+    caption = (
         "📝 一言管理\n\n"
         "选择需要纳入的分类参数(多选):\n"
         "a 动画 | b 漫画 | c 游戏 | d 文学 | e 原创\n"
@@ -73,7 +75,8 @@ async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession, 
         f"当前分类: {', '.join(current_names) if current_names else '未选择'}\n"
         "提示: 可多次点击切换, 选择会即时保存。"
     )
-    msg = callback.message
-    if isinstance(msg, types.Message):
-        await main_msg.update_by_message(msg, desc, kb)
+    
+
+
+    await main_msg.update_on_callback(callback, caption, kb, get_common_image())
     await callback.answer()

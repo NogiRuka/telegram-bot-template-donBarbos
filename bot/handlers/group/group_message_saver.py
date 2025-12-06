@@ -62,7 +62,7 @@ class GroupMessageSaver:
             )
             return result.scalar_one_or_none()
         except Exception as e:
-            logger.exception(f"获取群组配置失败: {e}")
+            logger.exception(f"❌ 获取群组配置失败: {e}")
             return None
 
     async def create_default_config(self, chat: types.Chat, session: AsyncSession) -> GroupConfigModel | None:
@@ -74,7 +74,7 @@ class GroupMessageSaver:
             elif chat.type == "channel":
                 group_type = GroupType.CHANNEL
             else:
-                logger.warning(f"未知的聊天类型: {chat.type}")
+                logger.warning(f"⚠️ 未知的聊天类型: {chat.type}")
                 return None
 
             config = GroupConfigModel.create_for_group(
@@ -88,10 +88,10 @@ class GroupMessageSaver:
 
             session.add(config)
             await session.commit()
-            logger.info(f"为群组 {chat.id} 创建了默认配置")
+            logger.info(f"✅ 为群组 {chat.id} 创建了默认配置")
             return config
         except Exception as e:
-            logger.exception(f"创建群组默认配置失败: {e}")
+            logger.exception(f"❌ 创建群组默认配置失败: {e}")
             await session.rollback()
             return None
 
@@ -228,14 +228,14 @@ class GroupMessageSaver:
                 if keywords and not any(keyword.lower() in text_lower for keyword in keywords):
                     return False
             except (json.JSONDecodeError, TypeError):
-                logger.warning(f"无效的包含关键词JSON: {include_keywords}")
+                logger.warning(f"⚠️ 无效的包含关键词JSON: {include_keywords}")
         if exclude_keywords:
             try:
                 keywords = json.loads(exclude_keywords)
                 if keywords and any(keyword.lower() in text_lower for keyword in keywords):
                     return False
             except (json.JSONDecodeError, TypeError):
-                logger.warning(f"无效的排除关键词JSON: {exclude_keywords}")
+                logger.warning(f"⚠️ 无效的排除关键词JSON: {exclude_keywords}")
         return True
 
     def extract_entities(self, entities: list | None) -> str | None:
@@ -277,7 +277,7 @@ class GroupMessageSaver:
                 entities_data.append(entity_dict)
             return json.dumps(entities_data, ensure_ascii=False) if entities_data else None
         except Exception as e:
-            logger.exception(f"提取实体信息失败: {e}")
+            logger.exception(f"❌ 提取实体信息失败: {e}")
             return None
 
     async def save_message(self, message: types.Message, config: GroupConfigModel, session: AsyncSession) -> bool:
@@ -302,7 +302,7 @@ class GroupMessageSaver:
                 and file_info["file_size"]
                 and file_info["file_size"] > config.max_file_size_mb * 1024 * 1024
             ):
-                logger.info(f"消息 {message.message_id} 文件大小超过限制，跳过保存")
+                logger.info(f"ℹ️ 消息 {message.message_id} 文件大小超过限制，跳过保存")
                 return False
             entities_json = self.extract_entities(message.entities) if message.entities else None
             caption_entities_json = (
@@ -340,11 +340,11 @@ class GroupMessageSaver:
             config.increment_message_count(message_record.created_at)
             await session.commit()
             logger.debug(
-                f"成功保存消息: 群组={message.chat.id}, 消息ID={message.message_id}, 类型={message_type.value}"
+                f"✅ 成功保存消息: 群组={message.chat.id}, 消息ID={message.message_id}, 类型={message_type.value}"
             )
             return True
         except Exception as e:
-            logger.exception(f"保存消息失败: {e}")
+            logger.exception(f"❌ 保存消息失败: {e}")
             await session.rollback()
             return False
 
@@ -367,9 +367,9 @@ async def handle_group_message(message: types.Message, session: AsyncSession) ->
         if config.is_save_enabled():
             success = await message_saver.save_message(message, config, session)
             if success:
-                logger.debug(f"群组 {message.chat.id} 的消息已保存")
+                logger.debug(f"✅ 群组 {message.chat.id} 的消息已保存")
     except Exception as e:
-        logger.exception(f"处理群组消息时发生错误: {e}")
+        logger.exception(f"❌ 处理群组消息时发生错误: {e}")
 
 
 @router.edited_message(F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]))
@@ -388,9 +388,9 @@ async def handle_edited_group_message(message: types.Message, session: AsyncSess
             existing_message.caption = message.caption[:1000] if message.caption else None
             existing_message.mark_as_edited(message.edit_date)
             await session.commit()
-            logger.debug(f"更新了编辑消息: 群组={message.chat.id}, 消息ID={message.message_id}")
+            logger.debug(f"✅ 更新了编辑消息: 群组={message.chat.id}, 消息ID={message.message_id}")
     except Exception as e:
-        logger.exception(f"处理编辑消息时发生错误: {e}")
+        logger.exception(f"❌ 处理编辑消息时发生错误: {e}")
         await session.rollback()
 
 

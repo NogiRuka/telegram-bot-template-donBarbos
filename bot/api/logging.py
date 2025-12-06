@@ -70,4 +70,4 @@ def setup_api_logging(debug: bool = False) -> None:
         )
         # 控制台彩色输出在独立运行入口中配置, 避免与 Bot 的控制台 sink 重复
     except (OSError, ValueError) as err:
-        logger.warning("初始化 API 文件日志失败: {}", err)
+        logger.warning("⚠️ 初始化 API 文件日志失败: {}", err)

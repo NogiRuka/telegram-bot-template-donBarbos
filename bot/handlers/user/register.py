@@ -59,10 +59,10 @@ async def user_register(callback: CallbackQuery, session: AsyncSession) -> None:
 
     except TelegramAPIError as e:
         uid = callback.from_user.id if callback.from_user else None
-        logger.exception(f"注册流程 TelegramAPIError: user_id={uid} err={e!r}")
+        logger.exception(f"❌ 注册流程 TelegramAPIError: user_id={uid} err={e!r}")
         await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
     except Exception as e:
         uid = callback.from_user.id if callback.from_user else None
-        logger.exception(f"注册流程未知异常: user_id={uid} err={e!r}")
+        logger.exception(f"❌ 注册流程未知异常: user_id={uid} err={e!r}")
         await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
 

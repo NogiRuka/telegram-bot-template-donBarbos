@@ -64,7 +64,7 @@ async def get_user_stats() -> dict[str, Any]:
             }
 
     except Exception as err:
-        logger.error(f"获取用户统计数据失败: {err}")
+        logger.error(f"❌ 获取用户统计数据失败: {err}")
         raise HTTPException(status_code=500, detail="获取用户统计数据失败") from err
 
 
@@ -134,7 +134,7 @@ async def get_dashboard_stats(user_stats: Annotated[dict[str, Any], Depends(get_
         }
 
     except Exception as err:
-        logger.error(f"获取仪表板统计数据失败: {err}")
+        logger.error(f"❌ 获取仪表板统计数据失败: {err}")
         raise HTTPException(status_code=500, detail="获取仪表板统计数据失败") from err
 
 
@@ -170,5 +170,5 @@ async def get_user_growth() -> dict[str, Any]:
             return {"growth_data": growth_data}
 
     except Exception as err:
-        logger.error(f"获取用户增长趋势失败: {err}")
+        logger.error(f"❌ 获取用户增长趋势失败: {err}")
         raise HTTPException(status_code=500, detail="获取用户增长趋势失败") from err

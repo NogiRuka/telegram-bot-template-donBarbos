@@ -42,7 +42,7 @@ async def open_registration_feature(
     """
 
     caption, kb = await _build_registration_caption_and_keyboard(session)
-    logger.debug(f"[open_registration_feature] caption内容: {caption}")
+    logger.info(f"ℹ️ [open_registration_feature] caption内容: {caption}")
 
     await main_msg.update_on_callback(callback, caption, kb, get_common_image())
     await callback.answer()
@@ -165,12 +165,12 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
     返回值:
     - tuple[str, InlineKeyboardMarkup]: (caption文本, 内联键盘)
     """
-    logger.debug("[_build_registration_caption_and_keyboard] 开始读取配置...")
+    logger.debug("🔍 [_build_registration_caption_and_keyboard] 开始读取配置...")
     free_open = await get_free_registration_status(session)
-    logger.debug(f"[_build_registration_caption_and_keyboard] free_open={free_open}")
+    logger.debug(f"🔍 [_build_registration_caption_and_keyboard] free_open={free_open}")
 
     window = await get_registration_window(session) or {}
-    logger.debug(f"[_build_registration_caption_and_keyboard] window={window}")
+    logger.debug(f"🔍 [_build_registration_caption_and_keyboard] window={window}")
 
     start_iso = window.get("start_iso")
     duration = window.get("duration_minutes")
@@ -178,14 +178,14 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
     # 计算结束时间
     end_str = "未设置"
     if start_iso and duration is not None:
-        logger.debug(f"[_build_registration_caption_and_keyboard] 开始解析 start_iso={start_iso}, duration={duration}")
+        logger.debug(f"🔍 [_build_registration_caption_and_keyboard] 开始解析 start_iso={start_iso}, duration={duration}")
         try:
             dt = datetime.fromisoformat(start_iso)
             end_dt = dt + timedelta(minutes=int(duration))
             end_str = end_dt.isoformat()
-            logger.debug(f"[_build_registration_caption_and_keyboard] 计算结束时间成功: {end_str}")
+            logger.debug(f"✅ [_build_registration_caption_and_keyboard] 计算结束时间成功: {end_str}")
         except (ValueError, TypeError) as e:
-            logger.exception(f"[_build_registration_caption_and_keyboard] 计算结束时间失败: {e}")
+            logger.exception(f"❌ [_build_registration_caption_and_keyboard] 计算结束时间失败: {e}")
 
     status_line = f"{OPEN_REGISTRATION_LABEL}: {'🟢 开启' if free_open else '🔴 关闭'}\n"
     caption = (
@@ -196,7 +196,7 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
         + f"持续分钟: {duration if duration is not None else '不限'}\n\n"
         + "输入格式示例: 20251130.2300.10 (默认为北京时间)"
     )
-    logger.debug("[_build_registration_caption_and_keyboard] 生成 caption 成功")
+    logger.debug("✅ [_build_registration_caption_and_keyboard] 生成 caption 成功")
 
     rows: list[list[InlineKeyboardButton]] = []
     rows.append([
@@ -216,5 +216,5 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
         InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
     ])
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
-    logger.debug("[_build_registration_caption_and_keyboard] 键盘构建完成")
+    logger.debug("✅ [_build_registration_caption_and_keyboard] 键盘构建完成")
     return caption, kb

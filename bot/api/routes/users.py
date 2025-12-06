@@ -181,7 +181,7 @@ async def get_users_list(
             return UsersListResponse(items=users_data, total=total, page=page, per_page=per_page, pages=pages)
 
     except Exception as err:
-        logger.error(f"获取用户列表失败: {err}")
+        logger.error(f"❌ 获取用户列表失败: {err}")
         raise HTTPException(status_code=500, detail="获取用户列表失败") from err
 
 
@@ -231,7 +231,7 @@ async def get_user_detail(user_id: int) -> UserResponse:
     except HTTPException:
         raise
     except Exception as err:
-        logger.error(f"获取用户详情失败: {err}")
+        logger.error(f"❌ 获取用户详情失败: {err}")
         raise HTTPException(status_code=500, detail="获取用户详情失败") from err
 
 
@@ -249,7 +249,7 @@ async def get_users_count() -> dict[str, int]:
             return {"total_users": total}
 
     except Exception as err:
-        logger.error(f"获取用户统计失败: {err}")
+        logger.error(f"❌ 获取用户统计失败: {err}")
         raise HTTPException(status_code=500, detail="获取用户统计失败") from err
 
 

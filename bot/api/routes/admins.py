@@ -123,7 +123,7 @@ async def get_admins_list(
             return AdminsListResponse(items=admins_data, total=total, page=page, per_page=per_page, pages=pages)
 
     except Exception as err:
-        logger.error(f"获取管理员列表失败: {err}")
+        logger.error(f"❌ 获取管理员列表失败: {err}")
         raise HTTPException(status_code=500, detail="获取管理员列表失败") from err
 
 
@@ -171,7 +171,7 @@ async def get_admin_detail(admin_id: int) -> AdminResponse:
     except HTTPException:
         raise
     except Exception as err:
-        logger.error(f"获取管理员详情失败: {err}")
+        logger.error(f"❌ 获取管理员详情失败: {err}")
         raise HTTPException(status_code=500, detail="获取管理员详情失败") from err
 
 
@@ -195,7 +195,7 @@ async def get_admins_count() -> dict[str, int]:
             return {"total_admins": admin_count}
 
     except SQLAlchemyError as err:
-        logger.error(f"获取管理员统计失败: {err}")
+        logger.error(f"❌ 获取管理员统计失败: {err}")
         raise HTTPException(status_code=500, detail="获取管理员统计失败") from err
 
 

@@ -77,7 +77,7 @@ async def main() -> None:
         """
         if issubclass(exc_type, KeyboardInterrupt):
             return
-        logger.opt(exception=(exc_type, exc_value, exc_traceback)).error("未捕获异常")
+        logger.opt(exception=(exc_type, exc_value, exc_traceback)).error("❌ 未捕获异常")
     sys.excepthook = _excepthook
     label = os.getenv("BOOT_BANNER_LABEL", "Bot & API")
     print_boot_banner(label)

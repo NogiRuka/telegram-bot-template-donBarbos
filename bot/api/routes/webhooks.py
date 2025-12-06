@@ -42,11 +42,11 @@ async def handle_emby_webhook(
     try:
         payload: dict[str, Any] = await request.json()
     except (ValueError, UnicodeDecodeError) as err:
-        logger.exception("解析 Emby Webhook JSON 失败")
+        logger.exception("❌ 解析 Emby Webhook JSON 失败")
         raise HTTPException(status_code=400, detail="Invalid JSON body") from err
 
     pretty = format_json_pretty(payload)
-    logger.info("收到 Emby Webhook 原始载荷:\n{}", pretty)
+    logger.info("📥 收到 Emby Webhook 原始载荷:\n{}", pretty)
 
     # 这里可以根据不同事件进行业务处理, 例如:
     # - PlaybackStart / PlaybackStop: 统计观看记录

@@ -87,7 +87,7 @@ class HttpClient:
                     if status >= 400:
                         snippet = (text_body[:1000] + ("…" if len(text_body) > 1000 else "")) if text_body else ""
                         logger.error(
-                            "HTTP请求失败: {method} {url} -> {status} {body}",
+                            "❌ HTTP请求失败: {method} {url} -> {status} {body}",
                             method=method.upper(),
                             url=url,
                             status=status,
@@ -97,7 +97,7 @@ class HttpClient:
                     return data
         except aiohttp.ClientResponseError as e:
             logger.error(
-                "HTTP请求失败: {method} {url} -> {status} {msg}",
+                "❌ HTTP请求失败: {method} {url} -> {status} {msg}",
                 method=method.upper(),
                 url=url,
                 status=getattr(e, "status", None),
@@ -106,12 +106,12 @@ class HttpClient:
             raise
         except asyncio.TimeoutError as e:
             logger.error(
-                "HTTP超时: {method} {url} -> {err}", method=method.upper(), url=url, err=str(e)
+                "❌ HTTP超时: {method} {url} -> {err}", method=method.upper(), url=url, err=str(e)
             )
             raise
         except aiohttp.ClientError as e:
             logger.error(
-                "HTTP网络异常: {method} {url} -> {err}", method=method.upper(), url=url, err=str(e)
+                "❌ HTTP网络异常: {method} {url} -> {err}", method=method.upper(), url=url, err=str(e)
             )
             raise
 

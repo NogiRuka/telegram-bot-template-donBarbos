@@ -130,7 +130,6 @@ async def create_emby_user(message: types.Message, session: AsyncSession) -> Non
         template_id = settings.get_emby_template_user_id()
         res = await client.create_user(
             name=name,
-            password=password,
             copy_from_user_id=template_id,
         )
         uid = str(res.get("Id") or "")
@@ -154,7 +153,7 @@ async def create_emby_user(message: types.Message, session: AsyncSession) -> Non
             session.add(history)
             await session.commit()
         except SQLAlchemyError as e:
-            logger.exception(f"写入 Emby 用户到数据库失败: {e!s}")
+            logger.exception(f"❌ 写入 Emby 用户到数据库失败: {e!s}")
         await message.answer(f"✅ 创建成功: {created_name} (ID: {uid})")
     except (ClientError, asyncio.TimeoutError) as e:
         await message.answer(f"❌ 创建失败: {e!s}")
@@ -199,7 +198,7 @@ async def delete_emby_user(message: types.Message, session: AsyncSession) -> Non
                 session.add(history)
                 await session.commit()
         except SQLAlchemyError as e:
-            logger.exception(f"标记 Emby 用户软删除失败: {e!s}")
+            logger.exception(f"❌ 标记 Emby 用户软删除失败: {e!s}")
         await message.answer(f"✅ 已删除用户: {user_id}")
     except (ClientError, asyncio.TimeoutError) as e:
         await message.answer(f"❌ 删除失败: {e!s}")
@@ -224,10 +223,10 @@ def hash_password(password: str | None) -> str | None:
         return None
     try:
         if bcrypt is None:
-            logger.exception("bcrypt 未安装")
+            logger.exception("❌ bcrypt 未安装")
             return None
         salt = bcrypt.gensalt()
         return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
     except (ValueError, TypeError) as e:
-        logger.exception(f"bcrypt 哈希失败: {e!s}")
+        logger.exception(f"❌ bcrypt 哈希失败: {e!s}")
         return None

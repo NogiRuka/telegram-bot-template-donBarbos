@@ -7,6 +7,7 @@
 from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any
+import datetime
 
 from sqlalchemy import JSON, ForeignKey, Index, String
 from sqlalchemy import Enum as SAEnum
@@ -14,7 +15,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
 
-import datetime
+if TYPE_CHECKING:
+    pass
 
 
 class UserRole(Enum):

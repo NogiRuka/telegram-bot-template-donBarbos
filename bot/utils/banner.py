@@ -31,7 +31,7 @@ def print_boot_banner(service_name: str) -> None:
             raw = banner_path.read_text(encoding="utf-8", errors="ignore")
             banner_text = sanitize_banner_text(raw)
         except (OSError, UnicodeDecodeError) as err:
-            logger.warning("读取 banner 失败: {}", err)
+            logger.warning("⚠️ 读取 banner 失败: {}", err)
     value_line = build_start_value_line(service_name)
     box = _make_center_box(banner_text, value_line)
     if banner_text:
@@ -60,7 +60,7 @@ def get_project_name() -> str:
         if isinstance(name, str) and name.strip():
             return name.strip()
     except (ModuleNotFoundError, AttributeError, ValueError) as err:
-        logger.opt(exception=err).debug("读取项目名失败, 使用默认值")
+        logger.opt(exception=err).debug("🔍 读取项目名失败, 使用默认值")
     return "telegram-bot-template"
 
 

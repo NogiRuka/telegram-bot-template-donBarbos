@@ -23,8 +23,8 @@ class GoogleAnalyticsTelegramLogger(AbstractAnalyticsLogger):
         async with ClientSession() as session, session.post(url, headers=self._headers, json=params) as response:
             json_response = await response.json(content_type="application/json")
 
-        logger.info("Send record to Google Analytics")
-        logger.info(f"{json_response=}")
+        logger.info("📤 Send record to Google Analytics")
+        logger.info(f"📦 {json_response=}")
 
         return self._validate_response(json_response)
 
@@ -35,11 +35,11 @@ class GoogleAnalyticsTelegramLogger(AbstractAnalyticsLogger):
             name = response["error"]["name"]
             code = response["error"]["code"]
 
-            logger.error(f"get error from cryptopay api | name: {name} | code: {code}")
+            logger.error(f"❌ get error from cryptopay api | name: {name} | code: {code}")
             msg = f"Error in CryptoPay API call | name: {name} | code: {code}"
             raise ValueError(msg)
 
-        logger.info(f"got response | ok: {response['ok']} | result: {response['result']}")
+        logger.info(f"✅ got response | ok: {response['ok']} | result: {response['result']}")
         return response
 
     async def log_event(

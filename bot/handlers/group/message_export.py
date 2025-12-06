@@ -47,7 +47,7 @@ async def export_messages_command(message: Message, session: AsyncSession) -> No
             parse_mode="Markdown",
         )
     except Exception as e:
-        logger.error(f"导出消息命令处理失败: {e}")
+        logger.error(f"❌ 导出消息命令处理失败: {e}")
         await message.answer("❌ 处理命令时发生错误，请稍后重试")
 
 
@@ -101,7 +101,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
         stats_text += f"\n🕐 统计时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         await message.answer(stats_text, parse_mode="Markdown")
     except Exception as e:
-        logger.error(f"消息统计命令处理失败: {e}")
+        logger.error(f"❌ 消息统计命令处理失败: {e}")
         await message.answer("❌ 获取统计信息时发生错误，请稍后重试")
 
 
@@ -142,7 +142,7 @@ async def handle_export_format(callback: CallbackQuery, session: AsyncSession) -
         )
         await callback.message.delete()
     except Exception as e:
-        logger.error(f"处理导出格式失败: {e}")
+        logger.error(f"❌ 处理导出格式失败: {e}")
         await callback.answer("❌ 导出失败，请稍后重试", show_alert=True)
 
 
@@ -172,7 +172,7 @@ async def handle_export_range(callback: CallbackQuery, session: AsyncSession) ->
         )
         await callback.answer(f"✅ 已选择时间范围: {range_text}")
     except Exception as e:
-        logger.error(f"处理导出时间范围失败: {e}")
+        logger.error(f"❌ 处理导出时间范围失败: {e}")
         await callback.answer("❌ 处理失败，请稍后重试", show_alert=True)
 
 
@@ -190,7 +190,7 @@ async def search_messages_command(message: Message, state: FSMContext) -> None:
         await state.set_state(MessageExportStates.waiting_for_search_text)
         await state.update_data(chat_id=message.chat.id)
     except Exception as e:
-        logger.error(f"搜索消息命令处理失败: {e}")
+        logger.error(f"❌ 搜索消息命令处理失败: {e}")
         await message.answer("❌ 处理命令时发生错误，请稍后重试")
 
 
@@ -234,7 +234,7 @@ async def handle_search_text(message: Message, state: FSMContext, session: Async
         await message.answer(result_text, parse_mode="Markdown")
         await state.clear()
     except Exception as e:
-        logger.error(f"处理搜索文本失败: {e}")
+        logger.error(f"❌ 处理搜索文本失败: {e}")
         await message.answer("❌ 搜索失败，请稍后重试")
         await state.clear()
 

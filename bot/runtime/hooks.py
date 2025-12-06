@@ -106,10 +106,10 @@ async def ensure_bot_token_valid(target_bot: Bot) -> None:
     try:
         await target_bot.get_me()
     except TelegramUnauthorizedError as err:
-        logger.error("BOT_TOKEN 无效或已撤销: {}", getattr(err, "message", "Unauthorized"))
+        logger.error("❌ BOT_TOKEN 无效或已撤销: {}", getattr(err, "message", "Unauthorized"))
         raise SystemExit(1) from err
     except (TelegramAPIError, ClientError) as err:
-        logger.error("无法验证 BOT_TOKEN, 网络或 API 异常: {}", err)
+        logger.error("❌ 无法验证 BOT_TOKEN, 网络或 API 异常: {}", err)
         raise SystemExit(1) from err
 
 

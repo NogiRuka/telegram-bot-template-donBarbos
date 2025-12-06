@@ -473,14 +473,14 @@ async def create_and_bind_emby_user(
 
         client = get_client()
         if client is None:
-            logger.error("Emby 客户端未配置: user_id={}", user_id)
+            logger.error("❌ Emby 客户端未配置: user_id={}", user_id)
             return False, None, "未配置 Emby 连接信息"
 
         # 已绑定检查
         res_ext = await session.execute(_select(UserExtendModel).where(UserExtendModel.user_id == user_id))
         ext = res_ext.scalar_one_or_none()
         if ext and getattr(ext, "emby_user_id", None):
-            logger.info("用户已绑定 Emby 账号: user_id={} emby_user_id={}", user_id, getattr(ext, "emby_user_id", None))
+            logger.info("ℹ️ 用户已绑定 Emby 账号: user_id={} emby_user_id={}", user_id, getattr(ext, "emby_user_id", None))
             return False, None, "已绑定 Emby 账号"
 
         # 生成用户名
@@ -497,7 +497,7 @@ async def create_and_bind_emby_user(
         except HttpRequestError as e:
             snippet = (e.body[:300] + ("…" if len(e.body) > 300 else "")) if e.body else ""
             logger.error(
-                "Emby 创建失败: user_id={} name={} status={} url={} body={}",
+                "❌ Emby 创建失败: user_id={} name={} status={} url={} body={}",
                 user_id,
                 name,
                 e.status,
@@ -506,7 +506,7 @@ async def create_and_bind_emby_user(
             )
             return False, None, f"Emby 创建失败: {e.status}"
         except (ClientError, _asyncio.TimeoutError) as e:
-            logger.error("Emby 创建失败: user_id={} name={} err={}", user_id, name, str(e))
+            logger.error("❌ Emby 创建失败: user_id={} name={} err={}", user_id, name, str(e))
             return False, None, f"Emby 创建失败: {e!s}"
 
         emby_id = str(emby_res.get("Id") or "")
@@ -534,12 +534,12 @@ async def create_and_bind_emby_user(
 
             await session.commit()
         except SQLAlchemyError as e:
-            logger.exception("写入数据库失败: user_id={} emby_user_id={} err={}", user_id, emby_id, str(e))
+            logger.exception("❌ 写入数据库失败: user_id={} emby_user_id={} err={}", user_id, emby_id, str(e))
             return False, None, f"写入数据库失败: {e!s}"
 
         return True, {"name": created_name, "password": password}, None
     except Exception as e:
-        logger.exception("注册流程系统异常: user_id={} err={}", user_id, str(e))
+        logger.exception("❌ 注册流程系统异常: user_id={} err={}", user_id, str(e))
         return False, None, f"系统异常: {e!s}"
 async def has_emby_account(session: AsyncSession, user_id: int) -> bool:
     """检查是否已绑定 Emby 账号
