@@ -233,9 +233,14 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         date_created=model.date_created,
                         last_login_date=model.last_login_date,
                         last_activity_date=model.last_activity_date,
-                        remark="用户在 Emby 服务器上被删除",
-                        is_deleted=True,
-                        deleted_at=dt.datetime.now(dt.timezone.utc).replace(tzinfo=None, microsecond=0),
+                        remark=model.remark,
+                        created_at=model.created_at,
+                        updated_at=model.updated_at,
+                        is_deleted=model.is_deleted,
+                        deleted_at=model.deleted_at,
+                        created_by=model.created_by,
+                        updated_by=model.updated_by,
+                        deleted_by=model.deleted_by,
                     )
                 )
                 await session.delete(model)
@@ -264,39 +269,39 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 )
                 inserted += 1
             else:
-                name = str(it.get("Name") or "")
-                date_created = parse_iso_datetime(it.get("DateCreated"))
-                last_login_date = parse_iso_datetime(it.get("LastLoginDate"))
-                last_activity_date = parse_iso_datetime(it.get("LastActivityDate"))
-
-                old_name = model.name
-                old_dc = model.date_created
-                old_ll = model.last_login_date
-                old_la = model.last_activity_date
+                # 更新：只比较 user_dto，有变化就写入历史表
                 old_dto = model.user_dto
-                old_password_hash = model.password_hash
-                old_remark = model.remark
+                new_dto = it
 
-                def to_iso(dt):
-                    return dt.isoformat() if dt is not None else "None"
+                if old_dto != new_dto:
+                    name = str(it.get("Name") or "")
+                    date_created = parse_iso_datetime(it.get("DateCreated"))
+                    last_login_date = parse_iso_datetime(it.get("LastLoginDate"))
+                    last_activity_date = parse_iso_datetime(it.get("LastActivityDate"))
 
-                changed_list: list[str] = []
-                if name != old_name:
-                    changed_list.append(f"name: '{old_name}' -> '{name}'")
-                if date_created != old_dc:
-                    changed_list.append(f"date_created: '{to_iso(old_dc)}' -> '{to_iso(date_created)}'")
-                if last_login_date != old_ll:
-                    changed_list.append(
-                        f"last_login_date: '{to_iso(old_ll)}' -> '{to_iso(last_login_date)}'"
-                    )
-                if last_activity_date != old_la:
-                    changed_list.append(
-                        f"last_activity_date: '{to_iso(old_la)}' -> '{to_iso(last_activity_date)}'"
-                    )
-                if (old_dto or {}) != (it or {}):
-                    changed_list.append("user_dto: changed")
+                    # 检测具体哪些字段变化了
+                    changed_fields: list[str] = []
+                    old_name = model.name
+                    old_dc = model.date_created
+                    old_ll = model.last_login_date
+                    old_la = model.last_activity_date
+                    old_remark = model.remark
+                    old_password_hash = model.password_hash
+                    old_remark = model.remark
 
-                if changed_list:
+                    if name != old_name:
+                        changed_fields.append(f"name: '{old_name}' -> '{name}'")
+                    if date_created != old_dc:
+                        changed_fields.append(f"date_created: '{old_dc}' -> '{date_created}'")
+                    if last_login_date != old_ll:
+                        changed_fields.append(f"last_login_date: '{old_ll}' -> '{last_login_date}'")
+                    if last_activity_date != old_la:
+                        changed_fields.append(f"last_activity_date: '{old_la}' -> '{last_activity_date}'")
+
+                    # 生成备注
+                    remark = "; ".join(changed_fields) if changed_fields else "user_dto 有其他字段变化"
+
+                    # 保存旧数据到历史表
                     session.add(
                         EmbyUserHistoryModel(
                             emby_user_id=eid,
@@ -308,11 +313,19 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                             last_login_date=old_ll,
                             last_activity_date=old_la,
                             remark=old_remark,
+                            created_at=model.created_at,
+                            updated_at=model.updated_at,
+                            is_deleted=model.is_deleted,
+                            deleted_at=model.deleted_at,
+                            created_by=model.created_by,
+                            updated_by=model.updated_by,
+                            deleted_by=model.deleted_by,
                         )
                     )
                     updated += 1
-                    model.remark = "; ".join(changed_list)
+                    model.remark = remark
 
+                    # 更新主表字段
                     model.name = name
                     model.user_dto = it
                     model.date_created = date_created

@@ -13,13 +13,8 @@ from zoneinfo import ZoneInfo
 from loguru import logger
 
 
-try:
-    DEFAULT_TIMEZONE = ZoneInfo("Asia/Shanghai")
-except Exception:
-    try:
-        DEFAULT_TIMEZONE = ZoneInfo("UTC")
-    except Exception:
-        DEFAULT_TIMEZONE = datetime.timezone.utc
+# 默认时区
+DEFAULT_TIMEZONE = ZoneInfo("Asia/Shanghai")
 
 
 def parse_iso_datetime(s: Any) -> datetime.datetime | None:
@@ -105,3 +100,4 @@ def to_iso_string(dt: datetime.datetime | None) -> str | None:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
