@@ -263,10 +263,9 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 )
                 inserted += 1
             else:
-                # 只比较 name 和原始 user_dto，日期字段从 user_dto 中解析直接更新
-                # 避免解析后日期精度差异导致的误判更新
+                # 只有 name 变化才触发"更新"和写入历史记录
+                # user_dto 和日期字段静默更新（不计入变更统计）
                 changed = False
-                changed_fields: list[str] = []
 
                 # 先保存所有旧值，用于写入 history 表
                 old_name = model.name
@@ -276,32 +275,20 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 old_la = model.last_activity_date
                 old_password_hash = model.password_hash
 
-                # 检测 name 变化
+                # 只检测 name 变化
                 if name and name != model.name:
                     model.name = name
                     changed = True
-                    changed_fields.append("name")
 
-                # 比较原始 user_dto 字典是否有变化（包含日期在内的所有字段）
-                if (it or {}) != (model.user_dto or {}):
-                    model.user_dto = it
-                    # 同时更新日期字段（从新的 user_dto 解析）
-                    model.date_created = date_created
-                    model.last_login_date = last_login_date
-                    model.last_activity_date = last_activity_date
-                    changed = True
-                    changed_fields.append("user_dto")
+                # 静默更新 user_dto 和日期字段（不触发历史记录）
+                model.user_dto = it
+                model.date_created = date_created
+                model.last_login_date = last_login_date
+                model.last_activity_date = last_activity_date
 
                 if changed:
                     updated += 1
-                    # 生成变更摘要并写入 remark, 便于审计查询
-                    remark_parts: list[str] = []
-                    if "name" in changed_fields:
-                        remark_parts.append(f"name: '{old_name}' -> '{model.name}'")
-                    if "user_dto" in changed_fields:
-                        remark_parts.append("user_dto: changed")
-
-                    remark = f"更新字段: {', '.join(changed_fields)}; " + "; ".join(remark_parts)
+                    remark = f"更新字段: name; name: '{old_name}' -> '{model.name}'"
                     model.remark = remark
 
                     # 写入历史表时使用旧值，保存变更前的快照
