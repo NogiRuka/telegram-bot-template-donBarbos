@@ -19,9 +19,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin
-
-if TYPE_CHECKING:
-    import datetime
+import datetime
 
 
 class StatisticType(str, Enum):
