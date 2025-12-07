@@ -1,14 +1,12 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy import Index, String
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
-
-if TYPE_CHECKING:
-    from datetime import datetime as dt
+from datetime import datetime as dt
 
 
 class EmbyUserHistoryModel(Base, BasicAuditMixin):

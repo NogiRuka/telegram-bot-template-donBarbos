@@ -18,9 +18,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin
-
-if TYPE_CHECKING:
-    from datetime import datetime as dt
+from datetime import datetime as dt
 
 
 class MessageType(str, Enum):

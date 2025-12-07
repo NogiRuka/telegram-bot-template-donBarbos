@@ -13,9 +13,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
-
-if TYPE_CHECKING:
-    from datetime import datetime as dt
+from datetime import datetime as dt
 
 
 class UserRole(Enum):
