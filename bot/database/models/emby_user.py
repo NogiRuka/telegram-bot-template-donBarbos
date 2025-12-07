@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
 
 if TYPE_CHECKING:
-    import datetime
+    from datetime import datetime as dt
 
 
 class EmbyUserModel(Base, BasicAuditMixin):
@@ -38,13 +38,13 @@ class EmbyUserModel(Base, BasicAuditMixin):
     password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, comment="密码哈希 (bcrypt)")
 
     # 额外的时间字段(来自 Emby UserDto)
-    date_created: Mapped[datetime.datetime | None] = mapped_column(
+    date_created: Mapped[dt | None] = mapped_column(
         nullable=True, comment="用户创建时间(来自 Emby 的 DateCreated)"
     )
-    last_login_date: Mapped[datetime.datetime | None] = mapped_column(
+    last_login_date: Mapped[dt | None] = mapped_column(
         nullable=True, comment="最后登录时间(来自 Emby 的 LastLoginDate)"
     )
-    last_activity_date: Mapped[datetime.datetime | None] = mapped_column(
+    last_activity_date: Mapped[dt | None] = mapped_column(
         nullable=True, comment="最后活动时间(来自 Emby 的 LastActivityDate)"
     )
 

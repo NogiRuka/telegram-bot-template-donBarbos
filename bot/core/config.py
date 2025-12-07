@@ -8,9 +8,13 @@
 """
 
 from __future__ import annotations
+import contextlib
+import datetime as _dt
 import json
+import re
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -331,6 +335,8 @@ class APIMixin(EnvBaseSettings):
 class Settings(BotSettings, DBSettings, APIMixin):
     """核心主配置"""
 
+    TIMEZONE: str = Field(default="UTC", description="应用时区名称或偏移, 例如 'Asia/Shanghai' 或 '+08:00'")
+
     @model_validator(mode="after")
     def validate_all(self) -> Settings:
         if not self.DB_NAME:
@@ -356,6 +362,53 @@ class Settings(BotSettings, DBSettings, APIMixin):
             "pool_pre_ping": True,
             "pool_recycle": 3600,
         }
+
+    def get_timezone_name(self) -> str:
+        """
+        获取应用时区名称字符串
+
+        功能说明:
+        - 返回环境变量配置的时区字符串, 支持 'Asia/Shanghai' 或 '+08:00'
+
+        输入参数:
+        - 无
+
+        返回值:
+        - str: 时区名称或偏移字符串
+        """
+        return (self.TIMEZONE or "UTC").strip() or "UTC"
+
+    def get_timezone_offset_str(self) -> str:
+        """
+        获取应用时区的偏移字符串
+
+        功能说明:
+        - 若 `TIMEZONE` 为偏移字符串(如 '+08:00')则直接返回
+        - 若为名称(如 'Asia/Shanghai'), 通过 ZoneInfo 计算当前偏移
+
+        输入参数:
+        - 无
+
+        返回值:
+        - str: 形如 '+HH:MM' 或 '-HH:MM' 的偏移字符串
+        """
+        tz = self.get_timezone_name()
+        s = tz.upper()
+        if s in {"Z", "UTC"}:
+            return "+00:00"
+        if re.match(r"^[+-]\\d{2}:\\d{2}$", tz):
+            return tz
+        with contextlib.suppress(Exception):
+            zi = ZoneInfo(tz)
+            now = _dt.datetime.now(zi)
+            offset = now.utcoffset() or _dt.timedelta(0)
+            total = int(offset.total_seconds())
+            sign = "+" if total >= 0 else "-"
+            total_abs = abs(total)
+            hours, rem = divmod(total_abs, 3600)
+            minutes = rem // 60
+            return f"{sign}{hours:02d}:{minutes:02d}"
+        return "+00:00"
 
 
 settings = Settings()

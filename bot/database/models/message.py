@@ -20,7 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from bot.database.models.base import Base, BasicAuditMixin
 
 if TYPE_CHECKING:
-    import datetime
+    from datetime import datetime as dt
 
 
 class MessageType(str, Enum):
@@ -190,7 +190,7 @@ class MessageModel(Base, BasicAuditMixin):
         default=False, comment="是否已编辑，默认False，True表示此消息已被用户编辑过"
     )
 
-    edit_date: Mapped[datetime.datetime | None] = mapped_column(
+    edit_date: Mapped[dt | None] = mapped_column(
         nullable=True, comment="编辑时间，可选字段，消息最后编辑的时间"
     )
 

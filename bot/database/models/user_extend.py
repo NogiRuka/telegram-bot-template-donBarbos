@@ -15,7 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
 
 if TYPE_CHECKING:
-    import datetime
+    from datetime import datetime as dt
 
 
 class UserRole(Enum):
@@ -37,7 +37,7 @@ class UserExtendModel(Base, BasicAuditMixin):
     - role: 用户角色权限（user/admin/owner），默认 user
     - phone: 电话号码（可空）
     - bio: 简介（可空）
-    - ip_list: 访问过的 IP 数组（JSON）
+    - ip_list: 访问过的 IP 数组(JSON)
     - last_interaction_at: 最后与机器人交互的时间
     - remark: 备注
     - 审计字段: created_at/updated_at/is_deleted/deleted_at/created_by/updated_by/deleted_by
@@ -60,17 +60,20 @@ class UserExtendModel(Base, BasicAuditMixin):
     )
 
     # 电话与简介
-    phone: Mapped[str | None] = mapped_column(String(32), nullable=True, comment="电话号码（可空）")
-    bio: Mapped[str | None] = mapped_column(String(512), nullable=True, comment="用户简介（可空）")
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True, comment="电话号码(可空)")
+    bio: Mapped[str | None] = mapped_column(String(512), nullable=True, comment="用户简介(可空)")
 
-    # Emby 用户ID（字符串）
+    # Emby 用户ID(字符串)
     emby_user_id: Mapped[str | None] = mapped_column(
         String(64), nullable=True, index=True, comment="Emby 用户ID(字符串)"
     )
 
     # IP 列表与最后交互时间
     ip_list: Mapped[dict[str, Any] | list[Any] | None] = mapped_column(JSON, nullable=True, comment="访问过的IP数组")
-    last_interaction_at: Mapped[datetime.datetime | None] = mapped_column(nullable=True, comment="最后与机器人交互的时间")
+    last_interaction_at: Mapped[dt | None] = mapped_column(
+        nullable=True,
+        comment="最后与机器人交互的时间",
+    )
 
     __table_args__ = (
         Index("idx_user_extend_role", "role"),
