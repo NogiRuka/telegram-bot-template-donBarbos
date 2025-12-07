@@ -197,7 +197,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 break
 
         # 导入时间解析工具
-        from bot.utils.datetime_utils import parse_iso_datetime
+        from bot.utils.datetime import parse_iso_datetime
 
         if not all_items:
             logger.info("📭 Emby 返回空用户列表, 无数据可同步")

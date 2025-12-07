@@ -66,7 +66,7 @@ is_deleted = Annotated[
         Boolean, default=False, nullable=False, index=True, comment="软删除标志，False表示未删除，True表示已删除"
     ),
 ]
-
+    
 # 创建者ID字段类型
 created_by = Annotated[
     int | None, mapped_column(BigInteger, nullable=True, index=True, comment="创建者用户ID，NULL表示系统创建")
