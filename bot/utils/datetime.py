@@ -16,7 +16,10 @@ from loguru import logger
 try:
     DEFAULT_TIMEZONE = ZoneInfo("Asia/Shanghai")
 except Exception:
-    DEFAULT_TIMEZONE = ZoneInfo("UTC")
+    try:
+        DEFAULT_TIMEZONE = ZoneInfo("UTC")
+    except Exception:
+        DEFAULT_TIMEZONE = datetime.timezone.utc
 
 
 def parse_iso_datetime(s: Any) -> datetime.datetime | None:
