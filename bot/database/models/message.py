@@ -10,14 +10,17 @@
 """
 
 from __future__ import annotations
-import datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Index, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin
+
+if TYPE_CHECKING:
+    import datetime
 
 
 class MessageType(str, Enum):
@@ -360,8 +363,9 @@ class MessageModel(Base, BasicAuditMixin):
         参数:
             edit_time: 编辑时间，如果不提供则使用当前时间
         """
+        import datetime as _dt
         self.is_edited = True
-        self.edit_date = edit_time or datetime.datetime.utcnow()
+        self.edit_date = edit_time or _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0)
 
     def soft_delete(self, delete_time: datetime.datetime | None = None) -> None:
         """
@@ -370,8 +374,9 @@ class MessageModel(Base, BasicAuditMixin):
         参数:
             delete_time: 删除时间，如果不提供则使用当前时间
         """
+        import datetime as _dt
         self.is_deleted = True
-        self.deleted_at = delete_time or datetime.datetime.utcnow()
+        self.deleted_at = delete_time or _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0)
 
     def restore(self) -> None:
         """

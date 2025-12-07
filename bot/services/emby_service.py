@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -220,9 +219,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
         # 1. 处理删除：数据库有但接口没有的用户
         for eid, model in existing_map.items():
             if eid not in api_user_map:
-                # 软删除：写入历史表（标记 is_deleted），从主表删除
-                import datetime as dt
-
+                # 软删除：写入简单历史快照，从主表删除
                 session.add(
                     EmbyUserHistoryModel(
                         emby_user_id=eid,
@@ -230,17 +227,6 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         user_dto=model.user_dto,
                         password_hash=model.password_hash,
                         action="delete",
-                        date_created=model.date_created,
-                        last_login_date=model.last_login_date,
-                        last_activity_date=model.last_activity_date,
-                        remark=model.remark,
-                        created_at=model.created_at,
-                        updated_at=model.updated_at,
-                        is_deleted=model.is_deleted,
-                        deleted_at=model.deleted_at,
-                        created_by=model.created_by,
-                        updated_by=model.updated_by,
-                        deleted_by=model.deleted_by,
                     )
                 )
                 await session.delete(model)
@@ -309,17 +295,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                             user_dto=old_dto,
                             password_hash=old_password_hash,
                             action="update",
-                            date_created=old_dc,
-                            last_login_date=old_ll,
-                            last_activity_date=old_la,
                             remark=old_remark,
-                            created_at=model.created_at,
-                            updated_at=model.updated_at,
-                            is_deleted=model.is_deleted,
-                            deleted_at=model.deleted_at,
-                            created_by=model.created_by,
-                            updated_by=model.updated_by,
-                            deleted_by=model.deleted_by,
                         )
                     )
                     updated += 1

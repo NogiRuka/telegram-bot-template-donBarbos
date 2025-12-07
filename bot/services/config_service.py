@@ -271,10 +271,12 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
 
         from datetime import datetime, timedelta, timezone
 
-        # 统一使用带时区的 UTC 时间
+        # 统一使用 UTC（带 tzinfo，精度到秒）
         _now = (
-            datetime.fromtimestamp(now_ts, tz=timezone.utc) if now_ts is not None else datetime.now(timezone.utc)
-        )
+            datetime.fromtimestamp(now_ts, tz=timezone.utc)
+            if now_ts is not None
+            else datetime.now(timezone.utc)
+        ).replace(microsecond=0)
 
         start_iso = window.get("start_iso")
         duration = window.get("duration_minutes")
@@ -282,7 +284,6 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
             return False
 
         def _parse_iso_to_utc(text: str) -> datetime | None:
-            """解析 ISO8601 字符串为 UTC 时间"""
             try:
                 s = (text or "").strip()
                 if not s:
@@ -290,9 +291,8 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
                 if s.endswith("Z"):
                     s = s[:-1] + "+00:00"
                 dt = datetime.fromisoformat(s)
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                return dt.astimezone(timezone.utc)
+                dt = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+                return dt.replace(microsecond=0)
             except ValueError:
                 return None
 

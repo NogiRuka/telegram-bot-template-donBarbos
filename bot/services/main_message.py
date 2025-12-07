@@ -200,7 +200,7 @@ class MainMessageService:
         """
         msg = callback.message if isinstance(callback.message, types.Message) else None
         uid = callback.from_user.id if callback.from_user else None
-        
+
         image_path = get_common_image()
         if msg is not None:
             is_media = bool(

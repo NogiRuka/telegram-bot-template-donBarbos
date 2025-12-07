@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any
-import datetime
 
 from sqlalchemy import Index, String
 from sqlalchemy.dialects.mysql import JSON
@@ -9,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
 
 if TYPE_CHECKING:
-    pass
+    import datetime
 
 
 class EmbyUserHistoryModel(Base, BasicAuditMixin):
@@ -46,7 +45,7 @@ class EmbyUserHistoryModel(Base, BasicAuditMixin):
     last_activity_date: Mapped[datetime.datetime | None] = mapped_column(
         nullable=True, comment="最后活动时间快照(Emby LastActivityDate)"
     )
-    
+
     user_dto: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True, comment="UserDto JSON 快照")
 
     action: Mapped[str] = mapped_column(String(32), nullable=False, comment="动作类型(create/update/delete)")

@@ -1,6 +1,5 @@
 from __future__ import annotations
 import asyncio
-import datetime
 from typing import TYPE_CHECKING, Any
 
 from aiogram import Router, types
@@ -186,8 +185,9 @@ async def delete_emby_user(message: types.Message, session: AsyncSession) -> Non
             res = await session.execute(select(EmbyUserModel).where(EmbyUserModel.emby_user_id == user_id))
             model = res.scalar_one_or_none()
             if model:
+                import datetime as _dt
                 model.is_deleted = True
-                model.deleted_at = datetime.datetime.now(datetime.timezone.utc)
+                model.deleted_at = _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0)
                 history = EmbyUserHistoryModel(
                     emby_user_id=user_id,
                     name=model.name,

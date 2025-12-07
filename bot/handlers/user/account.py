@@ -4,10 +4,10 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.utils.images import get_common_image
 from bot.keyboards.inline.labels import BACK_LABEL, BACK_TO_HOME_LABEL
 from bot.keyboards.inline.start_user import get_account_center_keyboard
 from bot.services.users import has_emby_account
+from bot.utils.images import get_common_image
 from bot.utils.permissions import _resolve_role, require_user_feature
 from bot.utils.text import escape_markdown_v2
 from bot.utils.view import render_view

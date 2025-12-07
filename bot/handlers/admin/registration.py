@@ -5,7 +5,6 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.utils.images import get_common_image
 from bot.keyboards.inline.labels import OPEN_REGISTRATION_LABEL
 from bot.services.config_service import (
     get_free_registration_status,
@@ -14,6 +13,7 @@ from bot.services.config_service import (
     set_registration_window,
 )
 from bot.services.main_message import MainMessageService
+from bot.utils.images import get_common_image
 from bot.utils.permissions import require_admin_feature, require_admin_priv
 
 router = Router(name="admin_registration")

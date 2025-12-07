@@ -57,15 +57,15 @@ async def add_user(session: AsyncSession, user: User) -> None:
         )
         session.add(new_user)
         # 同步写入 user_extend（首次交互）
-        import datetime
 
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
         if ext is None:
+            import datetime as _dt
             session.add(
                 UserExtendModel(
                     user_id=user.id,
-                    last_interaction_at=datetime.datetime.now(datetime.timezone.utc),
+                    last_interaction_at=_dt.datetime.now(_dt.timezone.utc).replace(microsecond=0),
                 )
             )
         await session.commit()
@@ -257,12 +257,12 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
         if ext is None:
-            import datetime
+            import datetime as _dt
 
             session.add(
                 UserExtendModel(
                     user_id=user.id,
-                    last_interaction_at=datetime.datetime.now(datetime.timezone.utc),
+                    last_interaction_at=_dt.datetime.now(_dt.timezone.utc).replace(microsecond=0),
                 )
             )
             await session.commit()

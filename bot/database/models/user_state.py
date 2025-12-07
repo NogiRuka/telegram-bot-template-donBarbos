@@ -272,7 +272,8 @@ class UserStateModel(Base, BasicAuditMixin):
         """
         if not self.expires_at:
             return False
-        return datetime.datetime.utcnow() > self.expires_at
+        import datetime as _dt
+        return _dt.datetime.utcnow().replace(microsecond=0) > self.expires_at
 
     def get_remaining_time(self) -> int | None:
         """
@@ -284,7 +285,8 @@ class UserStateModel(Base, BasicAuditMixin):
         if not self.expires_at:
             return None
 
-        remaining = self.expires_at - datetime.datetime.utcnow()
+        import datetime as _dt
+        remaining = self.expires_at - _dt.datetime.utcnow().replace(microsecond=0)
         return max(0, int(remaining.total_seconds()))
 
     def extend_expiry(self, seconds: int) -> None:
@@ -297,7 +299,8 @@ class UserStateModel(Base, BasicAuditMixin):
         if self.expires_at:
             self.expires_at += datetime.timedelta(seconds=seconds)
         else:
-            self.expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=seconds)
+            import datetime as _dt
+            self.expires_at = _dt.datetime.utcnow().replace(microsecond=0) + datetime.timedelta(seconds=seconds)
 
     def get_data_value(self, key: str, default: Any = None) -> Any:
         """
@@ -377,8 +380,9 @@ class UserStateModel(Base, BasicAuditMixin):
         """
         增加步骤计数
         """
+        import datetime as _dt
         self.step_count += 1
-        self.last_activity_at = datetime.datetime.utcnow()
+        self.last_activity_at = _dt.datetime.utcnow().replace(microsecond=0)
 
     def increment_retry(self) -> None:
         """
@@ -404,8 +408,9 @@ class UserStateModel(Base, BasicAuditMixin):
         """
         激活状态
         """
+        import datetime as _dt
         self.is_active = True
-        self.last_activity_at = datetime.datetime.utcnow()
+        self.last_activity_at = _dt.datetime.utcnow().replace(microsecond=0)
 
     def deactivate(self) -> None:
         """
@@ -509,9 +514,10 @@ class UserStateModel(Base, BasicAuditMixin):
         返回:
             UserStateModel: 新创建的用户状态实例
         """
+        import datetime as _dt
         expires_at = None
         if expires_in_seconds:
-            expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in_seconds)
+            expires_at = _dt.datetime.utcnow().replace(microsecond=0) + datetime.timedelta(seconds=expires_in_seconds)
 
         return cls(
             user_id=user_id,
@@ -521,6 +527,6 @@ class UserStateModel(Base, BasicAuditMixin):
             data=data,
             expires_at=expires_at,
             priority=priority,
-            last_activity_at=datetime.datetime.utcnow(),
+            last_activity_at=_dt.datetime.utcnow().replace(microsecond=0),
             **kwargs,
         )
