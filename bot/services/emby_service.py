@@ -265,8 +265,8 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 inserted += 1
             else:
                 # 更新：只比较 user_dto，有变化就写入历史表
-                old_dto = model.user_dto or {}
-                new_dto = it or {}
+                old_dto = model.user_dto
+                new_dto = it
 
                 if old_dto != new_dto:
                     name = str(it.get("Name") or "")
@@ -280,6 +280,8 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                     old_dc = model.date_created
                     old_ll = model.last_login_date
                     old_la = model.last_activity_date
+                    old_remark = model.remark
+                    old_password_hash = model.password_hash
                     old_remark = model.remark
 
                     if name != old_name:
@@ -300,7 +302,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                             emby_user_id=eid,
                             name=old_name,
                             user_dto=old_dto,
-                            password_hash=model.password_hash,
+                            password_hash=old_password_hash,
                             action="update",
                             date_created=old_dc,
                             last_login_date=old_ll,
