@@ -263,6 +263,8 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 )
                 inserted += 1
             else:
+                # 只比较 name 和原始 user_dto，日期字段从 user_dto 中解析直接更新
+                # 避免解析后日期精度差异导致的误判更新
                 changed = False
                 changed_fields: list[str] = []
 
@@ -274,65 +276,21 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 old_la = model.last_activity_date
                 old_password_hash = model.password_hash
 
-                def eq_dt(a: datetime.datetime | None, b: datetime.datetime | None) -> bool:
-                    """比较两个时间是否等价(容差 1 秒)
-
-                    功能说明:
-                    - 针对 Emby 返回的时间在毫秒/微秒级存在轻微差异的情况, 以 1 秒容差判断等价
-
-                    输入参数:
-                    - a: 时间A
-                    - b: 时间B
-
-                    返回值:
-                    - bool: 在容差范围内视为相等
-                    """
-                    if a is None and b is None:
-                        return True
-                    if a is None or b is None:
-                        return False
-                    return abs((a - b).total_seconds()) < 1.0
-
-                # 检测并更新各字段
+                # 检测 name 变化
                 if name and name != model.name:
                     model.name = name
                     changed = True
                     changed_fields.append("name")
 
-                # 比较字典是否有变化
+                # 比较原始 user_dto 字典是否有变化（包含日期在内的所有字段）
                 if (it or {}) != (model.user_dto or {}):
                     model.user_dto = it
-                    changed = True
-                    changed_fields.append("user_dto")
-
-                if not eq_dt(model.date_created, date_created):
+                    # 同时更新日期字段（从新的 user_dto 解析）
                     model.date_created = date_created
-                    changed = True
-                    changed_fields.append("date_created")
-
-                if not eq_dt(model.last_login_date, last_login_date):
                     model.last_login_date = last_login_date
-                    changed = True
-                    changed_fields.append("last_login_date")
-
-                if not eq_dt(model.last_activity_date, last_activity_date):
                     model.last_activity_date = last_activity_date
                     changed = True
-                    changed_fields.append("last_activity_date")
-
-                def to_iso(dt: datetime.datetime | None) -> str:
-                    """格式化 datetime 为 ISO 字符串
-
-                    功能说明:
-                    - None 返回 "None", 其余返回 `YYYY-MM-DDTHH:MM:SS`
-
-                    输入参数:
-                    - dt: datetime 或 None
-
-                    返回值:
-                    - str: ISO 文本
-                    """
-                    return dt.isoformat() if dt is not None else "None"
+                    changed_fields.append("user_dto")
 
                 if changed:
                     updated += 1
@@ -340,18 +298,6 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                     remark_parts: list[str] = []
                     if "name" in changed_fields:
                         remark_parts.append(f"name: '{old_name}' -> '{model.name}'")
-                    if "date_created" in changed_fields:
-                        remark_parts.append(
-                            f"date_created: {to_iso(old_dc)} -> {to_iso(model.date_created)}"
-                        )
-                    if "last_login_date" in changed_fields:
-                        remark_parts.append(
-                            f"last_login_date: {to_iso(old_ll)} -> {to_iso(model.last_login_date)}"
-                        )
-                    if "last_activity_date" in changed_fields:
-                        remark_parts.append(
-                            f"last_activity_date: {to_iso(old_la)} -> {to_iso(model.last_activity_date)}"
-                        )
                     if "user_dto" in changed_fields:
                         remark_parts.append("user_dto: changed")
 
