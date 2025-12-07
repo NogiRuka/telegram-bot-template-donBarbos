@@ -243,13 +243,14 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
 
         # 2. 处理新增和更新
         for eid, it in api_user_map.items():
-            name = str(it.get("Name") or "")
-            date_created = parse_iso_datetime(it.get("DateCreated"))
-            last_login_date = parse_iso_datetime(it.get("LastLoginDate"))
-            last_activity_date = parse_iso_datetime(it.get("LastActivityDate"))
 
             model = existing_map.get(eid)
             if model is None:
+                name = str(it.get("Name") or "")
+                date_created = parse_iso_datetime(it.get("DateCreated"))
+                last_login_date = parse_iso_datetime(it.get("LastLoginDate"))
+                last_activity_date = parse_iso_datetime(it.get("LastActivityDate"))
+
                 # 新增
                 session.add(
                     EmbyUserModel(
@@ -268,12 +269,18 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 new_dto = it or {}
 
                 if old_dto != new_dto:
+                    name = str(it.get("Name") or "")
+                    date_created = parse_iso_datetime(it.get("DateCreated"))
+                    last_login_date = parse_iso_datetime(it.get("LastLoginDate"))
+                    last_activity_date = parse_iso_datetime(it.get("LastActivityDate"))
+
                     # 检测具体哪些字段变化了
                     changed_fields: list[str] = []
                     old_name = model.name
                     old_dc = model.date_created
                     old_ll = model.last_login_date
                     old_la = model.last_activity_date
+                    old_remark = model.remark
 
                     if name != old_name:
                         changed_fields.append(f"name: '{old_name}' -> '{name}'")
@@ -298,7 +305,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                             date_created=old_dc,
                             last_login_date=old_ll,
                             last_activity_date=old_la,
-                            remark=remark,
+                            remark=old_remark,
                         )
                     )
                     updated += 1

@@ -34,8 +34,6 @@ class EmbyUserHistoryModel(Base, BasicAuditMixin):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True, comment="Emby 用户名")
 
-    user_dto: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True, comment="UserDto JSON 快照")
-
     password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, comment="密码哈希 (bcrypt)")
 
     # 额外的时间字段快照
@@ -48,6 +46,8 @@ class EmbyUserHistoryModel(Base, BasicAuditMixin):
     last_activity_date: Mapped[datetime.datetime | None] = mapped_column(
         nullable=True, comment="最后活动时间快照(Emby LastActivityDate)"
     )
+    
+    user_dto: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True, comment="UserDto JSON 快照")
 
     action: Mapped[str] = mapped_column(String(32), nullable=False, comment="动作类型(create/update/delete)")
 

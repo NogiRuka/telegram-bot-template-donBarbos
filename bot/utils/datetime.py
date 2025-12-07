@@ -35,18 +35,25 @@ def parse_iso_datetime(s: Any) -> datetime.datetime | None:
         return None
     try:
         text = str(s)
-        # 处理 Z 后缀
+        original_text = text  # 保存原始值用于日志
+        
         if text.endswith("Z"):
             text = text.replace("Z", "+00:00")
+        
         dt = datetime.datetime.fromisoformat(text)
-        # 转换为 UTC 并移除时区信息
+        
+        # 记录解析前的值
+        logger.debug(f"📅 解析: {original_text} → {dt} (tzinfo={dt.tzinfo})")
+        
         if dt.tzinfo is not None:
             dt = dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
-        # 去除微秒，只保留到秒
+        
         dt = dt.replace(microsecond=0)
+        
+        logger.debug(f"✅ 最终: {dt}")
         return dt
-    except ValueError:
-        logger.debug(f"🔍 无法解析日期字段: {s}")
+    except ValueError as e:
+        logger.debug(f"🔍 无法解析日期字段: {s}, 错误: {e}")
         return None
 
 

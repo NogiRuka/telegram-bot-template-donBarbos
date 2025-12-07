@@ -36,10 +36,6 @@ class EmbyUserModel(Base, BasicAuditMixin):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True, comment="Emby 用户名")
 
-    user_dto: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON, nullable=True, comment="Emby 返回的 UserDto JSON 对象"
-    )
-
     password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, comment="密码哈希 (bcrypt)")
 
     # 额外的时间字段(来自 Emby UserDto)
@@ -51,6 +47,10 @@ class EmbyUserModel(Base, BasicAuditMixin):
     )
     last_activity_date: Mapped[datetime.datetime | None] = mapped_column(
         nullable=True, comment="最后活动时间(来自 Emby 的 LastActivityDate)"
+    )
+
+    user_dto: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True, comment="Emby 返回的 UserDto JSON 对象"
     )
 
     __table_args__ = (Index("idx_emby_users_name", "name"),)
