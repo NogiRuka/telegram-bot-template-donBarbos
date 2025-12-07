@@ -1,5 +1,5 @@
 from __future__ import annotations
-import datetime
+
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -196,61 +196,61 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
             if len(all_items) >= total or len(items) < page_limit:
                 break
 
+        # 导入时间解析工具
+        from bot.utils.datetime_utils import parse_iso_datetime
+
         if not all_items:
             logger.info("📭 Emby 返回空用户列表, 无数据可同步")
             return 0, 0
 
-        ids: list[str] = []
-        for it in all_items:
-            v = it.get("Id")
-            if v is None:
-                continue
-            ids.append(str(v))
-
-        existing_map: dict[str, EmbyUserModel] = {}
-        if ids:
-            res = await session.execute(select(EmbyUserModel).where(EmbyUserModel.emby_user_id.in_(ids)))
-            existing = res.scalars().all()
-            existing_map = {m.emby_user_id: m for m in existing}
-
-        def parse_iso_datetime(s: Any) -> datetime.datetime | None:
-            """解析 ISO 日期字符串为 datetime
-
-            功能说明:
-            - 将 Emby 返回的日期字段(可能带有 'Z') 转为 Python datetime
-
-            输入参数:
-            - s: 任意类型的日期字符串
-
-            返回值:
-            - datetime | None: 成功解析返回 datetime, 失败返回 None
-            """
-            if not s:
-                return None
-            try:
-                text = str(s)
-                if text.endswith("Z"):
-                    text = text.replace("Z", "+00:00")
-                dt = datetime.datetime.fromisoformat(text)
-                # 统一为 UTC 无时区的 naive datetime, 避免相等比较因 tzinfo 差异导致误判
-                if dt.tzinfo is not None:
-                    dt = dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
-                return dt
-            except ValueError:
-                logger.debug(f"🔍 无法解析日期字段: {s}")
-                return None
-
+        # 构建接口返回的用户ID集合和映射
+        api_user_map: dict[str, dict[str, Any]] = {}
         for it in all_items:
             eid_raw = it.get("Id")
-            if eid_raw is None:
-                continue
-            eid = str(eid_raw)
+            if eid_raw is not None:
+                api_user_map[str(eid_raw)] = it
+
+        # 查询数据库中所有现有用户
+        res = await session.execute(select(EmbyUserModel))
+        existing_models = res.scalars().all()
+        existing_map: dict[str, EmbyUserModel] = {m.emby_user_id: m for m in existing_models}
+
+        deleted = 0
+
+        # 1. 处理删除：数据库有但接口没有的用户
+        for eid, model in existing_map.items():
+            if eid not in api_user_map:
+                # 软删除：写入历史表（标记 is_deleted），从主表删除
+                import datetime as dt
+
+                session.add(
+                    EmbyUserHistoryModel(
+                        emby_user_id=eid,
+                        name=model.name,
+                        user_dto=model.user_dto,
+                        password_hash=model.password_hash,
+                        action="delete",
+                        date_created=model.date_created,
+                        last_login_date=model.last_login_date,
+                        last_activity_date=model.last_activity_date,
+                        remark="用户在 Emby 服务器上被删除",
+                        is_deleted=True,
+                        deleted_at=dt.datetime.now(dt.timezone.utc).replace(tzinfo=None, microsecond=0),
+                    )
+                )
+                await session.delete(model)
+                deleted += 1
+
+        # 2. 处理新增和更新
+        for eid, it in api_user_map.items():
             name = str(it.get("Name") or "")
             date_created = parse_iso_datetime(it.get("DateCreated"))
             last_login_date = parse_iso_datetime(it.get("LastLoginDate"))
             last_activity_date = parse_iso_datetime(it.get("LastActivityDate"))
+
             model = existing_map.get(eid)
             if model is None:
+                # 新增
                 session.add(
                     EmbyUserModel(
                         emby_user_id=eid,
@@ -263,41 +263,37 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 )
                 inserted += 1
             else:
-                # 只有 name 变化才触发"更新"和写入历史记录
-                # user_dto 和日期字段静默更新（不计入变更统计）
-                changed = False
+                # 更新：只比较 user_dto，有变化就写入历史表
+                old_dto = model.user_dto or {}
+                new_dto = it or {}
 
-                # 先保存所有旧值，用于写入 history 表
-                old_name = model.name
-                old_user_dto = model.user_dto
-                old_dc = model.date_created
-                old_ll = model.last_login_date
-                old_la = model.last_activity_date
-                old_password_hash = model.password_hash
+                if old_dto != new_dto:
+                    # 检测具体哪些字段变化了
+                    changed_fields: list[str] = []
+                    old_name = model.name
+                    old_dc = model.date_created
+                    old_ll = model.last_login_date
+                    old_la = model.last_activity_date
 
-                # 只检测 name 变化
-                if name and name != model.name:
-                    model.name = name
-                    changed = True
+                    if name != old_name:
+                        changed_fields.append(f"name: '{old_name}' -> '{name}'")
+                    if date_created != old_dc:
+                        changed_fields.append(f"date_created: '{old_dc}' -> '{date_created}'")
+                    if last_login_date != old_ll:
+                        changed_fields.append(f"last_login_date: '{old_ll}' -> '{last_login_date}'")
+                    if last_activity_date != old_la:
+                        changed_fields.append(f"last_activity_date: '{old_la}' -> '{last_activity_date}'")
 
-                # 静默更新 user_dto 和日期字段（不触发历史记录）
-                model.user_dto = it
-                model.date_created = date_created
-                model.last_login_date = last_login_date
-                model.last_activity_date = last_activity_date
+                    # 生成备注
+                    remark = "; ".join(changed_fields) if changed_fields else "user_dto 有其他字段变化"
 
-                if changed:
-                    updated += 1
-                    remark = f"更新字段: name; name: '{old_name}' -> '{model.name}'"
-                    model.remark = remark
-
-                    # 写入历史表时使用旧值，保存变更前的快照
+                    # 保存旧数据到历史表
                     session.add(
                         EmbyUserHistoryModel(
                             emby_user_id=eid,
                             name=old_name,
-                            user_dto=old_user_dto,
-                            password_hash=old_password_hash,
+                            user_dto=old_dto,
+                            password_hash=model.password_hash,
                             action="update",
                             date_created=old_dc,
                             last_login_date=old_ll,
@@ -305,9 +301,18 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                             remark=remark,
                         )
                     )
+                    updated += 1
+                    model.remark = remark
+
+                    # 更新主表字段
+                    model.name = name
+                    model.user_dto = it
+                    model.date_created = date_created
+                    model.last_login_date = last_login_date
+                    model.last_activity_date = last_activity_date
 
         await session.commit()
-        logger.info("✅ Emby 用户同步完成: 插入 {}, 更新 {}", inserted, updated)
+        logger.info("✅ Emby 用户同步完成: 插入 {}, 更新 {}, 删除 {}", inserted, updated, deleted)
         return inserted, updated
     except Exception as e:  # noqa: BLE001
         logger.error("❌ Emby 用户同步失败: {}", str(e))
