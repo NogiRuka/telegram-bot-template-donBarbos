@@ -211,9 +211,9 @@ async def handle_register_input(
 
         # 创建用户
         ok, details, err = await create_and_bind_emby_user(session, uid, name, password)
-        await state.clear()
-
+        
         if ok and details:
+            await state.clear()
             caption = (
                 f"✅ 注册成功\n\n"
                 f"📛 Emby 用户名: {details.get('name', '')}\n"
@@ -222,8 +222,19 @@ async def handle_register_input(
             )
             await main_msg.update(uid, caption, get_account_center_keyboard(has_emby_account=True))
         else:
-            caption = f"❌ 注册失败\n\n{err or '未知错误'}"
-            await main_msg.update(uid, caption, get_account_center_keyboard(has_emby_account=False))
+            err_msg = err or "未知错误"
+            if "already exists" in err_msg or "already exist" in err_msg:
+                caption = (
+                    f"❌ 用户名 '{name}' 已存在\n\n"
+                    f"请更换一个用户名重试：\n"
+                    f"新用户名 密码"
+                )
+                await main_msg.update(uid, caption, get_register_input_keyboard())
+                # 不清除状态，允许用户重新输入
+            else:
+                await state.clear()
+                caption = f"❌ 注册失败\n\n{err_msg}"
+                await main_msg.update(uid, caption, get_account_center_keyboard(has_emby_account=False))
 
     except Exception as e:
         logger.exception(f"❌ 处理注册输入异常: user_id={uid} err={e!r}")
