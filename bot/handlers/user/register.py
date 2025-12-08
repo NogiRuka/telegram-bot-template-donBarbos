@@ -50,6 +50,8 @@ async def user_register(
     - None
     """
     uid = callback.from_user.id if callback.from_user else None
+    start = None
+    dur = None
 
     logger.info("用户开始注册: user_id={}", uid)
     try:
@@ -224,13 +226,13 @@ async def handle_register_input(
         else:
             err_msg = err or "未知错误"
             if "already exists" in err_msg or "already exist" in err_msg:
+                # 不清除状态，允许用户重新输入
                 caption = (
                     f"❌ 用户名 '{name}' 已存在\n\n"
                     f"请更换一个用户名重试：\n"
                     f"新用户名 密码"
                 )
                 await main_msg.update(uid, caption, get_register_input_keyboard())
-                # 不清除状态，允许用户重新输入
             else:
                 await state.clear()
                 caption = f"❌ 注册失败\n\n{err_msg}"

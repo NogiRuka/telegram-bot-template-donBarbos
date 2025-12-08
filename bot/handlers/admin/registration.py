@@ -5,6 +5,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.config import settings
 from bot.keyboards.inline.labels import OPEN_REGISTRATION_LABEL
 from bot.services.config_service import (
     get_free_registration_status,
@@ -196,7 +197,7 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
         + f"开始时间: {formatted_start}\n"
         + f"结束时间: {end_str}\n"
         + f"持续分钟: {duration if duration is not None else '不限'}\n\n"
-        + "输入格式示例: 20251130.2300.10 (默认为北京时间)"
+        + f"输入格式示例: 20251130.2300.10 (默认为 {settings.TIMEZONE} 时间)"
     )
     logger.debug("✅ [_build_registration_caption_and_keyboard] 生成 caption 成功")
 
