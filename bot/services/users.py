@@ -193,6 +193,11 @@ async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel,
             added_to_attachment_menu=model.added_to_attachment_menu,
             created_at=model.created_at,
             updated_at=model.updated_at,
+            created_by=model.created_by,
+            updated_by=model.updated_by,
+            is_deleted=model.is_deleted,
+            deleted_at=model.deleted_at,
+            deleted_by=model.deleted_by,
             remark=remark,
         )
         session.add(snapshot)
