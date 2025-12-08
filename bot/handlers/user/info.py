@@ -101,15 +101,6 @@ async def user_info(
         f"🎬 账号: {emby_info}",
     ]
 
-    # 扩展信息
-    phone = getattr(ext, "phone", None) or "未设置"
-    bio = getattr(ext, "bio", None) or "未设置"
-    
-    lines.append("")
-    lines.append("*扩展信息*")
-    lines.append(f"📞 电话: {escape_markdown_v2(phone)}")
-    lines.append(f"📝 简介: {escape_markdown_v2(bio)}")
-
     caption = "\n".join(lines)
 
     image = get_common_image()
