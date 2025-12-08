@@ -10,6 +10,7 @@ from bot.core.emby import EmbyClient
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.utils.datetime import now, parse_iso_datetime
+from bot.utils.http import HttpRequestError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -135,6 +136,12 @@ async def create_user(
             pass  # 使用创建时返回的 user_dto
 
         return True, user_dto, None
+
+    except HttpRequestError as e:
+        # 优先返回响应体中的错误详情(通常是 Emby 的具体报错信息)
+        err_msg = e.body.strip() if e.body else str(e)
+        logger.warning(f"❌ Emby 创建用户 API 错误: {err_msg}")
+        return False, None, err_msg
 
     except Exception as e:  # noqa: BLE001
         return False, None, str(e)
