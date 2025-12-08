@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError
@@ -10,7 +10,6 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
-
 from bot.keyboards.inline.start_user import (
     get_account_center_keyboard,
     get_register_input_keyboard,
@@ -18,6 +17,7 @@ from bot.keyboards.inline.start_user import (
 from bot.services.config_service import get_registration_window, is_registration_open
 from bot.services.main_message import MainMessageService
 from bot.services.users import create_and_bind_emby_user, has_emby_account
+from bot.utils.datetime import format_datetime, parse_iso_datetime
 from bot.utils.text import safe_alert_text
 
 router = Router(name="user_register")
@@ -53,8 +53,6 @@ async def user_register(
     - None
     """
     uid = callback.from_user.id if callback.from_user else None
-    start = None
-    dur = None
 
     logger.info("用户开始注册: user_id={}", uid)
     try:
@@ -65,21 +63,20 @@ async def user_register(
             dur = window.get("duration_minutes")
 
             if start_iso:
-                try:
-                    dt_start = datetime.fromisoformat(start_iso)
-                    formatted_start = dt_start.strftime("%Y-%m-%d %H:%M:%S")
+                dt_start = parse_iso_datetime(start_iso)
+                if dt_start:
+                    formatted_start = format_datetime(dt_start)
                     hint += f"\n开始: {formatted_start}"
 
                     if dur:
                         end_dt = dt_start + timedelta(minutes=int(dur))
-                        formatted_end = end_dt.strftime("%Y-%m-%d %H:%M:%S")
+                        formatted_end = format_datetime(end_dt)
                         hint += f"\n结束: {formatted_end}"
                         hint += f"\n时长: {dur} 分钟"
                     
                     # 提示时区
                     hint += f" ({settings.TIMEZONE})"
-
-                except (ValueError, TypeError):
+                else:
                     hint += f"\n开始: {start_iso}"
                     if dur:
                         hint += f"\n时长: {dur} 分钟"

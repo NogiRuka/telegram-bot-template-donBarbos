@@ -14,6 +14,7 @@ from bot.services.config_service import (
     set_registration_window,
 )
 from bot.services.main_message import MainMessageService
+from bot.utils.datetime import format_datetime, parse_iso_datetime
 from bot.utils.images import get_common_image
 from bot.utils.permissions import require_admin_feature, require_admin_priv
 
@@ -180,15 +181,16 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
     end_str = "未设置"
     formatted_start = "未设置"
     if start_iso:
-        try:
-            dt = datetime.fromisoformat(start_iso)
-            formatted_start = dt.strftime("%Y-%m-%d %H:%M:%S")
+        dt = parse_iso_datetime(start_iso)
+        if dt:
+            formatted_start = format_datetime(dt)
             if duration is not None:
                 end_dt = dt + timedelta(minutes=int(duration))
-                end_str = end_dt.strftime("%Y-%m-%d %H:%M:%S")
+                end_str = format_datetime(end_dt)
                 logger.debug(f"✅ [_build_registration_caption_and_keyboard] 计算结束时间成功: {end_str}")
-        except (ValueError, TypeError) as e:
-            logger.exception(f"❌ [_build_registration_caption_and_keyboard] 计算结束时间失败: {e}")
+        else:
+            formatted_start = start_iso
+            logger.warning(f"❌ [_build_registration_caption_and_keyboard] 无法解析时间: {start_iso}")
 
     status_line = f"{OPEN_REGISTRATION_LABEL}: {'🟢 开启' if free_open else '🔴 关闭'}\n"
     caption = (
