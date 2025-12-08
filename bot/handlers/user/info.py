@@ -1,8 +1,10 @@
 from aiogram import F, Router, types
 from aiogram.types import CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.database.models.emby_user import EmbyUserModel
 from bot.keyboards.inline.labels import BACK_LABEL, BACK_TO_HOME_LABEL
 from bot.services.users import get_user_and_extend
 from bot.utils.images import get_common_image
@@ -20,6 +22,7 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
 
     功能说明:
     - 在 caption 上展示账号信息
+    - 包含 Emby 绑定状态与扩展信息
 
     输入参数:
     - callback: 回调对象
@@ -41,35 +44,71 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
     # 查询用户账号信息
     user, ext = await get_user_and_extend(session, uid)
 
+    # 查询 Emby 绑定信息
+    emby_info = "未绑定"
+    if ext and ext.emby_user_id:
+        res = await session.execute(select(EmbyUserModel).where(EmbyUserModel.emby_user_id == ext.emby_user_id))
+        emby_user = res.scalar_one_or_none()
+        if emby_user:
+            emby_info = escape_markdown_v2(emby_user.name)
+        else:
+            emby_info = f"已绑定但未同步 \\(ID: `{escape_markdown_v2(ext.emby_user_id)}`\\)"
+
     # 角色与状态
     role = await _resolve_role(session, uid)
     status_text = "正常" if (user and not getattr(user, "is_deleted", False)) else "已删除"
 
     # 字段整理
+    first_name = getattr(user, "first_name", "")
+    last_name = getattr(user, "last_name", "") or ""
+    full_name = f"{first_name} {last_name}".strip() or "未知"
+    
     username = f"@{callback.from_user.username}" if callback.from_user and callback.from_user.username else "未设置"
-    username_md = escape_markdown_v2(username)
+    language = getattr(user, "language_code", "zh-hans") or "zh-hans"
+    
     created_at = getattr(user, "created_at", None)
     created_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else "未知"
+    
     is_premium = getattr(user, "is_premium", None)
     premium_str = "是" if is_premium else ("否" if is_premium is not None else "未知")
+    
     last_interaction = getattr(ext, "last_interaction_at", None)
     last_interaction_str = last_interaction.strftime("%Y-%m-%d %H:%M:%S") if last_interaction else "未知"
-    phone = getattr(ext, "phone", None) or "未设置"
-    bio = getattr(ext, "bio", None) or "未设置"
 
     # 构建 MarkdownV2 caption
-    caption = (
-        "👤 账号信息\n"
-        f"├ 用户ID: `{uid}`\n"
-        f"├ 用户名: {username_md}\n"
-        f"├ 角色: {role}\n"
-        f"├ 注册时间: {created_str}\n"
-        f"├ 最后交互: {last_interaction_str}\n"
-        f"├ Premium: {premium_str}\n"
-        f"├ 电话: {escape_markdown_v2(phone)}\n"
-        f"├ 简介: {escape_markdown_v2(bio)}\n"
-        f"└ 状态: {status_text}"
-    )
+    lines = [
+        "👤 *个人信息中心*",
+        "",
+        "*基本资料*",
+        f"🆔 用户ID: `{uid}`",
+        f"📛 昵称: {escape_markdown_v2(full_name)}",
+        f"🔗 用户名: {escape_markdown_v2(username)}",
+        f"🌐 语言: {escape_markdown_v2(language)}",
+        "",
+        "*账户状态*",
+        f"🛡 角色: {role.value if hasattr(role, 'value') else str(role)}",
+        f"📡 状态: {status_text}",
+        f"💎 Premium: {premium_str}",
+        f"📅 注册时间: {escape_markdown_v2(created_str)}",
+        f"⏱ 最后活跃: {escape_markdown_v2(last_interaction_str)}",
+        "",
+        "*Emby 绑定*",
+        f"🎬 账号: {emby_info}",
+    ]
+
+    # 扩展信息（如果有）
+    phone = getattr(ext, "phone", None)
+    bio = getattr(ext, "bio", None)
+    
+    if phone or bio:
+        lines.append("")
+        lines.append("*扩展信息*")
+        if phone:
+            lines.append(f"📞 电话: {escape_markdown_v2(phone)}")
+        if bio:
+            lines.append(f"📝 简介: {escape_markdown_v2(bio)}")
+
+    caption = "\n".join(lines)
 
     image = get_common_image()
     buttons = [
@@ -81,4 +120,3 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
     kb = InlineKeyboardBuilder(markup=buttons).as_markup()
     await render_view(msg, image, caption, kb)
     await callback.answer()
-
