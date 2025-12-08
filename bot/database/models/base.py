@@ -13,8 +13,10 @@ from __future__ import annotations
 import datetime
 from typing import Annotated
 
-from sqlalchemy import BigInteger, Boolean, Text, text
+from sqlalchemy import BigInteger, Boolean, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+from bot.utils.datetime import now
 
 # ==================== 通用字段类型定义 ====================
 
@@ -39,15 +41,15 @@ auto_int_pk = Annotated[int, mapped_column(primary_key=True, autoincrement=True,
 # 创建时间字段类型
 created_at = Annotated[
     datetime.datetime,
-    mapped_column(server_default=text("NOW()"), nullable=False, comment="记录创建时间，自动设置为当前时间"),
+    mapped_column(default=now, nullable=False, comment="记录创建时间，自动设置为当前时间"),
 ]
 
 # 更新时间字段类型
 updated_at = Annotated[
     datetime.datetime,
     mapped_column(
-        server_default=text("NOW()"),
-        onupdate=text("NOW()"),
+        default=now,
+        onupdate=now,
         nullable=False,
         comment="记录更新时间，创建时设置为当前时间，更新时自动更新",
     ),

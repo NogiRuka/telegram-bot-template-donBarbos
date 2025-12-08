@@ -135,3 +135,23 @@ def to_iso_string(dt: datetime.datetime | None) -> str | None:
     iso = base.astimezone(app_tz).isoformat(timespec="seconds")
     # 若为 UTC 则统一使用 Z
     return iso.replace("+00:00", "Z")
+
+
+def now() -> datetime.datetime:
+    """获取当前应用时区的时间 (无时区信息, 精度到秒)
+
+    功能说明:
+    - 返回当前时间, 转换为应用配置时区
+    - 去除 tzinfo, 方便写入数据库
+    - 去除微秒
+
+    输入参数:
+    - 无
+
+    返回值:
+    - datetime.datetime: 当前时间 (Naive)
+    """
+    dt = datetime.datetime.now(datetime.timezone.utc)
+    app_tz = get_app_timezone()
+    local = dt.astimezone(app_tz)
+    return local.replace(microsecond=0, tzinfo=None)
