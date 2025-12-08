@@ -345,12 +345,13 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         date_created=model.date_created,
                         last_login_date=model.last_login_date,
                         last_activity_date=model.last_activity_date,
-                        created_by=model.created_by,
-                        updated_by=model.updated_by,
                         created_at=model.created_at,
                         updated_at=model.updated_at,
+                        created_by=model.created_by,
+                        updated_by=model.updated_by,
                         is_deleted=True,
                         deleted_at=now(),
+                        deleted_by=model.deleted_by,
                     )
                 )
                 await session.delete(model)
@@ -441,12 +442,13 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                             date_created=model.date_created,
                             last_login_date=model.last_login_date,
                             last_activity_date=model.last_activity_date,
-                            created_by=model.created_by,
-                            updated_by=model.updated_by,
                             created_at=model.created_at,
                             updated_at=model.updated_at,
+                            created_by=model.created_by,
+                            updated_by=model.updated_by,
                             is_deleted=model.is_deleted,
                             deleted_at=model.deleted_at,
+                            deleted_by=model.deleted_by,
                         )
                     )
                     updated += 1
