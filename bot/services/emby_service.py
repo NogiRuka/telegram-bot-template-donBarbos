@@ -140,6 +140,97 @@ async def create_user(
         return False, None, str(e)
 
 
+async def sync_all_users_configuration(
+    exclude_user_ids: list[str] | None = None,
+) -> tuple[int, int]:
+    """批量同步所有用户的 Configuration 和 Policy 为模板用户配置
+
+    功能说明:
+    - 遍历所有 Emby 用户
+    - 将 Configuration 和 Policy 更新为模板用户的一致配置
+    - 跳过 exclude_user_ids 指定的用户ID (以及模板用户自身)
+
+    输入参数:
+    - exclude_user_ids: 要跳过的用户ID列表
+
+    返回值:
+    - tuple[int, int]: (成功更新数量, 失败数量)
+    """
+    client = get_client()
+    if client is None:
+        logger.warning("⚠️ 未配置 Emby 连接信息, 无法同步配置")
+        return 0, 0
+
+    tid = settings.get_emby_template_user_id()
+    if not tid:
+        logger.warning("⚠️ 未配置 Emby 模板用户ID (EMBY_TEMPLATE_USER_ID), 无法同步配置")
+        return 0, 0
+
+    # 获取模板用户详情
+    try:
+        template_user = await client.get_user(tid)
+    except Exception as e:
+        logger.error(f"❌ 获取模板用户({tid})失败: {e}")
+        return 0, 0
+
+    template_config = template_user.get("Configuration")
+    template_policy = template_user.get("Policy")
+
+    if not isinstance(template_config, dict) or not isinstance(template_policy, dict):
+        logger.error("❌ 模板用户的 Configuration 或 Policy 格式错误")
+        return 0, 0
+
+    # 获取所有用户
+    try:
+        all_users = []
+        start_index = 0
+        page_limit = 200
+        while True:
+            items, total = await client.get_users(start_index=start_index, limit=page_limit)
+            if not items:
+                break
+            all_users.extend(items)
+            start_index += len(items)
+            if len(all_users) >= total or len(items) < page_limit:
+                break
+    except Exception as e:
+        logger.error(f"❌ 获取用户列表失败: {e}")
+        return 0, 0
+
+    # 准备排除列表
+    skips = set(exclude_user_ids or [])
+    skips.add(tid)  # 排除模板用户自己
+
+    success_count = 0
+    fail_count = 0
+
+    logger.info(f"🔄 开始批量同步 Emby 用户配置, 模板用户: {tid}, 总用户数: {len(all_users)}")
+
+    for user in all_users:
+        uid = user.get("Id")
+        name = user.get("Name")
+        if not uid:
+            continue
+
+        if uid in skips:
+            logger.debug(f"⏭️ 跳过用户: {name} ({uid})")
+            continue
+
+        try:
+            # 更新 Configuration
+            await client.update_user_configuration(uid, template_config)
+            # 更新 Policy
+            await client.update_user_policy(uid, template_policy)
+            logger.debug(f"✅ 已更新用户配置: {name} ({uid})")
+            success_count += 1
+        except Exception as e:
+            logger.error(f"❌ 更新用户配置失败: {name} ({uid}) -> {e}")
+            fail_count += 1
+
+    logger.info(f"✅ 批量同步完成: 成功 {success_count}, 失败 {fail_count}")
+    return success_count, fail_count
+
+
 async def delete_user(user_id: str) -> tuple[bool, Any | None, str | None]:
     """删除 Emby 用户
 
