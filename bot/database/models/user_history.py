@@ -5,6 +5,7 @@
 """
 
 from __future__ import annotations
+import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Index, String
@@ -12,9 +13,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin
 from bot.utils.datetime import now
-
-if TYPE_CHECKING:
-    import datetime
 
 
 class UserHistoryModel(Base, BasicAuditMixin):
