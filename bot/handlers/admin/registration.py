@@ -177,13 +177,15 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
 
     # 计算结束时间
     end_str = "未设置"
-    if start_iso and duration is not None:
-        logger.debug(f"🔍 [_build_registration_caption_and_keyboard] 开始解析 start_iso={start_iso}, duration={duration}")
+    formatted_start = "未设置"
+    if start_iso:
         try:
             dt = datetime.fromisoformat(start_iso)
-            end_dt = dt + timedelta(minutes=int(duration))
-            end_str = end_dt.isoformat()
-            logger.debug(f"✅ [_build_registration_caption_and_keyboard] 计算结束时间成功: {end_str}")
+            formatted_start = dt.strftime("%Y-%m-%d %H:%M:%S")
+            if duration is not None:
+                end_dt = dt + timedelta(minutes=int(duration))
+                end_str = end_dt.strftime("%Y-%m-%d %H:%M:%S")
+                logger.debug(f"✅ [_build_registration_caption_and_keyboard] 计算结束时间成功: {end_str}")
         except (ValueError, TypeError) as e:
             logger.exception(f"❌ [_build_registration_caption_and_keyboard] 计算结束时间失败: {e}")
 
@@ -191,7 +193,7 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
     caption = (
         "🛂 开放注册\n\n"
         + status_line
-        + f"开始时间: {start_iso or '未设置'}\n"
+        + f"开始时间: {formatted_start}\n"
         + f"结束时间: {end_str}\n"
         + f"持续分钟: {duration if duration is not None else '不限'}\n\n"
         + "输入格式示例: 20251130.2300.10 (默认为北京时间)"
