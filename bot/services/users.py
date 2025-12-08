@@ -259,8 +259,13 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
                         changed_fields.append(f"{k} 从 {old_val} 更新为 {v}")
                     remark = "; ".join(changed_fields)
 
-                    await save_user_snapshot_from_model(session, current, remark=remark)
-                    await session.execute(update(UserModel).where(UserModel.id == user.id).values(**changed))
+                    # 1. 将旧数据（包含旧备注）完整保存到历史表
+                    await save_user_snapshot_from_model(session, current, remark=current.remark)
+                    
+                    # 2. 更新主表数据，并将变更说明作为新备注
+                    update_values = changed.copy()
+                    update_values["remark"] = remark
+                    await session.execute(update(UserModel).where(UserModel.id == user.id).values(**update_values))
                     await session.commit()
 
         # 基于配置同步角色（owner/admin/user）
