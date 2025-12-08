@@ -408,7 +408,17 @@ class Settings(BotSettings, DBSettings, APIMixin):
             hours, rem = divmod(total_abs, 3600)
             minutes = rem // 60
             return f"{sign}{hours:02d}:{minutes:02d}"
-        return "+00:00"
+        # 常见时区名称的固定偏移回退
+        name_offsets = {
+            "Asia/Shanghai": "+08:00",
+            "Asia/Chongqing": "+08:00",
+            "Asia/Harbin": "+08:00",
+            "Asia/Urumqi": "+08:00",
+            "Asia/Hong_Kong": "+08:00",
+            "Asia/Taipei": "+08:00",
+            "Asia/Singapore": "+08:00",
+        }
+        return name_offsets.get(tz, "+00:00")
 
 
 settings = Settings()

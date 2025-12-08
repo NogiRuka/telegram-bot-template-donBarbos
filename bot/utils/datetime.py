@@ -43,7 +43,15 @@ def get_app_timezone() -> datetime.tzinfo:
         return datetime.timezone(datetime.timedelta(hours=sign * hours, minutes=sign * minutes))
     with contextlib.suppress(Exception):
         return ZoneInfo(tzname)
-    return UTC
+    # 当系统缺少 IANA 时区数据库时, 回退到偏移字符串
+    try:
+        tzoffset = settings.get_timezone_offset_str()
+        sign = 1 if tzoffset.startswith("+") else -1
+        hours = int(tzoffset[1:3])
+        minutes = int(tzoffset[4:6])
+        return datetime.timezone(datetime.timedelta(hours=sign * hours, minutes=sign * minutes))
+    except Exception:
+        return UTC
 
 
 def parse_iso_datetime(s: Any) -> datetime.datetime | None:
@@ -70,9 +78,12 @@ def parse_iso_datetime(s: Any) -> datetime.datetime | None:
 
         dt = datetime.datetime.fromisoformat(text)
         app_tz = get_app_timezone()
-        base = dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
-        local = base.astimezone(app_tz)
-        return local.replace(microsecond=0)
+        if dt.tzinfo is None:
+            # 认为无时区的时间戳即为应用时区本地时间
+            local = dt.replace(tzinfo=app_tz)
+        else:
+            local = dt.astimezone(app_tz)
+        return local.replace(microsecond=0, tzinfo=None)
     except ValueError as e:
         logger.debug(f"🔍 无法解析日期字段: {s}, 错误: {e}")
         return None
@@ -100,7 +111,7 @@ def format_datetime(
         return "-"
     if tz is None:
         tz = get_app_timezone()
-    base = dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+    base = dt if dt.tzinfo is not None else dt.replace(tzinfo=get_app_timezone())
     local_dt = base.astimezone(tz)
     return local_dt.strftime(fmt)
 
@@ -119,9 +130,8 @@ def to_iso_string(dt: datetime.datetime | None) -> str | None:
     """
     if dt is None:
         return None
-    base = dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+    base = dt if dt.tzinfo is not None else dt.replace(tzinfo=get_app_timezone())
     app_tz = get_app_timezone()
     iso = base.astimezone(app_tz).isoformat(timespec="seconds")
     # 若为 UTC 则统一使用 Z
     return iso.replace("+00:00", "Z")
-
