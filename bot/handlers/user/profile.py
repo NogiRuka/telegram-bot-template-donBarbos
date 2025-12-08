@@ -55,7 +55,6 @@ async def user_profile(
     full_name = f"{first_name} {last_name}".strip() or "未知"
     
     username = f"@{callback.from_user.username}" if callback.from_user and callback.from_user.username else "未设置"
-    language = getattr(user, "language_code", "zh-hans") or "zh-hans"
     
     created_at = getattr(user, "created_at", None)
     created_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else "未知"
@@ -69,19 +68,20 @@ async def user_profile(
     # 构建 MarkdownV2 caption
     lines = [
         "👤 *个人资料*",
+        "━━━━━━━━━━━━━━━",
+        f"🆔 *UID*: `{uid}`",
+        f"📛 *昵称*: *{escape_markdown_v2(full_name)}*",
+        f"🔗 *账号*: {escape_markdown_v2(username)}",
+        f"🌐 *语言*: `{escape_markdown_v2(language)}`",
         "",
-        "*基本信息*",
-        f"🆔 用户ID: `{uid}`",
-        f"📛 昵称: {escape_markdown_v2(full_name)}",
-        f"🔗 用户名: {escape_markdown_v2(username)}",
-        f"🌐 语言: {escape_markdown_v2(language)}",
+        "🛡 *账户状态*",
+        f"├ 角色: `{role.value if hasattr(role, 'value') else str(role)}`",
+        f"├ 状态: {status_text}",
+        f"└ 会员: {premium_str}",
         "",
-        "*账户状态*",
-        f"🛡 角色: {role.value if hasattr(role, 'value') else str(role)}",
-        f"📡 状态: {status_text}",
-        f"💎 Premium: {premium_str}",
-        f"📅 注册时间: {escape_markdown_v2(created_str)}",
-        f"⏱ 最后活跃: {escape_markdown_v2(last_interaction_str)}",
+        "📅 *活跃记录*",
+        f"├ 注册: `{escape_markdown_v2(created_str)}`",
+        f"└ 活跃: `{escape_markdown_v2(last_interaction_str)}`",
     ]
 
     caption = "\n".join(lines)
