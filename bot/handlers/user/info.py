@@ -6,18 +6,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models.emby_user import EmbyUserModel
 from bot.keyboards.inline.labels import BACK_LABEL, BACK_TO_HOME_LABEL
+from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
 from bot.utils.images import get_common_image
 from bot.utils.permissions import _resolve_role, require_user_feature
 from bot.utils.text import escape_markdown_v2
-from bot.utils.view import render_view
 
 router = Router(name="user_info")
 
 
 @router.callback_query(F.data == "user:info")
 @require_user_feature("user.info")
-async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
+async def user_info(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService,
+) -> None:
     """账号信息
 
     功能说明:
@@ -27,6 +31,7 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
+    - main_msg: 主消息服务
 
     返回值:
     - None
@@ -96,17 +101,14 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
         f"🎬 账号: {emby_info}",
     ]
 
-    # 扩展信息（如果有）
-    phone = getattr(ext, "phone", None)
-    bio = getattr(ext, "bio", None)
+    # 扩展信息
+    phone = getattr(ext, "phone", None) or "未设置"
+    bio = getattr(ext, "bio", None) or "未设置"
     
-    if phone or bio:
-        lines.append("")
-        lines.append("*扩展信息*")
-        if phone:
-            lines.append(f"📞 电话: {escape_markdown_v2(phone)}")
-        if bio:
-            lines.append(f"📝 简介: {escape_markdown_v2(bio)}")
+    lines.append("")
+    lines.append("*扩展信息*")
+    lines.append(f"📞 电话: {escape_markdown_v2(phone)}")
+    lines.append(f"📝 简介: {escape_markdown_v2(bio)}")
 
     caption = "\n".join(lines)
 
@@ -118,5 +120,5 @@ async def user_info(callback: CallbackQuery, session: AsyncSession) -> None:
         ]
     ]
     kb = InlineKeyboardBuilder(markup=buttons).as_markup()
-    await render_view(msg, image, caption, kb)
+    await main_msg.update_on_callback(callback, caption, kb, image)
     await callback.answer()
