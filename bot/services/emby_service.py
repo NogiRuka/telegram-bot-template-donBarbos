@@ -293,13 +293,13 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                     old_remark = model.remark
 
                     if name != old_name:
-                        changed_fields.append(f"name: '{old_name}' -> '{name}'")
+                        changed_fields.append(f"name 从 {old_name} 更新为 {name}")
                     if date_created != old_dc:
-                        changed_fields.append(f"date_created: '{old_dc}' -> '{date_created}'")
+                        changed_fields.append(f"date_created 从 {old_dc} 更新为 {date_created}")
                     if last_login_date != old_ll:
-                        changed_fields.append(f"last_login_date: '{old_ll}' -> '{last_login_date}'")
+                        changed_fields.append(f"last_login_date 从 {old_ll} 更新为 {last_login_date}")
                     if last_activity_date != old_la:
-                        changed_fields.append(f"last_activity_date: '{old_la}' -> '{last_activity_date}'")
+                        changed_fields.append(f"last_activity_date 从 {old_la} 更新为 {last_activity_date}")
 
                     # 生成备注
                     remark = "; ".join(changed_fields) if changed_fields else "user_dto 有其他字段变化"
