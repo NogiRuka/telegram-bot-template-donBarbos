@@ -344,6 +344,8 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         remark="用户已被删除",
                         is_deleted=True,
                         deleted_at=now(),
+                        created_at=model.created_at,
+                        updated_at=model.updated_at,
                     )
                 )
                 await session.delete(model)
@@ -430,7 +432,9 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                             user_dto=old_dto,
                             password_hash=old_password_hash,
                             action="update",
-                            remark=old_remark,
+                            remark=remark,
+                            created_at=model.created_at,
+                            updated_at=model.updated_at,
                         )
                     )
                     updated += 1
