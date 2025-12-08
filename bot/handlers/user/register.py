@@ -56,7 +56,10 @@ async def user_register(
         if not await is_registration_open(session):
             window = await get_registration_window(session) or {}
             hint = "🚫 暂未开放注册"
-            if (start := window.get("start_iso")) and (dur := window.get("duration_minutes")):
+            start = window.get("start_iso")
+            dur = window.get("duration_minutes")
+            
+            if start and dur:
                 hint += f"\n开始: {start}\n时长: {dur} 分钟"
             elif start:
                 hint += f"\n开始: {start}"
