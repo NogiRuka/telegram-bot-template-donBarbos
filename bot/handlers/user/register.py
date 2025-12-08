@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timedelta
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError
@@ -7,6 +8,8 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from bot.core.config import settings
 
 from bot.keyboards.inline.start_user import (
     get_account_center_keyboard,
@@ -58,15 +61,31 @@ async def user_register(
         if not await is_registration_open(session):
             window = await get_registration_window(session) or {}
             hint = "🚫 暂未开放注册"
-            start = window.get("start_iso")
+            start_iso = window.get("start_iso")
             dur = window.get("duration_minutes")
-            
-            if start and dur:
-                hint += f"\n开始: {start}\n时长: {dur} 分钟"
-            elif start:
-                hint += f"\n开始: {start}"
+
+            if start_iso:
+                try:
+                    dt_start = datetime.fromisoformat(start_iso)
+                    formatted_start = dt_start.strftime("%Y-%m-%d %H:%M:%S")
+                    hint += f"\n开始: {formatted_start}"
+
+                    if dur:
+                        end_dt = dt_start + timedelta(minutes=int(dur))
+                        formatted_end = end_dt.strftime("%Y-%m-%d %H:%M:%S")
+                        hint += f"\n结束: {formatted_end}"
+                        hint += f"\n时长: {dur} 分钟"
+                    
+                    # 提示时区
+                    hint += f" ({settings.TIMEZONE})"
+
+                except (ValueError, TypeError):
+                    hint += f"\n开始: {start_iso}"
+                    if dur:
+                        hint += f"\n时长: {dur} 分钟"
             elif dur:
                 hint += f"\n时长: {dur} 分钟"
+            
             return await callback.answer(safe_alert_text(hint), show_alert=True)
 
         if not uid:
