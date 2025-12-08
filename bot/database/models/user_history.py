@@ -5,12 +5,16 @@
 """
 
 from __future__ import annotations
-import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin
+from bot.utils.datetime import now
+
+if TYPE_CHECKING:
+    import datetime
 
 
 class UserHistoryModel(Base, BasicAuditMixin):
@@ -56,7 +60,7 @@ class UserHistoryModel(Base, BasicAuditMixin):
 
     # 快照时间
     snapshot_at: Mapped[datetime.datetime] = mapped_column(
-        nullable=False, default=datetime.datetime.now, comment="快照时间"
+        nullable=False, default=now, comment="快照时间"
     )
 
     __table_args__ = (Index("idx_user_history_user_snapshot", "user_id", "snapshot_at"),)

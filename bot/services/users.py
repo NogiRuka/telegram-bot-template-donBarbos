@@ -7,6 +7,7 @@ from sqlalchemy import func, select, update
 from bot.cache import build_key, cached, clear_cache
 from bot.core.config import settings
 from bot.database.models import UserExtendModel, UserHistoryModel, UserModel, UserRole
+from bot.utils.datetime import now
 
 if TYPE_CHECKING:
     from aiogram.types import User
@@ -61,11 +62,10 @@ async def add_user(session: AsyncSession, user: User) -> None:
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
         if ext is None:
-            import datetime as _dt
             session.add(
                 UserExtendModel(
                     user_id=user.id,
-                    last_interaction_at=_dt.datetime.now(_dt.timezone.utc).replace(microsecond=0),
+                    last_interaction_at=now(),
                 )
             )
         await session.commit()
@@ -119,7 +119,7 @@ async def is_admin(session: AsyncSession, user_id: int) -> bool:
     return role in {UserRole.admin, UserRole.owner}
 
 
-async def save_user_snapshot(session: AsyncSession, user: User) -> None:
+async def save_user_snapshot(session: AsyncSession, user: User, remark: str | None = None) -> None:
     """保存用户信息快照
 
     功能说明:
@@ -128,6 +128,7 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
     输入参数:
     - session: 异步数据库会话
     - user: aiogram User 实例
+    - remark: 备注信息
 
     返回值:
     - None
@@ -157,6 +158,7 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
             language_code=user.language_code,
             is_premium=_normalize_bool(getattr(user, "is_premium", None)),
             added_to_attachment_menu=_normalize_bool(getattr(user, "added_to_attachment_menu", None)),
+            remark=remark,
         )
         session.add(snapshot)
         await session.commit()
@@ -165,7 +167,7 @@ async def save_user_snapshot(session: AsyncSession, user: User) -> None:
         pass
 
 
-async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel) -> None:
+async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel, remark: str | None = None) -> None:
     """保存用户信息快照（基于当前数据库值）
 
     功能说明:
@@ -174,6 +176,7 @@ async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel)
     输入参数:
     - session: 异步数据库会话
     - model: 当前数据库中的用户模型实例
+    - remark: 备注信息
 
     返回值:
     - None
@@ -188,6 +191,7 @@ async def save_user_snapshot_from_model(session: AsyncSession, model: UserModel)
             language_code=model.language_code,
             is_premium=model.is_premium,
             added_to_attachment_menu=model.added_to_attachment_menu,
+            remark=remark,
         )
         session.add(snapshot)
         await session.commit()
@@ -246,7 +250,14 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
                 }
                 changed = {k: v for k, v in new_values.items() if getattr(current, k) != v}
                 if changed:
-                    await save_user_snapshot_from_model(session, current)
+                    # 生成中文变更备注
+                    changed_fields = []
+                    for k, v in changed.items():
+                        old_val = getattr(current, k)
+                        changed_fields.append(f"{k} 从 {old_val} 更新为 {v}")
+                    remark = "; ".join(changed_fields)
+
+                    await save_user_snapshot_from_model(session, current, remark=remark)
                     await session.execute(update(UserModel).where(UserModel.id == user.id).values(**changed))
                     await session.commit()
 
@@ -257,12 +268,10 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
         if ext is None:
-            import datetime as _dt
-
             session.add(
                 UserExtendModel(
                     user_id=user.id,
-                    last_interaction_at=_dt.datetime.now(_dt.timezone.utc).replace(microsecond=0),
+                    last_interaction_at=now(),
                 )
             )
             await session.commit()
@@ -270,7 +279,7 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
             await session.execute(
                 update(UserExtendModel)
                 .where(UserExtendModel.user_id == user.id)
-                .values(last_interaction_at=func.now(), updated_at=UserExtendModel.updated_at)
+                .values(last_interaction_at=now(), updated_at=now())
             )
             await session.commit()
     except Exception:
