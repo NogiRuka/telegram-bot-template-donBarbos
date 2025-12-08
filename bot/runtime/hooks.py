@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import contextlib
+import shutil
 from typing import TYPE_CHECKING, Any
 
 import uvicorn
@@ -54,7 +55,7 @@ async def on_startup() -> None:
             await ensure_config_defaults(session)
             try:
                 await save_all_emby_users(session)
-            except Exception as err:
+            except Exception as err:  # noqa: BLE001
                 logger.warning("⚠️ 启动时同步 Emby 用户失败: {}", err)
         await start_api_server()
     except (OSError, ValueError, RuntimeError) as err:
@@ -186,8 +187,7 @@ async def start_api_server() -> None:
     quiet_uvicorn_logs()
     setup_api_logging(debug=settings.DEBUG)
 
-    # 优先使用外部进程方式启动 uvicorn，避免内部 Server 抛出 SystemExit 影响主循环
-    import shutil
+    # 优先使用外部进程方式启动 uvicorn, 避免内部 Server 抛出 SystemExit 影响主循环
     uvicorn_bin = shutil.which("uvicorn")
     if uvicorn_bin:
         api_runtime.proc = await asyncio.create_subprocess_exec(

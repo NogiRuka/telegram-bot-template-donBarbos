@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -8,6 +9,7 @@ from bot.core.config import settings
 from bot.core.emby import EmbyClient
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
+from bot.utils.datetime import parse_iso_datetime
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -195,9 +197,6 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
             if len(all_items) >= total or len(items) < page_limit:
                 break
 
-        # 导入时间解析工具
-        from bot.utils.datetime import parse_iso_datetime
-
         if not all_items:
             logger.info("📭 Emby 返回空用户列表, 无数据可同步")
             return 0, 0
@@ -259,7 +258,25 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 old_dto = model.user_dto
                 new_dto = it
 
-                if old_dto != new_dto:
+                def _canon_json(obj: Any) -> str:
+                    """生成规范化 JSON 字符串用于比较
+
+                    功能说明:
+                    - 将 Python 对象转换为排序键且紧凑的 JSON 字符串
+                    - 解决字典键顺序、数字表现形式等导致的误判
+
+                    输入参数:
+                    - obj: 任意可 JSON 序列化的对象
+
+                    返回值:
+                    - str: 规范化后的 JSON 字符串
+                    """
+                    try:
+                        return json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+                    except Exception:  # noqa: BLE001
+                        return str(obj)
+
+                if _canon_json(old_dto) != _canon_json(new_dto):
                     name = str(it.get("Name") or "")
                     date_created = parse_iso_datetime(it.get("DateCreated"))
                     last_login_date = parse_iso_datetime(it.get("LastLoginDate"))
