@@ -9,7 +9,7 @@ from bot.core.config import settings
 from bot.core.emby import EmbyClient
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
-from bot.utils.datetime import parse_iso_datetime
+from bot.utils.datetime import now, parse_iso_datetime
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -341,6 +341,9 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         user_dto=model.user_dto,
                         password_hash=model.password_hash,
                         action="delete",
+                        remark="用户已被删除",
+                        is_deleted=True,
+                        deleted_at=now(),
                     )
                 )
                 await session.delete(model)
