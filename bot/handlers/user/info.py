@@ -1,11 +1,10 @@
 from aiogram import F, Router, types
-from aiogram.types import CallbackQuery, InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import CallbackQuery
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models.emby_user import EmbyUserModel
-from bot.keyboards.inline.labels import BACK_LABEL, BACK_TO_HOME_LABEL
+from bot.keyboards.inline.start_user import get_user_info_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
 from bot.utils.images import get_common_image
@@ -104,12 +103,6 @@ async def user_info(
     caption = "\n".join(lines)
 
     image = get_common_image()
-    buttons = [
-        [
-            InlineKeyboardButton(text=BACK_LABEL, callback_data="user:account"),
-            InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back"),
-        ]
-    ]
-    kb = InlineKeyboardBuilder(markup=buttons).as_markup()
+    kb = get_user_info_keyboard()
     await main_msg.update_on_callback(callback, caption, kb, image)
     await callback.answer()

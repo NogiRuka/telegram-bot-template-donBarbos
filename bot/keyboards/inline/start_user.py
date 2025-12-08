@@ -11,7 +11,7 @@ from bot.keyboards.inline.common_buttons import (
     USER_LINES_BUTTON,
     USER_PASSWORD_BUTTON,
 )
-from bot.keyboards.inline.labels import CANCEL_REGISTER_LABEL
+from bot.keyboards.inline.labels import BACK_LABEL, CANCEL_REGISTER_LABEL
 
 
 def get_start_user_keyboard() -> InlineKeyboardMarkup:
@@ -82,6 +82,28 @@ def get_register_input_keyboard() -> InlineKeyboardMarkup:
     """
     buttons = [
         [InlineKeyboardButton(text=CANCEL_REGISTER_LABEL, callback_data="user:cancel_register")],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_user_info_keyboard() -> InlineKeyboardMarkup:
+    """用户个人信息键盘
+
+    功能说明:
+    - 个人信息页面底部键盘，提供返回上一级和返回主页按钮
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 内联键盘
+    """
+    buttons = [
+        [
+            InlineKeyboardButton(text=BACK_LABEL, callback_data="user:account"),
+            BACK_TO_HOME_BUTTON,
+        ]
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
