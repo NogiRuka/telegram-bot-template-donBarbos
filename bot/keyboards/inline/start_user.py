@@ -107,3 +107,22 @@ def get_user_info_keyboard() -> InlineKeyboardMarkup:
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
+
+
+def get_user_profile_keyboard() -> InlineKeyboardMarkup:
+    """用户资料键盘
+
+    功能说明:
+    - 用户资料页面底部键盘，提供返回主页按钮
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 内联键盘
+    """
+    buttons = [
+        [BACK_TO_HOME_BUTTON],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
