@@ -12,6 +12,8 @@ from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.utils.datetime import now, parse_iso_datetime
 from bot.utils.http import HttpRequestError
 
+import copy
+
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -388,18 +390,20 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 inserted += 1
             else:
                 # 更新：只比较 user_dto，有变化就写入历史表
-                old_dto = model.user_dto
+                # 必须深拷贝旧数据，防止引用被后续修改污染，导致历史表存入新数据
+                old_dto = copy.deepcopy(model.user_dto)
                 new_dto = it
 
                 def _canon_json(obj: Any) -> str:
-                    """JSON 规范化，用于比较是否变化
-                    
+                    """生成规范化 JSON 字符串用于比较
+
                     功能说明:
-                    - 将对象转为 JSON 字符串, 按键排序, 确保比较准确性
-                    
+                    - 将 Python 对象转换为排序键且紧凑的 JSON 字符串
+                    - 解决字典键顺序、数字表现形式等导致的误判
+
                     输入参数:
                     - obj: 任意可 JSON 序列化的对象
-                    
+
                     返回值:
                     - str: 规范化后的 JSON 字符串
                     """
@@ -407,12 +411,8 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         return json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
                     except Exception:  # noqa: BLE001
                         return str(obj)
-                
-                # 规范化后比较
-                canon_old = _canon_json(old_dto)
-                canon_new = _canon_json(new_dto)
 
-                if canon_old != canon_new:
+                if _canon_json(old_dto) != _canon_json(new_dto):
                     name = str(it.get("Name") or "")
                     date_created = parse_iso_datetime(it.get("DateCreated"))
                     last_login_date = parse_iso_datetime(it.get("LastLoginDate"))
@@ -426,31 +426,19 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                     old_la = model.last_activity_date
                     old_remark = model.remark
                     old_password_hash = model.password_hash
-                    
+                    old_remark = model.remark
+
                     if name != old_name:
                         changed_fields.append(f"name 从 {old_name} 更新为 {name}")
-                    
-                    # 比较时间字段时需注意 None 和时区
-                    def _fmt(dt_obj):
-                        return dt_obj.strftime("%Y-%m-%d %H:%M:%S") if dt_obj else "None"
-                    
                     if date_created != old_dc:
-                        changed_fields.append(f"date_created 从 {_fmt(old_dc)} 更新为 {_fmt(date_created)}")
+                        changed_fields.append(f"date_created 从 {old_dc} 更新为 {date_created}")
                     if last_login_date != old_ll:
-                        changed_fields.append(f"last_login_date 从 {_fmt(old_ll)} 更新为 {_fmt(last_login_date)}")
+                        changed_fields.append(f"last_login_date 从 {old_ll} 更新为 {last_login_date}")
                     if last_activity_date != old_la:
-                        changed_fields.append(f"last_activity_date 从 {_fmt(old_la)} 更新为 {_fmt(last_activity_date)}")
+                        changed_fields.append(f"last_activity_date 从 {old_la} 更新为 {last_activity_date}")
 
                     # 生成备注
-                    if not changed_fields:
-                        # 尝试找出其他字段差异 (仅调试用，生产环境可能不需要这么详细)
-                        # 这里简单记录长度变化，或者直接保留原提示
-                        msg = "user_dto 有其他字段变化"
-                        if len(canon_old) != len(canon_new):
-                            msg += f" (长度 {len(canon_old)} -> {len(canon_new)})"
-                        remark = msg
-                    else:
-                        remark = "; ".join(changed_fields)
+                    remark = "; ".join(changed_fields) if changed_fields else "user_dto 有其他字段变化"
 
                     # 保存旧数据到历史表
                     session.add(
