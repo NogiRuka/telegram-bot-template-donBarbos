@@ -392,15 +392,14 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 new_dto = it
 
                 def _canon_json(obj: Any) -> str:
-                    """生成规范化 JSON 字符串用于比较
-
+                    """JSON 规范化，用于比较是否变化
+                    
                     功能说明:
-                    - 将 Python 对象转换为排序键且紧凑的 JSON 字符串
-                    - 解决字典键顺序、数字表现形式等导致的误判
-
+                    - 将对象转为 JSON 字符串, 按键排序, 确保比较准确性
+                    
                     输入参数:
                     - obj: 任意可 JSON 序列化的对象
-
+                    
                     返回值:
                     - str: 规范化后的 JSON 字符串
                     """
@@ -408,7 +407,11 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         return json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
                     except Exception:  # noqa: BLE001
                         return str(obj)
-
+                
+                # 预处理数据以进行比较
+                # Emby 返回的 DateCreated 等字段可能在 JSON 中格式不一致（有时带毫秒，有时不带），需要统一处理
+                # 这里我们主要依赖 Python 对象比较，或者规范化 JSON 字符串
+                # 简单起见，直接比较规范化 JSON 字符串
                 if _canon_json(old_dto) != _canon_json(new_dto):
                     name = str(it.get("Name") or "")
                     date_created = parse_iso_datetime(it.get("DateCreated"))
@@ -423,18 +426,24 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                     old_la = model.last_activity_date
                     old_remark = model.remark
                     old_password_hash = model.password_hash
-                    old_remark = model.remark
-
+                    
                     if name != old_name:
                         changed_fields.append(f"name 从 {old_name} 更新为 {name}")
+                    
+                    # 比较时间字段时需注意 None 和时区
+                    def _fmt(dt_obj):
+                        return dt_obj.strftime("%Y-%m-%d %H:%M:%S") if dt_obj else "None"
+                    
                     if date_created != old_dc:
-                        changed_fields.append(f"date_created 从 {old_dc} 更新为 {date_created}")
+                        changed_fields.append(f"date_created 从 {_fmt(old_dc)} 更新为 {_fmt(date_created)}")
                     if last_login_date != old_ll:
-                        changed_fields.append(f"last_login_date 从 {old_ll} 更新为 {last_login_date}")
+                        changed_fields.append(f"last_login_date 从 {_fmt(old_ll)} 更新为 {_fmt(last_login_date)}")
                     if last_activity_date != old_la:
-                        changed_fields.append(f"last_activity_date 从 {old_la} 更新为 {last_activity_date}")
+                        changed_fields.append(f"last_activity_date 从 {_fmt(old_la)} 更新为 {_fmt(last_activity_date)}")
 
                     # 生成备注
+                    # 如果只有 user_dto 变化但上述关键字段没变，则记录 user_dto 变化
+                    # 实际上如果 _canon_json 不相等，肯定有字段变了，可能是 Policy 或 Configuration
                     remark = "; ".join(changed_fields) if changed_fields else "user_dto 有其他字段变化"
 
                     # 保存旧数据到历史表
