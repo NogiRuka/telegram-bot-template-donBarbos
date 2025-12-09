@@ -408,11 +408,11 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                     except Exception:  # noqa: BLE001
                         return str(obj)
                 
-                # 预处理数据以进行比较
-                # Emby 返回的 DateCreated 等字段可能在 JSON 中格式不一致（有时带毫秒，有时不带），需要统一处理
-                # 这里我们主要依赖 Python 对象比较，或者规范化 JSON 字符串
-                # 简单起见，直接比较规范化 JSON 字符串
-                if _canon_json(old_dto) != _canon_json(new_dto):
+                # 规范化后比较
+                canon_old = _canon_json(old_dto)
+                canon_new = _canon_json(new_dto)
+
+                if canon_old != canon_new:
                     name = str(it.get("Name") or "")
                     date_created = parse_iso_datetime(it.get("DateCreated"))
                     last_login_date = parse_iso_datetime(it.get("LastLoginDate"))
@@ -442,9 +442,15 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         changed_fields.append(f"last_activity_date 从 {_fmt(old_la)} 更新为 {_fmt(last_activity_date)}")
 
                     # 生成备注
-                    # 如果只有 user_dto 变化但上述关键字段没变，则记录 user_dto 变化
-                    # 实际上如果 _canon_json 不相等，肯定有字段变了，可能是 Policy 或 Configuration
-                    remark = "; ".join(changed_fields) if changed_fields else "user_dto 有其他字段变化"
+                    if not changed_fields:
+                        # 尝试找出其他字段差异 (仅调试用，生产环境可能不需要这么详细)
+                        # 这里简单记录长度变化，或者直接保留原提示
+                        msg = "user_dto 有其他字段变化"
+                        if len(canon_old) != len(canon_new):
+                            msg += f" (长度 {len(canon_old)} -> {len(canon_new)})"
+                        remark = msg
+                    else:
+                        remark = "; ".join(changed_fields)
 
                     # 保存旧数据到历史表
                     session.add(
