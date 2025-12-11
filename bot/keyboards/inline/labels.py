@@ -39,6 +39,7 @@ ROBOT_SWITCH_LABEL = "🤖 机器人开关"
 USER_FEATURES_SWITCH_LABEL = "🧲 用户总开关"
 ADMIN_PERMS_PANEL_LABEL = "🛡️ 管理员权限"
 ADMIN_FEATURES_SWITCH_LABEL = "🧲 管理员总开关"
+ADMIN_NEW_ITEM_NOTIFICATION_LABEL = "📢 新片通知"
 
 # ===== 通用导航 =====
 BACK_LABEL = "↩️ 返回上一级"

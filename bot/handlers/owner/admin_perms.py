@@ -54,11 +54,12 @@ async def toggle_admin_permissions(callback: CallbackQuery, session: AsyncSessio
         parts = (callback.data or "").split(":")
         key = parts[-1] if len(parts) >= 4 else ""
         mapping: dict[str, tuple[str, str]] = {
-            "features": ("admin.features.enabled", "管理员功能总开关"),
-            "groups": ("admin.groups", "群组管理权限"),
-            "stats": ("admin.stats", "统计数据权限"),
-            "hitokoto": ("admin.hitokoto", "一言管理权限"),
-            "open_registration": ("admin.open_registration", "开放注册权限"),
+            "features": ("admin.features.enabled", "管理员总开关"),
+            "groups": ("admin.groups", "群组管理"),
+            "stats": ("admin.stats", "统计数据"),
+            "open_registration": ("admin.open_registration", "开放注册"),
+            "hitokoto": ("admin.hitokoto", "一言管理"),
+            "new_item_notification": ("admin.new_item_notification", "新片通知"),
         }
         if key not in mapping:
             await callback.answer("🔴 无效的权限项", show_alert=True)

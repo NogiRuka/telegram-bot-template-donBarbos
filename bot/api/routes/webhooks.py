@@ -15,6 +15,7 @@ from bot.core.config import settings
 from bot.core.loader import bot
 from bot.database.database import sessionmaker
 from bot.database.models.notification import NotificationModel
+from bot.services.config_service import get_config
 
 try:
     import orjson
@@ -81,8 +82,18 @@ async def handle_emby_webhook(
                 
                 logger.info(f"💾 通知已存入数据库, ID: {notification.id}, Item: {item_name} ({item_id})")
 
-                # 2. 通知管理员进行确认
-                admin_id = settings.OWNER_ID
+                # 2. 获取需要通知的管理员列表
+                # 默认通知所有者
+                notify_targets = {settings.OWNER_ID}
+                
+                # 检查是否启用了管理员通知
+                admin_notify_enabled = await get_config(session, "admin.new_item_notification")
+                if admin_notify_enabled:
+                    # 解析管理员 ID 列表
+                    if settings.ADMIN_IDS:
+                        for admin_id_str in settings.ADMIN_IDS.split(","):
+                            if admin_id_str.strip().isdigit():
+                                notify_targets.add(int(admin_id_str.strip()))
                 
                 # 构建确认按钮
                 kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -92,21 +103,25 @@ async def handle_emby_webhook(
                     ]
                 ])
                 
-                try:
-                    await bot.send_message(
-                        chat_id=admin_id,
-                        text=(
-                            f"🆕 <b>新媒体入库待确认</b>\n\n"
-                            f"🎬 <b>标题:</b> {item_name}\n"
-                            f"🆔 <b>ID:</b> <code>{item_id}</code>\n\n"
-                            f"⚠️ 收到 Webhook 通知，但为防止元数据缺失，已暂停发送。\n"
-                            f"请确认 Emby 刮削完成后，点击下方按钮发送通知。"
-                        ),
-                        reply_markup=kb
-                    )
-                    logger.info(f"📨 已向管理员 ({admin_id}) 发送确认请求")
-                except Exception as e:
-                    logger.error(f"❌ 发送管理员确认消息失败: {e}")
+                msg_text = (
+                    f"🆕 <b>新媒体入库待确认</b>\n\n"
+                    f"🎬 <b>标题:</b> {item_name}\n"
+                    f"🆔 <b>ID:</b> <code>{item_id}</code>\n\n"
+                    f"⚠️ 收到 Webhook 通知，但为防止元数据缺失，已暂停发送。\n"
+                    f"请确认 Emby 刮削完成后，点击下方按钮发送通知。"
+                )
+                
+                # 向所有目标发送确认请求
+                for target_id in notify_targets:
+                    try:
+                        await bot.send_message(
+                            chat_id=target_id,
+                            text=msg_text,
+                            reply_markup=kb
+                        )
+                        logger.info(f"📨 已向管理员 ({target_id}) 发送确认请求")
+                    except Exception as e:
+                        logger.error(f"❌ 发送管理员 ({target_id}) 确认消息失败: {e}")
                     
         else:
             logger.warning("⚠️ Webhook 载荷中缺少 Item.Id")

@@ -12,6 +12,7 @@ from bot.keyboards.inline.common_buttons import (
 from bot.keyboards.inline.labels import (
     ADMIN_FEATURES_SWITCH_LABEL,
     ADMIN_LIST_LABEL,
+    ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
     ADMIN_PERMS_PANEL_LABEL,
     BACK_LABEL,
     BACK_TO_HOME_LABEL,
@@ -210,6 +211,12 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
             InlineKeyboardButton(
                 text=format_with_status(HITOKOTO_LABEL, perms.get("admin.hitokoto", False)),
                 callback_data="owner:admin_perms:toggle:hitokoto",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=format_with_status(ADMIN_NEW_ITEM_NOTIFICATION_LABEL, perms.get("admin.new_item_notification", False)),
+                callback_data="owner:admin_perms:toggle:new_item_notification",
             )
         ],
         [InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel")],
