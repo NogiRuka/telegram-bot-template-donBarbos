@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import String, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
+from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
 
 
 class NotificationModel(Base, BasicAuditMixin):
@@ -25,7 +25,7 @@ class NotificationModel(Base, BasicAuditMixin):
 
     __tablename__ = "system_notifications"
 
-    id: Mapped[big_int_pk]
+    id: Mapped[auto_int_pk]
 
     type: Mapped[str] = mapped_column(String(64), nullable=False, index=True, comment="通知类型")
     
