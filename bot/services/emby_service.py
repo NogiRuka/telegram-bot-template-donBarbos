@@ -173,6 +173,43 @@ async def sync_all_users_configuration(
         logger.warning("⚠️ 未配置 Emby 连接信息, 无法同步配置")
         return 0, 0
 
+
+async def get_item_details(item_id: str) -> dict[str, Any] | None:
+    """获取 Emby 项目详情
+
+    功能说明:
+    - 使用模板用户ID调用 API 获取项目详情 (Path, Overview, ProviderIds 等)
+    
+    输入参数:
+    - item_id: 项目ID (WebHook 载荷中的 Item.Id)
+
+    返回值:
+    - dict | None: 项目详情字典, 失败返回 None
+    """
+    client = get_client()
+    if client is None:
+        return None
+    
+    # 使用模板用户ID作为查看者，确保能看到媒体库内容
+    # 如果未配置模板用户，可能导致无权限查看或返回信息不全
+    user_id = settings.get_emby_template_user_id()
+
+    try:
+        # 使用 get_items 批量查询接口，以便指定需要的 Fields
+        # ids 为必填，user_id 为可选
+        items, _ = await client.get_items(
+            ids=[item_id],
+            user_id=user_id,
+            limit=1,
+            recursive=True,
+        )
+        if items:
+            return items[0]
+        return None
+    except Exception as e:
+        logger.warning(f"❌ 获取项目详情失败: {item_id} -> {e}")
+        return None
+
     tid = settings.get_emby_template_user_id()
     if not tid:
         logger.warning("⚠️ 未配置 Emby 模板用户ID (EMBY_TEMPLATE_USER_ID), 无法同步配置")

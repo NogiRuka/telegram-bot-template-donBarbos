@@ -9,6 +9,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+from bot.core.config import settings
+from bot.core.loader import bot
+from bot.database.database import sessionmaker
+from bot.database.models.notification import NotificationModel
+
 try:
     import orjson
 except Exception:
@@ -28,14 +35,15 @@ async def handle_emby_webhook(
 
     功能说明:
     - 接收 Emby Webhooks 插件发送的事件回调 (POST JSON)
-    - 尽量兼容不同事件载荷结构, 进行日志记录与基本回执
+    - 针对 library.new 事件，将数据存入数据库并通知管理员确认
+    - 其他事件仅做日志记录
 
     输入参数:
     - request: FastAPI 的请求对象, 用于读取原始 JSON 载荷
     - x_emby_event: 请求头 `X-Emby-Event` (可选), 某些配置会附带事件名
 
     返回值:
-    - dict: 处理结果, 包含状态与解析的关键信息
+    - dict: 处理结果
     """
 
     # 读取 JSON 载荷
@@ -45,20 +53,74 @@ async def handle_emby_webhook(
         logger.exception("❌ 解析 Emby Webhook JSON 失败")
         raise HTTPException(status_code=400, detail="Invalid JSON body") from err
 
+    # 提取事件类型
+    event_type = payload.get("Event") or x_emby_event
+    
+    # 针对 library.new 事件的处理
+    if event_type == "library.new":
+        logger.info("🆕 收到新媒体入库通知 (library.new)")
+        
+        # 提取 Item 信息
+        item = payload.get("Item", {})
+        item_id = item.get("Id")
+        item_name = item.get("Name")
+        
+        if item_id:
+            # 1. 存入数据库 (状态为 pending)
+            async with sessionmaker() as session:
+                notification = NotificationModel(
+                    type="library.new",
+                    status="pending",
+                    item_id=item_id,
+                    item_name=item_name,
+                    payload=payload
+                )
+                session.add(notification)
+                await session.commit()
+                await session.refresh(notification)
+                
+                logger.info(f"💾 通知已存入数据库, ID: {notification.id}, Item: {item_name} ({item_id})")
+
+                # 2. 通知管理员进行确认
+                admin_id = settings.OWNER_ID
+                
+                # 构建确认按钮
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="✅ 立即发送", callback_data=f"notify_approve:{notification.id}"),
+                        InlineKeyboardButton(text="❌ 忽略此条", callback_data=f"notify_reject:{notification.id}")
+                    ]
+                ])
+                
+                try:
+                    await bot.send_message(
+                        chat_id=admin_id,
+                        text=(
+                            f"🆕 <b>新媒体入库待确认</b>\n\n"
+                            f"🎬 <b>标题:</b> {item_name}\n"
+                            f"🆔 <b>ID:</b> <code>{item_id}</code>\n\n"
+                            f"⚠️ 收到 Webhook 通知，但为防止元数据缺失，已暂停发送。\n"
+                            f"请确认 Emby 刮削完成后，点击下方按钮发送通知。"
+                        ),
+                        reply_markup=kb
+                    )
+                    logger.info(f"📨 已向管理员 ({admin_id}) 发送确认请求")
+                except Exception as e:
+                    logger.error(f"❌ 发送管理员确认消息失败: {e}")
+                    
+        else:
+            logger.warning("⚠️ Webhook 载荷中缺少 Item.Id")
+            
+    else:
+        logger.info(f"📥 收到 Emby Webhook 事件: {event_type}")
+
     pretty = format_json_pretty(payload)
-    logger.info("📥 收到 Emby Webhook 原始载荷:\n{}", pretty)
+    logger.debug("📥 Emby Webhook 详细载荷:\n{}", pretty)
 
-    # 这里可以根据不同事件进行业务处理, 例如:
-    # - PlaybackStart / PlaybackStop: 统计观看记录
-    # - ItemAdded: 同步媒资到数据库
-    # - UserDeleted: 清理相关数据
-    # 为了安全示范, 本模板仅做日志记录与回执; 可根据需求接入 bot.services 中的业务逻辑
-
-    # 简单回执，仅返回收到的 event 头与解析到的 payload
     return {
         "status": "ok",
         "x_emby_event": x_emby_event,
-        "payload": payload,
+        "processed": event_type == "library.new"
     }
 
 

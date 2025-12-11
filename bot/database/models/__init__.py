@@ -6,6 +6,7 @@ from .emby_user_history import EmbyUserHistoryModel
 from .group_config import GroupConfigModel, GroupType, MessageSaveMode
 from .hitokoto import HitokotoModel
 from .message import MessageModel, MessageType
+from .notification import NotificationModel
 from .statistics import StatisticsModel, StatisticType
 from .user import UserModel
 from .user_extend import UserExtendModel, UserRole
@@ -26,6 +27,7 @@ __all__ = [
     "MessageModel",
     "MessageSaveMode",
     "MessageType",
+    "NotificationModel",
     "StatisticType",
     "StatisticsModel",
     "UserExtendModel",

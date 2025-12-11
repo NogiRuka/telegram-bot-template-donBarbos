@@ -1,6 +1,6 @@
 from aiogram import Router
 
-from . import emby, export_users, start, support
+from . import emby, export_users, start, support, notification
 from .admin import get_admin_router
 from .group import get_group_router
 from .owner import get_owner_router
@@ -22,6 +22,7 @@ def get_handlers_router() -> Router:
     router.include_router(support.router)
     router.include_router(export_users.router)
     router.include_router(emby.router)
+    router.include_router(notification.router)
 
     # 群组与管理员聚合路由
     router.include_router(get_group_router())

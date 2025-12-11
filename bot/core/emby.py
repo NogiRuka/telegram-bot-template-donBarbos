@@ -185,6 +185,114 @@ class EmbyClient:
         }
         return await self.http.request("POST", f"/Users/{user_id}/Password", json=payload)
 
+    async def get_item(self, user_id: str, item_id: str) -> dict[str, Any]:
+        """获取项目详情
+
+        功能说明:
+        - 调用 `GET /Users/{UserId}/Items/{Id}` 获取项目详细信息
+
+        输入参数:
+        - user_id: 用户ID (上下文)
+        - item_id: 项目ID
+
+        返回值:
+        - dict[str, Any]: Item 对象
+        """
+        data = await self.http.request("GET", f"/Users/{user_id}/Items/{item_id}")
+        return cast("dict[str, Any]", data) if isinstance(data, dict) else {}
+
+    async def get_items(
+        self,
+        ids: list[str],
+        user_id: str | None = None,
+        fields: list[str] | None = None,
+        recursive: bool = True,
+        limit: int | None = None,
+        start_index: int | None = None,
+        sort_by: str | None = None,
+        sort_order: str | None = None,
+        parent_id: str | None = None,
+        filters: list[str] | None = None,
+        include_item_types: list[str] | None = None,
+        media_types: list[str] | None = None,
+        **kwargs: Any,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """通用项目查询 (GET /Items)
+
+        功能说明:
+        - 封装 Emby `/Items` 接口，支持批量查询和丰富过滤
+        - 若未指定 `fields`，默认请求关键元数据 (DateCreated, Tags, Overview, People, Path)
+
+        输入参数:
+        - ids: 指定 Item ID 列表 (必填)
+        - user_id: 用户ID (可选，若传入则包含 UserData)
+        - fields: 返回字段列表 (对应 `Fields` 参数)
+        - recursive: 是否递归 (默认 True)
+        - limit: 返回数量
+        - start_index: 分页起始
+        - sort_by: 排序字段
+        - sort_order: 排序方式 (Ascending/Descending)
+        - parent_id: 父文件夹 ID
+        - filters: 过滤器列表 (如 IsUnplayed)
+        - include_item_types: 包含的类型 (如 Movie, Series)
+        - media_types: 媒体类型 (如 Video)
+        - **kwargs: 其他透传参数 (如 MinDateLastSaved, NameStartsWith 等)
+
+        返回值:
+        - tuple[list, int]: (项目列表, 总数)
+        """
+        params = kwargs.copy()
+        if user_id:
+            params["UserId"] = user_id
+
+        params["Ids"] = ",".join(ids)
+
+        # 默认字段处理
+        default_fields = [
+            "DateCreated",
+            "Tags",
+            "Overview",
+            "People",
+            "Path",
+        ]
+        if fields:
+            params["Fields"] = ",".join(fields)
+        else:
+            params["Fields"] = ",".join(default_fields)
+
+        if recursive:
+            params["Recursive"] = "true"
+        if limit is not None:
+            params["Limit"] = int(limit)
+        if start_index is not None:
+            params["StartIndex"] = int(start_index)
+        if sort_by:
+            params["SortBy"] = sort_by
+        if sort_order:
+            params["SortOrder"] = sort_order
+        if parent_id:
+            params["ParentId"] = parent_id
+        if filters:
+            params["Filters"] = ",".join(filters)
+        if include_item_types:
+            params["IncludeItemTypes"] = ",".join(include_item_types)
+        if media_types:
+            params["MediaTypes"] = ",".join(media_types)
+
+        data = await self.http.request("GET", "/Items", params=params)
+
+        items: list[dict[str, Any]] = []
+        total = 0
+        if isinstance(data, dict):
+            items = list(data.get("Items", []))
+            total = int(data.get("TotalRecordCount", 0))
+        elif isinstance(data, list):
+            # 兼容某些情况下直接返回列表
+            items = [x for x in data if isinstance(x, dict)]
+            total = len(items)
+
+        return items, total
+
     async def get_sessions(
         self,
         controllable_by_user_id: str | None = None,
