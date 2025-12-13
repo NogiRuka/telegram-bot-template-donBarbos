@@ -3,6 +3,14 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.start import get_common_image
+from bot.keyboards.inline.labels import (
+    ADMIN_FEATURES_SWITCH_LABEL,
+    ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
+    GROUPS_LABEL,
+    HITOKOTO_LABEL,
+    OPEN_REGISTRATION_LABEL,
+    STATS_LABEL,
+)
 from bot.keyboards.inline.start_owner import get_admin_perms_panel_keyboard
 from bot.services.config_service import list_admin_permissions, toggle_config
 from bot.services.main_message import MainMessageService
@@ -35,7 +43,7 @@ async def show_admin_perms_panel(
     kb = get_admin_perms_panel_keyboard(perms)
     image = get_common_image()
     
-    await main_msg.update_on_callback(callback, "🛡️ 管理员权限", kb, image_path=image)
+    await main_msg.update_on_callback(callback, ADMIN_PERMS_PANEL_LABEL, kb, image_path=image)
     await callback.answer()
 
 
@@ -63,12 +71,12 @@ async def toggle_admin_permissions(
         parts = (callback.data or "").split(":")
         key = parts[-1] if len(parts) >= 4 else ""
         mapping: dict[str, tuple[str, str]] = {
-            "features": ("admin.features.enabled", "管理员功能总开关"),
-            "groups": ("admin.groups", "群组管理权限"),
-            "stats": ("admin.stats", "统计数据权限"),
-            "hitokoto": ("admin.hitokoto", "一言管理权限"),
-            "open_registration": ("admin.open_registration", "开放注册权限"),
-            "new_item_notification": ("admin.new_item_notification", "新片通知"),
+            "features": ("admin.features.enabled", ADMIN_FEATURES_SWITCH_LABEL),
+            "groups": ("admin.groups", GROUPS_LABEL),
+            "stats": ("admin.stats", STATS_LABEL),
+            "hitokoto": ("admin.hitokoto", HITOKOTO_LABEL),
+            "open_registration": ("admin.open_registration", OPEN_REGISTRATION_LABEL),
+            "new_item_notification": ("admin.new_item_notification", ADMIN_NEW_ITEM_NOTIFICATION_LABEL),
         }
         if key not in mapping:
             await callback.answer("🔴 无效的权限项", show_alert=True)
@@ -80,7 +88,7 @@ async def toggle_admin_permissions(
         
         await main_msg.update_on_callback(
             callback, 
-            "🛡️ 管理员权限", 
+            ADMIN_PERMS_PANEL_LABEL, 
             get_admin_perms_panel_keyboard(perms),
             image_path=get_common_image()
         )

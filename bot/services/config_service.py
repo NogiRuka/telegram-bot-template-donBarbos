@@ -313,20 +313,21 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
     """列出管理员权限开关
 
     功能说明:
-    - 返回管理员可用功能的授权布尔值集合
+    - 返回管理员权限开关的布尔值集合
 
     输入参数:
     - session: 异步数据库会话
 
     返回值:
-    - dict[str, bool]: 管理员权限键到布尔值的映射
+    - dict[str, bool]: 权限键到布尔值的映射
     """
     keys = [
         "admin.features.enabled",
         "admin.groups",
         "admin.stats",
-        "admin.open_registration",
         "admin.hitokoto",
+        "admin.open_registration",
+        "admin.new_item_notification",
     ]
     out: dict[str, bool] = {}
     for k in keys:
