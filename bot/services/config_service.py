@@ -12,6 +12,27 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
+# Config Keys
+KEY_BOT_FEATURES_ENABLED = "bot.features.enabled"
+KEY_USER_FEATURES_ENABLED = "user.features.enabled"
+KEY_USER_REGISTER = "user.register"
+KEY_USER_INFO = "user.info"
+KEY_USER_LINES = "user.lines"
+KEY_USER_DEVICES = "user.devices"
+KEY_USER_PASSWORD = "user.password"
+
+KEY_ADMIN_FEATURES_ENABLED = "admin.features.enabled"
+KEY_ADMIN_GROUPS = "admin.groups"
+KEY_ADMIN_STATS = "admin.stats"
+KEY_ADMIN_HITOKOTO = "admin.hitokoto"
+KEY_ADMIN_OPEN_REGISTRATION = "admin.open_registration"
+KEY_ADMIN_NEW_ITEM_NOTIFICATION = "admin.new_item_notification"
+
+KEY_REGISTRATION_FREE_OPEN = "registration.free_open"
+KEY_ADMIN_OPEN_REGISTRATION_WINDOW = "admin.open_registration.window"
+KEY_ADMIN_HITOKOTO_CATEGORIES = "admin.hitokoto.categories"
+
+
 async def get_config(session: AsyncSession, key: str) -> Any:
     """读取配置键
 
@@ -134,14 +155,13 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
     - dict[str, bool]: 功能键到布尔值的映射
     """
     keys = [
-        "bot.features.enabled",
-        "user.features.enabled",
-        "user.register",
-        "user.info",
-        "user.lines",
-        "user.devices",
-        "user.password",
-        "user.export_users",
+        KEY_BOT_FEATURES_ENABLED,
+        KEY_USER_FEATURES_ENABLED,
+        KEY_USER_REGISTER,
+        KEY_USER_INFO,
+        KEY_USER_LINES,
+        KEY_USER_DEVICES,
+        KEY_USER_PASSWORD,
     ]
     out: dict[str, bool] = {}
     for k in keys:
@@ -164,7 +184,7 @@ async def get_registration_window(session: AsyncSession) -> dict[str, Any] | Non
     - dict | None: 时间窗配置, 若未设置返回 None
     """
     try:
-        val = await get_config(session, "admin.open_registration.window")
+        val = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
         if isinstance(val, dict):
             return val
         return None
@@ -185,7 +205,7 @@ async def get_free_registration_status(session: AsyncSession) -> bool:
     - bool: True 表示自由注册开启
     """
     try:
-        val = await get_config(session, "registration.free_open")
+        val = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
         return bool(val) if val is not None else False
     except SQLAlchemyError:
         return False
@@ -207,7 +227,7 @@ async def set_free_registration_status(session: AsyncSession, enabled: bool, ope
     """
     return await set_config(
         session,
-        "registration.free_open",
+        KEY_REGISTRATION_FREE_OPEN,
         bool(enabled),
         ConfigType.BOOLEAN,
         default_value=False,
@@ -241,7 +261,7 @@ async def set_registration_window(
     if duration_minutes is not None:
         payload["duration_minutes"] = int(duration_minutes)
     return await set_config(
-        session, "admin.open_registration.window", payload or None, ConfigType.JSON, operator_id=operator_id
+        session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW, payload or None, ConfigType.JSON, operator_id=operator_id
     )
 
 
@@ -323,12 +343,12 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
     - dict[str, bool]: 权限键到布尔值的映射
     """
     keys = [
-        "admin.features.enabled",
-        "admin.groups",
-        "admin.stats",
-        "admin.hitokoto",
-        "admin.open_registration",
-        "admin.new_item_notification",
+        KEY_ADMIN_FEATURES_ENABLED,
+        KEY_ADMIN_GROUPS,
+        KEY_ADMIN_STATS,
+        KEY_ADMIN_HITOKOTO,
+        KEY_ADMIN_OPEN_REGISTRATION,
+        KEY_ADMIN_NEW_ITEM_NOTIFICATION,
     ]
     out: dict[str, bool] = {}
     for k in keys:
@@ -338,19 +358,19 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
 
 
 DEFAULT_CONFIGS: dict[str, bool] = {
-    "bot.features.enabled": True,
-    "user.features.enabled": True,
-    "user.register": True,
-    "user.password": True,
-    "user.info": True,
-    "user.lines": True,
-    "user.devices": True,
-    "admin.features.enabled": True,
-    "admin.groups": True,
-    "admin.stats": True,
-    "admin.open_registration": True,
-    "registration.free_open": False,
-    "admin.hitokoto": True,
+    KEY_BOT_FEATURES_ENABLED: True,
+    KEY_USER_FEATURES_ENABLED: True,
+    KEY_USER_REGISTER: True,
+    KEY_USER_PASSWORD: True,
+    KEY_USER_INFO: True,
+    KEY_USER_LINES: True,
+    KEY_USER_DEVICES: True,
+    KEY_ADMIN_FEATURES_ENABLED: True,
+    KEY_ADMIN_GROUPS: True,
+    KEY_ADMIN_STATS: True,
+    KEY_ADMIN_OPEN_REGISTRATION: True,
+    KEY_REGISTRATION_FREE_OPEN: False,
+    KEY_ADMIN_HITOKOTO: True,
 }
 
 
@@ -372,9 +392,9 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
             await set_config(session, key, None, ConfigType.BOOLEAN, default_value=default)
 
     # 初始化 Hitokoto 分类默认值
-    current_categories = await get_config(session, "admin.hitokoto.categories")
+    current_categories = await get_config(session, KEY_ADMIN_HITOKOTO_CATEGORIES)
     if current_categories is None:
-        await set_config(session, "admin.hitokoto.categories", None, ConfigType.LIST, default_value=["d", "i"])
+        await set_config(session, KEY_ADMIN_HITOKOTO_CATEGORIES, None, ConfigType.LIST, default_value=["d", "i"])
 
 
 # 已移除 ensure_config_schema: 迁移逻辑改由外部管理, 保持代码简洁

@@ -15,7 +15,18 @@ from bot.keyboards.inline.labels import (
     USER_REGISTER_LABEL,
 )
 from bot.keyboards.inline.start_owner import get_features_panel_keyboard
-from bot.services.config_service import list_features, toggle_config
+from bot.services.config_service import (
+    KEY_ADMIN_OPEN_REGISTRATION,
+    KEY_BOT_FEATURES_ENABLED,
+    KEY_USER_DEVICES,
+    KEY_USER_FEATURES_ENABLED,
+    KEY_USER_INFO,
+    KEY_USER_LINES,
+    KEY_USER_PASSWORD,
+    KEY_USER_REGISTER,
+    list_features,
+    toggle_config,
+)
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
 from bot.utils.permissions import require_owner
@@ -66,7 +77,7 @@ async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession) -> 
     返回值:
     - None
     """
-    new_val = await toggle_config(session, "bot.features.enabled")
+    new_val = await toggle_config(session, KEY_BOT_FEATURES_ENABLED)
     await callback.answer(f"{'🟢' if new_val else '🔴'} {ROBOT_SWITCH_LABEL}: {'开启' if new_val else '关闭'}")
 
 
@@ -94,15 +105,14 @@ async def toggle_owner_features(
         parts = (callback.data or "").split(":")
         key = parts[-1] if len(parts) >= 4 else ""
         mapping: dict[str, tuple[str, str]] = {
-            "bot_all": ("bot.features.enabled", ROBOT_SWITCH_LABEL),
-            "user_all": ("user.features.enabled", USER_FEATURES_SWITCH_LABEL),
-            "user_register": ("user.register", USER_REGISTER_LABEL),
-            "user_info": ("user.info", USER_INFO_LABEL),
-            "user_password": ("user.password", USER_PASSWORD_LABEL),
-            "user_lines": ("user.lines", USER_LINES_LABEL),
-            "user_devices": ("user.devices", USER_DEVICES_LABEL),
-            "user_export_users": ("user.export_users", "导出用户功能"),
-            "admin_open_registration": ("admin.open_registration", OPEN_REGISTRATION_LABEL),
+            "bot_all": (KEY_BOT_FEATURES_ENABLED, ROBOT_SWITCH_LABEL),
+            "user_all": (KEY_USER_FEATURES_ENABLED, USER_FEATURES_SWITCH_LABEL),
+            "user_register": (KEY_USER_REGISTER, USER_REGISTER_LABEL),
+            "user_info": (KEY_USER_INFO, USER_INFO_LABEL),
+            "user_password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
+            "user_lines": (KEY_USER_LINES, USER_LINES_LABEL),
+            "user_devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
+            "admin_open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
         }
         if key not in mapping:
             await callback.answer("🔴 无效的开关项", show_alert=True)

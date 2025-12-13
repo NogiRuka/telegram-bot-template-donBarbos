@@ -6,13 +6,23 @@ from bot.handlers.start import get_common_image
 from bot.keyboards.inline.labels import (
     ADMIN_FEATURES_SWITCH_LABEL,
     ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
+    ADMIN_PERMS_PANEL_LABEL,
     GROUPS_LABEL,
     HITOKOTO_LABEL,
     OPEN_REGISTRATION_LABEL,
     STATS_LABEL,
 )
 from bot.keyboards.inline.start_owner import get_admin_perms_panel_keyboard
-from bot.services.config_service import list_admin_permissions, toggle_config
+from bot.services.config_service import (
+    KEY_ADMIN_FEATURES_ENABLED,
+    KEY_ADMIN_GROUPS,
+    KEY_ADMIN_HITOKOTO,
+    KEY_ADMIN_NEW_ITEM_NOTIFICATION,
+    KEY_ADMIN_OPEN_REGISTRATION,
+    KEY_ADMIN_STATS,
+    list_admin_permissions,
+    toggle_config,
+)
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_owner
 
@@ -71,12 +81,12 @@ async def toggle_admin_permissions(
         parts = (callback.data or "").split(":")
         key = parts[-1] if len(parts) >= 4 else ""
         mapping: dict[str, tuple[str, str]] = {
-            "features": ("admin.features.enabled", ADMIN_FEATURES_SWITCH_LABEL),
-            "groups": ("admin.groups", GROUPS_LABEL),
-            "stats": ("admin.stats", STATS_LABEL),
-            "hitokoto": ("admin.hitokoto", HITOKOTO_LABEL),
-            "open_registration": ("admin.open_registration", OPEN_REGISTRATION_LABEL),
-            "new_item_notification": ("admin.new_item_notification", ADMIN_NEW_ITEM_NOTIFICATION_LABEL),
+            "features": (KEY_ADMIN_FEATURES_ENABLED, ADMIN_FEATURES_SWITCH_LABEL),
+            "groups": (KEY_ADMIN_GROUPS, GROUPS_LABEL),
+            "stats": (KEY_ADMIN_STATS, STATS_LABEL),
+            "hitokoto": (KEY_ADMIN_HITOKOTO, HITOKOTO_LABEL),
+            "open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
+            "new_item_notification": (KEY_ADMIN_NEW_ITEM_NOTIFICATION, ADMIN_NEW_ITEM_NOTIFICATION_LABEL),
         }
         if key not in mapping:
             await callback.answer("🔴 无效的权限项", show_alert=True)
