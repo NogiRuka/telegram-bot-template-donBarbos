@@ -4,16 +4,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.start_owner import get_features_panel_keyboard
 from bot.services.config_service import list_features, toggle_config
+from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
 from bot.utils.permissions import require_owner
-from bot.utils.view import render_view
 
 router = Router(name="owner_features")
 
 
 @router.callback_query(F.data == "owner:features")
 @require_owner
-async def show_features_panel(callback: CallbackQuery, session: AsyncSession) -> None:
+async def show_features_panel(
+    callback: CallbackQuery, 
+    session: AsyncSession, 
+    main_msg: MainMessageService
+) -> None:
     """显示功能开关面板
 
     功能说明:
@@ -22,6 +26,7 @@ async def show_features_panel(callback: CallbackQuery, session: AsyncSession) ->
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
+    - main_msg: 主消息服务
 
     返回值:
     - None
@@ -29,10 +34,9 @@ async def show_features_panel(callback: CallbackQuery, session: AsyncSession) ->
     caption = "🧩 功能开关\n\n可切换全部功能或单项功能"
     features = await list_features(session)
     kb = get_features_panel_keyboard(features)
-    msg = callback.message
-    if isinstance(msg, types.Message):
-        image = get_common_image()
-        await render_view(msg, image, caption, kb)
+    image = get_common_image()
+    
+    await main_msg.update_on_callback(callback, caption, kb, image_path=image)
     await callback.answer()
 
 
@@ -57,7 +61,11 @@ async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession) -> 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("owner:features:toggle:"))
 @require_owner
-async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession) -> None:
+async def toggle_owner_features(
+    callback: CallbackQuery, 
+    session: AsyncSession,
+    main_msg: MainMessageService
+) -> None:
     """统一切换所有者功能开关
 
     功能说明:
@@ -66,6 +74,7 @@ async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession) 
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
+    - main_msg: 主消息服务
 
     返回值:
     - None
@@ -91,9 +100,13 @@ async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession) 
         operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
         new_val = await toggle_config(session, config_key, operator_id=operator_id)
         features = await list_features(session)
-        msg = callback.message
-        if isinstance(msg, types.Message):
-            await render_view(msg, get_common_image(), "🧩 功能开关", get_features_panel_keyboard(features))
+        
+        await main_msg.update_on_callback(
+            callback, 
+            "🧩 功能开关\n\n可切换全部功能或单项功能", 
+            get_features_panel_keyboard(features),
+            image_path=get_common_image()
+        )
         await callback.answer(f"{'🟢' if new_val else '🔴'} {label}: {'启用' if new_val else '禁用'}")
     except Exception:
         await callback.answer("🔴 操作失败，请稍后重试", show_alert=True)
