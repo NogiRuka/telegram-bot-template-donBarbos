@@ -6,11 +6,15 @@ from sqlalchemy import select
 from bot.database.database import sessionmaker
 from bot.database.models.notification import NotificationModel
 from bot.services.emby_service import get_item_details
+from bot.services.main_message import MainMessageService
 
 router = Router(name="notification")
 
 @router.callback_query(F.data.startswith("notify_approve:"))
-async def handle_notify_approve(callback: types.CallbackQuery) -> None:
+async def handle_notify_approve(
+    callback: types.CallbackQuery, 
+    main_msg: MainMessageService
+) -> None:
     """处理通知批准"""
     try:
         notification_id = int(callback.data.split(":")[1])
@@ -45,12 +49,8 @@ async def handle_notify_approve(callback: types.CallbackQuery) -> None:
             
             if not details:
                 # 尝试编辑消息，如果消息太旧可能会失败
-                try:
-                    await callback.message.edit_text(
-                        f"{callback.message.html_text}\n\n❌ <b>发送失败:</b> 无法从 Emby 获取项目详情 (ID: {notification.item_id})"
-                    )
-                except Exception:
-                    await callback.message.answer(f"❌ <b>发送失败:</b> 无法从 Emby 获取项目详情 (ID: {notification.item_id})")
+                caption = f"{callback.message.html_text}\n\n❌ <b>发送失败:</b> 无法从 Emby 获取项目详情 (ID: {notification.item_id})"
+                await main_msg.update_on_callback(callback, caption, None)
                 
                 notification.status = "failed"
                 await session.commit()
@@ -76,13 +76,8 @@ async def handle_notify_approve(callback: types.CallbackQuery) -> None:
             await session.commit()
             
             # 更新原管理消息
-            try:
-                await callback.message.edit_text(
-                    f"{callback.message.html_text}\n\n✅ <b>已发送通知</b>",
-                    reply_markup=None
-                )
-            except Exception:
-                pass
+            caption = f"{callback.message.html_text}\n\n✅ <b>已发送通知</b>"
+            await main_msg.update_on_callback(callback, caption, None)
             
         except Exception as e:
             logger.exception("处理通知批准时发生错误")
@@ -91,7 +86,10 @@ async def handle_notify_approve(callback: types.CallbackQuery) -> None:
             await session.commit()
 
 @router.callback_query(F.data.startswith("notify_reject:"))
-async def handle_notify_reject(callback: types.CallbackQuery) -> None:
+async def handle_notify_reject(
+    callback: types.CallbackQuery, 
+    main_msg: MainMessageService
+) -> None:
     """处理通知拒绝"""
     try:
         notification_id = int(callback.data.split(":")[1])
@@ -111,12 +109,7 @@ async def handle_notify_reject(callback: types.CallbackQuery) -> None:
         notification.status = "rejected"
         await session.commit()
         
-        try:
-            await callback.message.edit_text(
-                f"{callback.message.html_text}\n\n🚫 <b>已拒绝/忽略</b>",
-                reply_markup=None
-            )
-        except Exception:
-            pass
+        caption = f"{callback.message.html_text}\n\n🚫 <b>已拒绝/忽略</b>"
+        await main_msg.update_on_callback(callback, caption, None)
             
         await callback.answer("已忽略")
