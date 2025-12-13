@@ -141,6 +141,7 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
         "user.lines",
         "user.devices",
         "user.password",
+        "user.export_users",
     ]
     out: dict[str, bool] = {}
     for k in keys:

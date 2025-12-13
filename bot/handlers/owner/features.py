@@ -2,6 +2,18 @@ from aiogram import F, Router, types
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.keyboards.inline.labels import (
+    ADMIN_FEATURES_SWITCH_LABEL,
+    FEATURES_PANEL_LABEL,
+    OPEN_REGISTRATION_LABEL,
+    ROBOT_SWITCH_LABEL,
+    USER_DEVICES_LABEL,
+    USER_FEATURES_SWITCH_LABEL,
+    USER_INFO_LABEL,
+    USER_LINES_LABEL,
+    USER_PASSWORD_LABEL,
+    USER_REGISTER_LABEL,
+)
 from bot.keyboards.inline.start_owner import get_features_panel_keyboard
 from bot.services.config_service import list_features, toggle_config
 from bot.services.main_message import MainMessageService
@@ -31,12 +43,11 @@ async def show_features_panel(
     返回值:
     - None
     """
-    caption = "🧩 功能开关\n\n可切换全部功能或单项功能"
     features = await list_features(session)
     kb = get_features_panel_keyboard(features)
     image = get_common_image()
     
-    await main_msg.update_on_callback(callback, caption, kb, image_path=image)
+    await main_msg.update_on_callback(callback, FEATURES_PANEL_LABEL, kb, image_path=image)
     await callback.answer()
 
 
@@ -56,7 +67,7 @@ async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession) -> 
     - None
     """
     new_val = await toggle_config(session, "bot.features.enabled")
-    await callback.answer(f"{'🟢' if new_val else '🔴'} 机器人总开关: {'开启' if new_val else '关闭'}")
+    await callback.answer(f"{'🟢' if new_val else '🔴'} {ROBOT_SWITCH_LABEL}: {'开启' if new_val else '关闭'}")
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("owner:features:toggle:"))
@@ -83,15 +94,15 @@ async def toggle_owner_features(
         parts = (callback.data or "").split(":")
         key = parts[-1] if len(parts) >= 4 else ""
         mapping: dict[str, tuple[str, str]] = {
-            "bot_all": ("bot.features.enabled", "机器人开关"),
-            "user_all": ("user.features.enabled", "功能总开关"),
-            "user_register": ("user.register", "Emby 注册"),
-            "user_info": ("user.info", "账号信息"),
-            "user_password": ("user.password", "修改密码"),
-            "user_lines": ("user.lines", "线路信息"),
-            "user_devices": ("user.devices", "设备管理"),
+            "bot_all": ("bot.features.enabled", ROBOT_SWITCH_LABEL),
+            "user_all": ("user.features.enabled", USER_FEATURES_SWITCH_LABEL),
+            "user_register": ("user.register", USER_REGISTER_LABEL),
+            "user_info": ("user.info", USER_INFO_LABEL),
+            "user_password": ("user.password", USER_PASSWORD_LABEL),
+            "user_lines": ("user.lines", USER_LINES_LABEL),
+            "user_devices": ("user.devices", USER_DEVICES_LABEL),
             "user_export_users": ("user.export_users", "导出用户功能"),
-            "admin_open_registration": ("admin.open_registration", "管理员开放注册权限"),
+            "admin_open_registration": ("admin.open_registration", OPEN_REGISTRATION_LABEL),
         }
         if key not in mapping:
             await callback.answer("🔴 无效的开关项", show_alert=True)
@@ -103,7 +114,7 @@ async def toggle_owner_features(
         
         await main_msg.update_on_callback(
             callback, 
-            "🧩 功能开关\n\n可切换全部功能或单项功能", 
+            FEATURES_PANEL_LABEL, 
             get_features_panel_keyboard(features),
             image_path=get_common_image()
         )
