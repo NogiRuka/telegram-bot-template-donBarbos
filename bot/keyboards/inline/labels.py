@@ -30,6 +30,11 @@ OPEN_REGISTRATION_LABEL = "🛂 开放注册"
 HITOKOTO_LABEL = "🎴 一言管理"
 ADMIN_NEW_ITEM_NOTIFICATION_LABEL = "📢 新片通知"
 
+# 上新通知子面板
+NOTIFY_COMPLETE_LABEL = "🔄 上新补全"
+NOTIFY_PREVIEW_LABEL = "👀 上新预览"
+NOTIFY_SEND_LABEL = "🚀 一键通知"
+
 # ===== 所有者功能 =====
 OWNER_PANEL_LABEL = "👑 所有者面板"
 OWNER_ADMINS_LABEL = "👮 管理员管理"

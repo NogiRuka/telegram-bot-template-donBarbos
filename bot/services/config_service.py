@@ -48,8 +48,6 @@ KEY_ADMIN_OPEN_REGISTRATION_WINDOW = "admin.open_registration.window"
 KEY_ADMIN_HITOKOTO_CATEGORIES = "admin.hitokoto.categories"
 
 
-# Feature Mappings
-# Format: short_code -> (config_key, label)
 # 功能映射
 # 格式: 短代码 -> (配置键, 标签)
 OWNER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
@@ -79,6 +77,7 @@ ADMIN_PANEL_VISIBLE_FEATURES: list[str] = [
     "stats",
     "hitokoto",
     "open_registration",
+    "new_item_notification",
 ]
 
 

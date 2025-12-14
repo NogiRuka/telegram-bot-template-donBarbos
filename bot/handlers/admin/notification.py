@@ -1,115 +1,221 @@
 from aiogram import F, Router, types
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from bot.database.database import sessionmaker
-from bot.database.models.notification import NotificationModel
-from bot.services.emby_service import get_item_details
+from bot.database.models.notification import NotificationModel, EmbyItemModel
+from bot.keyboards.inline.labels import (
+    ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
+    BACK_LABEL,
+    BACK_TO_HOME_LABEL,
+    NOTIFY_COMPLETE_LABEL,
+    NOTIFY_PREVIEW_LABEL,
+    NOTIFY_SEND_LABEL,
+)
+from bot.services.emby_service import fetch_and_save_item_details
 from bot.services.main_message import MainMessageService
+from bot.utils.images import get_common_image
 
 router = Router(name="notification")
 
-@router.callback_query(F.data.startswith("notify_approve:"))
-async def handle_notify_approve(
+
+@router.callback_query(F.data == "admin:new_item_notification")
+async def show_notification_panel(
     callback: types.CallbackQuery, 
     main_msg: MainMessageService
 ) -> None:
-    """处理通知批准"""
-    try:
-        notification_id = int(callback.data.split(":")[1])
-    except (ValueError, IndexError):
-        await callback.answer("❌ 无效的参数", show_alert=True)
-        return
+    """显示新片通知管理面板"""
+    async with sessionmaker() as session:
+        # 统计各状态数量
+        pending_completion = await session.scalar(
+            select(func.count(NotificationModel.id)).where(NotificationModel.status == "pending_completion")
+        ) or 0
+        pending_review = await session.scalar(
+            select(func.count(NotificationModel.id)).where(NotificationModel.status == "pending_review")
+        ) or 0
+
+    text = (
+        f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
+        f"📊 <b>状态统计:</b>\n"
+        f"• 待补全: <b>{pending_completion}</b>\n"
+        f"• 待发送: <b>{pending_review}</b>\n\n"
+        f"请选择操作:"
+    )
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=f"{NOTIFY_COMPLETE_LABEL} ({pending_completion})", callback_data="notify:complete"),
+            InlineKeyboardButton(text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})", callback_data="notify:preview"),
+            InlineKeyboardButton(text=NOTIFY_SEND_LABEL, callback_data="notify:send_all")
+        ],
+        [InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel")],
+        [InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")]
+    ])
+
+    await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
+    await callback.answer()
+
+
+@router.callback_query(F.data == "notify:complete")
+async def handle_notify_complete(
+    callback: types.CallbackQuery,
+    main_msg: MainMessageService
+) -> None:
+    """执行上新补全"""
+    await callback.answer("⏳ 正在后台补全元数据...", show_alert=False)
+    
+    success_count = 0
+    fail_count = 0
     
     async with sessionmaker() as session:
-        # 获取通知记录
-        stmt = select(NotificationModel).where(NotificationModel.id == notification_id)
+        # 获取所有待补全的通知
+        stmt = select(NotificationModel).where(NotificationModel.status == "pending_completion")
         result = await session.execute(stmt)
-        notification = result.scalar_one_or_none()
+        notifications = result.scalars().all()
         
-        if not notification:
-            await callback.answer("❌ 通知记录不存在", show_alert=True)
-            return
-            
-        if notification.status != "pending":
-            await callback.answer(f"⚠️ 该通知状态为 {notification.status}，无法操作", show_alert=True)
+        if not notifications:
+            await callback.answer("没有待补全的通知", show_alert=True)
             return
 
-        # 更新状态为 approved
-        notification.status = "approved"
-        await session.commit()
-        
-        await callback.answer("✅ 已批准，正在获取最新元数据...")
-        
-        # 获取 Emby 详情
-        try:
-            # 这里的 get_item_details 已经包含了我们修改过的 get_items 逻辑
-            details = await get_item_details(notification.item_id)
-            
-            if not details:
-                # 尝试编辑消息，如果消息太旧可能会失败
-                caption = f"{callback.message.html_text}\n\n❌ <b>发送失败:</b> 无法从 Emby 获取项目详情 (ID: {notification.item_id})"
-                await main_msg.update_on_callback(callback, caption, None)
+        total = len(notifications)
+        # 简单反馈进度 (实际建议用单独的任务处理，这里简化演示)
+        progress_msg = await callback.message.answer(f"⏳ 开始补全 {total} 条记录...")
+
+        for notif in notifications:
+            if not notif.item_id:
+                notif.status = "failed"
+                fail_count += 1
+                continue
                 
-                notification.status = "failed"
-                await session.commit()
-                return
-
-            # 构建最终通知消息
-            name = details.get("Name", notification.item_name)
-            overview = details.get("Overview", "无简介")
-            
-            # 简单的消息格式，后续可根据需求美化
-            msg_text = (
-                f"📢 <b>新内容入库</b>\n\n"
-                f"🎬 <b>{name}</b>\n"
-                f"📝 {overview[:200] + '...' if len(overview) > 200 else overview}\n\n"
-                f"#NewItem"
-            )
-            
-            # 发送通知 (此处演示发回给管理员，实际应发给频道)
-            # TODO: 读取配置中的 Channel ID 进行发送
-            sent_msg = await callback.message.answer(msg_text)
-            
-            notification.status = "sent"
-            await session.commit()
-            
-            # 更新原管理消息
-            caption = f"{callback.message.html_text}\n\n✅ <b>已发送通知</b>"
-            await main_msg.update_on_callback(callback, caption, None)
-            
-        except Exception as e:
-            logger.exception("处理通知批准时发生错误")
-            await callback.message.answer(f"❌ 处理出错: {e}")
-            notification.status = "failed"
-            await session.commit()
-
-@router.callback_query(F.data.startswith("notify_reject:"))
-async def handle_notify_reject(
-    callback: types.CallbackQuery, 
-    main_msg: MainMessageService
-) -> None:
-    """处理通知拒绝"""
-    try:
-        notification_id = int(callback.data.split(":")[1])
-    except (ValueError, IndexError):
-        await callback.answer("❌ 无效的参数", show_alert=True)
-        return
-    
-    async with sessionmaker() as session:
-        stmt = select(NotificationModel).where(NotificationModel.id == notification_id)
-        result = await session.execute(stmt)
-        notification = result.scalar_one_or_none()
+            # 调用 Service 补全
+            ok = await fetch_and_save_item_details(session, notif.item_id)
+            if ok:
+                notif.status = "pending_review"
+                success_count += 1
+            else:
+                # 补全失败暂时保留状态或标记失败? 视策略而定，这里标记失败避免卡死
+                notif.status = "failed"
+                fail_count += 1
         
-        if not notification:
-            await callback.answer("❌ 通知记录不存在", show_alert=True)
-            return
-            
-        notification.status = "rejected"
         await session.commit()
         
-        caption = f"{callback.message.html_text}\n\n🚫 <b>已拒绝/忽略</b>"
-        await main_msg.update_on_callback(callback, caption, None)
-            
-        await callback.answer("已忽略")
+        await progress_msg.delete()
+        await callback.answer(f"✅ 完成: 成功 {success_count}, 失败 {fail_count}", show_alert=True)
+        
+        # 刷新面板
+        await show_notification_panel(callback, main_msg)
+
+
+@router.callback_query(F.data == "notify:preview")
+async def handle_notify_preview(
+    callback: types.CallbackQuery,
+    main_msg: MainMessageService
+) -> None:
+    """预览待发送列表"""
+    async with sessionmaker() as session:
+        # 联查 Notification 和 EmbyItem
+        stmt = (
+            select(NotificationModel, EmbyItemModel)
+            .join(EmbyItemModel, NotificationModel.item_id == EmbyItemModel.id)
+            .where(NotificationModel.status == "pending_review")
+            .limit(10) # 限制预览数量
+        )
+        result = await session.execute(stmt)
+        rows = result.all()
+        
+    if not rows:
+        await callback.answer("没有待发送的通知", show_alert=True)
+        return
+
+    text_lines = ["<b>👀 待发送预览 (前10条):</b>\n"]
+    for notif, item in rows:
+        text_lines.append(f"• {item.name} ({item.type})")
+        
+    text = "\n".join(text_lines)
+    
+    # 使用弹窗显示预览，或者发送一条临时消息
+    await callback.message.answer(text)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "notify:send_all")
+async def handle_notify_send_all(
+    callback: types.CallbackQuery,
+    main_msg: MainMessageService
+) -> None:
+    """一键发送通知"""
+    # 确认对话框
+    confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🚀 确认发送", callback_data="notify:confirm_send"),
+            InlineKeyboardButton(text="❌ 取消", callback_data="admin:new_item_notification")
+        ]
+    ])
+    await main_msg.update_on_callback(
+        callback, 
+        "⚠️ <b>确认操作</b>\n\n确定要将所有 [待发送] 状态的通知推送到频道/群组吗？", 
+        confirm_kb
+    )
+
+
+@router.callback_query(F.data == "notify:confirm_send")
+async def execute_send_all(
+    callback: types.CallbackQuery,
+    main_msg: MainMessageService
+) -> None:
+    """执行批量发送"""
+    await callback.answer("🚀 开始推送...", show_alert=False)
+    
+    sent_count = 0
+    fail_count = 0
+    
+    async with sessionmaker() as session:
+        stmt = (
+            select(NotificationModel, EmbyItemModel)
+            .join(EmbyItemModel, NotificationModel.item_id == EmbyItemModel.id)
+            .where(NotificationModel.status == "pending_review")
+        )
+        result = await session.execute(stmt)
+        rows = result.all()
+        
+        if not rows:
+            await callback.answer("没有可发送的通知", show_alert=True)
+            # 返回面板
+            await show_notification_panel(callback, main_msg)
+            return
+
+        # TODO: 从配置读取目标频道/群组 ID
+        # target_chat_id = settings.NOTIFICATION_CHANNEL_ID 
+        # 这里暂时发给当前用户(管理员)作为演示
+        target_chat_id = callback.from_user.id
+
+        for notif, item in rows:
+            try:
+                # 构造消息内容
+                overview = item.overview or "无简介"
+                msg_text = (
+                    f"📢 <b>新内容入库</b>\n\n"
+                    f"🎬 <b>{item.name}</b> ({item.type})\n"
+                    f"📅 {item.date_created[:10] if item.date_created else '未知'}\n"
+                    f"📝 {overview[:150] + '...' if len(overview) > 150 else overview}\n\n"
+                    f"#NewItem"
+                )
+                
+                # 发送
+                await callback.bot.send_message(chat_id=target_chat_id, text=msg_text)
+                
+                # 更新状态
+                notif.status = "sent"
+                notif.target_channel_id = str(target_chat_id)
+                sent_count += 1
+                
+            except Exception as e:
+                logger.error(f"❌ 发送通知失败: {item.name} -> {e}")
+                notif.status = "failed"
+                fail_count += 1
+        
+        await session.commit()
+    
+    await callback.answer(f"✅ 推送完成: 成功 {sent_count}, 失败 {fail_count}", show_alert=True)
+    await show_notification_panel(callback, main_msg)

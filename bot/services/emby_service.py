@@ -301,27 +301,70 @@ async def get_item_details(item_id: str) -> dict[str, Any] | None:
     return success_count, fail_count
 
 
-async def delete_user(user_id: str) -> tuple[bool, Any | None, str | None]:
-    """删除 Emby 用户
-
+async def fetch_and_save_item_details(session: AsyncSession, item_id: str) -> bool:
+    """从 Emby 获取项目详情并存入 emby_items 表
+    
     功能说明:
-    - 使用客户端调用 `DELETE /Users/{user_id}` 删除用户
-
+    - 调用 Emby API 获取详细信息 (Name, Overview, People, Tags, etc.)
+    - 构造 EmbyItemModel 并保存
+    - 如果已存在则更新
+    
     输入参数:
-    - user_id: 用户ID
-
+    - session: 数据库会话
+    - item_id: Emby Item ID
+    
     返回值:
-    - tuple[bool, Any | None, str | None]: (是否成功, 结果, 失败原因)
+    - bool: 是否成功保存
     """
-    client = get_client()
-    if client is None:
-        return False, None, "未配置 Emby 连接信息"
+    from bot.database.models.notification import EmbyItemModel
+    
+    # 1. 获取详情
+    item_details = await get_item_details(item_id)
+    if not item_details:
+        return False
+        
     try:
-        res = await client.delete_user(user_id)
-    except Exception as e:  # noqa: BLE001
-        return False, None, str(e)
-    else:
-        return True, res, None
+        # 2. 提取字段
+        name = item_details.get("Name")
+        date_created = item_details.get("DateCreated")
+        overview = item_details.get("Overview")
+        item_type = item_details.get("Type")
+        people = item_details.get("People")
+        tag_items = item_details.get("TagItems")
+        image_tags = item_details.get("ImageTags")
+        
+        # 3. 构造模型
+        # 检查是否存在
+        existing = await session.get(EmbyItemModel, item_id)
+        if existing:
+            existing.name = name
+            existing.date_created = date_created
+            existing.overview = overview
+            existing.type = item_type
+            existing.people = people
+            existing.tag_items = tag_items
+            existing.image_tags = image_tags
+            existing.original_data = item_details
+            logger.info(f"🔄 更新 Emby Item: {name} ({item_id})")
+        else:
+            model = EmbyItemModel(
+                id=item_id,
+                name=name,
+                date_created=date_created,
+                overview=overview,
+                type=item_type,
+                people=people,
+                tag_items=tag_items,
+                image_tags=image_tags,
+                original_data=item_details
+            )
+            session.add(model)
+            logger.info(f"✅ 新增 Emby Item: {name} ({item_id})")
+            
+        return True
+    except Exception as e:
+        logger.error(f"❌ 保存 Emby Item 失败: {item_id} -> {e}")
+        return False
 
 
 async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
