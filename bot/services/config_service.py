@@ -50,6 +50,8 @@ KEY_ADMIN_HITOKOTO_CATEGORIES = "admin.hitokoto.categories"
 
 # Feature Mappings
 # Format: short_code -> (config_key, label)
+# 功能映射
+# 格式: 短代码 -> (配置键, 标签)
 OWNER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "bot_all": (KEY_BOT_FEATURES_ENABLED, ROBOT_SWITCH_LABEL),
     "user_all": (KEY_USER_FEATURES_ENABLED, USER_FEATURES_SWITCH_LABEL),
@@ -71,6 +73,7 @@ ADMIN_PERMISSIONS_MAPPING: dict[str, tuple[str, str]] = {
 }
 
 # Features that have a dedicated button in the Admin Panel
+# 在管理员面板中拥有独立按钮的功能
 ADMIN_PANEL_VISIBLE_FEATURES: list[str] = [
     "groups",
     "stats",
