@@ -337,12 +337,18 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
         # Emby API 可能对 URL 长度有限制，如果 ids 太多可能需要分批
         # 这里假设 ids 数量适中 (例如几百个以内通常没问题，POST 查询可能更稳但 Emby API 这里是 GET)
         # 如果数量极大，建议上层分批调用
-        items, _ = await client.get_items(
+        logger.debug(f"🔍 正在批量查询 Emby 项目, IDs: {item_ids}")
+        items, total = await client.get_items(
             ids=item_ids,
             user_id=user_id,
             recursive=True,
             limit=len(item_ids) # 确保返回所有
         )
+        logger.debug(f"🔙 Emby 接口返回: {total} 个项目, 实际数据: {len(items)} 条")
+        if items:
+            logger.debug(f"📦 第一条数据示例 (ID: {items[0].get('Id')}): Name={items[0].get('Name')}")
+        else:
+            logger.warning(f"⚠️ Emby 接口返回为空! 请求 IDs: {item_ids}")
         
         # 建立 item_id -> item_data 的映射
         items_map = {str(item.get("Id")): item for item in items}
