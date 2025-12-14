@@ -3,6 +3,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from loguru import logger
 from sqlalchemy import select, func
 
+from bot.core.config import settings
 from bot.database.database import sessionmaker
 from bot.database.models.notification import NotificationModel
 from bot.database.models.emby_item import EmbyItemModel
@@ -206,6 +207,16 @@ async def execute_send_all(
 
         for notif, item in rows:
             try:
+                # 构造图片 URL
+                image_url = None
+                if item.image_tags and "Primary" in item.image_tags:
+                    tag = item.image_tags["Primary"]
+                    base_url = settings.get_emby_base_url()
+                    # 确保 base_url 不以 / 结尾
+                    if base_url.endswith("/"):
+                        base_url = base_url[:-1]
+                    image_url = f"{base_url}/Items/{item.id}/Images/Primary?tag={tag}"
+
                 # 构造消息内容
                 overview = item.overview or "无简介"
                 msg_text = (
@@ -217,7 +228,10 @@ async def execute_send_all(
                 )
                 
                 # 发送
-                await callback.bot.send_message(chat_id=target_chat_id, text=msg_text)
+                if image_url:
+                    await callback.bot.send_photo(chat_id=target_chat_id, photo=image_url, caption=msg_text)
+                else:
+                    await callback.bot.send_message(chat_id=target_chat_id, text=msg_text)
                 
                 # 更新状态
                 notif.status = "sent"
