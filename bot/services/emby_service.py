@@ -11,7 +11,6 @@ from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.utils.datetime import now, parse_iso_datetime
 from bot.utils.http import HttpRequestError
-
 import copy
 
 if TYPE_CHECKING:
@@ -339,10 +338,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
         # 如果数量极大，建议上层分批调用
         logger.debug(f"🔍 正在批量查询 Emby 项目, IDs: {item_ids}")
         items, total = await client.get_items(
-            ids=item_ids,
-            user_id=user_id,
-            recursive=True,
-            limit=len(item_ids) # 确保返回所有
+            ids=item_ids
         )
         logger.debug(f"🔙 Emby 接口返回: {total} 个项目, 实际数据: {len(items)} 条")
         if items:
@@ -366,7 +362,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                 
             try:
                 name = item_details.get("Name")
-                date_created = item_details.get("DateCreated")
+                date_created = str(parse_iso_datetime(item_details.get("DateCreated")))
                 overview = item_details.get("Overview")
                 item_type = item_details.get("Type")
                 people = item_details.get("People")
