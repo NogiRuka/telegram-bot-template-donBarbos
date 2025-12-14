@@ -303,70 +303,107 @@ async def get_item_details(item_id: str) -> dict[str, Any] | None:
         return None
 
 
-async def fetch_and_save_item_details(session: AsyncSession, item_id: str) -> bool:
-    """从 Emby 获取项目详情并存入 emby_items 表
+async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]) -> dict[str, bool]:
+    """批量从 Emby 获取项目详情并存入 emby_items 表
     
     功能说明:
-    - 调用 Emby API 获取详细信息 (Name, Overview, People, Tags, etc.)
-    - 构造 EmbyItemModel 并保存
+    - 批量调用 Emby API 获取详细信息
+    - 逐个构造 EmbyItemModel 并保存
     - 如果已存在则更新
     
     输入参数:
     - session: 数据库会话
-    - item_id: Emby Item ID
+    - item_ids: Emby Item ID 列表
     
     返回值:
-    - bool: 是否成功保存
+    - dict[str, bool]: 结果映射 {item_id: success}
     """
     from bot.database.models.notification import EmbyItemModel
     
-    # 1. 获取详情
-    item_details = await get_item_details(item_id)
-    if not item_details:
-        return False
-        
+    if not item_ids:
+        return {}
+
+    client = get_client()
+    if client is None:
+        logger.warning("⚠️ 未配置 Emby 连接信息")
+        return {iid: False for iid in item_ids}
+    
+    results = {iid: False for iid in item_ids}
+    user_id = settings.get_emby_template_user_id()
+
     try:
-        # 2. 提取字段
-        name = item_details.get("Name")
-        date_created = item_details.get("DateCreated")
-        overview = item_details.get("Overview")
-        item_type = item_details.get("Type")
-        people = item_details.get("People")
-        tag_items = item_details.get("TagItems")
-        image_tags = item_details.get("ImageTags")
+        # 批量获取详情
+        # 注意: get_items 接收 list[str]
+        # Emby API 可能对 URL 长度有限制，如果 ids 太多可能需要分批
+        # 这里假设 ids 数量适中 (例如几百个以内通常没问题，POST 查询可能更稳但 Emby API 这里是 GET)
+        # 如果数量极大，建议上层分批调用
+        items, _ = await client.get_items(
+            ids=item_ids,
+            user_id=user_id,
+            recursive=True,
+            limit=len(item_ids) # 确保返回所有
+        )
         
-        # 3. 构造模型
-        # 检查是否存在
-        existing = await session.get(EmbyItemModel, item_id)
-        if existing:
-            existing.name = name
-            existing.date_created = date_created
-            existing.overview = overview
-            existing.type = item_type
-            existing.people = people
-            existing.tag_items = tag_items
-            existing.image_tags = image_tags
-            existing.original_data = item_details
-            logger.info(f"🔄 更新 Emby Item: {name} ({item_id})")
-        else:
-            model = EmbyItemModel(
-                id=item_id,
-                name=name,
-                date_created=date_created,
-                overview=overview,
-                type=item_type,
-                people=people,
-                tag_items=tag_items,
-                image_tags=image_tags,
-                original_data=item_details
-            )
-            session.add(model)
-            logger.info(f"✅ 新增 Emby Item: {name} ({item_id})")
-            
-        return True
+        # 建立 item_id -> item_data 的映射
+        items_map = {str(item.get("Id")): item for item in items}
+        
+        # 批量查询现有记录
+        existing_stmt = select(EmbyItemModel).where(EmbyItemModel.id.in_(item_ids))
+        existing_res = await session.execute(existing_stmt)
+        existing_models = {m.id: m for m in existing_res.scalars().all()}
+        
+        for item_id in item_ids:
+            item_details = items_map.get(item_id)
+            if not item_details:
+                logger.warning(f"⚠️ 未找到 Emby 项目: {item_id}")
+                continue
+                
+            try:
+                name = item_details.get("Name")
+                date_created = item_details.get("DateCreated")
+                overview = item_details.get("Overview")
+                item_type = item_details.get("Type")
+                people = item_details.get("People")
+                tag_items = item_details.get("TagItems")
+                image_tags = item_details.get("ImageTags")
+                
+                existing = existing_models.get(item_id)
+                if existing:
+                    existing.name = name
+                    existing.date_created = date_created
+                    existing.overview = overview
+                    existing.type = item_type
+                    existing.people = people
+                    existing.tag_items = tag_items
+                    existing.image_tags = image_tags
+                    existing.original_data = item_details
+                    logger.debug(f"🔄 更新 Emby Item: {name} ({item_id})")
+                else:
+                    model = EmbyItemModel(
+                        id=item_id,
+                        name=name,
+                        date_created=date_created,
+                        overview=overview,
+                        type=item_type,
+                        people=people,
+                        tag_items=tag_items,
+                        image_tags=image_tags,
+                        original_data=item_details
+                    )
+                    session.add(model)
+                    logger.debug(f"✅ 新增 Emby Item: {name} ({item_id})")
+                
+                results[item_id] = True
+            except Exception as e:
+                logger.error(f"❌ 保存 Emby Item 失败: {item_id} -> {e}")
+                results[item_id] = False
+
     except Exception as e:
-        logger.error(f"❌ 保存 Emby Item 失败: {item_id} -> {e}")
-        return False
+        logger.error(f"❌ 批量获取项目详情失败: {e}")
+        # 所有都失败
+        return results
+
+    return results
 
 
 async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:

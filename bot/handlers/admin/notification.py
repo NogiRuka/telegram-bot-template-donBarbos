@@ -54,7 +54,8 @@ async def handle_notify_complete(
     main_msg: MainMessageService
 ) -> None:
     """执行上新补全"""
-    await callback.answer("⏳ 正在后台补全元数据...", show_alert=False)
+    # 移除旧的即时应答，改为在确认有任务后弹窗提示
+    # await callback.answer("⏳ 正在后台补全元数据...", show_alert=False)
     
     success_count = 0
     fail_count = 0
@@ -70,8 +71,14 @@ async def handle_notify_complete(
             return
 
         total = len(notifications)
-        # 简单反馈进度 (实际建议用单独的任务处理，这里简化演示)
-        progress_msg = await callback.message.answer(f"⏳ 开始补全 {total} 条记录...")
+        # 提示改为 Alert 形式
+        await callback.answer(f"⏳ 开始补全 {total} 条记录...", show_alert=True)
+
+        # 提取 item_ids 并批量查询
+        item_ids = list({n.item_id for n in notifications if n.item_id})
+        
+        # 批量调用 Service
+        batch_results = await fetch_and_save_item_details(session, item_ids)
 
         for notif in notifications:
             if not notif.item_id:
@@ -79,24 +86,35 @@ async def handle_notify_complete(
                 fail_count += 1
                 continue
                 
-            # 调用 Service 补全
-            ok = await fetch_and_save_item_details(session, notif.item_id)
-            if ok:
+            # 根据批量结果更新状态
+            if batch_results.get(notif.item_id):
                 notif.status = "pending_review"
                 success_count += 1
             else:
-                # 补全失败暂时保留状态或标记失败? 视策略而定，这里标记失败避免卡死
                 notif.status = "failed"
                 fail_count += 1
         
         await session.commit()
         
-        try:
-            await progress_msg.delete()
-        except Exception:
-            pass # 忽略删除消息可能的异常
-            
-        await callback.answer(f"✅ 完成: 成功 {success_count}, 失败 {fail_count}", show_alert=True)
+        # 刷新界面显示结果
+        pending_completion = await session.scalar(
+            select(func.count(NotificationModel.id)).where(NotificationModel.status == "pending_completion")
+        ) or 0
+        pending_review = await session.scalar(
+            select(func.count(NotificationModel.id)).where(NotificationModel.status == "pending_review")
+        ) or 0
+
+        text = (
+            f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
+            f"📊 <b>状态统计:</b>\n"
+            f"• 待补全: <b>{pending_completion}</b>\n"
+            f"• 待发送: <b>{pending_review}</b>\n\n"
+            f"✅ <b>操作完成:</b> 成功 {success_count}, 失败 {fail_count}\n"
+            f"请选择操作:"
+        )
+
+        kb = get_notification_panel_keyboard(pending_completion, pending_review)
+        await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
         
         # 刷新面板
         await show_notification_panel(callback, main_msg)
