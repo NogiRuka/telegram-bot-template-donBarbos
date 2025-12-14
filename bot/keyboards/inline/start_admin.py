@@ -8,10 +8,11 @@ from bot.keyboards.inline.common_buttons import (
 )
 from bot.keyboards.inline.labels import (
     BACK_TO_HOME_LABEL,
-    GROUPS_LABEL,
-    HITOKOTO_LABEL,
-    OPEN_REGISTRATION_LABEL,
-    STATS_LABEL,
+)
+from bot.services.config_service import (
+    ADMIN_PANEL_VISIBLE_FEATURES,
+    ADMIN_PERMISSIONS_MAPPING,
+    KEY_ADMIN_FEATURES_ENABLED,
 )
 
 
@@ -65,15 +66,26 @@ def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 内联键盘
     """
     buttons: list[list[InlineKeyboardButton]] = []
-    if perms.get("admin.features.enabled", False) and perms.get("admin.groups", False):
-        buttons.append([InlineKeyboardButton(text=GROUPS_LABEL, callback_data="admin:groups")])
-    if perms.get("admin.features.enabled", False) and perms.get("admin.stats", False):
-        buttons.append([InlineKeyboardButton(text=STATS_LABEL, callback_data="admin:stats")])
-    if perms.get("admin.features.enabled", False) and perms.get("admin.hitokoto", False):
-        buttons.append([InlineKeyboardButton(text=HITOKOTO_LABEL, callback_data="admin:hitokoto")])
-    if perms.get("admin.features.enabled", False) and perms.get("admin.open_registration", False):
-        buttons.append([InlineKeyboardButton(text=OPEN_REGISTRATION_LABEL, callback_data="admin:open_registration")])
+    master_enabled = perms.get(KEY_ADMIN_FEATURES_ENABLED, False)
+
+    for short_code in ADMIN_PANEL_VISIBLE_FEATURES:
+        if short_code not in ADMIN_PERMISSIONS_MAPPING:
+            continue
+            
+        config_key, label = ADMIN_PERMISSIONS_MAPPING[short_code]
+        if master_enabled and perms.get(config_key, False):
+            buttons.append([InlineKeyboardButton(text=label, callback_data=f"admin:{short_code}")])
+
     buttons.append([InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")])
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(2, 2, 1)
+    
+    # 动态调整布局: 每行2个, 最后1个返回键单独一行
+    # 如果按钮数量(不含返回键)是奇数, 则最后一个功能键单独一行
+    count = len(buttons) - 1
+    layout = [2] * (count // 2)
+    if count % 2 == 1:
+        layout.append(1)
+    layout.append(1)  # 返回键
+    
+    keyboard.adjust(*layout)
     return keyboard.as_markup()

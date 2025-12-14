@@ -70,6 +70,14 @@ ADMIN_PERMISSIONS_MAPPING: dict[str, tuple[str, str]] = {
     "new_item_notification": (KEY_ADMIN_NEW_ITEM_NOTIFICATION, ADMIN_NEW_ITEM_NOTIFICATION_LABEL),
 }
 
+# Features that have a dedicated button in the Admin Panel
+ADMIN_PANEL_VISIBLE_FEATURES: list[str] = [
+    "groups",
+    "stats",
+    "hitokoto",
+    "open_registration",
+]
+
 
 async def get_config(session: AsyncSession, key: str) -> Any:
     """读取配置键
