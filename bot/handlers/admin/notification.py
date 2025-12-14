@@ -4,7 +4,8 @@ from loguru import logger
 from sqlalchemy import select, func
 
 from bot.database.database import sessionmaker
-from bot.database.models.notification import NotificationModel, EmbyItemModel
+from bot.database.models.notification import NotificationModel
+from bot.database.models.emby_item import EmbyItemModel
 from bot.keyboards.inline.labels import (
     ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
     NOTIFY_COMPLETE_LABEL,

@@ -318,7 +318,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
     返回值:
     - dict[str, bool]: 结果映射 {item_id: success}
     """
-    from bot.database.models.notification import EmbyItemModel
+    from bot.database.models.emby_item import EmbyItemModel
     
     if not item_ids:
         return {}
