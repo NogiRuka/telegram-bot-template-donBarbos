@@ -12,7 +12,6 @@ from bot.keyboards.inline.common_buttons import (
 from bot.keyboards.inline.labels import (
     ADMIN_FEATURES_SWITCH_LABEL,
     ADMIN_LIST_LABEL,
-    ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
     ADMIN_PERMS_PANEL_LABEL,
     BACK_LABEL,
     BACK_TO_HOME_LABEL,
@@ -165,6 +164,9 @@ def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
+from bot.services.config_service import ADMIN_PERMISSIONS_MAPPING, KEY_ADMIN_FEATURES_ENABLED
+
+
 def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     """管理员权限面板键盘
 
@@ -182,46 +184,41 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
     def status(v: bool) -> str:
         return "🟢" if v else "🔴"
 
-    buttons = [
-        [
+    buttons: list[list[InlineKeyboardButton]] = []
+    
+    # 1. 优先添加管理员总开关
+    if "features" in ADMIN_PERMISSIONS_MAPPING:
+        cfg_key, label = ADMIN_PERMISSIONS_MAPPING["features"]
+        buttons.append([
             InlineKeyboardButton(
-                text=format_with_status(ADMIN_FEATURES_SWITCH_LABEL, perms.get("admin.features.enabled", False)),
-                callback_data="owner:admin_perms:toggle:features",
+                text=format_with_status(label, perms.get(cfg_key, False)),
+                callback_data="owner:admin_perms:toggle:features"
             )
-        ],
-        [
+        ])
+
+    # 2. 动态添加其他权限开关
+    for short_code, (cfg_key, label) in ADMIN_PERMISSIONS_MAPPING.items():
+        if short_code == "features":
+            continue
+        buttons.append([
             InlineKeyboardButton(
-                text=format_with_status(GROUPS_LABEL, perms.get("admin.groups", False)),
-                callback_data="owner:admin_perms:toggle:groups",
+                text=format_with_status(label, perms.get(cfg_key, False)),
+                callback_data=f"owner:admin_perms:toggle:{short_code}"
             )
-        ],
-        [
-            InlineKeyboardButton(
-                text=format_with_status(STATS_LABEL, perms.get("admin.stats", False)),
-                callback_data="owner:admin_perms:toggle:stats",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=format_with_status(OPEN_REGISTRATION_LABEL, perms.get("admin.open_registration", False)),
-                callback_data="owner:admin_perms:toggle:open_registration",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=format_with_status(HITOKOTO_LABEL, perms.get("admin.hitokoto", False)),
-                callback_data="owner:admin_perms:toggle:hitokoto",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=format_with_status(ADMIN_NEW_ITEM_NOTIFICATION_LABEL, perms.get("admin.new_item_notification", False)),
-                callback_data="owner:admin_perms:toggle:new_item_notification",
-            )
-        ],
-        [InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel")],
-        [InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")],
-    ]
+        ])
+
+    buttons.append([InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel")])
+    buttons.append([InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")])
+    
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(1, 2)
+    # 调整布局: 总开关(1) -> 其他开关(每行2个) -> 底部导航(每行1个)
+    # 计算中间部分的行数
+    other_perms_count = len(buttons) - 3 # 减去总开关和两个底部按钮
+    layout = [1] # 总开关
+    layout.extend([2] * (other_perms_count // 2))
+    if other_perms_count % 2 == 1:
+        layout.append(1)
+    layout.extend([1, 1]) # 底部导航
+    
+    keyboard.adjust(*layout)
     return keyboard.as_markup()

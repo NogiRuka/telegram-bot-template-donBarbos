@@ -7,12 +7,11 @@ from bot.database.database import sessionmaker
 from bot.database.models.notification import NotificationModel, EmbyItemModel
 from bot.keyboards.inline.labels import (
     ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
-    BACK_LABEL,
-    BACK_TO_HOME_LABEL,
     NOTIFY_COMPLETE_LABEL,
     NOTIFY_PREVIEW_LABEL,
     NOTIFY_SEND_LABEL,
 )
+from bot.keyboards.inline.notification import get_notification_panel_keyboard
 from bot.services.emby_service import fetch_and_save_item_details
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
@@ -43,15 +42,7 @@ async def show_notification_panel(
         f"请选择操作:"
     )
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text=f"{NOTIFY_COMPLETE_LABEL} ({pending_completion})", callback_data="notify:complete"),
-            InlineKeyboardButton(text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})", callback_data="notify:preview"),
-            InlineKeyboardButton(text=NOTIFY_SEND_LABEL, callback_data="notify:send_all")
-        ],
-        [InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel")],
-        [InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")]
-    ])
+    kb = get_notification_panel_keyboard(pending_completion, pending_review)
 
     await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
     await callback.answer()
