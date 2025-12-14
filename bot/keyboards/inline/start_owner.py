@@ -211,14 +211,14 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
     buttons.append([InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")])
     
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    # 调整布局: 总开关(1) -> 其他开关(每行2个) -> 底部导航(每行1个)
+    # 调整布局: 总开关(1) -> 其他开关(每行2个) -> 底部导航(每行2个)
     # 计算中间部分的行数
     other_perms_count = len(buttons) - 3 # 减去总开关和两个底部按钮
     layout = [1] # 总开关
     layout.extend([2] * (other_perms_count // 2))
     if other_perms_count % 2 == 1:
         layout.append(1)
-    layout.extend([1, 1]) # 底部导航
+    layout.append(2) # 底部导航 (返回 + 主页)
     
     keyboard.adjust(*layout)
     return keyboard.as_markup()
