@@ -3,23 +3,10 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.start import get_common_image
-from bot.keyboards.inline.labels import (
-    ADMIN_FEATURES_SWITCH_LABEL,
-    ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
-    ADMIN_PERMS_PANEL_LABEL,
-    GROUPS_LABEL,
-    HITOKOTO_LABEL,
-    OPEN_REGISTRATION_LABEL,
-    STATS_LABEL,
-)
+from bot.keyboards.inline.labels import ADMIN_PERMS_PANEL_LABEL
 from bot.keyboards.inline.start_owner import get_admin_perms_panel_keyboard
 from bot.services.config_service import (
-    KEY_ADMIN_FEATURES_ENABLED,
-    KEY_ADMIN_GROUPS,
-    KEY_ADMIN_HITOKOTO,
-    KEY_ADMIN_NEW_ITEM_NOTIFICATION,
-    KEY_ADMIN_OPEN_REGISTRATION,
-    KEY_ADMIN_STATS,
+    ADMIN_PERMISSIONS_MAPPING,
     list_admin_permissions,
     toggle_config,
 )
@@ -80,18 +67,12 @@ async def toggle_admin_permissions(
     try:
         parts = (callback.data or "").split(":")
         key = parts[-1] if len(parts) >= 4 else ""
-        mapping: dict[str, tuple[str, str]] = {
-            "features": (KEY_ADMIN_FEATURES_ENABLED, ADMIN_FEATURES_SWITCH_LABEL),
-            "groups": (KEY_ADMIN_GROUPS, GROUPS_LABEL),
-            "stats": (KEY_ADMIN_STATS, STATS_LABEL),
-            "hitokoto": (KEY_ADMIN_HITOKOTO, HITOKOTO_LABEL),
-            "open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
-            "new_item_notification": (KEY_ADMIN_NEW_ITEM_NOTIFICATION, ADMIN_NEW_ITEM_NOTIFICATION_LABEL),
-        }
-        if key not in mapping:
+        
+        if key not in ADMIN_PERMISSIONS_MAPPING:
             await callback.answer("🔴 无效的权限项", show_alert=True)
             return
-        config_key, label = mapping[key]
+            
+        config_key, label = ADMIN_PERMISSIONS_MAPPING[key]
         operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
         new_val = await toggle_config(session, config_key, operator_id=operator_id)
         perms = await list_admin_permissions(session)

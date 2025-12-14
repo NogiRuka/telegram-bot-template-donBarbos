@@ -3,27 +3,13 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.labels import (
-    ADMIN_FEATURES_SWITCH_LABEL,
     FEATURES_PANEL_LABEL,
-    OPEN_REGISTRATION_LABEL,
     ROBOT_SWITCH_LABEL,
-    USER_DEVICES_LABEL,
-    USER_FEATURES_SWITCH_LABEL,
-    USER_INFO_LABEL,
-    USER_LINES_LABEL,
-    USER_PASSWORD_LABEL,
-    USER_REGISTER_LABEL,
 )
 from bot.keyboards.inline.start_owner import get_features_panel_keyboard
 from bot.services.config_service import (
-    KEY_ADMIN_OPEN_REGISTRATION,
     KEY_BOT_FEATURES_ENABLED,
-    KEY_USER_DEVICES,
-    KEY_USER_FEATURES_ENABLED,
-    KEY_USER_INFO,
-    KEY_USER_LINES,
-    KEY_USER_PASSWORD,
-    KEY_USER_REGISTER,
+    OWNER_FEATURES_MAPPING,
     list_features,
     toggle_config,
 )
@@ -104,20 +90,12 @@ async def toggle_owner_features(
     try:
         parts = (callback.data or "").split(":")
         key = parts[-1] if len(parts) >= 4 else ""
-        mapping: dict[str, tuple[str, str]] = {
-            "bot_all": (KEY_BOT_FEATURES_ENABLED, ROBOT_SWITCH_LABEL),
-            "user_all": (KEY_USER_FEATURES_ENABLED, USER_FEATURES_SWITCH_LABEL),
-            "user_register": (KEY_USER_REGISTER, USER_REGISTER_LABEL),
-            "user_info": (KEY_USER_INFO, USER_INFO_LABEL),
-            "user_password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
-            "user_lines": (KEY_USER_LINES, USER_LINES_LABEL),
-            "user_devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
-            "admin_open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
-        }
-        if key not in mapping:
+        
+        if key not in OWNER_FEATURES_MAPPING:
             await callback.answer("🔴 无效的开关项", show_alert=True)
             return
-        config_key, label = mapping[key]
+            
+        config_key, label = OWNER_FEATURES_MAPPING[key]
         operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
         new_val = await toggle_config(session, config_key, operator_id=operator_id)
         features = await list_features(session)

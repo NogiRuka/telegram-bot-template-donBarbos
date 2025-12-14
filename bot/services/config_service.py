@@ -7,6 +7,21 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from bot.database.models.config import ConfigModel, ConfigType
+from bot.keyboards.inline.labels import (
+    ADMIN_FEATURES_SWITCH_LABEL,
+    ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
+    GROUPS_LABEL,
+    HITOKOTO_LABEL,
+    OPEN_REGISTRATION_LABEL,
+    ROBOT_SWITCH_LABEL,
+    STATS_LABEL,
+    USER_DEVICES_LABEL,
+    USER_FEATURES_SWITCH_LABEL,
+    USER_INFO_LABEL,
+    USER_LINES_LABEL,
+    USER_PASSWORD_LABEL,
+    USER_REGISTER_LABEL,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +46,29 @@ KEY_ADMIN_NEW_ITEM_NOTIFICATION = "admin.new_item_notification"
 KEY_REGISTRATION_FREE_OPEN = "registration.free_open"
 KEY_ADMIN_OPEN_REGISTRATION_WINDOW = "admin.open_registration.window"
 KEY_ADMIN_HITOKOTO_CATEGORIES = "admin.hitokoto.categories"
+
+
+# Feature Mappings
+# Format: short_code -> (config_key, label)
+OWNER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
+    "bot_all": (KEY_BOT_FEATURES_ENABLED, ROBOT_SWITCH_LABEL),
+    "user_all": (KEY_USER_FEATURES_ENABLED, USER_FEATURES_SWITCH_LABEL),
+    "user_register": (KEY_USER_REGISTER, USER_REGISTER_LABEL),
+    "user_info": (KEY_USER_INFO, USER_INFO_LABEL),
+    "user_password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
+    "user_lines": (KEY_USER_LINES, USER_LINES_LABEL),
+    "user_devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
+    "admin_open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
+}
+
+ADMIN_PERMISSIONS_MAPPING: dict[str, tuple[str, str]] = {
+    "features": (KEY_ADMIN_FEATURES_ENABLED, ADMIN_FEATURES_SWITCH_LABEL),
+    "groups": (KEY_ADMIN_GROUPS, GROUPS_LABEL),
+    "stats": (KEY_ADMIN_STATS, STATS_LABEL),
+    "hitokoto": (KEY_ADMIN_HITOKOTO, HITOKOTO_LABEL),
+    "open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
+    "new_item_notification": (KEY_ADMIN_NEW_ITEM_NOTIFICATION, ADMIN_NEW_ITEM_NOTIFICATION_LABEL),
+}
 
 
 async def get_config(session: AsyncSession, key: str) -> Any:
@@ -154,15 +192,9 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
     返回值:
     - dict[str, bool]: 功能键到布尔值的映射
     """
-    keys = [
-        KEY_BOT_FEATURES_ENABLED,
-        KEY_USER_FEATURES_ENABLED,
-        KEY_USER_REGISTER,
-        KEY_USER_INFO,
-        KEY_USER_LINES,
-        KEY_USER_DEVICES,
-        KEY_USER_PASSWORD,
-    ]
+    # 从映射中提取配置键, 确保列表与映射保持同步
+    keys = [cfg_key for cfg_key, _ in OWNER_FEATURES_MAPPING.values()]
+    
     out: dict[str, bool] = {}
     for k in keys:
         val = await get_config(session, k)
@@ -342,14 +374,9 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
     返回值:
     - dict[str, bool]: 权限键到布尔值的映射
     """
-    keys = [
-        KEY_ADMIN_FEATURES_ENABLED,
-        KEY_ADMIN_GROUPS,
-        KEY_ADMIN_STATS,
-        KEY_ADMIN_HITOKOTO,
-        KEY_ADMIN_OPEN_REGISTRATION,
-        KEY_ADMIN_NEW_ITEM_NOTIFICATION,
-    ]
+    # 从映射中提取配置键, 确保列表与映射保持同步
+    keys = [cfg_key for cfg_key, _ in ADMIN_PERMISSIONS_MAPPING.values()]
+    
     out: dict[str, bool] = {}
     for k in keys:
         val = await get_config(session, k)
