@@ -2,11 +2,13 @@ from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
+from bot.utils.permissions import require_user_feature
 
 router = Router(name="user_devices")
 
 
 @router.callback_query(F.data == "user:devices")
+@require_user_feature("user.devices")
 async def user_devices(callback: CallbackQuery, session: AsyncSession) -> None:
     """设备管理
 

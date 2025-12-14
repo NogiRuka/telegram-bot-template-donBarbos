@@ -91,7 +91,11 @@ async def handle_notify_complete(
         
         await session.commit()
         
-        await progress_msg.delete()
+        try:
+            await progress_msg.delete()
+        except Exception:
+            pass # 忽略删除消息可能的异常
+            
         await callback.answer(f"✅ 完成: 成功 {success_count}, 失败 {fail_count}", show_alert=True)
         
         # 刷新面板

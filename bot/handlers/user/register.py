@@ -19,6 +19,7 @@ from bot.services.main_message import MainMessageService
 from bot.services.users import create_and_bind_emby_user, has_emby_account
 from bot.utils.datetime import format_datetime, parse_iso_datetime
 from bot.utils.text import safe_alert_text
+from bot.utils.permissions import require_user_feature
 
 router = Router(name="user_register")
 
@@ -33,6 +34,7 @@ class RegisterStates(StatesGroup):
 
 
 @router.callback_query(F.data == "user:register")
+@require_user_feature("user.register")
 async def user_register(
     callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService
 ) -> None:

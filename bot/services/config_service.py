@@ -70,7 +70,6 @@ ADMIN_PERMISSIONS_MAPPING: dict[str, tuple[str, str]] = {
     "new_item_notification": (KEY_ADMIN_NEW_ITEM_NOTIFICATION, ADMIN_NEW_ITEM_NOTIFICATION_LABEL),
 }
 
-# Features that have a dedicated button in the Admin Panel
 # 在管理员面板中拥有独立按钮的功能
 ADMIN_PANEL_VISIBLE_FEATURES: list[str] = [
     "groups",

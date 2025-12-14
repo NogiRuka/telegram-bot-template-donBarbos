@@ -35,5 +35,5 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     # 第一行3个功能键, 后两行各1个导航键
-    keyboard.adjust(3, 1, 1)
+    keyboard.adjust(3, 2)
     return keyboard.as_markup()
