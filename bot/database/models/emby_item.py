@@ -22,6 +22,7 @@ class EmbyItemModel(Base, BasicAuditMixin):
     date_created: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="创建时间")
     overview: Mapped[str | None] = mapped_column(Text, nullable=True, comment="简介")
     type: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="类型")
+    path: Mapped[str | None] = mapped_column(String(512), nullable=True, comment="文件路径")
     
     people: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True, comment="人员信息")
     tag_items: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True, comment="标签项")

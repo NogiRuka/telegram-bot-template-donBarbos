@@ -119,7 +119,7 @@ async def handle_notify_complete(
         await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
         
         # 刷新面板
-        await show_notification_panel(callback, main_msg)
+        # await show_notification_panel(callback, main_msg)
 
 
 @router.callback_query(F.data == "notify:preview")
@@ -219,8 +219,37 @@ async def execute_send_all(
 
                 # 构造消息内容
                 overview = item.overview or "无简介"
+                
+                # 解析媒体库名称
+                # Path 示例:
+                # 1. /mnt/webdav/media/lustfulboy/钙片/欧美/xxx.mp4 -> 欧美
+                # 2. /mnt/webdav/media/lustfulboy/剧集/秘密关系/xxx -> 剧集
+                # 逻辑: 
+                # - 如果包含 "钙片", 取 "钙片" 后面的第一级目录
+                # - 如果不包含 "钙片", 取 "lustfulboy" 后面的第一级目录 (或者根据实际挂载点调整)
+                # 简单通用逻辑: 尝试分割路径，取特定位置的文件夹名作为标签
+                
+                library_tag = ""
+                if item.path:
+                    # 统一分隔符
+                    path = item.path.replace("\\", "/")
+                    parts = [p for p in path.split("/") if p]
+                    
+                    # 针对示例路径的解析策略
+                    if "钙片" in parts:
+                        idx = parts.index("钙片")
+                        if idx + 1 < len(parts):
+                            library_tag = f"#{parts[idx+1]}" # 如 #欧美
+                    elif "剧集" in parts:
+                         library_tag = "#剧集"
+                    elif "电影" in parts:
+                         library_tag = "#电影"
+                    else:
+                        # 兜底：取倒数第三级? 视目录深度而定，这里暂不强求兜底，避免标错
+                        pass
+
                 msg_text = (
-                    f"📢 <b>新内容入库</b>\n\n"
+                    f"📢 <b>新内容入库</b> {library_tag}\n\n"
                     f"🎬 <b>{item.name}</b> ({item.type})\n"
                     f"📅 {item.date_created[:10] if item.date_created else '未知'}\n"
                     f"📝 {overview[:150] + '...' if len(overview) > 150 else overview}\n\n"

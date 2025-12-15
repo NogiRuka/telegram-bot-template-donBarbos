@@ -365,6 +365,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                 date_created = str(parse_iso_datetime(item_details.get("DateCreated")))
                 overview = item_details.get("Overview")
                 item_type = item_details.get("Type")
+                path = item_details.get("Path")
                 people = item_details.get("People")
                 tag_items = item_details.get("TagItems")
                 image_tags = item_details.get("ImageTags")
@@ -375,6 +376,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                     existing.date_created = date_created
                     existing.overview = overview
                     existing.type = item_type
+                    existing.path = path
                     existing.people = people
                     existing.tag_items = tag_items
                     existing.image_tags = image_tags
@@ -387,6 +389,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                         date_created=date_created,
                         overview=overview,
                         type=item_type,
+                        path=path,
                         people=people,
                         tag_items=tag_items,
                         image_tags=image_tags,
