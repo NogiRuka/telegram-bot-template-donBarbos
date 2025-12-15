@@ -51,7 +51,7 @@ class BotSettings(EnvBaseSettings):
     EMBY_API_KEY: str | None = Field(default=None, description="Emby API Key, 通过 X-Emby-Token 传递")
     EMBY_TEMPLATE_USER_ID: str | None = Field(default=None, description="Emby 模板用户ID，用于创建用户时复制配置")
     EMBY_API_PREFIX: str | None = Field(default="/emby", description="Emby API 路径前缀, 例如 /emby; 可为空")
-    NOTIFICATION_CHANNEL_ID: str | int | None = Field(default=None, description="通知频道ID，可为频道Username(@channel)或数字ID")
+    NOTIFICATION_CHANNEL_ID: str | None = Field(default=None, description="通知频道ID列表，逗号分隔，支持Username(@channel)或数字ID")
 
     @field_validator("BOT_TOKEN")
     @classmethod
@@ -202,19 +202,37 @@ class BotSettings(EnvBaseSettings):
         s = v.strip()
         return s or None
 
-    def get_notification_channel_id(self) -> str | int | None:
-        """获取通知频道ID
+    def get_notification_channel_ids(self) -> list[str | int]:
+        """获取通知频道ID列表
 
         功能说明:
-        - 返回配置中的 `NOTIFICATION_CHANNEL_ID`
+        - 解析 `NOTIFICATION_CHANNEL_ID` 为 ID 列表
+        - 支持逗号分隔
+        - 尝试将数字字符串转换为 int
 
         输入参数:
         - 无
 
         返回值:
-        - str | int | None: 频道ID
+        - list[str | int]: 频道ID列表
         """
-        return self.NOTIFICATION_CHANNEL_ID
+        v = self.NOTIFICATION_CHANNEL_ID
+        if not v:
+            return []
+        
+        # 如果已经是 int (虽然 Field 定义改为了 str | None，但为了稳健性)
+        if isinstance(v, int):
+            return [v]
+            
+        results = []
+        parts = [x.strip() for x in str(v).split(",") if x.strip()]
+        for p in parts:
+            # 尝试转换为 int
+            try:
+                results.append(int(p))
+            except ValueError:
+                results.append(p)
+        return results
 
     def get_owner_id(self) -> int:
         """获取所有者用户ID

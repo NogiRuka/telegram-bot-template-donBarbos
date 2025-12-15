@@ -297,35 +297,42 @@ async def execute_send_all(
             await show_notification_panel(callback, main_msg)
             return
 
-        # 获取目标频道ID
-        target_chat_id = settings.get_notification_channel_id()
-        if not target_chat_id:
-            target_chat_id = callback.from_user.id
+        # 获取目标频道ID列表
+        target_chat_ids = settings.get_notification_channel_ids()
+        
+        # 如果未配置，回退到发送给当前管理员
+        if not target_chat_ids:
+            target_chat_ids = [callback.from_user.id]
             logger.warning("未配置 NOTIFICATION_CHANNEL_ID，将通知发送给当前管理员")
-        else:
-            # 确保数字ID为int类型，字符串ID保持原样
-            try:
-                target_chat_id = int(target_chat_id)
-            except (ValueError, TypeError):
-                pass # 保持字符串格式，如 @channel_name
 
         for notif, item in rows:
             try:
                 msg_text, image_url = get_notification_content(item)
                 
-                # 发送
-                if image_url:
-                    await callback.bot.send_photo(chat_id=target_chat_id, photo=image_url, caption=msg_text)
-                else:
-                    await callback.bot.send_message(chat_id=target_chat_id, text=msg_text)
+                # 发送给所有目标频道
+                send_success = False
+                for chat_id in target_chat_ids:
+                    try:
+                        if image_url:
+                            await callback.bot.send_photo(chat_id=chat_id, photo=image_url, caption=msg_text)
+                        else:
+                            await callback.bot.send_message(chat_id=chat_id, text=msg_text)
+                        send_success = True
+                    except Exception as e:
+                        logger.error(f"❌ 发送通知到 {chat_id} 失败: {item.name} -> {e}")
                 
-                # 更新状态
-                notif.status = "sent"
-                notif.target_channel_id = str(target_chat_id)
-                sent_count += 1
+                # 只要有一个发送成功，就标记为成功
+                if send_success:
+                    notif.status = "sent"
+                    # 记录发送的目标ID列表
+                    notif.target_channel_id = ",".join(str(x) for x in target_chat_ids)
+                    sent_count += 1
+                else:
+                    notif.status = "failed"
+                    fail_count += 1
                 
             except Exception as e:
-                logger.error(f"❌ 发送通知失败: {item.name} -> {e}")
+                logger.error(f"❌ 处理通知失败: {item.name} -> {e}")
                 notif.status = "failed"
                 fail_count += 1
         
