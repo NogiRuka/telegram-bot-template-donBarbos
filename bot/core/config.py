@@ -51,6 +51,7 @@ class BotSettings(EnvBaseSettings):
     EMBY_API_KEY: str | None = Field(default=None, description="Emby API Key, 通过 X-Emby-Token 传递")
     EMBY_TEMPLATE_USER_ID: str | None = Field(default=None, description="Emby 模板用户ID，用于创建用户时复制配置")
     EMBY_API_PREFIX: str | None = Field(default="/emby", description="Emby API 路径前缀, 例如 /emby; 可为空")
+    NOTIFICATION_CHANNEL_ID: str | int | None = Field(default=None, description="通知频道ID，可为频道Username(@channel)或数字ID")
 
     @field_validator("BOT_TOKEN")
     @classmethod
@@ -200,6 +201,20 @@ class BotSettings(EnvBaseSettings):
             return None
         s = v.strip()
         return s or None
+
+    def get_notification_channel_id(self) -> str | int | None:
+        """获取通知频道ID
+
+        功能说明:
+        - 返回配置中的 `NOTIFICATION_CHANNEL_ID`
+
+        输入参数:
+        - 无
+
+        返回值:
+        - str | int | None: 频道ID
+        """
+        return self.NOTIFICATION_CHANNEL_ID
 
     def get_owner_id(self) -> int:
         """获取所有者用户ID
