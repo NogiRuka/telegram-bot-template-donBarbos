@@ -50,6 +50,46 @@ async def show_notification_panel(
     await callback.answer()
 
 
+def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
+    """生成通知消息内容和图片URL"""
+    # 构造图片 URL
+    image_url = None
+    if item.image_tags and "Primary" in item.image_tags:
+        tag = item.image_tags["Primary"]
+        base_url = settings.get_emby_base_url()
+        if base_url.endswith("/"):
+            base_url = base_url[:-1]
+        image_url = f"{base_url}/Items/{item.id}/Images/Primary?tag={tag}"
+
+    # 解析媒体库名称 (Library Tag)
+    library_tag = ""
+    if item.path:
+        path = item.path.replace("\\", "/")
+        parts = [p for p in path.split("/") if p]
+        
+        if "钙片" in parts:
+            idx = parts.index("钙片")
+            if idx + 1 < len(parts):
+                library_tag = f"#{parts[idx+1]}"
+        elif "剧集" in parts:
+             library_tag = "#剧集"
+        elif "电影" in parts:
+             library_tag = "#电影"
+
+    # 构造消息内容
+    overview = item.overview or "无简介"
+    
+    # 用户指定的简洁格式
+    msg_text = (
+        f"🎬 <b>名称:</b> {item.name}\n"
+        f"📂 <b>分类:</b> {library_tag}\n"
+        f"📅 <b>时间:</b> {item.date_created if item.date_created else '未知'}\n"
+        f"📝 <b>简介:</b> {overview[:100] + '...' if len(overview) > 150 else overview}"
+    )
+    
+    return msg_text, image_url
+
+
 @router.callback_query(F.data == "notify:complete")
 async def handle_notify_complete(
     callback: types.CallbackQuery,
@@ -74,9 +114,7 @@ async def handle_notify_complete(
 
         total = len(notifications)
         # 提示改为 Alert 形式，不需要用户确认
-        # await callback.answer(f"⏳ 开始补全 {total} 条记录...", show_alert=True)
-        # 直接静默执行或仅 toast 提示
-        await callback.answer(f"⏳ 开始补全 {total} 条记录...", show_alert=False)
+        await callback.answer(f"⏳ 开始补全 {total} 条记录...", show_alert=True)
 
         # 提取 item_ids 并批量查询
         item_ids = list({n.item_id for n in notifications if n.item_id})
@@ -148,99 +186,10 @@ async def handle_notify_preview(
     # 发送提示
     await callback.answer(f"👀 正在生成 {len(rows)} 条预览...", show_alert=False)
 
-    # 记录所有预览消息的ID，以便后续删除（这里暂时只能依靠用户点击关闭按钮逐条删除，
-    # 或者我们可以在每条消息下加一个“关闭预览”按钮，点击后尝试删除所有预览消息？
-    # 但 Bot 无法批量删除消息，除非记录 ID。
-    # 既然用户要求“点击任意一个关闭按钮后都删除所有发送的通知消息”，我们需要一种机制来追踪这些消息。
-    # 我们可以把这些消息 ID 存入 Redis 或内存？
-    # 简单起见，我们可以在 callback_data 中携带信息？不行，长度有限。
-    # 
-    # 方案：发送预览消息时，每条消息带一个 "关闭所有预览" 按钮。
-    # 点击该按钮时，触发一个清理逻辑。
-    # 但清理逻辑需要知道哪些消息是预览消息。
-    # 
-    # 考虑到无状态，我们难以追踪。
-    # 变通方案：只给最后一条消息加“关闭所有”按钮？那前面的消息怎么删？
-    # 
-    # 如果必须实现“点击任意一个关闭按钮后都删除所有”，我们需要持久化这些 Message ID。
-    # 或者，利用 Telegram 的 delete_messages (批量删除) 接口？ Bot API 好像只支持 delete_message (单条)。
-    # 
-    # 让我们先实现发送预览消息。
-    # 为了避免刷屏，如果数量太多，建议只发前几条？
-    # 但用户要求“把最终发送通知的消息发送给管理员预览”。
-    
-    # 构造关闭按钮
-    # 为了实现“删除所有”，我们需要记录这些 ID。
-    # 我们可以临时用一个全局变量或者 Redis (如果引入了)。
-    # 这里为了简化，我们仅实现“点击关闭删除当前消息”，并在最后一条消息提供“清除所有预览(需自行清理)”的提示？
-    # 不，用户明确要求“点击任意一个关闭按钮后都删除所有”。
-    # 这在无状态架构下很难完美实现。
-    
-    # 尝试方案：
-    # 将预览消息的 ID 列表存储在内存中 (global variable)，Key 为 chat_id。
-    # 这在多进程/重启下会失效，但在单进程 Bot 中可行。
-    pass
-
     preview_msg_ids = []
     
     for notif, item in rows:
-        # 构造图片 URL
-        image_url = None
-        if item.image_tags and "Primary" in item.image_tags:
-            tag = item.image_tags["Primary"]
-            base_url = settings.get_emby_base_url()
-            if base_url.endswith("/"):
-                base_url = base_url[:-1]
-            image_url = f"{base_url}/Items/{item.id}/Images/Primary?tag={tag}"
-
-        # 构造消息内容 (复用发送逻辑)
-        overview = item.overview or "无简介"
-        
-        library_tag = ""
-        if item.path:
-            path = item.path.replace("\\", "/")
-            parts = [p for p in path.split("/") if p]
-            if "钙片" in parts:
-                idx = parts.index("钙片")
-                if idx + 1 < len(parts):
-                    library_tag = f"#{parts[idx+1]}"
-            elif "剧集" in parts:
-                 library_tag = "#剧集"
-            elif "电影" in parts:
-                 library_tag = "#电影"
-
-        msg_text = (
-            f"📢 <b>新内容入库</b> {library_tag} [预览]\n\n"
-            f"🎬 <b>名称:</b> {item.name} ({item.type})\n"
-            f"🏷️ <b>分类:</b> {library_tag}\n"
-            f"📅 <b>时间:</b> {item.date_created if item.date_created else '未知'}\n"
-            f"📝 <b>简介:</b> {overview[:150] + '...' if len(overview) > 150 else overview}\n\n"
-            f"#NewItem"
-        )
-        
-        # 预览关闭按钮
-        # 暂时只实现关闭当前，因为无法可靠追踪所有 ID
-        # 为了满足用户需求，我们尝试把所有 ID 编码进 callback_data? 
-        # ID 是 int64, 10条就是 10*8=80 bytes, 加上分隔符，可能超长 (64 bytes limit).
-        # 所以无法在按钮里携带所有 ID。
-        
-        # 妥协方案：
-        # 发送时，将 ID 记录到数据库的一个临时表？或者 Redis。
-        # 鉴于当前环境，我们无法引入新表。
-        # 我们只能实现：点击关闭 -> 删除当前消息。
-        # 并提示用户：预览模式仅供查看。
-        
-        # 等等，MainMessageService 是不是可以利用？
-        # 不，这些是新发的消息。
-        
-        # 重新思考：用户需求是“点击任意一个关闭按钮后都删除所有”。
-        # 我们可以用一个简单的方法：
-        # 发送完所有预览后，发送一条汇总消息：“以上是 X 条预览，点击 [关闭所有] 清除”。
-        # 点击这个按钮时，Bot 尝试删除前面 X 条消息 (需要 ID)。
-        
-        # 这里我们使用一个简单的内存 Cache 来存储预览 ID
-        # global PREVIEW_CACHE = {chat_id: [msg_ids...]}
-        # 这不优雅，但能解决问题。
+        msg_text, image_url = get_notification_content(item)
         
         # 发送
         try:
@@ -253,23 +202,6 @@ async def handle_notify_preview(
         except Exception as e:
             logger.error(f"预览发送失败: {e}")
 
-    # 为每条消息添加关闭按钮 (需要编辑消息)
-    # 这一步会增加 API 调用，导致变慢。
-    # 优化：在发送时直接带上按钮。
-    # 但发送时还不知道所有 ID。
-    # 
-    # 修正策略：
-    # 1. 遍历发送预览消息，收集 msg_ids。
-    # 2. 将 msg_ids 存入内存或简单的文件 Cache。
-    # 3. 每条消息带一个 "notify:close_preview" 按钮。
-    # 4. 点击按钮时，读取 Cache 中的 ID 列表，批量删除。
-    
-    # 既然是 Pair Programming，我直接实现这个 Cache 逻辑。
-    # 为了避免全局变量污染，我把 Cache 挂在 handle_notify_preview 函数对象上？不，挂在模块级。
-    
-    from bot.utils.cache import memory_cache # 假设有，没有就新建一个简单的字典
-    # 这里直接用一个模块级字典
-    
     # 存储: PREVIEW_CACHE[user_id] = [msg_id1, msg_id2, ...]
     global PREVIEW_CACHE
     if 'PREVIEW_CACHE' not in globals():
@@ -295,6 +227,7 @@ async def handle_notify_preview(
             logger.warning(f"无法为预览消息添加关闭按钮: {msg_id} -> {e}")
 
     await callback.answer()
+
 
 @router.callback_query(F.data == "notify:close_preview")
 async def handle_close_preview(callback: types.CallbackQuery):
@@ -479,53 +412,7 @@ async def execute_send_all(
 
         for notif, item in rows:
             try:
-                # 构造图片 URL
-                image_url = None
-                if item.image_tags and "Primary" in item.image_tags:
-                    tag = item.image_tags["Primary"]
-                    base_url = settings.get_emby_base_url()
-                    # 确保 base_url 不以 / 结尾
-                    if base_url.endswith("/"):
-                        base_url = base_url[:-1]
-                    image_url = f"{base_url}/Items/{item.id}/Images/Primary?tag={tag}"
-
-                # 构造消息内容
-                overview = item.overview or "无简介"
-                
-                # 解析媒体库名称
-                # Path 示例:
-                # 1. /mnt/webdav/media/lustfulboy/钙片/欧美/xxx.mp4 -> 欧美
-                # 2. /mnt/webdav/media/lustfulboy/剧集/秘密关系/xxx -> 剧集
-                # 逻辑: 
-                # - 如果包含 "钙片", 取 "钙片" 后面的第一级目录
-                # - 如果不包含 "钙片", 取 "lustfulboy" 后面的第一级目录 (或者根据实际挂载点调整)
-                # 简单通用逻辑: 尝试分割路径，取特定位置的文件夹名作为标签
-                
-                library_tag = ""
-                if item.path:
-                    # 统一分隔符
-                    path = item.path.replace("\\", "/")
-                    parts = [p for p in path.split("/") if p]
-                    
-                    # 针对示例路径的解析策略
-                    if "钙片" in parts:
-                        idx = parts.index("钙片")
-                        if idx + 1 < len(parts):
-                            library_tag = f"#{parts[idx+1]}" # 如 #欧美
-                    elif "剧集" in parts:
-                         library_tag = "#剧集"
-                    elif "电影" in parts:
-                         library_tag = "#电影"
-                    else:
-                        # 兜底：取倒数第三级? 视目录深度而定，这里暂不强求兜底，避免标错
-                        pass
-
-                msg_text = (
-                    f"🎬 <b>名称:</b> {item.name}\n"
-                    f"📂 <b>分类:</b> {library_tag}\n"
-                    f"📅 <b>时间:</b> {item.date_created if item.date_created else '未知'}\n"
-                    f"📝 <b>简介:</b> {overview[:100] + '...' if len(overview) > 150 else overview}"
-                )
+                msg_text, image_url = get_notification_content(item)
                 
                 # 发送
                 if image_url:
