@@ -249,8 +249,9 @@ async def execute_send_all(
                         pass
 
                 msg_text = (
-                    f"📢 <b>新内容入库</b> {library_tag}\n\n"
+                    f"📢 <b>新内容入库</b>\n\n"
                     f"🎬 <b>名称:</b> {item.name} ({item.type})\n"
+                    f"�️ <b>分类:</b> {library_tag}\n"
                     f"📅 <b>时间:</b> {item.date_created if item.date_created else '未知'}\n"
                     f"📝 <b>简介:</b> {overview[:150] + '...' if len(overview) > 150 else overview}\n\n"
                     f"#NewItem"
