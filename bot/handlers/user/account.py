@@ -16,16 +16,17 @@ router = Router(name="user_account")
 
 
 @router.callback_query(F.data == "user:account")
+@require_user_feature("user.account")
 async def show_account_center(callback: CallbackQuery, session: AsyncSession) -> None:
     """展示账号中心
-
+    
     功能说明:
     - 展示二级账号中心菜单, 底部包含返回主面板
-
+    
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
-
+    
     返回值:
     - None
     """
@@ -188,16 +189,17 @@ async def user_password(callback: CallbackQuery, session: AsyncSession) -> None:
 
 
 @router.callback_query(F.data == "user:profile")
+@require_user_feature("user.profile")
 async def user_profile(callback: CallbackQuery, session: AsyncSession) -> None:
     """个人信息
-
+    
     功能说明:
     - 展示个人信息入口, 当前为占位实现
-
+    
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
-
+    
     返回值:
     - None
     """

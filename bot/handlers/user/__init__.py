@@ -1,6 +1,6 @@
 from aiogram import Router
 
-from .account_center import router as account_center_router
+from .account import router as account_router
 from .devices import router as devices_router
 from .info import router as info_router
 from .lines import router as lines_router
@@ -22,7 +22,7 @@ def get_user_router() -> Router:
     - Router: 用户聚合路由
     """
     router = Router(name="user")
-    router.include_router(account_center_router)
+    router.include_router(account_router)
     router.include_router(register_router)
     router.include_router(info_router)
     router.include_router(lines_router)
