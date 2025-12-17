@@ -8,11 +8,13 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from bot.database.models.config import ConfigModel, ConfigType
 from bot.keyboards.inline.labels import (
+    ACCOUNT_CENTER_LABEL,
     ADMIN_FEATURES_SWITCH_LABEL,
     ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
     GROUPS_LABEL,
     HITOKOTO_LABEL,
     OPEN_REGISTRATION_LABEL,
+    PROFILE_LABEL,
     ROBOT_SWITCH_LABEL,
     STATS_LABEL,
     USER_DEVICES_LABEL,
@@ -35,6 +37,8 @@ KEY_USER_INFO = "user.info"
 KEY_USER_LINES = "user.lines"
 KEY_USER_DEVICES = "user.devices"
 KEY_USER_PASSWORD = "user.password"
+KEY_USER_PROFILE = "user.profile"
+KEY_USER_ACCOUNT = "user.account"
 
 KEY_ADMIN_FEATURES_ENABLED = "admin.features.enabled"
 KEY_ADMIN_GROUPS = "admin.groups"
@@ -48,6 +52,25 @@ KEY_ADMIN_OPEN_REGISTRATION_WINDOW = "admin.open_registration.window"
 KEY_ADMIN_HITOKOTO_CATEGORIES = "admin.hitokoto.categories"
 
 
+DEFAULT_CONFIGS: dict[str, bool] = {
+    KEY_BOT_FEATURES_ENABLED: True,
+    KEY_USER_FEATURES_ENABLED: True,
+    KEY_USER_REGISTER: True,
+    KEY_USER_PASSWORD: True,
+    KEY_USER_INFO: True,
+    KEY_USER_LINES: True,
+    KEY_USER_DEVICES: True,
+    KEY_USER_PROFILE: True,
+    KEY_USER_ACCOUNT: True,
+    KEY_ADMIN_FEATURES_ENABLED: True,
+    KEY_ADMIN_GROUPS: True,
+    KEY_ADMIN_STATS: True,
+    KEY_ADMIN_OPEN_REGISTRATION: True,
+    KEY_REGISTRATION_FREE_OPEN: False,
+    KEY_ADMIN_HITOKOTO: True,
+    KEY_ADMIN_NEW_ITEM_NOTIFICATION: True,
+}
+
 # 功能映射
 # 格式: 短代码 -> (配置键, 标签)
 OWNER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
@@ -58,6 +81,8 @@ OWNER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "user_password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
     "user_lines": (KEY_USER_LINES, USER_LINES_LABEL),
     "user_devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
+    "user_profile": (KEY_USER_PROFILE, PROFILE_LABEL),
+    "user_account": (KEY_USER_ACCOUNT, ACCOUNT_CENTER_LABEL),
     "admin_open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
 }
 
@@ -393,23 +418,6 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
     return out
 
 
-DEFAULT_CONFIGS: dict[str, bool] = {
-    KEY_BOT_FEATURES_ENABLED: True,
-    KEY_USER_FEATURES_ENABLED: True,
-    KEY_USER_REGISTER: True,
-    KEY_USER_PASSWORD: True,
-    KEY_USER_INFO: True,
-    KEY_USER_LINES: True,
-    KEY_USER_DEVICES: True,
-    KEY_ADMIN_FEATURES_ENABLED: True,
-    KEY_ADMIN_GROUPS: True,
-    KEY_ADMIN_STATS: True,
-    KEY_ADMIN_OPEN_REGISTRATION: True,
-    KEY_REGISTRATION_FREE_OPEN: False,
-    KEY_ADMIN_HITOKOTO: True,
-    KEY_ADMIN_NEW_ITEM_NOTIFICATION: True,
-}
-
 
 async def ensure_config_defaults(session: AsyncSession) -> None:
     """初始化配置默认键值
@@ -432,9 +440,6 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
     current_categories = await get_config(session, KEY_ADMIN_HITOKOTO_CATEGORIES)
     if current_categories is None:
         await set_config(session, KEY_ADMIN_HITOKOTO_CATEGORIES, None, ConfigType.LIST, default_value=["d", "i"])
-
-
-# 已移除 ensure_config_schema: 迁移逻辑改由外部管理, 保持代码简洁
 
 
 def _serialize_value(ctype: ConfigType, value: Any) -> str | None:
