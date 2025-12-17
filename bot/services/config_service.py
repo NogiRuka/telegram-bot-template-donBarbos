@@ -90,10 +90,10 @@ OWNER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
 USER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "bot_all": (KEY_BOT_FEATURES_ENABLED, ROBOT_SWITCH_LABEL),
     "user_all": (KEY_USER_FEATURES_ENABLED, USER_FEATURES_SWITCH_LABEL),
-    "user_register": (KEY_USER_REGISTER, USER_REGISTER_LABEL),
-    "user_info": (KEY_USER_INFO, USER_INFO_LABEL),
     "user_profile": (KEY_USER_PROFILE, PROFILE_LABEL),
     "user_account": (KEY_USER_ACCOUNT, ACCOUNT_CENTER_LABEL),
+    "user_register": (KEY_USER_REGISTER, USER_REGISTER_LABEL),
+    "user_info": (KEY_USER_INFO, USER_INFO_LABEL),
     "user_lines": (KEY_USER_LINES, USER_LINES_LABEL),
     "user_devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
     "user_password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
