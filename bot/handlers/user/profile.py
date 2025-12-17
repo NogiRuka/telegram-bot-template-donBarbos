@@ -6,13 +6,14 @@ from bot.keyboards.inline.start_user import get_user_profile_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
 from bot.utils.images import get_common_image
-from bot.utils.permissions import _resolve_role
+from bot.utils.permissions import _resolve_role, require_user_feature
 from bot.utils.text import escape_markdown_v2
 
 router = Router(name="user_profile")
 
 
 @router.callback_query(F.data == "user:profile")
+@require_user_feature("user.profile")
 async def user_profile(
     callback: CallbackQuery,
     session: AsyncSession,
@@ -32,10 +33,6 @@ async def user_profile(
     返回值:
     - None
     """
-    msg = callback.message
-    if not isinstance(msg, types.Message):
-        await callback.answer("🔴 无法获取消息对象", show_alert=True)
-        return
 
     uid = callback.from_user.id if callback.from_user else None
     if not uid:
