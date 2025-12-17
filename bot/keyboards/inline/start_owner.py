@@ -1,6 +1,9 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from bot.services.config_service import ADMIN_PERMISSIONS_MAPPING, USER_FEATURES_MAPPING
+
+
 from bot.keyboards.inline.common_buttons import (
     ACCOUNT_CENTER_BUTTON,
     ADMIN_PANEL_BUTTON,
@@ -10,26 +13,12 @@ from bot.keyboards.inline.common_buttons import (
     PROFILE_BUTTON,
 )
 from bot.keyboards.inline.labels import (
-    ACCOUNT_CENTER_LABEL,
-    ADMIN_FEATURES_SWITCH_LABEL,
     ADMIN_LIST_LABEL,
     ADMIN_PERMS_PANEL_LABEL,
     BACK_LABEL,
     BACK_TO_HOME_LABEL,
     FEATURES_PANEL_LABEL,
-    GROUPS_LABEL,
-    HITOKOTO_LABEL,
-    OPEN_REGISTRATION_LABEL,
     OWNER_ADMINS_LABEL,
-    PROFILE_LABEL,
-    ROBOT_SWITCH_LABEL,
-    STATS_LABEL,
-    USER_DEVICES_LABEL,
-    USER_FEATURES_SWITCH_LABEL,
-    USER_INFO_LABEL,
-    USER_LINES_LABEL,
-    USER_PASSWORD_LABEL,
-    USER_REGISTER_LABEL,
     format_with_status,
 )
 
@@ -88,67 +77,30 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
     - 底部包含返回上一级与返回主面板按钮
 
     输入参数:
-    - 无
+    - features: 功能开关状态字典
 
     返回值:
     - InlineKeyboardMarkup: 功能开关键盘
     """
 
-    def status(v: bool) -> str:
-        return "🟢" if v else "🔴"
-
-    buttons = [
-        [
+    buttons: list[list[InlineKeyboardButton]] = []
+    
+    # 使用映射配置动态生成按钮，参考管理员配置实现
+    for short_code, (cfg_key, label) in USER_FEATURES_MAPPING.items():
+        is_enabled = features.get(cfg_key, False)
+        buttons.append([
             InlineKeyboardButton(
-                text=f"{ROBOT_SWITCH_LABEL} {status(features.get('bot.features.enabled', False))}",
-                callback_data="owner:features:toggle:bot_all",
+                text=format_with_status(label, is_enabled),
+                callback_data=f"owner:features:toggle:{short_code}"
             )
-        ],
-        [
-            InlineKeyboardButton(
-                text=f"{USER_FEATURES_SWITCH_LABEL} {status(features.get('user.features.enabled', False))}",
-                callback_data="owner:features:toggle:user_all",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=f"{USER_REGISTER_LABEL} {status(features.get('user.register', False))}",
-                callback_data="owner:features:toggle:user_register",
-            ),
-            InlineKeyboardButton(
-                text=f"{USER_INFO_LABEL} {status(features.get('user.info', False))}",
-                callback_data="owner:features:toggle:user_info",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=f"{PROFILE_LABEL} {status(features.get('user.profile', False))}",
-                callback_data="owner:features:toggle:user_profile",
-            ),
-            InlineKeyboardButton(
-                text=f"{ACCOUNT_CENTER_LABEL} {status(features.get('user.account', False))}",
-                callback_data="owner:features:toggle:user_account",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=f"{USER_LINES_LABEL} {status(features.get('user.lines', False))}",
-                callback_data="owner:features:toggle:user_lines",
-            ),
-            InlineKeyboardButton(
-                text=f"{USER_DEVICES_LABEL} {status(features.get('user.devices', False))}",
-                callback_data="owner:features:toggle:user_devices",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=f"{USER_PASSWORD_LABEL} {status(features.get('user.password', False))}",
-                callback_data="owner:features:toggle:user_password",
-            ),
-        ],
+        ])
+    
+    # 添加底部导航按钮
+    buttons.extend([
         [BACK_BUTTON],
         [BACK_TO_HOME_BUTTON],
-    ]
+    ])
+    
     keyboard = InlineKeyboardBuilder(markup=buttons)
     keyboard.adjust(1, 1, 2, 2, 2, 1, 2)
     return keyboard.as_markup()
@@ -174,10 +126,6 @@ def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
     keyboard = InlineKeyboardBuilder(markup=buttons)
     keyboard.adjust(1, 2)
     return keyboard.as_markup()
-
-
-from bot.services.config_service import ADMIN_PERMISSIONS_MAPPING, KEY_ADMIN_FEATURES_ENABLED
-
 
 def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     """管理员权限面板键盘

@@ -6,7 +6,7 @@ from bot.keyboards.inline.start_user import get_account_center_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import has_emby_account
 from bot.utils.images import get_common_image
-from bot.utils.permissions import _resolve_role, require_user_feature
+from bot.utils.permissions import require_user_feature
 
 router = Router(name="user_account")
 

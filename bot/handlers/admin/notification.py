@@ -81,10 +81,10 @@ def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
     
     # 用户指定的简洁格式
     msg_text = (
-        f"🎬 <b>名称:</b> <code>{item.name}</code>\n"
-        f"📂 <b>分类:</b> {library_tag}\n"
-        f"📅 <b>时间:</b> {item.date_created if item.date_created else '未知'}\n"
-        f"📝 <b>简介:</b> {overview[:80] + '...' if len(overview) > 80 else overview}"
+        f"🎬 <b>名称：</b><code>{item.name}</code>\n"
+        f"📂 <b>分类：</b>{library_tag}\n"
+        f"📅 <b>时间：</b>{item.date_created if item.date_created else '未知'}\n"
+        f"📝 <b>简介：</b>{overview[:80] + '...' if len(overview) > 80 else overview}"
     )
     
     return msg_text, image_url
@@ -263,7 +263,6 @@ async def handle_notify_send_all(
             InlineKeyboardButton(text="❌ 取消", callback_data="admin:new_item_notification")
         ]
     ])
-    await callback.answer("⚠️ 请在下方确认是否发送所有通知", show_alert=True)
     await main_msg.update_on_callback(
         callback, 
         "⚠️ <b>确认操作</b>\n\n确定要将所有 [待发送] 状态的通知推送到频道/群组吗？", 
