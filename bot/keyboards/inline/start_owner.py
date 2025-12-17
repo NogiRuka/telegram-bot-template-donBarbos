@@ -10,6 +10,7 @@ from bot.keyboards.inline.common_buttons import (
     PROFILE_BUTTON,
 )
 from bot.keyboards.inline.labels import (
+    ACCOUNT_CENTER_LABEL,
     ADMIN_FEATURES_SWITCH_LABEL,
     ADMIN_LIST_LABEL,
     ADMIN_PERMS_PANEL_LABEL,
@@ -20,6 +21,7 @@ from bot.keyboards.inline.labels import (
     HITOKOTO_LABEL,
     OPEN_REGISTRATION_LABEL,
     OWNER_ADMINS_LABEL,
+    PROFILE_LABEL,
     ROBOT_SWITCH_LABEL,
     STATS_LABEL,
     USER_DEVICES_LABEL,
@@ -112,23 +114,33 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
             InlineKeyboardButton(
                 text=f"{USER_REGISTER_LABEL} {status(features.get('user.register', False))}",
                 callback_data="owner:features:toggle:user_register",
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 text=f"{USER_INFO_LABEL} {status(features.get('user.info', False))}",
                 callback_data="owner:features:toggle:user_info",
             ),
+        ],
+        [
             InlineKeyboardButton(
-                text=f"{USER_LINES_LABEL} {status(features.get('user.lines', False))}",
-                callback_data="owner:features:toggle:user_lines",
+                text=f"{PROFILE_LABEL} {status(features.get('user.profile', False))}",
+                callback_data="owner:features:toggle:user_profile",
+            ),
+            InlineKeyboardButton(
+                text=f"{ACCOUNT_CENTER_LABEL} {status(features.get('user.account', False))}",
+                callback_data="owner:features:toggle:user_account",
             ),
         ],
         [
             InlineKeyboardButton(
+                text=f"{USER_LINES_LABEL} {status(features.get('user.lines', False))}",
+                callback_data="owner:features:toggle:user_lines",
+            ),
+            InlineKeyboardButton(
                 text=f"{USER_DEVICES_LABEL} {status(features.get('user.devices', False))}",
                 callback_data="owner:features:toggle:user_devices",
             ),
+        ],
+        [
             InlineKeyboardButton(
                 text=f"{USER_PASSWORD_LABEL} {status(features.get('user.password', False))}",
                 callback_data="owner:features:toggle:user_password",
@@ -138,7 +150,7 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
         [BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(2, 1, 2, 2, 2)
+    keyboard.adjust(1, 1, 2, 2, 2, 1, 2)
     return keyboard.as_markup()
 
 
