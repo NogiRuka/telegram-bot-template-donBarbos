@@ -40,7 +40,6 @@ async def show_account_center(
         user_has_emby = False
 
     kb = get_account_center_keyboard(user_has_emby)
-    await _resolve_role(session, uid)
     image = get_common_image()
     await main_msg.update_on_callback(callback, "🧩 账号中心", kb, image)
     await callback.answer()
