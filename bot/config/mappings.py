@@ -37,6 +37,7 @@ DEFAULT_CONFIGS: dict[str, bool] = {
     KEY_USER_DEVICES: True,
     KEY_USER_PROFILE: True,
     KEY_USER_ACCOUNT: True,
+    KEY_USER_TAG_FILTER: True,
     KEY_ADMIN_FEATURES_ENABLED: True,
     KEY_ADMIN_GROUPS: True,
     KEY_ADMIN_STATS: True,
@@ -57,6 +58,7 @@ OWNER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "user_devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
     "user_profile": (KEY_USER_PROFILE, PROFILE_LABEL),
     "user_account": (KEY_USER_ACCOUNT, ACCOUNT_CENTER_LABEL),
+    "user_tag_filter": (KEY_USER_TAG_FILTER, "标签屏蔽"),
     "admin_open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
 }
 
@@ -71,6 +73,7 @@ USER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "user_lines": (KEY_USER_LINES, USER_LINES_LABEL),
     "user_devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
     "user_password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
+    "user_tag_filter": (KEY_USER_TAG_FILTER, "标签屏蔽"),
 }
 
 # 管理员权限映射 - 用于管理员权限管理
