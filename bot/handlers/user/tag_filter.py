@@ -28,7 +28,6 @@ router = tag_filter_feature.create_router()
 async def handle_tag_filter(
     callback_query: CallbackQuery, 
     session: AsyncSession,
-    user: UserModel,
     main_message_service: MainMessageService,
 ):
     """处理标签屏蔽"""
