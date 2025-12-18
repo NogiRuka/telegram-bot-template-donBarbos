@@ -1,6 +1,7 @@
 from __future__ import annotations
 import contextlib
 import json as _json
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select, update
@@ -24,6 +25,7 @@ from bot.keyboards.inline.labels import (
     USER_PASSWORD_LABEL,
     USER_REGISTER_LABEL,
 )
+from bot.utils.datetime import parse_iso_datetime, now as get_now
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -135,7 +137,7 @@ async def get_config(session: AsyncSession, key: str) -> Any:
         result = await session.execute(select(ConfigModel).where(ConfigModel.key == key))
         model: ConfigModel | None = result.scalar_one_or_none()
         if model:
-            return model.get_typed_value()
+            typed_value = model.get_typed_value()
             # 若value为空则取default_value
             return typed_value if typed_value is not None else model.get_typed_default_value()
     return None
@@ -369,34 +371,19 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
         if not window:
             return False
 
-        from datetime import datetime, timedelta, timezone
-
-        # 统一使用 UTC（带 tzinfo，精度到秒）
-        _now = (
-            datetime.fromtimestamp(now_ts, tz=timezone.utc)
-            if now_ts is not None
-            else datetime.now(timezone.utc)
-        ).replace(microsecond=0)
+        # 使用统一的工具函数处理时间
+        _now = get_now()  # 获取当前应用时区时间 (无时区信息)
+        if now_ts is not None:
+            # 如果有提供时间戳，转换为datetime
+            _now = datetime.fromtimestamp(now_ts).replace(microsecond=0)
 
         start_iso = window.get("start_iso")
         duration = window.get("duration_minutes")
         if not start_iso and duration is None:
             return False
 
-        def _parse_iso_to_utc(text: str) -> datetime | None:
-            try:
-                s = (text or "").strip()
-                if not s:
-                    return None
-                if s.endswith("Z"):
-                    s = s[:-1] + "+00:00"
-                dt = datetime.fromisoformat(s)
-                dt = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
-                return dt.replace(microsecond=0)
-            except ValueError:
-                return None
-
-        start = _parse_iso_to_utc(start_iso) if start_iso else _now
+        # 使用统一的 ISO 时间解析函数
+        start = parse_iso_datetime(start_iso) if start_iso else _now
         if start is None:
             return False
 
