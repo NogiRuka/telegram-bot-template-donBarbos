@@ -7,7 +7,7 @@ from bot.core.config import settings
 from bot.database.database import sessionmaker
 from bot.database.models.notification import NotificationModel
 from bot.database.models.emby_item import EmbyItemModel
-from bot.keyboards.inline.labels import (
+from bot.keyboards.inline.constants import (
     ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
     NOTIFY_COMPLETE_LABEL,
     NOTIFY_PREVIEW_LABEL,

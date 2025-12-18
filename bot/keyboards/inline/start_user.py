@@ -1,18 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.features import get_all_user_feature_buttons
-from bot.keyboards.inline.common_buttons import (
-    ACCOUNT_CENTER_BUTTON,
-    BACK_TO_HOME_BUTTON,
-    PROFILE_BUTTON,
-    START_REGISTER_BUTTON,
-    USER_DEVICES_BUTTON,
-    USER_INFO_BUTTON,
-    USER_LINES_BUTTON,
-    USER_PASSWORD_BUTTON,
-)
-from bot.keyboards.inline.labels import BACK_LABEL, CANCEL_REGISTER_LABEL
+from bot.keyboards.inline.buttons import *
 
 
 def get_start_user_keyboard() -> InlineKeyboardMarkup:
@@ -53,33 +42,14 @@ def get_account_center_keyboard(has_emby_account: bool) -> InlineKeyboardMarkup:
     keyboard = InlineKeyboardBuilder()
 
     if has_emby_account:
-        # 1. 添加核心功能按钮
         keyboard.add(USER_INFO_BUTTON)
         keyboard.add(USER_LINES_BUTTON)
         keyboard.add(USER_DEVICES_BUTTON)
         keyboard.add(USER_PASSWORD_BUTTON)
-        
-        # 2. 添加动态注册的功能按钮
-        dynamic_buttons = get_all_user_feature_buttons()
-        for btn in dynamic_buttons:
-            keyboard.add(btn)
-            
-        # 3. 添加返回按钮
+        keyboard.add(USER_TAGS_BUTTON)
         keyboard.add(BACK_TO_HOME_BUTTON)
-        
-        # 4. 调整布局
-        # 计算除了返回按钮之外的按钮数量
-        total_buttons = 4 + len(dynamic_buttons)
-        
-        # 布局策略: 核心功能和动态功能都按每行2个排列
-        layout = [2] * (total_buttons // 2)
-        if total_buttons % 2 == 1:
-            layout.append(1)
-        
-        # 最后一行是返回按钮
-        layout.append(1)
-        
-        keyboard.adjust(*layout)
+
+        keyboard.adjust(2, 2, 1, 1)
         return keyboard.as_markup()
 
     # 无 Emby 账号的情况
@@ -105,7 +75,7 @@ def get_register_input_keyboard() -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 内联键盘
     """
     buttons = [
-        [InlineKeyboardButton(text=CANCEL_REGISTER_LABEL, callback_data="user:cancel_register")],
+        [CANCEL_REGISTER_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
@@ -124,9 +94,29 @@ def get_user_info_keyboard() -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 内联键盘
     """
     buttons = [
-        [InlineKeyboardButton(text=BACK_LABEL, callback_data="user:account")],
+        [BACK_TO_ACCOUNT_BUTTON],
         [BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     keyboard.adjust(1, 1)
+    return keyboard.as_markup()
+
+
+def get_user_profile_keyboard() -> InlineKeyboardMarkup:
+    """用户个人资料键盘
+
+    功能说明:
+    - 个人资料页面底部键盘，仅提供返回主页按钮
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 内联键盘
+    """
+    buttons = [
+        [BACK_TO_HOME_BUTTON],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    keyboard.adjust(1)
     return keyboard.as_markup()

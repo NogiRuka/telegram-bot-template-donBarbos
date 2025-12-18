@@ -59,7 +59,7 @@ async def user_info(
             emby_info = f"已绑定但未同步 \\(ID: `{escape_markdown_v2(ext.emby_user_id)}`\\)"
 
     # 角色与状态
-    role = await _resolve_role(session, uid)
+    role = ext.role.value if ext and ext.role else "user"  # 直接使用 ext 中的角色信息
     status_text = "正常" if (user and not getattr(user, "is_deleted", False)) else "已删除"
 
     # 字段整理

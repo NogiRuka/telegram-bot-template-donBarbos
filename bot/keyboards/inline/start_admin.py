@@ -1,14 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.keyboards.inline.common_buttons import (
-    ACCOUNT_CENTER_BUTTON,
-    ADMIN_PANEL_BUTTON,
-    PROFILE_BUTTON,
-)
-from bot.keyboards.inline.labels import (
-    BACK_TO_HOME_LABEL,
-)
+from bot.keyboards.inline.buttons import *
 from bot.services.config_service import (
     ADMIN_PANEL_VISIBLE_FEATURES,
     ADMIN_PERMISSIONS_MAPPING,
@@ -76,7 +69,7 @@ def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
         if master_enabled and perms.get(config_key, False):
             buttons.append([InlineKeyboardButton(text=label, callback_data=f"admin:{short_code}")])
 
-    buttons.append([InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")])
+    buttons.append([BACK_TO_HOME_BUTTON])
     keyboard = InlineKeyboardBuilder(markup=buttons)
     
     # 动态调整布局: 每行2个, 最后1个返回键单独一行

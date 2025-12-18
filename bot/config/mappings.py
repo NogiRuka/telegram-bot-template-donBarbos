@@ -8,7 +8,7 @@
 """
 
 from .constants import *
-from bot.keyboards.inline.labels import (
+from bot.keyboards.inline.constants import (
     ACCOUNT_CENTER_LABEL,
     ADMIN_FEATURES_SWITCH_LABEL,
     ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
@@ -24,6 +24,7 @@ from bot.keyboards.inline.labels import (
     USER_LINES_LABEL,
     USER_PASSWORD_LABEL,
     USER_REGISTER_LABEL,
+    USER_TAGS_LABEL,
 )
 
 # 默认配置值
@@ -58,7 +59,7 @@ OWNER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "user_devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
     "user_profile": (KEY_USER_PROFILE, PROFILE_LABEL),
     "user_account": (KEY_USER_ACCOUNT, ACCOUNT_CENTER_LABEL),
-    "user_tag_filter": (KEY_USER_TAG_FILTER, "标签屏蔽"),
+    "user_tag_filter": (KEY_USER_TAG_FILTER, USER_TAGS_LABEL),
     "admin_open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
 }
 
@@ -73,7 +74,7 @@ USER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "user_lines": (KEY_USER_LINES, USER_LINES_LABEL),
     "user_devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
     "user_password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
-    "user_tag_filter": (KEY_USER_TAG_FILTER, "标签屏蔽"),
+    "user_tag_filter": (KEY_USER_TAG_FILTER, USER_TAGS_LABEL),
 }
 
 # 管理员权限映射 - 用于管理员权限管理

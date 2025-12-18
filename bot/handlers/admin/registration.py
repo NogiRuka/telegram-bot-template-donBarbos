@@ -6,7 +6,7 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
-from bot.keyboards.inline.labels import OPEN_REGISTRATION_LABEL
+from bot.keyboards.inline.constants import OPEN_REGISTRATION_LABEL
 from bot.services.config_service import (
     get_free_registration_status,
     get_registration_window,

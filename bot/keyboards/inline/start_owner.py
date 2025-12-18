@@ -4,19 +4,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.services.config_service import ADMIN_PERMISSIONS_MAPPING, USER_FEATURES_MAPPING
 
 
-from bot.keyboards.inline.common_buttons import (
-    ACCOUNT_CENTER_BUTTON,
-    ADMIN_PANEL_BUTTON,
-    BACK_BUTTON,
-    BACK_TO_HOME_BUTTON,
-    OWNER_PANEL_BUTTON,
-    PROFILE_BUTTON,
-)
-from bot.keyboards.inline.labels import (
+from bot.keyboards.inline.buttons import *
+from bot.keyboards.inline.constants import (
     ADMIN_LIST_LABEL,
     ADMIN_PERMS_PANEL_LABEL,
-    BACK_LABEL,
-    BACK_TO_HOME_LABEL,
     FEATURES_PANEL_LABEL,
     OWNER_ADMINS_LABEL,
     format_with_status,
@@ -97,12 +88,12 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
     
     # 添加底部导航按钮
     buttons.extend([
-        [BACK_BUTTON],
+        [BACK_TO_OWNER_PANEL_BUTTON],
         [BACK_TO_HOME_BUTTON],
     ])
     
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(1, 1, 2, 2, 2, 1, 2)
+    keyboard.adjust(1, 1, 2, 2, 2, 2, 2)
     return keyboard.as_markup()
 
 
@@ -120,8 +111,8 @@ def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
     """
     buttons = [
         [InlineKeyboardButton(text=ADMIN_LIST_LABEL, callback_data="owner:admins:list")],
-        [InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel")],
-        [InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")],
+        [BACK_TO_OWNER_PANEL_BUTTON],
+        [BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     keyboard.adjust(1, 2)
@@ -140,9 +131,6 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
     返回值:
     - InlineKeyboardMarkup: 管理员权限面板键盘
     """
-
-    def status(v: bool) -> str:
-        return "🟢" if v else "🔴"
 
     buttons: list[list[InlineKeyboardButton]] = []
     
@@ -167,8 +155,8 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
             )
         ])
 
-    buttons.append([InlineKeyboardButton(text=BACK_LABEL, callback_data="owner:panel")])
-    buttons.append([InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")])
+    buttons.append([BACK_TO_OWNER_PANEL_BUTTON])
+    buttons.append([BACK_TO_HOME_BUTTON])
     
     keyboard = InlineKeyboardBuilder(markup=buttons)
     # 调整布局: 总开关(1) -> 其他开关(每行2个) -> 底部导航(每行2个)

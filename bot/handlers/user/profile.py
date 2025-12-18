@@ -43,7 +43,7 @@ async def user_profile(
     user, ext = await get_user_and_extend(session, uid)
 
     # 角色与状态
-    role = await _resolve_role(session, uid)
+    role = getattr(ext, "role", "user")
     status_text = "正常" if (user and not getattr(user, "is_deleted", False)) else "已删除"
 
     # 字段整理

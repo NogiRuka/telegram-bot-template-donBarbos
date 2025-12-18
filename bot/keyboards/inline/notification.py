@@ -1,8 +1,8 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.keyboards.inline.labels import (
-    BACK_LABEL,
+from bot.keyboards.inline.buttons import *
+from bot.keyboards.inline.constants import (
     BACK_TO_HOME_LABEL,
     NOTIFY_COMPLETE_LABEL,
     NOTIFY_PREVIEW_LABEL,
@@ -30,8 +30,8 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
             InlineKeyboardButton(text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})", callback_data="notify:preview"),
             InlineKeyboardButton(text=NOTIFY_SEND_LABEL, callback_data="notify:send_all"),
         ],
-        [InlineKeyboardButton(text=BACK_LABEL, callback_data="admin:panel")],
-        [InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data="home:back")],
+        [BACK_TO_ADMIN_PANEL_BUTTON],
+        [BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     # 第一行3个功能键, 后两行各1个导航键

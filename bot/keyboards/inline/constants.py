@@ -1,0 +1,156 @@
+"""键盘通用文案与格式化工具
+
+功能说明:
+- 统一维护跨面板重复使用的按钮文案, 避免多处定义造成不一致
+- 提供带开关状态的文案格式化工具, 使用 🟢/🔴 呈现启用/禁用
+
+依赖说明:
+- 无外部库依赖
+
+命名风格:
+- 常量使用大写加下划线
+"""
+
+# ===== 用户功能 =====
+# 个人信息
+PROFILE_LABEL = "👤 个人信息"
+PROFILE_CALLBACK_DATA = "user:profile"
+
+# 账号中心
+ACCOUNT_CENTER_LABEL = "🧩 账号中心"
+ACCOUNT_CENTER_CALLBACK_DATA = "user:account"
+
+# 注册相关
+START_REGISTER_LABEL = "🔥 开始注册"
+START_REGISTER_CALLBACK_DATA = "user:register"
+CANCEL_REGISTER_LABEL = "❌ 取消注册"
+CANCEL_REGISTER_CALLBACK_DATA = "user:cancel_register"
+
+# 账号信息
+USER_INFO_LABEL = "👤 账号信息"
+USER_INFO_CALLBACK_DATA = "user:info"
+
+# 线路信息
+USER_LINES_LABEL = "🛰️ 线路信息"
+USER_LINES_CALLBACK_DATA = "user:lines"
+
+# 设备管理
+USER_DEVICES_LABEL = "📱 设备管理"
+USER_DEVICES_CALLBACK_DATA = "user:devices"
+
+# 修改密码
+USER_PASSWORD_LABEL = "🔐 修改密码"
+USER_PASSWORD_CALLBACK_DATA = "user:password"
+
+# 标签屏蔽
+USER_TAGS_LABEL = "🚫 标签屏蔽"
+USER_TAGS_CALLBACK_DATA = "user:tags"
+
+# 返回账号中心
+BACK_TO_ACCOUNT_LABEL = "↩️ 返回账号中心"
+BACK_TO_ACCOUNT_CALLBACK_DATA = "back:account"
+
+
+# ===== 管理员功能 =====
+# 管理员面板
+ADMIN_PANEL_LABEL = "🛡️ 管理员面板"
+ADMIN_PANEL_CALLBACK_DATA = "admin:panel"
+
+# 群组管理
+GROUPS_LABEL = "👥 群组管理"
+GROUPS_CALLBACK_DATA = "admin:groups"
+
+# 统计数据
+STATS_LABEL = "📊 统计数据"
+STATS_CALLBACK_DATA = "admin:stats"
+
+# 开放注册
+OPEN_REGISTRATION_LABEL = "🛂 开放注册"
+OPEN_REGISTRATION_CALLBACK_DATA = "admin:registration"
+
+# 一言管理
+HITOKOTO_LABEL = "🎴 一言管理"
+HITOKOTO_CALLBACK_DATA = "admin:hitokoto"
+
+# 新片通知
+ADMIN_NEW_ITEM_NOTIFICATION_LABEL = "📢 新片通知"
+ADMIN_NEW_ITEM_NOTIFICATION_CALLBACK_DATA = "admin:notify"
+
+# 上新补全
+NOTIFY_COMPLETE_LABEL = "🔄 上新补全"
+NOTIFY_COMPLETE_CALLBACK_DATA = "admin:notify_complete"
+
+# 上新预览
+NOTIFY_PREVIEW_LABEL = "👀 上新预览"
+NOTIFY_PREVIEW_CALLBACK_DATA = "admin:notify_preview"
+
+# 一键通知
+NOTIFY_SEND_LABEL = "🚀 一键通知"
+NOTIFY_SEND_CALLBACK_DATA = "admin:notify_send"
+
+# 返回管理员面板
+BACK_TO_ADMIN_PANEL_LABEL = "↩️ 返回管理员面板"
+BACK_TO_ADMIN_PANEL_CALLBACK_DATA = "admin:panel"
+
+
+# ===== 所有者功能 =====
+# 所有者面板
+OWNER_PANEL_LABEL = "👑 所有者面板"
+OWNER_PANEL_CALLBACK_DATA = "owner:panel"
+
+# 管理员管理
+OWNER_ADMINS_LABEL = "👮 管理员管理"
+OWNER_ADMINS_CALLBACK_DATA = "owner:admins"
+
+# 查看管理员列表
+ADMIN_LIST_LABEL = "👀 查看管理员列表"
+ADMIN_LIST_CALLBACK_DATA = "owner:admin_list"
+
+# 功能开关
+FEATURES_PANEL_LABEL = "🧩 功能开关"
+FEATURES_PANEL_CALLBACK_DATA = "owner:features"
+
+# 用户注册
+USER_REGISTER_LABEL = "🔥 用户注册"
+USER_REGISTER_CALLBACK_DATA = "owner:user_register"
+
+# 机器人开关
+ROBOT_SWITCH_LABEL = "🤖 机器人开关"
+ROBOT_SWITCH_CALLBACK_DATA = "owner:robot_switch"
+
+# 用户总开关
+USER_FEATURES_SWITCH_LABEL = "🧲 用户总开关"
+USER_FEATURES_SWITCH_CALLBACK_DATA = "owner:user_features"
+
+# 管理员权限
+ADMIN_PERMS_PANEL_LABEL = "🛡️ 管理员权限"
+ADMIN_PERMS_PANEL_CALLBACK_DATA = "owner:admin_perms"
+
+# 管理员总开关
+ADMIN_FEATURES_SWITCH_LABEL = "🧲 管理员总开关"
+ADMIN_FEATURES_SWITCH_CALLBACK_DATA = "owner:admin_features"
+
+# 返回所有者面板
+BACK_TO_OWNER_PANEL_LABEL = "↩️ 返回所有者面板"
+BACK_TO_OWNER_PANEL_CALLBACK_DATA = "owner:panel"
+
+
+# ===== 通用导航 =====
+BACK_TO_HOME_LABEL = "🏠 返回主面板"
+BACK_TO_HOME_CALLBACK_DATA = "home:back"
+
+
+def format_with_status(label: str, enabled: bool) -> str:
+    """格式化带状态的文案
+
+    功能说明:
+    - 返回 "<label> <状态>" 格式的文本, 状态使用 🟢/🔴 显示启用/禁用
+
+    输入参数:
+    - label: 基础文案
+    - enabled: 是否启用
+
+    返回值:
+    - str: 格式化后的文案
+    """
+    return f"{label} {'🟢' if enabled else '🔴'}"

@@ -2,7 +2,7 @@ from aiogram import F, Router, types
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.keyboards.inline.labels import (
+from bot.keyboards.inline.constants import (
     FEATURES_PANEL_LABEL,
     ROBOT_SWITCH_LABEL,
 )
