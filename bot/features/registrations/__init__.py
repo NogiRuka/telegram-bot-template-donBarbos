@@ -8,11 +8,8 @@
 """
 
 # 自动导入所有功能注册
-from .user_demo import tag_filter_router as user_demo_router
-from .tag_filter import tag_filter_router
+# from .user_demo import register_user_demo_feature 
 
 # 导出所有路由器供主程序使用
 __all__ = [
-    "user_demo_router",
-    "tag_filter_router",
 ]

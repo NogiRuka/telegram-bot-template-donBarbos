@@ -1,78 +1,65 @@
 """
-功能注册系统
-
-功能说明:
-- 统一管理所有用户功能
-- 自动生成按钮、处理器、路由
-- 支持功能开关和权限控制
-- 实现"只改一个地方"的开发目标
-
-使用示例:
-    # 注册新功能
-    register_user_feature(
-        name="user.demo",
-        label="演示功能",
-        description="这是一个演示功能",
-        handler=handle_demo_feature,
-        enabled=True
-    )
+功能注册核心模块
 """
-
-from typing import Callable, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional, Callable, Dict, List, Tuple
 from aiogram.types import InlineKeyboardButton
-from bot.utils.permissions import require_user_feature
-from bot.config.mappings import USER_FEATURES_MAPPING
-from bot.keyboards.inline.labels import format_with_status
-
+from bot.config import USER_FEATURES_MAPPING
 
 @dataclass
 class UserFeature:
     """用户功能定义"""
-    
-    # 基础信息
     name: str                    # 功能名称 (如: user.demo)
     label: str                   # 显示标签
     description: str = ""        # 功能描述
-    
-    # 处理器
     handler: Optional[Callable] = None  # 处理函数
     callback_data: Optional[str] = None # 回调数据 (自动生成)
-    
-    # 配置
     config_key: Optional[str] = None      # 配置键 (自动生成)
     enabled: bool = True                 # 默认启用状态
-    
-    # UI 设置
     show_in_panel: bool = True           # 是否在面板显示
     button_order: int = 100              # 按钮排序
-    
+
     def __post_init__(self):
-        """自动生成缺失字段"""
+        # 自动生成 callback_data
         if not self.callback_data:
             self.callback_data = self.name.replace(".", ":")
-        
+        # 自动生成 config_key
         if not self.config_key:
             self.config_key = self.name.replace(".", "_")
+
+    @property
+    def filter(self):
+        """获取 aiogram 过滤器"""
+        from aiogram import F
+        return F.data == self.callback_data
+
+    @property
+    def require(self):
+        """获取权限装饰器"""
+        from bot.utils.permissions import require_user_feature
+        return require_user_feature(self.name)
+
+    def create_router(self):
+        """创建专用路由器"""
+        from aiogram import Router
+        return Router(name=self.config_key)
+
+    @property
+    def button(self) -> InlineKeyboardButton:
+        """获取内联按钮"""
+        return InlineKeyboardButton(text=self.label, callback_data=self.callback_data)
 
 
 class FeatureRegistry:
     """功能注册器"""
-    
     def __init__(self):
-        self._features: dict[str, UserFeature] = {}
-        self._buttons: dict[str, InlineKeyboardButton] = {}
-    
+        self._features: Dict[str, UserFeature] = {}
+        self._buttons: Dict[str, InlineKeyboardButton] = {}
+
     def register(self, feature: UserFeature) -> UserFeature:
         """注册功能"""
         self._features[feature.name] = feature
-        
-        # 自动生成按钮
-        button = InlineKeyboardButton(
-            text=feature.label,
-            callback_data=feature.callback_data
-        )
-        self._buttons[feature.name] = button
+        self._buttons[feature.name] = feature.button
         
         # 更新功能映射
         USER_FEATURES_MAPPING[feature.config_key] = (feature.config_key, feature.label)
@@ -89,6 +76,7 @@ class FeatureRegistry:
     
     def get_all_buttons(self, enabled_features: dict[str, bool] = None) -> list[InlineKeyboardButton]:
         """获取所有启用的功能按钮"""
+        from bot.utils.text import format_with_status
         buttons = []
         
         # 按排序获取功能
@@ -112,18 +100,6 @@ class FeatureRegistry:
             buttons.append(button)
         
         return buttons
-    
-    def create_decorator(self, feature_name: str):
-        """创建功能装饰器"""
-        return require_user_feature(feature_name)
-    
-    def get_handler_routes(self) -> list[tuple[str, Callable]]:
-        """获取所有处理器路由"""
-        routes = []
-        for feature in self._features.values():
-            if feature.handler:
-                routes.append((feature.callback_data, feature.handler))
-        return routes
 
 
 # 全局注册器实例
@@ -176,7 +152,6 @@ def register_user_feature(
     )
     
     return feature_registry.register(feature)
-
 
 def get_user_feature_button(name: str) -> Optional[InlineKeyboardButton]:
     """获取用户功能按钮"""
