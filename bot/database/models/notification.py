@@ -35,10 +35,9 @@ class NotificationModel(Base, BasicAuditMixin):
     title: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="通知标题")
     type: Mapped[str] = mapped_column(String(64), nullable=False, index=True, comment="通知类型")
     
-    status: Mapped[str] = mapped_column(
+    status: Mapped[str | None] = mapped_column(
         String(32), 
-        nullable=False, 
-        default="pending_completion", 
+        nullable=True, 
         index=True, 
         comment="状态: pending_completion/pending_review/sent/failed"
     )

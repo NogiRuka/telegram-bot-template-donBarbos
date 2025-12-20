@@ -57,7 +57,7 @@ async def show_notification_panel(
         .where(
             NotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
             NotificationModel.status.in_(
-                [NOTIFICATION_STATUS_PENDING_COMPLETION, NOTIFICATION_STATUS_PENDING_REVIEW]
+                [NOTIFICATION_STATUS_PENDING_COMPLETION, NOTIFICATION_STATUS_PENDING_REVIEW, "rejected"]
             ),
         )
         .group_by(NotificationModel.status)
@@ -67,12 +67,14 @@ async def show_notification_panel(
 
     pending_completion = counts.get(NOTIFICATION_STATUS_PENDING_COMPLETION, 0)
     pending_review = counts.get(NOTIFICATION_STATUS_PENDING_REVIEW, 0)
+    rejected = counts.get("rejected", 0)
 
     text = (
         f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
         f"📊 <b>状态统计:</b>\n"
         f"• 待补全: <b>{pending_completion}</b>\n"
-        f"• 待发送: <b>{pending_review}</b>\n\n"
+        f"• 待发送: <b>{pending_review}</b>\n"
+        f"• 已拒绝: <b>{rejected}</b>\n\n"
         f"请选择操作:"
     )
 
@@ -325,7 +327,10 @@ async def handle_notify_preview(
     ] = preview_msg_ids
 
     close_kb = InlineKeyboardMarkup(
-        inline_keyboard=[[NOTIFY_CLOSE_PREVIEW_BUTTON]]
+        inline_keyboard=[
+            [NOTIFY_REJECT_BUTTON],
+            [NOTIFY_CLOSE_PREVIEW_BUTTON]
+        ]
     )
 
     for msg_id in preview_msg_ids:
@@ -337,6 +342,42 @@ async def handle_notify_preview(
             )
         except Exception:
             pass
+
+
+@router.callback_query(F.data == "admin:notify_reject")
+async def handle_notify_reject(
+    callback: types.CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService
+) -> None:
+    """拒绝通知 - 将所有待发送通知状态改为rejected"""
+    
+    # 获取所有待发送的通知
+    stmt = select(NotificationModel).where(
+        NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
+        NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
+    )
+    result = await session.execute(stmt)
+    notifications = result.scalars().all()
+    
+    if not notifications:
+        await callback.answer("🈚 没有可拒绝的通知", show_alert=True)
+        return
+    
+    reject_count = 0
+    
+    # 将所有待发送通知状态改为rejected
+    for notif in notifications:
+        notif.status = "rejected"
+        notif.updated_by = callback.from_user.id
+        reject_count += 1
+    
+    await session.commit()
+    
+    await callback.answer(f"🚫 已拒绝 {reject_count} 条通知", show_alert=True)
+    
+    # 返回面板
+    await show_notification_panel(callback, session, main_msg)
 
 
 @router.callback_query(F.data == "admin:notify_close_preview")
@@ -463,6 +504,8 @@ async def execute_send_all(
                 notif.status = NOTIFICATION_STATUS_SENT
                 # 记录发送的目标ID列表
                 notif.target_channel_id = ",".join(str(x) for x in target_chat_ids)
+                # 记录发送者信息
+                notif.updated_by = callback.from_user.id
                 sent_count += 1
             else:
                 notif.status = NOTIFICATION_STATUS_FAILED
