@@ -201,26 +201,6 @@ class EmbyClient:
         data = await self.http.request("GET", f"/Users/{user_id}/Items/{item_id}")
         return cast("dict[str, Any]", data) if isinstance(data, dict) else {}
 
-    async def get_series_info(self, user_id: str, series_id: str) -> dict[str, Any]:
-        """获取剧集基本信息
-        
-        功能说明:
-        - 通过SeriesId获取剧集的基本信息
-        - 用于在通知中显示剧集详情
-        
-        输入参数:
-        - user_id: 用户ID (上下文)
-        - series_id: 剧集ID
-        
-        返回值:
-        - dict[str, Any]: 剧集信息对象
-        """
-        if not series_id:
-            return {}
-        params = {"Fields": "Overview,Genres,Taglines,Studios,People,DateCreated,Tags"}
-        data = await self.http.request("GET", f"/Users/{user_id}/Items/{series_id}", params=params)
-        return cast("dict[str, Any]", data) if isinstance(data, dict) else {}
-
     async def get_items(
         self,
         ids: list[str],

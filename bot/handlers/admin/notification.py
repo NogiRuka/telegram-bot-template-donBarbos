@@ -76,10 +76,21 @@ def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
     # 构造消息内容
     overview = item.overview or "无简介"
     
-    # 处理剧集信息
+    # 处理剧集信息（仅Series类型显示）
     series_info = ""
-    if item.item_type == "Series" and item.current_season and item.current_episode:
-        series_info = f"📺 <b>进度：</b>第{item.current_season}季第{item.current_episode}集\n"
+    if item.item_type == "Series":
+        # 进度信息
+        if item.current_season and item.current_episode:
+            series_info += f"📺 <b>进度：</b>第{item.current_season}季第{item.current_episode}集\n"
+        
+        # 状态信息
+        if item.status:
+            status_text = item.status
+            if item.status == "Continuing":
+                status_text = "连载中"
+            elif item.status == "Ended":
+                status_text = "已完结"
+            series_info += f"📊 <b>状态：</b>{status_text}\n"
     
     # 用户指定的简洁格式
     msg_text = (
