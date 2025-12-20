@@ -5,6 +5,7 @@
 """
 
 from __future__ import annotations
+from datetime import datetime as dt
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -13,7 +14,9 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
-from datetime import datetime as dt
+
+if TYPE_CHECKING:
+    pass
 
 
 class UserRole(Enum):
@@ -28,13 +31,13 @@ class UserExtendModel(Base, BasicAuditMixin):
     """用户扩展信息模型
 
     功能说明:
-    - 存储不属于 aiogram User 的扩展信息与权限，如角色、电话、简介、IP 列表、最后交互时间
+    - 存储不属于 aiogram User 的扩展信息与权限, 如角色、电话、简介、IP 列表、最后交互时间
 
     字段:
-    - user_id: 用户ID（主键，逻辑关联 users.id，无物理外键约束）
-    - role: 用户角色权限（user/admin/owner），默认 user
-    - phone: 电话号码（可空）
-    - bio: 简介（可空）
+    - user_id: 用户ID(主键, 逻辑关联 users.id, 无物理外键约束)
+    - role: 用户角色权限(user/admin/owner), 默认 user
+    - phone: 电话号码(可空)
+    - bio: 简介(可空)
     - ip_list: 访问过的 IP 数组(JSON)
     - last_interaction_at: 最后与机器人交互的时间
     - remark: 备注
@@ -46,7 +49,7 @@ class UserExtendModel(Base, BasicAuditMixin):
 
     __tablename__ = "user_extend"
 
-    # 用户 ID (逻辑关联，不设外键)
+    # 用户 ID (逻辑关联, 不设外键)
     user_id: Mapped[big_int_pk] = mapped_column(comment="用户 ID (逻辑关联 users.id)")
 
     # 角色权限

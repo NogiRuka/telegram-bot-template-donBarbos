@@ -1,9 +1,17 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.services.config_service import ADMIN_PERMISSIONS_MAPPING, USER_FEATURES_MAPPING
-
-from bot.keyboards.inline.buttons import *
+from bot.config import ADMIN_PERMISSIONS_MAPPING, USER_FEATURES_MAPPING
+from bot.keyboards.inline.buttons import (
+    ACCOUNT_CENTER_BUTTON,
+    ADMIN_LIST_BUTTON,
+    ADMIN_PANEL_BUTTON,
+    BACK_TO_HOME_BUTTON,
+    BACK_TO_OWNER_PANEL_BUTTON,
+    OWNER_PANEL_BUTTON,
+    OWNER_PANEL_BUTTONS,
+    PROFILE_BUTTON,
+)
 from bot.keyboards.inline.constants import (
     ADMIN_PERMS_TOGGLE_FEATURES_CALLBACK_DATA,
     format_with_status,
@@ -65,23 +73,26 @@ def get_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMark
     """
 
     buttons: list[list[InlineKeyboardButton]] = []
-    
-    # 使用映射配置动态生成按钮，参考管理员配置实现
+
+    # 使用映射配置动态生成按钮, 参考管理员配置实现
     for short_code, (cfg_key, label) in USER_FEATURES_MAPPING.items():
         is_enabled = features.get(cfg_key, False)
-        buttons.append([
-            InlineKeyboardButton(
-                text=format_with_status(label, is_enabled),
-                callback_data=f"owner:features:toggle:{short_code}"
-            )
-        ])
-    
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=format_with_status(label, is_enabled), callback_data=f"owner:features:toggle:{short_code}"
+                )
+            ]
+        )
+
     # 添加底部导航按钮
-    buttons.extend([
-        [BACK_TO_OWNER_PANEL_BUTTON],
-        [BACK_TO_HOME_BUTTON],
-    ])
-    
+    buttons.extend(
+        [
+            [BACK_TO_OWNER_PANEL_BUTTON],
+            [BACK_TO_HOME_BUTTON],
+        ]
+    )
+
     keyboard = InlineKeyboardBuilder(markup=buttons)
     keyboard.adjust(1, 1, 2, 2, 2, 2, 2)
     return keyboard.as_markup()
@@ -108,6 +119,7 @@ def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
     keyboard.adjust(1, 2)
     return keyboard.as_markup()
 
+
 def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     """管理员权限面板键盘
 
@@ -123,40 +135,44 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
     """
 
     buttons: list[list[InlineKeyboardButton]] = []
-    
+
     # 1. 优先添加管理员总开关
     if "features" in ADMIN_PERMISSIONS_MAPPING:
         cfg_key, label = ADMIN_PERMISSIONS_MAPPING["features"]
-        buttons.append([
-            InlineKeyboardButton(
-                text=format_with_status(label, perms.get(cfg_key, False)),
-                callback_data=ADMIN_PERMS_TOGGLE_FEATURES_CALLBACK_DATA
-            )
-        ])
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=format_with_status(label, perms.get(cfg_key, False)),
+                    callback_data=ADMIN_PERMS_TOGGLE_FEATURES_CALLBACK_DATA,
+                )
+            ]
+        )
 
     # 2. 动态添加其他权限开关
     for short_code, (cfg_key, label) in ADMIN_PERMISSIONS_MAPPING.items():
         if short_code == "features":
             continue
-        buttons.append([
-            InlineKeyboardButton(
-                text=format_with_status(label, perms.get(cfg_key, False)),
-                callback_data=f"owner:admin_perms:toggle:{short_code}"
-            )
-        ])
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=format_with_status(label, perms.get(cfg_key, False)),
+                    callback_data=f"owner:admin_perms:toggle:{short_code}",
+                )
+            ]
+        )
 
     buttons.append([BACK_TO_OWNER_PANEL_BUTTON])
     buttons.append([BACK_TO_HOME_BUTTON])
-    
+
     keyboard = InlineKeyboardBuilder(markup=buttons)
     # 调整布局: 总开关(1) -> 其他开关(每行2个) -> 底部导航(每行2个)
     # 计算中间部分的行数
-    other_perms_count = len(buttons) - 3 # 减去总开关和两个底部按钮
-    layout = [1] # 总开关
+    other_perms_count = len(buttons) - 3  # 减去总开关和两个底部按钮
+    layout = [1]  # 总开关
     layout.extend([2] * (other_perms_count // 2))
     if other_perms_count % 2 == 1:
         layout.append(1)
-    layout.append(2) # 底部导航 (返回 + 主页)
-    
+    layout.append(2)  # 底部导航 (返回 + 主页)
+
     keyboard.adjust(*layout)
     return keyboard.as_markup()

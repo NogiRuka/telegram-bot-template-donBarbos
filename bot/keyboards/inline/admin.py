@@ -1,12 +1,27 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.keyboards.inline.buttons import *
-from bot.services.config_service import (
+from bot.config import (
     ADMIN_PANEL_VISIBLE_FEATURES,
     ADMIN_PERMISSIONS_MAPPING,
     KEY_ADMIN_FEATURES_ENABLED,
 )
+from bot.keyboards.inline.buttons import (
+    ACCOUNT_CENTER_BUTTON,
+    ADMIN_PANEL_BUTTON,
+    BACK_TO_ADMIN_PANEL_BUTTON,
+    BACK_TO_HOME_BUTTON,
+    PROFILE_BUTTON,
+)
+from bot.keyboards.inline.constants import (
+    NOTIFY_COMPLETE_CALLBACK_DATA,
+    NOTIFY_COMPLETE_LABEL,
+    NOTIFY_PREVIEW_CALLBACK_DATA,
+    NOTIFY_PREVIEW_LABEL,
+    NOTIFY_SEND_CALLBACK_DATA,
+    NOTIFY_SEND_LABEL,
+)
+
 
 def get_start_admin_keyboard() -> InlineKeyboardMarkup:
     """管理员首页键盘
@@ -29,6 +44,7 @@ def get_start_admin_keyboard() -> InlineKeyboardMarkup:
     keyboard.adjust(2, 1)
     return keyboard.as_markup()
 
+
 def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     """管理员面板键盘
 
@@ -47,14 +63,14 @@ def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     for short_code in ADMIN_PANEL_VISIBLE_FEATURES:
         if short_code not in ADMIN_PERMISSIONS_MAPPING:
             continue
-            
+
         config_key, label = ADMIN_PERMISSIONS_MAPPING[short_code]
         if master_enabled and perms.get(config_key, False):
             buttons.append([InlineKeyboardButton(text=label, callback_data=f"admin:{short_code}")])
 
     buttons.append([BACK_TO_HOME_BUTTON])
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    
+
     # 动态调整布局: 每行2个, 最后1个返回键单独一行
     # 如果按钮数量(不含返回键)是奇数, 则最后一个功能键单独一行
     count = len(buttons) - 1
@@ -62,9 +78,10 @@ def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     if count % 2 == 1:
         layout.append(1)
     layout.append(1)  # 返回键
-    
+
     keyboard.adjust(*layout)
     return keyboard.as_markup()
+
 
 def get_notification_panel_keyboard(pending_completion: int, pending_review: int) -> InlineKeyboardMarkup:
     """获取上新通知管理面板键盘
@@ -82,8 +99,14 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
     """
     buttons = [
         [
-            InlineKeyboardButton(text=f"{NOTIFY_COMPLETE_LABEL} ({pending_completion})", callback_data=NOTIFY_COMPLETE_CALLBACK_DATA),
-            InlineKeyboardButton(text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})", callback_data=NOTIFY_PREVIEW_CALLBACK_DATA),
+            InlineKeyboardButton(
+                text=f"{NOTIFY_COMPLETE_LABEL} ({pending_completion})",
+                callback_data=NOTIFY_COMPLETE_CALLBACK_DATA,
+            ),
+            InlineKeyboardButton(
+                text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})",
+                callback_data=NOTIFY_PREVIEW_CALLBACK_DATA,
+            ),
             InlineKeyboardButton(text=NOTIFY_SEND_LABEL, callback_data=NOTIFY_SEND_CALLBACK_DATA),
         ],
         [BACK_TO_ADMIN_PANEL_BUTTON],
