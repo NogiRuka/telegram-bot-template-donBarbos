@@ -12,6 +12,12 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from bot.keyboards.inline.constants import (
+    BACK_TO_HOME_LABEL,
+    GROUP_BACK_TO_HOME_CALLBACK_DATA,
+    GROUP_BACK_TO_HOME_LABEL,
+)
+
 
 def get_group_config_keyboard(config_id: int) -> InlineKeyboardMarkup:
     """
@@ -82,7 +88,7 @@ def get_save_mode_keyboard(config_id: int) -> InlineKeyboardMarkup:
     # 返回按钮
     builder.row(
         InlineKeyboardButton(text="⬅️ 返回上一级", callback_data=f"group_config_back:{config_id}"),
-        InlineKeyboardButton(text="↩️ 返回主面板", callback_data="home:back"),
+        InlineKeyboardButton(text=GROUP_BACK_TO_HOME_LABEL, callback_data=GROUP_BACK_TO_HOME_CALLBACK_DATA),
     )
 
     return builder.as_markup()

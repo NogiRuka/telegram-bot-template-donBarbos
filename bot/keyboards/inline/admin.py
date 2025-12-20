@@ -8,26 +8,6 @@ from bot.services.config_service import (
     KEY_ADMIN_FEATURES_ENABLED,
 )
 
-
-def build_admin_home_buttons() -> list[list[InlineKeyboardButton]]:
-    """管理员首页按钮集合构建
-
-    功能说明:
-    - 采用 menu 风格, 按行定义按钮, 统一通过 adjust 控制布局
-
-    输入参数:
-    - 无
-
-    返回值:
-    - list[list[InlineKeyboardButton]]: 按钮行集合
-    """
-    return [
-        [PROFILE_BUTTON],
-        [ACCOUNT_CENTER_BUTTON],
-        [ADMIN_PANEL_BUTTON],
-    ]
-
-
 def get_start_admin_keyboard() -> InlineKeyboardMarkup:
     """管理员首页键盘
 
@@ -40,11 +20,14 @@ def get_start_admin_keyboard() -> InlineKeyboardMarkup:
     返回值:
     - InlineKeyboardMarkup: 内联键盘
     """
-    buttons = build_admin_home_buttons()
+    buttons = [
+        [PROFILE_BUTTON],
+        [ACCOUNT_CENTER_BUTTON],
+        [ADMIN_PANEL_BUTTON],
+    ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     keyboard.adjust(2, 1)
     return keyboard.as_markup()
-
 
 def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     """管理员面板键盘

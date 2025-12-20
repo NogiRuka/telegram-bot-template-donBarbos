@@ -3,13 +3,9 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.services.config_service import ADMIN_PERMISSIONS_MAPPING, USER_FEATURES_MAPPING
 
-
 from bot.keyboards.inline.buttons import *
 from bot.keyboards.inline.constants import (
-    ADMIN_LIST_LABEL,
-    ADMIN_PERMS_PANEL_LABEL,
-    FEATURES_PANEL_LABEL,
-    OWNER_ADMINS_LABEL,
+    ADMIN_PERMS_TOGGLE_FEATURES_CALLBACK_DATA,
     format_with_status,
 )
 
@@ -49,13 +45,7 @@ def get_owner_panel_keyboard() -> InlineKeyboardMarkup:
     返回值:
     - InlineKeyboardMarkup: 面板主键盘
     """
-    buttons = [
-        [InlineKeyboardButton(text=OWNER_ADMINS_LABEL, callback_data="owner:admins")],
-        [InlineKeyboardButton(text=FEATURES_PANEL_LABEL, callback_data="owner:features")],
-        [InlineKeyboardButton(text=ADMIN_PERMS_PANEL_LABEL, callback_data="owner:admin_perms")],
-        [BACK_TO_HOME_BUTTON],
-    ]
-    kb = InlineKeyboardBuilder(markup=buttons)
+    kb = InlineKeyboardBuilder(markup=OWNER_PANEL_BUTTONS)
     kb.adjust(1)
     return kb.as_markup()
 
@@ -110,7 +100,7 @@ def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 管理员面板键盘
     """
     buttons = [
-        [InlineKeyboardButton(text=ADMIN_LIST_LABEL, callback_data="owner:admins:list")],
+        [ADMIN_LIST_BUTTON],
         [BACK_TO_OWNER_PANEL_BUTTON],
         [BACK_TO_HOME_BUTTON],
     ]
@@ -140,7 +130,7 @@ def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMark
         buttons.append([
             InlineKeyboardButton(
                 text=format_with_status(label, perms.get(cfg_key, False)),
-                callback_data="owner:admin_perms:toggle:features"
+                callback_data=ADMIN_PERMS_TOGGLE_FEATURES_CALLBACK_DATA
             )
         ])
 

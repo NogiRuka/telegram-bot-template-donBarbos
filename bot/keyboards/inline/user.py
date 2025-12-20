@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.keyboards.inline.buttons import *
@@ -43,13 +43,7 @@ def get_account_center_keyboard(has_emby_account: bool) -> InlineKeyboardMarkup:
 
     # 有 Emby 账号的情况
     if has_emby_account:
-        keyboard.add(USER_INFO_BUTTON)
-        keyboard.add(USER_LINES_BUTTON)
-        keyboard.add(USER_DEVICES_BUTTON)
-        keyboard.add(USER_PASSWORD_BUTTON)
-        keyboard.add(USER_TAGS_BUTTON)
-        keyboard.add(BACK_TO_HOME_BUTTON)
-
+        keyboard = InlineKeyboardBuilder(markup=USER_PANEL_BUTTONS)
         keyboard.adjust(2, 2, 1, 1)
         return keyboard.as_markup()
 
@@ -119,7 +113,6 @@ def get_user_profile_keyboard() -> InlineKeyboardMarkup:
         [BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(1)
     return keyboard.as_markup()
 
 

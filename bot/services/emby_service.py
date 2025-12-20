@@ -318,6 +318,8 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
     - dict[str, bool]: 结果映射 {item_id: success}
     """
     from bot.database.models.emby_item import EmbyItemModel
+    from bot.database.models.notification import NotificationModel
+    from sqlalchemy import func
     
     if not item_ids:
         return {}
@@ -328,7 +330,6 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
         return {iid: False for iid in item_ids}
     
     results = {iid: False for iid in item_ids}
-    user_id = settings.get_emby_template_user_id()
 
     try:
         # 批量获取详情
@@ -370,6 +371,29 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                 tag_items = item_details.get("TagItems")
                 image_tags = item_details.get("ImageTags")
                 
+                # 状态字段 (主要用于Series类型)
+                status = item_details.get("Status")
+                
+                # 剧集进度字段 (仅Series类型有效)
+                current_season = None
+                current_episode = None
+                if item_type == "Series":
+                    # 查询通知表获取该series_id的最大季和集
+                    series_stmt = select(
+                        func.max(NotificationModel.season_number).label("max_season"),
+                        func.max(NotificationModel.episode_number).label("max_episode")
+                    ).where(
+                        NotificationModel.series_id == item_id,
+                        NotificationModel.season_number.is_not(None),
+                        NotificationModel.episode_number.is_not(None)
+                    )
+                    series_result = await session.execute(series_stmt)
+                    series_data = series_result.one_or_none()
+                    if series_data and series_data.max_season is not None:
+                        current_season = series_data.max_season
+                        current_episode = series_data.max_episode
+                        logger.debug(f"📺 Series {item_id} 最新进度: 第{current_season}季第{current_episode}集")
+                
                 existing = existing_models.get(item_id)
                 if existing:
                     existing.name = name
@@ -377,6 +401,9 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                     existing.overview = overview
                     existing.type = item_type
                     existing.path = path
+                    existing.status = status
+                    existing.current_season = current_season
+                    existing.current_episode = current_episode
                     existing.people = people
                     existing.tag_items = tag_items
                     existing.image_tags = image_tags
@@ -390,6 +417,9 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                         overview=overview,
                         type=item_type,
                         path=path,
+                        status=status,
+                        current_season=current_season,
+                        current_episode=current_episode,
                         people=people,
                         tag_items=tag_items,
                         image_tags=image_tags,

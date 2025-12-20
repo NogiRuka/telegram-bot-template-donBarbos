@@ -4,8 +4,11 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.keyboards.inline.buttons import *
 from bot.keyboards.inline.constants import (
     BACK_TO_HOME_LABEL,
+    NOTIFY_COMPLETE_CALLBACK_DATA,
     NOTIFY_COMPLETE_LABEL,
+    NOTIFY_PREVIEW_CALLBACK_DATA,
     NOTIFY_PREVIEW_LABEL,
+    NOTIFY_SEND_CALLBACK_DATA,
     NOTIFY_SEND_LABEL,
 )
 
@@ -26,9 +29,9 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
     """
     buttons = [
         [
-            InlineKeyboardButton(text=f"{NOTIFY_COMPLETE_LABEL} ({pending_completion})", callback_data="notify:complete"),
-            InlineKeyboardButton(text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})", callback_data="notify:preview"),
-            InlineKeyboardButton(text=NOTIFY_SEND_LABEL, callback_data="notify:send_all"),
+            InlineKeyboardButton(text=f"{NOTIFY_COMPLETE_LABEL} ({pending_completion})", callback_data=NOTIFY_COMPLETE_CALLBACK_DATA),
+            InlineKeyboardButton(text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})", callback_data=NOTIFY_PREVIEW_CALLBACK_DATA),
+            InlineKeyboardButton(text=NOTIFY_SEND_LABEL, callback_data=NOTIFY_SEND_CALLBACK_DATA),
         ],
         [BACK_TO_ADMIN_PANEL_BUTTON],
         [BACK_TO_HOME_BUTTON],

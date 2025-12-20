@@ -105,6 +105,7 @@ OWNER_ADMINS_CALLBACK_DATA = "owner:admins"
 # 查看管理员列表
 ADMIN_LIST_LABEL = "👀 查看管理员列表"
 ADMIN_LIST_CALLBACK_DATA = "owner:admin_list"
+ADMIN_LIST_VIEW_CALLBACK_DATA = "owner:admins:list"
 
 # 功能开关
 FEATURES_PANEL_LABEL = "🧩 功能开关"
@@ -129,6 +130,7 @@ ADMIN_PERMS_PANEL_CALLBACK_DATA = "owner:admin_perms"
 # 管理员总开关
 ADMIN_FEATURES_SWITCH_LABEL = "🧲 管理员总开关"
 ADMIN_FEATURES_SWITCH_CALLBACK_DATA = "owner:admin_features"
+ADMIN_PERMS_TOGGLE_FEATURES_CALLBACK_DATA = "owner:admin_perms:toggle:features"
 
 # 返回所有者面板
 BACK_TO_OWNER_PANEL_LABEL = "↩️ 返回所有者面板"
@@ -138,6 +140,11 @@ BACK_TO_OWNER_PANEL_CALLBACK_DATA = "owner:panel"
 # ===== 通用导航 =====
 BACK_TO_HOME_LABEL = "🏠 返回主面板"
 BACK_TO_HOME_CALLBACK_DATA = "back:home"
+
+# ===== 群组配置 =====
+# 返回主面板（群组配置使用）
+GROUP_BACK_TO_HOME_LABEL = "↩️ 返回主面板"
+GROUP_BACK_TO_HOME_CALLBACK_DATA = "home:back"
 
 
 def format_with_status(label: str, enabled: bool) -> str:

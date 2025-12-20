@@ -13,7 +13,7 @@ from bot.services.config_service import (
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_owner
 
-router = Router(name="owner_admin_perms")
+router = Router(name="owner_admin_features")
 
 
 @router.callback_query(F.data == "owner:admin_perms")
@@ -23,10 +23,10 @@ async def show_admin_perms_panel(
     session: AsyncSession, 
     main_msg: MainMessageService
 ) -> None:
-    """展示管理员权限面板
+    """展示管理员功能面板
 
     功能说明:
-    - 显示管理员权限开关列表, 支持返回上一级与返回主面板
+    - 显示管理员功能开关列表, 支持返回上一级与返回主面板
 
     输入参数:
     - callback: 回调对象
@@ -51,10 +51,10 @@ async def toggle_admin_permissions(
     session: AsyncSession, 
     main_msg: MainMessageService
 ) -> None:
-    """统一切换管理员权限开关
+    """统一切换管理员功能开关
 
     功能说明:
-    - 处理 `owner:admin_perms:toggle:*` 的所有管理员权限开关, 统一翻转配置并刷新权限面板
+    - 处理 `owner:admin_perms:toggle:*` 的所有管理员功能开关, 统一翻转配置并刷新功能面板
 
     输入参数:
     - callback: 回调对象

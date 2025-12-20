@@ -17,7 +17,7 @@ from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
 from bot.utils.permissions import require_owner
 
-router = Router(name="owner_features")
+router = Router(name="owner_user_features")
 
 
 @router.callback_query(F.data == "owner:features")
@@ -27,10 +27,10 @@ async def show_features_panel(
     session: AsyncSession, 
     main_msg: MainMessageService
 ) -> None:
-    """显示功能开关面板
+    """显示用户功能开关面板
 
     功能说明:
-    - 跳转到功能开关子面板
+    - 跳转到用户功能开关子面板
 
     输入参数:
     - callback: 回调对象
@@ -74,10 +74,10 @@ async def toggle_owner_features(
     session: AsyncSession,
     main_msg: MainMessageService
 ) -> None:
-    """统一切换所有者功能开关
+    """统一切换用户功能开关
 
     功能说明:
-    - 处理 `owner:features:toggle:*` 的所有功能开关, 统一翻转配置并刷新功能面板
+    - 处理 `owner:features:toggle:*` 的所有用户功能开关, 统一翻转配置并刷新用户功能面板
 
     输入参数:
     - callback: 回调对象

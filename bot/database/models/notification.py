@@ -44,11 +44,18 @@ class NotificationModel(Base, BasicAuditMixin):
 
     item_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True, comment="Emby Item ID")
     item_name: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="媒体名称")
+    item_type: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="媒体类型")
 
-    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, comment="原始 Webhook 数据")
+    # 剧集相关字段
+    series_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True, comment="剧集ID (SeriesId)")
+    series_name: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="剧集名称")
+    season_number: Mapped[int | None] = mapped_column(nullable=True, comment="季号 (ParentIndexNumber)")
+    episode_number: Mapped[int | None] = mapped_column(nullable=True, comment="集号 (IndexNumber)")
     
     target_channel_id: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="目标频道ID")
     target_group_id: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="目标群组ID")
 
-    repr_cols = ("id", "type", "status", "item_name")
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, comment="原始 Webhook 数据")
+
+    repr_cols = ("id", "type", "status", "item_name", "series_name", "season_number", "episode_number", "item_type")
 

@@ -101,8 +101,11 @@ async def handle_notify_complete(
     fail_count = 0
     
     async with sessionmaker() as session:
-        # 获取所有待补全的通知
-        stmt = select(NotificationModel).where(NotificationModel.status == "pending_completion")
+        # 获取所有待补全的library.new通知
+        stmt = select(NotificationModel).where(
+            NotificationModel.status == "pending_completion",
+            NotificationModel.type == "library.new"
+        )
         result = await session.execute(stmt)
         notifications = result.scalars().all()
         
@@ -114,11 +117,23 @@ async def handle_notify_complete(
         # 提示改为 Alert 形式，不需要用户确认
         await callback.answer(f"⏳ 开始补全 {total} 条记录...", show_alert=False)
 
-        # 提取 item_ids 并批量查询
-        item_ids = list({n.item_id for n in notifications if n.item_id})
+        # 简化逻辑：提取需要去查询的item_ids
+        # 对于Episode类型，使用series_id；对于其他类型，使用item_id
+        item_ids_to_query = []
+        for notif in notifications:
+            if notif.item_id:
+                if notif.item_type == "Episode" and notif.series_id:
+                    # Episode类型使用series_id
+                    item_ids_to_query.append(notif.series_id)
+                else:
+                    # 其他类型使用item_id
+                    item_ids_to_query.append(notif.item_id)
+        
+        # 去重
+        unique_item_ids = list(set(item_ids_to_query))
         
         # 批量调用 Service
-        batch_results = await fetch_and_save_item_details(session, item_ids)
+        batch_results = await fetch_and_save_item_details(session, unique_item_ids)
 
         for notif in notifications:
             if not notif.item_id:
