@@ -1,5 +1,7 @@
 from aiogram import F, Router, types
 from aiogram.types import InlineKeyboardMarkup
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from loguru import logger
 from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +30,11 @@ from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
 
 router = Router(name="notification")
+
+
+class NotificationStates(StatesGroup):
+    """通知相关状态"""
+    waiting_for_additional_sender = State()  # 等待输入额外通知者
 
 
 @router.callback_query(F.data == "admin:new_item_notification")
@@ -273,6 +280,7 @@ async def handle_notify_preview(
     session: AsyncSession,
     main_msg: MainMessageService,
 ) -> None:
+    """生成通知预览 - 每条消息关联具体通知ID"""
 
     preview_key = case(
         (
@@ -283,28 +291,30 @@ async def handle_notify_preview(
         else_=NotificationModel.item_id,
     )
 
+    # 获取待审核的通知和对应的EmbyItem
     stmt = (
-        select(EmbyItemModel)
-        .join(NotificationModel, preview_key == EmbyItemModel.id)
+        select(NotificationModel, EmbyItemModel)
+        .join(EmbyItemModel, preview_key == EmbyItemModel.id)
         .where(
             NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
             NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
         )
-        .distinct(EmbyItemModel.id)
+        .distinct(preview_key)
     )
 
     result = await session.execute(stmt)
-    emby_items = result.scalars().all()
+    rows = result.all()
 
-    if not emby_items:
+    if not rows:
         await callback.answer("没有可预览的通知", show_alert=True)
         return
 
-    await callback.answer(f"👀 正在生成 {len(emby_items)} 条预览…")
+    await callback.answer(f"👀 正在生成 {len(rows)} 条预览…")
 
-    preview_msg_ids = []
+    # 存储预览消息信息：{message_id: notification_id}
+    preview_data = {}
 
-    for item in emby_items:
+    for notif, item in rows:
         msg_text, image_url = get_notification_content(item)
         try:
             if image_url:
@@ -318,66 +328,93 @@ async def handle_notify_preview(
                     callback.from_user.id,
                     msg_text,
                 )
-            preview_msg_ids.append(msg.message_id)
+            
+            # 关联消息ID和通知ID
+            preview_data[msg.message_id] = notif.id
+            
         except Exception as e:
             logger.error(f"预览发送失败: {e}")
 
-    callback.bot.setdefault("preview_cache", {})[
-        callback.from_user.id
-    ] = preview_msg_ids
+    # 存储预览数据到bot缓存
+    callback.bot.setdefault("preview_cache", {})[callback.from_user.id] = preview_data
 
-    close_kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [NOTIFY_REJECT_BUTTON],
-            [NOTIFY_CLOSE_PREVIEW_BUTTON]
-        ]
-    )
-
-    for msg_id in preview_msg_ids:
+    # 为每条消息添加操作按钮
+    for msg_id, notification_id in preview_data.items():
+        reject_kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🚫 拒绝此通知", callback_data=f"admin:notify_reject:{notification_id}")],
+                [InlineKeyboardButton(text="👥 添加通知者", callback_data=f"admin:notify_add_sender:{notification_id}")],
+                [NOTIFY_CLOSE_PREVIEW_BUTTON]
+            ]
+        )
+        
         try:
             await callback.bot.edit_message_reply_markup(
                 callback.from_user.id,
                 msg_id,
-                reply_markup=close_kb,
+                reply_markup=reject_kb,
             )
         except Exception:
             pass
 
 
-@router.callback_query(F.data == "admin:notify_reject")
+@router.callback_query(F.data.startswith("admin:notify_reject:"))
 async def handle_notify_reject(
     callback: types.CallbackQuery,
     session: AsyncSession,
     main_msg: MainMessageService
 ) -> None:
-    """拒绝通知 - 将所有待发送通知状态改为rejected"""
+    """拒绝单条通知 - 将指定通知状态改为rejected"""
     
-    # 获取所有待发送的通知
+    # 从callback_data中提取通知ID
+    notification_id = int(callback.data.split(":")[2])
+    
+    # 获取指定通知
     stmt = select(NotificationModel).where(
-        NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
-        NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
+        NotificationModel.id == notification_id,
+        NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW
     )
     result = await session.execute(stmt)
-    notifications = result.scalars().all()
+    notification = result.scalar_one_or_none()
     
-    if not notifications:
-        await callback.answer("🈚 没有可拒绝的通知", show_alert=True)
+    if not notification:
+        await callback.answer("🈚 该通知不存在或状态已改变", show_alert=True)
         return
     
-    reject_count = 0
-    
-    # 将所有待发送通知状态改为rejected
-    for notif in notifications:
-        notif.status = "rejected"
-        notif.updated_by = callback.from_user.id
-        reject_count += 1
+    # 拒绝该通知
+    notification.status = "rejected"
+    notification.updated_by = callback.from_user.id
     
     await session.commit()
     
-    await callback.answer(f"🚫 已拒绝 {reject_count} 条通知", show_alert=True)
+    # 删除预览消息
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
     
-    # 返回面板
-    await show_notification_panel(callback, session, main_msg)
+    await callback.answer(f"🚫 已拒绝通知: {notification.item_name or notification.series_name or '未知'}" , show_alert=True)
+
+
+@router.callback_query(F.data.startswith("admin:notify_add_sender:"))
+async def handle_add_sender_start(
+    callback: types.CallbackQuery,
+    state: FSMContext
+) -> None:
+    """开始添加通知者流程"""
+    
+    # 从callback_data中提取通知ID
+    notification_id = int(callback.data.split(":")[2])
+    
+    # 存储通知ID到状态
+    await state.update_data(notification_id=notification_id)
+    await state.set_state(NotificationStates.waiting_for_additional_sender)
+    
+    await callback.message.answer(
+        "请输入要添加的通知者信息（可以是用户ID、用户名等）：\n"
+        "或者直接回复消息来引用用户"
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == "admin:notify_close_preview")
@@ -400,6 +437,57 @@ async def handle_close_preview(callback: types.CallbackQuery):
         except Exception:
             pass
         await callback.answer("预览缓存已失效，仅删除当前消息", show_alert=False)
+
+
+@router.message(NotificationStates.waiting_for_additional_sender)
+async def handle_add_sender_complete(
+    message: types.Message,
+    session: AsyncSession,
+    state: FSMContext
+) -> None:
+    """处理添加通知者的输入"""
+    
+    data = await state.get_data()
+    notification_id = data.get("notification_id")
+    
+    if not notification_id:
+        await message.answer("❌ 状态错误，请重新操作")
+        await state.clear()
+        return
+    
+    # 获取通知
+    stmt = select(NotificationModel).where(NotificationModel.id == notification_id)
+    result = await session.execute(stmt)
+    notification = result.scalar_one_or_none()
+    
+    if not notification:
+        await message.answer("❌ 通知不存在")
+        await state.clear()
+        return
+    
+    # 解析用户输入（可以是用户ID、用户名等）
+    sender_info = message.text.strip()
+    
+    # 获取当前的发送者信息
+    current_senders = notification.target_channel_id or ""
+    
+    # 添加新的通知者
+    if current_senders:
+        new_senders = f"{current_senders},{sender_info}"
+    else:
+        new_senders = sender_info
+    
+    notification.target_channel_id = new_senders
+    notification.updated_by = message.from_user.id
+    
+    await session.commit()
+    
+    await message.answer(
+        f"✅ 已为通知 '{notification.item_name or notification.series_name or '未知'}' "
+        f"添加通知者: {sender_info}"
+    )
+    
+    await state.clear()
 
 
 @router.callback_query(F.data == "admin:notify_send")

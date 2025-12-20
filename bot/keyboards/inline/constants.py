@@ -104,6 +104,10 @@ NOTIFY_CONFIRM_SEND_CANCEL_CALLBACK_DATA = "admin:new_item_notification"
 NOTIFY_REJECT_LABEL = "🚫 拒绝通知"
 NOTIFY_REJECT_CALLBACK_DATA = "admin:notify_reject"
 
+# 添加通知者
+NOTIFY_ADD_SENDER_LABEL = "👥 添加通知者"
+NOTIFY_ADD_SENDER_CALLBACK_DATA = "admin:notify_add_sender"
+
 # 返回管理员面板
 BACK_TO_ADMIN_PANEL_LABEL = "↩️ 返回管理员面板"
 BACK_TO_ADMIN_PANEL_CALLBACK_DATA = "admin:panel"
