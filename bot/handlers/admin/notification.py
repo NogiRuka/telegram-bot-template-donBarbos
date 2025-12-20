@@ -25,12 +25,18 @@ async def show_notification_panel(
 ) -> None:
     """显示新片通知管理面板"""
     async with sessionmaker() as session:
-        # 统计各状态数量
+        # 统计各状态数量（仅统计library.new类型）
         pending_completion = await session.scalar(
-            select(func.count(NotificationModel.id)).where(NotificationModel.status == "pending_completion")
+            select(func.count(NotificationModel.id)).where(
+                NotificationModel.status == "pending_completion",
+                NotificationModel.type == "library.new"
+            )
         ) or 0
         pending_review = await session.scalar(
-            select(func.count(NotificationModel.id)).where(NotificationModel.status == "pending_review")
+            select(func.count(NotificationModel.id)).where(
+                NotificationModel.status == "pending_review",
+                NotificationModel.type == "library.new"
+            )
         ) or 0
 
     text = (
@@ -87,7 +93,7 @@ def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
         if item.status:
             status_text = item.status
             if item.status == "Continuing":
-                status_text = "连载中"
+                status_text = "更新中"
             elif item.status == "Ended":
                 status_text = "已完结"
             series_info += f"📊 <b>状态：</b>{status_text}\n"
@@ -95,8 +101,8 @@ def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
     # 用户指定的简洁格式
     msg_text = (
         f"🎬 <b>名称：</b><code>{item.name}</code>\n"
-        f"{series_info}"
         f"📂 <b>分类：</b>{library_tag}\n"
+        f"{series_info}"
         f"📅 <b>时间：</b>{item.date_created if item.date_created else '未知'}\n"
         f"📝 <b>简介：</b>{overview[:80] + '...' if len(overview) > 80 else overview}"
     )
