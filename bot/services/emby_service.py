@@ -377,22 +377,67 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                 # 剧集进度字段 (仅Series类型有效)
                 current_season = None
                 current_episode = None
+                episode_data = None
                 if item_type == "Series":
-                    # 查询通知表获取该series_id的最大季和集
-                    series_stmt = select(
-                        func.max(NotificationModel.season_number).label("max_season"),
-                        func.max(NotificationModel.episode_number).label("max_episode")
-                    ).where(
-                        NotificationModel.series_id == item_id,
-                        NotificationModel.season_number.is_not(None),
-                        NotificationModel.episode_number.is_not(None)
-                    )
-                    series_result = await session.execute(series_stmt)
-                    series_data = series_result.one_or_none()
-                    if series_data and series_data.max_season is not None:
-                        current_season = series_data.max_season
-                        current_episode = series_data.max_episode
-                        logger.debug(f"📺 Series {item_id} 最新进度: 第{current_season}季第{current_episode}集")
+                    # 获取剧集详情数据
+                    try:
+                        episodes, total_episodes = await client.get_series_episodes(
+                            series_id=item_id
+                        )
+                        if episodes:
+                            episode_data = {
+                                "Items": episodes,
+                                "TotalRecordCount": total_episodes
+                            }
+                            logger.debug(f"📺 Series {item_id}——{name} 获取剧集详情: {total_episodes} 集")
+                            
+                            # 分析剧集数据，找出最新的季和集
+                            max_season = 0
+                            max_episode_in_season = {}
+                            
+                            for episode in episodes:
+                                if episode.get("Type") == "Episode":
+                                    season_num = episode.get("ParentIndexNumber")
+                                    episode_num = episode.get("IndexNumber")
+                                    
+                                    if season_num is not None and episode_num is not None:
+                                        # 更新最大季号
+                                        if season_num > max_season:
+                                            max_season = season_num
+                                        
+                                        # 记录每季的最大集号
+                                        season_key = season_num
+                                        if season_key not in max_episode_in_season:
+                                            max_episode_in_season[season_key] = 0
+                                        if episode_num > max_episode_in_season[season_key]:
+                                            max_episode_in_season[season_key] = episode_num
+                            
+                            # 设置当前进度为最新季的最后一集
+                            if max_season > 0 and max_season in max_episode_in_season:
+                                current_season = max_season
+                                current_episode = max_episode_in_season[max_season]
+                                logger.debug(f"📺 Series {item_id}——{name} 进度更新: 第{current_season}季第{current_episode}集")
+                        else:
+                            logger.warning(f"⚠️ Series {item_id}——{name} 未获取到剧集详情")
+                    except Exception as e:
+                        logger.error(f"❌ 获取剧集详情失败: {item_id}——{name} -> {e}")
+                        episode_data = None
+                        
+                        # 如果获取剧集详情失败，回退到原来的通知表查询方式
+                        series_stmt = select(
+                            func.max(NotificationModel.season_number).label("max_season"),
+                            func.max(NotificationModel.episode_number).label("max_episode")
+                        ).where(
+                            NotificationModel.series_id == item_id,
+                            NotificationModel.season_number.is_not(None),
+                            NotificationModel.episode_number.is_not(None)
+                        )
+                        series_result = await session.execute(series_stmt)
+                        series_data = series_result.one_or_none()
+                        if series_data and series_data.max_season is not None:
+                            current_season = series_data.max_season
+                            current_episode = series_data.max_episode
+                            logger.debug(f"📺 Series {item_id} 最新进度(回退模式): 第{current_season}季第{current_episode}集")
                 
                 existing = existing_models.get(item_id)
                 if existing:
@@ -408,6 +453,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                     existing.tag_items = tag_items
                     existing.image_tags = image_tags
                     existing.original_data = item_details
+                    existing.episode_data = episode_data
                     logger.debug(f"🔄 更新 Emby Item: {name} ({item_id})")
                 else:
                     model = EmbyItemModel(
@@ -423,7 +469,8 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                         people=people,
                         tag_items=tag_items,
                         image_tags=image_tags,
-                        original_data=item_details
+                        original_data=item_details,
+                        episode_data=episode_data
                     )
                     session.add(model)
                     logger.debug(f"✅ 新增 Emby Item: {name} ({item_id})")

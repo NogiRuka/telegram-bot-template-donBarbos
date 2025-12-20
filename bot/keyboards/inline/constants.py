@@ -84,9 +84,21 @@ NOTIFY_COMPLETE_CALLBACK_DATA = "admin:notify_complete"
 NOTIFY_PREVIEW_LABEL = "👀 上新预览"
 NOTIFY_PREVIEW_CALLBACK_DATA = "admin:notify_preview"
 
+# 关闭预览
+NOTIFY_CLOSE_PREVIEW_LABEL = "❌ 关闭预览"
+NOTIFY_CLOSE_PREVIEW_CALLBACK_DATA = "admin:notify_close_preview"
+
 # 一键通知
 NOTIFY_SEND_LABEL = "🚀 一键通知"
 NOTIFY_SEND_CALLBACK_DATA = "admin:notify_send"
+
+# 确认发送
+NOTIFY_CONFIRM_SEND_LABEL = "🚀 确认发送"
+NOTIFY_CONFIRM_SEND_CALLBACK_DATA = "admin:notify_confirm_send"
+
+# 通用取消
+NOTIFY_CONFIRM_SEND_CANCEL_LABEL = "❌ 取消"
+NOTIFY_CONFIRM_SEND_CANCEL_CALLBACK_DATA = "admin:new_item_notification"
 
 # 返回管理员面板
 BACK_TO_ADMIN_PANEL_LABEL = "↩️ 返回管理员面板"

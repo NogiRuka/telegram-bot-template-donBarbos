@@ -9,17 +9,14 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
-from bot.core.config import settings
-from bot.core.loader import bot
+from bot.core.constants import EVENT_TYPE_LIBRARY_NEW
 from bot.database.database import sessionmaker
 from bot.database.models.notification import NotificationModel
 
 try:
     import orjson
 except Exception:
-    orjson = None  # type: ignore
+    orjson = None
 from loguru import logger
 
 router = APIRouter()
@@ -35,15 +32,20 @@ async def handle_emby_webhook(
 
     功能说明:
     - 接收 Emby Webhooks 插件发送的事件回调 (POST JSON)
-    - 所有事件类型都存入数据库，状态为 pending_completion
-    - 针对 library.new 事件，保持原有的特殊处理逻辑
+    - 所有事件都存入数据库，但只有 library.new 事件设置状态
+    - library.new 事件状态设置为 pending_completion
+    - 其他事件状态字段为 None（不设置状态）
+    - 为所有事件提供详细的日志记录
 
     输入参数:
     - request: FastAPI 的请求对象, 用于读取原始 JSON 载荷
     - x_emby_event: 请求头 `X-Emby-Event` (可选), 某些配置会附带事件名
 
     返回值:
-    - dict: 处理结果
+    - dict: 处理结果，包含状态和已处理的事件信息
+
+    依赖安装方式:
+    - `pip install orjson` (已在项目依赖中声明)
     """
 
     # 读取 JSON 载荷
@@ -54,7 +56,8 @@ async def handle_emby_webhook(
         raise HTTPException(status_code=400, detail="Invalid JSON body") from err
 
     # 提取事件类型
-    event_type = payload.get("Event") or x_emby_event
+    event_title = payload.get("Title")
+    event_type = payload.get("Event")
     
     # 提取 Item 信息（如果存在）
     item = payload.get("Item", {})
@@ -68,20 +71,28 @@ async def handle_emby_webhook(
     season_number = item.get("ParentIndexNumber")
     episode_number = item.get("IndexNumber")
     
-    # 所有事件都存入数据库
+    # 所有事件都存入数据库，但只有 library.new 事件设置状态
     if event_type:
         logger.info(f"📥 收到 Emby Webhook 事件: {event_type}")
         
-        # 存入数据库 (状态为 pending_completion)
+        # 根据事件类型决定是否设置状态
+        event_status = None  # 默认不设置状态
+        
+        # 只有 library.new 事件设置状态
+        if event_type == EVENT_TYPE_LIBRARY_NEW:
+            event_status = "pending_completion"
+            logger.info("🆕 收到新媒体入库通知")
+        
+        # 存入数据库
         async with sessionmaker() as session:
             notification = NotificationModel(
+                title=event_title,
                 type=event_type,
-                status="pending_completion",
+                status=event_status,  # library.new 事件有状态，其他事件状态为 None
                 item_id=item_id,
                 item_name=item_name,
                 item_type=item_type,
                 series_id=series_id,
-                season_id=season_id,
                 series_name=series_name,
                 season_number=season_number,
                 episode_number=episode_number,
@@ -91,15 +102,11 @@ async def handle_emby_webhook(
             await session.commit()
             await session.refresh(notification)
             
-            # 剧集信息显示
-            if series_name and season_number and episode_number:
-                logger.info(f"💾 通知已存入数据库, 状态待补全, ID: {notification.id}, 事件类型: {event_type}, 媒体类型: {item_type}, 剧集: {series_name} 第{season_number}季第{episode_number}集, Item: {item_name} ({item_id})")
-            else:
-                logger.info(f"💾 通知已存入数据库, 状态待补全, ID: {notification.id}, 事件类型: {event_type}, 媒体类型: {item_type}, Item: {item_name} ({item_id})")
-            
-        # 针对 library.new 事件的特殊处理（保持原有逻辑）
-        if event_type == "library.new":
-            logger.info("🆕 收到新媒体入库通知 (library.new)")
+            # 记录入库日志
+            logger.info(f"💾 通知入库, 标题: {event_title}, 事件类型: {event_type}, 状态: {event_status}")
+
+        # 针对 library.new 事件的特殊处理
+        if event_type == EVENT_TYPE_LIBRARY_NEW:
             if not item_id:
                 logger.warning("⚠️ Webhook 载荷中缺少 Item.Id")
     else:

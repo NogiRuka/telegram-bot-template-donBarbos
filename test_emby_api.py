@@ -40,7 +40,7 @@ async def test_get_item():
     
     try:
         # 测试用的项目ID（需要替换为实际的Emby项目ID）
-        test_item_id = "12777"  # 请替换为实际的项目ID
+        test_item_id = "12776"  # 请替换为实际的项目ID
         test_user_id = settings.EMBY_TEMPLATE_USER_ID
         
         print(f"🧪 测试 get_item 接口...")
@@ -82,10 +82,6 @@ async def test_get_item():
         print(f"❌ 测试失败: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
-        
-    finally:
-        # 关闭客户端连接
-        await emby_client.close()
 
 
 async def test_get_recent_items():

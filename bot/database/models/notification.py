@@ -32,6 +32,7 @@ class NotificationModel(Base, BasicAuditMixin):
 
     id: Mapped[auto_int_pk]
 
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="通知标题")
     type: Mapped[str] = mapped_column(String(64), nullable=False, index=True, comment="通知类型")
     
     status: Mapped[str] = mapped_column(

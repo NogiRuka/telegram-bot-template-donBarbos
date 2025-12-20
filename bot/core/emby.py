@@ -254,6 +254,7 @@ class EmbyClient:
             "Overview",
             "People",
             "Path",
+            "Status",
             "SeriesName",
             "SeriesId",
             "IndexNumber",
@@ -329,5 +330,46 @@ class EmbyClient:
             return [x for x in data if isinstance(x, dict)]
         return []
 
+    async def get_series_episodes(
+        self,
+        series_id: str,
+        user_id: str | None = None,
+        season: int | None = None,
+        fields: list[str] | None = None,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """获取剧集的集列表
+        
+        功能说明:
+        - 调用 `GET /Shows/{series_id}/Episodes` 获取剧集的所有集信息
+        
+        输入参数:
+        - series_id: 剧集ID (Series ID)
+        - user_id: 用户ID (可选，用于权限验证)
+        - season: 季号 (可选，过滤特定季)
+        - fields: 返回字段列表 (对应 `Fields` 参数)
+        
+        返回值:
+        - tuple[list[dict[str, Any]], int]: (集列表, 总记录数)
+        """
+        params: dict[str, Any] = {}
+        if user_id:
+            params["UserId"] = user_id
+        if season is not None:
+            params["Season"] = season
+        if fields:
+            params["Fields"] = ",".join(fields)
 
-# 注意: 统一由服务层 `bot/services/emby_service.py:get_client` 负责从配置构建客户端
+        
+        data = await self.http.request("GET", f"/Shows/{series_id}/Episodes", params=params)
+        
+        items: list[dict[str, Any]] = []
+        total = 0
+        if isinstance(data, dict):
+            items = list(data.get("Items", []))
+            total = int(data.get("TotalRecordCount", 0))
+        elif isinstance(data, list):
+            # 兼容某些情况下直接返回列表
+            items = [x for x in data if isinstance(x, dict)]
+            total = len(items)
+        
+        return items, total
