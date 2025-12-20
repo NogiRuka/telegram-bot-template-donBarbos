@@ -8,10 +8,7 @@ from bot.database.database import sessionmaker
 from bot.database.models.notification import NotificationModel
 from bot.database.models.emby_item import EmbyItemModel
 from bot.keyboards.inline.constants import (
-    ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
-    NOTIFY_COMPLETE_LABEL,
-    NOTIFY_PREVIEW_LABEL,
-    NOTIFY_SEND_LABEL,
+    ADMIN_NEW_ITEM_NOTIFICATION_LABEL
 )
 from bot.keyboards.inline.notification import get_notification_panel_keyboard
 from bot.services.emby_service import fetch_and_save_item_details
@@ -79,9 +76,15 @@ def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
     # 构造消息内容
     overview = item.overview or "无简介"
     
+    # 处理剧集信息
+    series_info = ""
+    if item.item_type == "Series" and item.current_season and item.current_episode:
+        series_info = f"📺 <b>进度：</b>第{item.current_season}季第{item.current_episode}集\n"
+    
     # 用户指定的简洁格式
     msg_text = (
         f"🎬 <b>名称：</b><code>{item.name}</code>\n"
+        f"{series_info}"
         f"📂 <b>分类：</b>{library_tag}\n"
         f"📅 <b>时间：</b>{item.date_created if item.date_created else '未知'}\n"
         f"📝 <b>简介：</b>{overview[:80] + '...' if len(overview) > 80 else overview}"
@@ -183,9 +186,16 @@ async def handle_notify_preview(
     """预览待发送列表"""
     async with sessionmaker() as session:
         # 联查 Notification 和 EmbyItem
+        # 对于Episode类型，使用series_id关联；其他类型使用item_id关联
         stmt = (
             select(NotificationModel, EmbyItemModel)
-            .join(EmbyItemModel, NotificationModel.item_id == EmbyItemModel.id)
+            .join(
+                EmbyItemModel, 
+                (NotificationModel.item_id == EmbyItemModel.id) |
+                ((NotificationModel.item_type == "Episode") & 
+                 (NotificationModel.series_id == EmbyItemModel.id)),
+                isouter=True
+            )
             .where(NotificationModel.status == "pending_review")
             # .limit(10) # 预览所有，暂不限制
         )
@@ -299,7 +309,13 @@ async def execute_send_all(
     async with sessionmaker() as session:
         stmt = (
             select(NotificationModel, EmbyItemModel)
-            .join(EmbyItemModel, NotificationModel.item_id == EmbyItemModel.id)
+            .join(
+                EmbyItemModel, 
+                (NotificationModel.item_id == EmbyItemModel.id) |
+                ((NotificationModel.item_type == "Episode") & 
+                 (NotificationModel.series_id == EmbyItemModel.id)),
+                isouter=True
+            )
             .where(NotificationModel.status == "pending_review")
         )
         result = await session.execute(stmt)
