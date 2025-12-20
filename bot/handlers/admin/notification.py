@@ -1,16 +1,28 @@
 from aiogram import F, Router, types
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup
 from loguru import logger
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
-from bot.database.database import sessionmaker
+from bot.core.constants import (
+    EVENT_TYPE_LIBRARY_NEW,
+    NOTIFICATION_STATUS_PENDING_COMPLETION,
+    NOTIFICATION_STATUS_PENDING_REVIEW,
+    NOTIFICATION_STATUS_SENT,
+    NOTIFICATION_STATUS_FAILED
+)
 from bot.database.models.notification import NotificationModel
 from bot.database.models.emby_item import EmbyItemModel
 from bot.keyboards.inline.constants import (
     ADMIN_NEW_ITEM_NOTIFICATION_LABEL
 )
-from bot.keyboards.inline.notification import get_notification_panel_keyboard
+from bot.keyboards.inline.buttons import (
+    NOTIFY_CONFIRM_SEND_BUTTON,
+    NOTIFY_CONFIRM_SEND_CANCEL_BUTTON
+)
+from bot.keyboards.inline.buttons import NOTIFY_CLOSE_PREVIEW_BUTTON
+from bot.keyboards.inline.admin import get_notification_panel_keyboard
 from bot.services.emby_service import fetch_and_save_item_details
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
@@ -21,23 +33,40 @@ router = Router(name="notification")
 @router.callback_query(F.data == "admin:new_item_notification")
 async def show_notification_panel(
     callback: types.CallbackQuery, 
+    session: AsyncSession,
     main_msg: MainMessageService
 ) -> None:
     """显示新片通知管理面板"""
-    async with sessionmaker() as session:
-        # 统计各状态数量（仅统计library.new类型）
-        pending_completion = await session.scalar(
-            select(func.count(NotificationModel.id)).where(
-                NotificationModel.status == "pending_completion",
-                NotificationModel.type == "library.new"
-            )
-        ) or 0
-        pending_review = await session.scalar(
-            select(func.count(NotificationModel.id)).where(
-                NotificationModel.status == "pending_review",
-                NotificationModel.type == "library.new"
-            )
-        ) or 0
+    count_key = case(
+        (
+            (NotificationModel.item_type == "Episode")
+            & (NotificationModel.series_id.isnot(None)),
+            NotificationModel.series_id,
+        ),
+        (
+            NotificationModel.item_type == "Series",
+            NotificationModel.item_id,
+        ),
+        else_=NotificationModel.item_id,
+    )
+    stmt = (
+        select(
+            NotificationModel.status,
+            func.count(func.distinct(count_key)).label("cnt"),
+        )
+        .where(
+            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
+            NotificationModel.status.in_(
+                [NOTIFICATION_STATUS_PENDING_COMPLETION, NOTIFICATION_STATUS_PENDING_REVIEW]
+            ),
+        )
+        .group_by(NotificationModel.status)
+    )
+    rows = await session.execute(stmt)
+    counts = {row.status: row.cnt for row in rows}
+
+    pending_completion = counts.get(NOTIFICATION_STATUS_PENDING_COMPLETION, 0)
+    pending_review = counts.get(NOTIFICATION_STATUS_PENDING_REVIEW, 0)
 
     text = (
         f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
@@ -48,21 +77,54 @@ async def show_notification_panel(
     )
 
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
-
     await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
-    await callback.answer()
+
+
+def get_check_id_for_notification(notif: NotificationModel) -> str:
+    """根据通知类型获取用于检测的ID
+    
+    对于Episode类型使用series_id，其他类型使用item_id
+    """
+    if notif.item_type == "Episode" and notif.series_id:
+        return notif.series_id
+    return notif.item_id
+
+
+def get_item_ids_from_notifications(notifications: list[NotificationModel]) -> list[str]:
+    """从通知列表中提取需要去查询的item_id列表
+    
+    对于Episode类型使用series_id，其他类型使用item_id，并去重
+    """
+    item_ids = []
+    for notif in notifications:
+        check_id = get_check_id_for_notification(notif)
+        if check_id:
+            item_ids.append(check_id)
+    
+    # 去重
+    return list(set(item_ids))
 
 
 def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
     """生成通知消息内容和图片URL"""
     # 构造图片 URL
     image_url = None
-    if item.image_tags and "Primary" in item.image_tags:
-        tag = item.image_tags["Primary"]
-        base_url = settings.get_emby_base_url()
-        if base_url.endswith("/"):
-            base_url = base_url[:-1]
-        image_url = f"{base_url}/Items/{item.id}/Images/Primary?tag={tag}"
+    if item.image_tags:
+        # 优先使用Primary标签，如果没有则使用Logo标签
+        tag = None
+        image_type = None
+        if "Primary" in item.image_tags:
+            tag = item.image_tags["Primary"]
+            image_type = "Primary"
+        elif "Logo" in item.image_tags:
+            tag = item.image_tags["Logo"]
+            image_type = "Logo"
+        
+        if tag and image_type:
+            base_url = settings.get_emby_base_url()
+            if base_url.endswith("/"):
+                base_url = base_url[:-1]
+            image_url = f"{base_url}/Items/{item.id}/Images/{image_type}?tag={tag}"
 
     # 解析媒体库名称 (Library Tag)
     library_tag = ""
@@ -80,14 +142,14 @@ def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
              library_tag = "#电影"
 
     # 构造消息内容
-    overview = item.overview or "无简介"
+    overview = item.overview or ""
     
     # 处理剧集信息（仅Series类型显示）
     series_info = ""
-    if item.item_type == "Series":
+    if item.type == "Series":
         # 进度信息
         if item.current_season and item.current_episode:
-            series_info += f"📺 <b>进度：</b>第{item.current_season}季第{item.current_episode}集\n"
+            series_info += f"📺 <b>进度：</b>第{item.current_season}季 · 第{item.current_episode}集\n"
         
         # 状态信息
         if item.status:
@@ -98,21 +160,34 @@ def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
                 status_text = "已完结"
             series_info += f"📊 <b>状态：</b>{status_text}\n"
     
-    # 用户指定的简洁格式
-    msg_text = (
-        f"🎬 <b>名称：</b><code>{item.name}</code>\n"
-        f"📂 <b>分类：</b>{library_tag}\n"
-        f"{series_info}"
-        f"📅 <b>时间：</b>{item.date_created if item.date_created else '未知'}\n"
-        f"📝 <b>简介：</b>{overview[:80] + '...' if len(overview) > 80 else overview}"
-    )
+    # 用户指定的简洁格式 - 只在有内容时显示对应字段
+    msg_parts = [f"🎬 <b>名称：</b><code>{item.name}</code>"]
+    
+    # 分类信息（只在有分类时显示）
+    if library_tag:
+        msg_parts.append(f"📂 <b>分类：</b>{library_tag}")
+    
+    # 剧集信息
+    if series_info:
+        msg_parts.append(series_info.rstrip())
+    
+    # 时间信息
+    msg_parts.append(f"📅 <b>时间：</b>{item.date_created if item.date_created else '未知'}")
+    
+    # 简介信息（只在有简介时显示）
+    if overview:
+        overview_text = overview[:150] + '...' if len(overview) > 150 else overview
+        msg_parts.append(f"📝 <b>简介：</b>{overview_text}")
+    
+    msg_text = "\n".join(msg_parts)
     
     return msg_text, image_url
 
 
-@router.callback_query(F.data == "notify:complete")
+@router.callback_query(F.data == "admin:notify_complete")
 async def handle_notify_complete(
     callback: types.CallbackQuery,
+    session: AsyncSession,
     main_msg: MainMessageService
 ) -> None:
     """执行上新补全"""
@@ -120,156 +195,151 @@ async def handle_notify_complete(
     success_count = 0
     fail_count = 0
     
-    async with sessionmaker() as session:
-        # 获取所有待补全的library.new通知
-        stmt = select(NotificationModel).where(
-            NotificationModel.status == "pending_completion",
-            NotificationModel.type == "library.new"
-        )
-        result = await session.execute(stmt)
-        notifications = result.scalars().all()
-        
-        if not notifications:
-            await callback.answer("🈚 没有待补全的通知", show_alert=False)
-            return
-
-        total = len(notifications)
-        # 提示改为 Alert 形式，不需要用户确认
-        await callback.answer(f"⏳ 开始补全 {total} 条记录...", show_alert=False)
-
-        # 简化逻辑：提取需要去查询的item_ids
-        # 对于Episode类型，使用series_id；对于其他类型，使用item_id
-        item_ids_to_query = []
-        for notif in notifications:
-            if notif.item_id:
-                if notif.item_type == "Episode" and notif.series_id:
-                    # Episode类型使用series_id
-                    item_ids_to_query.append(notif.series_id)
-                else:
-                    # 其他类型使用item_id
-                    item_ids_to_query.append(notif.item_id)
-        
-        # 去重
-        unique_item_ids = list(set(item_ids_to_query))
-        
-        # 批量调用 Service
-        batch_results = await fetch_and_save_item_details(session, unique_item_ids)
-
-        for notif in notifications:
-            if not notif.item_id:
-                notif.status = "failed"
-                fail_count += 1
-                continue
-                
-            # 根据批量结果更新状态
-            if batch_results.get(notif.item_id):
-                notif.status = "pending_review"
-                success_count += 1
-            else:
-                notif.status = "failed"
-                fail_count += 1
-        
-        await session.commit()
-        
-        # 刷新界面显示结果
-        pending_completion = await session.scalar(
-            select(func.count(NotificationModel.id)).where(NotificationModel.status == "pending_completion")
-        ) or 0
-        pending_review = await session.scalar(
-            select(func.count(NotificationModel.id)).where(NotificationModel.status == "pending_review")
-        ) or 0
-
-        text = (
-            f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
-            f"📊 <b>状态统计:</b>\n"
-            f"• 待补全: <b>{pending_completion}</b>\n"
-            f"• 待发送: <b>{pending_review}</b>\n\n"
-            f"✅ <b>操作完成:</b> 成功 {success_count}, 失败 {fail_count}\n"
-            f"请选择操作:"
-        )
-
-        kb = get_notification_panel_keyboard(pending_completion, pending_review)
-        await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
-        
-        # 刷新面板
-        # await show_notification_panel(callback, main_msg)
-
-
-@router.callback_query(F.data == "notify:preview")
-async def handle_notify_preview(
-    callback: types.CallbackQuery,
-    main_msg: MainMessageService
-) -> None:
-    """预览待发送列表"""
-    async with sessionmaker() as session:
-        # 联查 Notification 和 EmbyItem
-        # 对于Episode类型，使用series_id关联；其他类型使用item_id关联
-        stmt = (
-            select(NotificationModel, EmbyItemModel)
-            .join(
-                EmbyItemModel, 
-                (NotificationModel.item_id == EmbyItemModel.id) |
-                ((NotificationModel.item_type == "Episode") & 
-                 (NotificationModel.series_id == EmbyItemModel.id)),
-                isouter=True
-            )
-            .where(NotificationModel.status == "pending_review")
-            # .limit(10) # 预览所有，暂不限制
-        )
-        result = await session.execute(stmt)
-        rows = result.all()
-        
-    if not rows:
-        await callback.answer("没有待发送的通知", show_alert=True)
+    # 获取所有待补全的library.new通知
+    stmt = select(NotificationModel).where(
+        NotificationModel.status == NOTIFICATION_STATUS_PENDING_COMPLETION,
+        NotificationModel.type == "library.new"
+    )
+    result = await session.execute(stmt)
+    notifications = result.scalars().all()
+    
+    if not notifications:
+        await callback.answer("🈚 没有待补全的通知", show_alert=False)
         return
 
-    # 发送提示
-    await callback.answer(f"👀 正在生成 {len(rows)} 条预览...", show_alert=False)
+    total = len(notifications)
+    # 提示改为 Alert 形式，不需要用户确认
+    await callback.answer(f"⏳ 开始补全 {total} 条记录...", show_alert=False)
+
+    # 提取需要去查询的item_ids（使用公共函数）
+    unique_item_ids = get_item_ids_from_notifications(notifications)
+    
+    # 批量调用 Service
+    batch_results = await fetch_and_save_item_details(session, unique_item_ids)
+
+    for notif in notifications:
+        if not notif.item_id:
+            notif.status = NOTIFICATION_STATUS_FAILED
+            fail_count += 1
+            continue
+            
+        # 根据批量结果更新状态
+        # Episode类型使用series_id检测，其他类型使用item_id
+        check_id = notif.item_id
+        if notif.item_type == "Episode" and notif.series_id:
+            check_id = notif.series_id
+            
+        if batch_results.get(check_id):
+            notif.status = NOTIFICATION_STATUS_PENDING_REVIEW
+            success_count += 1
+        else:
+            notif.status = NOTIFICATION_STATUS_FAILED
+            fail_count += 1
+    
+    await session.commit()
+    
+    # 刷新界面显示结果
+    pending_completion = await session.scalar(
+        select(func.count(NotificationModel.id)).where(
+            NotificationModel.status == NOTIFICATION_STATUS_PENDING_COMPLETION,
+            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
+        )
+    ) or 0
+    pending_review = await session.scalar(
+        select(func.count(NotificationModel.id)).where(
+            NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
+            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
+        )
+    ) or 0
+
+    text = (
+        f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
+        f"📊 <b>状态统计:</b>\n"
+        f"• 待补全: <b>{pending_completion}</b>\n"
+        f"• 待发送: <b>{pending_review}</b>\n\n"
+        f"✅ <b>操作完成:</b> 成功 {success_count}, 失败 {fail_count}\n"
+        f"请选择操作:"
+    )
+
+    kb = get_notification_panel_keyboard(pending_completion, pending_review)
+    await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
+
+
+@router.callback_query(F.data == "admin:notify_preview")
+async def handle_notify_preview(
+    callback: types.CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService,
+) -> None:
+
+    preview_key = case(
+        (
+            (NotificationModel.item_type == "Episode")
+            & (NotificationModel.series_id.isnot(None)),
+            NotificationModel.series_id,
+        ),
+        else_=NotificationModel.item_id,
+    )
+
+    stmt = (
+        select(EmbyItemModel)
+        .join(NotificationModel, preview_key == EmbyItemModel.id)
+        .where(
+            NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
+            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
+        )
+        .distinct(EmbyItemModel.id)
+    )
+
+    result = await session.execute(stmt)
+    emby_items = result.scalars().all()
+
+    if not emby_items:
+        await callback.answer("没有可预览的通知", show_alert=True)
+        return
+
+    await callback.answer(f"👀 正在生成 {len(emby_items)} 条预览…")
 
     preview_msg_ids = []
-    
-    for notif, item in rows:
+
+    for item in emby_items:
         msg_text, image_url = get_notification_content(item)
-        
-        # 发送
         try:
             if image_url:
-                msg = await callback.bot.send_photo(chat_id=callback.from_user.id, photo=image_url, caption=msg_text)
+                msg = await callback.bot.send_photo(
+                    callback.from_user.id,
+                    photo=image_url,
+                    caption=msg_text,
+                )
             else:
-                msg = await callback.bot.send_message(chat_id=callback.from_user.id, text=msg_text)
-            
+                msg = await callback.bot.send_message(
+                    callback.from_user.id,
+                    msg_text,
+                )
             preview_msg_ids.append(msg.message_id)
         except Exception as e:
             logger.error(f"预览发送失败: {e}")
 
-    # 存储: PREVIEW_CACHE[user_id] = [msg_id1, msg_id2, ...]
-    global PREVIEW_CACHE
-    if 'PREVIEW_CACHE' not in globals():
-        PREVIEW_CACHE = {}
-    
-    PREVIEW_CACHE[callback.from_user.id] = preview_msg_ids
-    
-    # 构造统一的关闭按钮
-    close_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="❌ 关闭预览 (删除所有)", callback_data="notify:close_preview")]
-    ])
+    callback.bot.setdefault("preview_cache", {})[
+        callback.from_user.id
+    ] = preview_msg_ids
 
-    # 更新所有发送出的消息，加上键盘
+    close_kb = InlineKeyboardMarkup(
+        inline_keyboard=[[NOTIFY_CLOSE_PREVIEW_BUTTON]]
+    )
+
     for msg_id in preview_msg_ids:
         try:
-            # 注意: edit_message_reply_markup 需要 chat_id 和 message_id
             await callback.bot.edit_message_reply_markup(
-                chat_id=callback.from_user.id,
-                message_id=msg_id,
-                reply_markup=close_kb
+                callback.from_user.id,
+                msg_id,
+                reply_markup=close_kb,
             )
-        except Exception as e:
-            logger.warning(f"无法为预览消息添加关闭按钮: {msg_id} -> {e}")
-
-    await callback.answer()
+        except Exception:
+            pass
 
 
-@router.callback_query(F.data == "notify:close_preview")
+@router.callback_query(F.data == "admin:notify_close_preview")
 async def handle_close_preview(callback: types.CallbackQuery):
     """关闭所有预览消息"""
     user_id = callback.from_user.id
@@ -282,7 +352,6 @@ async def handle_close_preview(callback: types.CallbackQuery):
             except Exception:
                 pass # 忽略已删除或不存在的消息
         del PREVIEW_CACHE[user_id]
-        # await callback.answer("已清除预览", show_alert=False)
     else:
         # 可能是缓存过期或重启，尝试删除当前这一条
         try:
@@ -292,7 +361,7 @@ async def handle_close_preview(callback: types.CallbackQuery):
         await callback.answer("预览缓存已失效，仅删除当前消息", show_alert=False)
 
 
-@router.callback_query(F.data == "notify:send_all")
+@router.callback_query(F.data == "admin:notify_send")
 async def handle_notify_send_all(
     callback: types.CallbackQuery,
     main_msg: MainMessageService
@@ -301,8 +370,8 @@ async def handle_notify_send_all(
     
     confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🚀 确认发送", callback_data="notify:confirm_send"),
-            InlineKeyboardButton(text="❌ 取消", callback_data="admin:new_item_notification")
+            NOTIFY_CONFIRM_SEND_BUTTON,
+            NOTIFY_CONFIRM_SEND_CANCEL_BUTTON
         ]
     ])
     await main_msg.update_on_callback(
@@ -312,78 +381,112 @@ async def handle_notify_send_all(
     )
 
 
-@router.callback_query(F.data == "notify:confirm_send")
+@router.callback_query(F.data == "admin:notify_confirm_send")
 async def execute_send_all(
     callback: types.CallbackQuery,
+    session: AsyncSession,
     main_msg: MainMessageService
 ) -> None:
     """执行批量发送"""
-    await callback.answer("🚀 开始推送...", show_alert=False)
+    await callback.answer("🚀 正在推送，请稍候...")
     
     sent_count = 0
     fail_count = 0
     
-    async with sessionmaker() as session:
-        stmt = (
-            select(NotificationModel, EmbyItemModel)
-            .join(
-                EmbyItemModel, 
-                (NotificationModel.item_id == EmbyItemModel.id) |
-                ((NotificationModel.item_type == "Episode") & 
-                 (NotificationModel.series_id == EmbyItemModel.id)),
-                isouter=True
-            )
-            .where(NotificationModel.status == "pending_review")
-        )
-        result = await session.execute(stmt)
-        rows = result.all()
-        
-        if not rows:
-            await callback.answer("没有可发送的通知", show_alert=True)
-            # 返回面板
-            await show_notification_panel(callback, main_msg)
-            return
-
-        # 获取目标频道ID列表
-        target_chat_ids = settings.get_notification_channel_ids()
-        
-        # 如果未配置，回退到发送给当前管理员
-        if not target_chat_ids:
-            target_chat_ids = [callback.from_user.id]
-            logger.warning("未配置 NOTIFICATION_CHANNEL_ID，将通知发送给当前管理员")
-
-        for notif, item in rows:
-            try:
-                msg_text, image_url = get_notification_content(item)
-                
-                # 发送给所有目标频道
-                send_success = False
-                for chat_id in target_chat_ids:
-                    try:
-                        if image_url:
-                            await callback.bot.send_photo(chat_id=chat_id, photo=image_url, caption=msg_text)
-                        else:
-                            await callback.bot.send_message(chat_id=chat_id, text=msg_text)
-                        send_success = True
-                    except Exception as e:
-                        logger.error(f"❌ 发送通知到 {chat_id} 失败: {item.name} -> {e}")
-                
-                # 只要有一个发送成功，就标记为成功
-                if send_success:
-                    notif.status = "sent"
-                    # 记录发送的目标ID列表
-                    notif.target_channel_id = ",".join(str(x) for x in target_chat_ids)
-                    sent_count += 1
-                else:
-                    notif.status = "failed"
-                    fail_count += 1
-                
-            except Exception as e:
-                logger.error(f"❌ 处理通知失败: {item.name} -> {e}")
-                notif.status = "failed"
-                fail_count += 1
-        
-        await session.commit()
+    # 获取所有待发送的通知
+    stmt = select(NotificationModel).where(
+        NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
+        NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
+    )
+    result = await session.execute(stmt)
+    notifications = result.scalars().all()
     
-    await callback.answer(f"✅ 推送完成: 成功 {sent_count}, 失败 {fail_count}", show_alert=True)
-    await show_notification_panel(callback, main_msg)
+    if not notifications:
+        await callback.answer("🈚 没有可发送的通知", show_alert=True)
+        # 返回面板
+        await show_notification_panel(callback, session, main_msg)
+        return
+
+    # 获取目标频道ID列表
+    target_chat_ids = settings.get_notification_channel_ids()
+    
+    # 如果未配置，回退到发送给当前管理员
+    if not target_chat_ids:
+        target_chat_ids = [callback.from_user.id]
+        logger.warning("⚠️ 未配置 NOTIFICATION_CHANNEL_ID，将通知发送给当前管理员")
+
+    # 按检测ID分组处理，避免同一剧集多集重复发送
+    processed_items = set()
+    
+    for notif in notifications:
+        try:
+            # 获取用于检测的ID（Episode类型使用series_id）
+            check_id = get_check_id_for_notification(notif)
+            
+            # 如果已经处理过这个item，跳过（避免多集重复）
+            if check_id in processed_items:
+                # 标记为已发送（因为是同一剧集的其他集数）
+                notif.status = NOTIFICATION_STATUS_SENT
+                notif.target_channel_id = ",".join(str(x) for x in target_chat_ids)
+                sent_count += 1
+                continue
+                
+            processed_items.add(check_id)
+            
+            # 获取对应的EmbyItem数据（使用原始item_id查询）
+            item_stmt = select(EmbyItemModel).where(EmbyItemModel.id == check_id)
+            item_result = await session.execute(item_stmt)
+            item = item_result.scalar_one_or_none()
+            
+            if not item:
+                logger.warning(f"⚠️ 未找到对应的EmbyItem: {check_id}")
+                notif.status = NOTIFICATION_STATUS_FAILED
+                fail_count += 1
+                continue
+            
+            msg_text, image_url = get_notification_content(item)
+            
+            # 发送给所有目标频道
+            send_success = False
+            for chat_id in target_chat_ids:
+                try:
+                    if image_url:
+                        await callback.bot.send_photo(chat_id=chat_id, photo=image_url, caption=msg_text)
+                    else:
+                        await callback.bot.send_message(chat_id=chat_id, text=msg_text)
+                    send_success = True
+                except Exception as e:
+                    logger.error(f"❌ 发送通知到 {chat_id} 失败: {item.name} -> {e}")
+            
+            # 只要有一个发送成功，就标记为成功
+            if send_success:
+                notif.status = NOTIFICATION_STATUS_SENT
+                # 记录发送的目标ID列表
+                notif.target_channel_id = ",".join(str(x) for x in target_chat_ids)
+                sent_count += 1
+            else:
+                notif.status = NOTIFICATION_STATUS_FAILED
+                fail_count += 1
+            
+        except Exception as e:
+            logger.error(f"❌ 处理通知失败: {notif.item_id} -> {e}")
+            notif.status = NOTIFICATION_STATUS_FAILED
+            fail_count += 1
+    
+    await session.commit()
+    
+    result_text = (
+        f"✅ <b>推送完成</b>\n\n"
+        f"📤 成功：<b>{sent_count}</b>\n"
+        f"❌ 失败：<b>{fail_count}</b>"
+    )
+
+    await main_msg.update_on_callback(
+        callback,
+        result_text,
+        get_notification_panel_keyboard(
+            pending_completion=0,
+            pending_review=0,
+        ),
+        image_path=get_common_image(),
+    )
