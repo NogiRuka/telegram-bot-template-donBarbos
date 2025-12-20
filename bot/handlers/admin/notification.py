@@ -12,7 +12,8 @@ from bot.core.constants import (
     NOTIFICATION_STATUS_PENDING_COMPLETION,
     NOTIFICATION_STATUS_PENDING_REVIEW,
     NOTIFICATION_STATUS_SENT,
-    NOTIFICATION_STATUS_FAILED
+    NOTIFICATION_STATUS_FAILED,
+    NOTIFICATION_STATUS_REJECTED
 )
 from bot.database.models.notification import NotificationModel
 from bot.database.models.emby_item import EmbyItemModel
@@ -279,6 +280,7 @@ async def handle_notify_preview(
     callback: types.CallbackQuery,
     session: AsyncSession,
     main_msg: MainMessageService,
+    state: FSMContext
 ) -> None:
     """生成通知预览 - 每条消息关联具体通知ID"""
 
@@ -335,15 +337,17 @@ async def handle_notify_preview(
         except Exception as e:
             logger.error(f"预览发送失败: {e}")
 
-    # 存储预览数据到bot缓存
-    callback.bot.setdefault("preview_cache", {})[callback.from_user.id] = preview_data
+    # 存储预览数据到FSM状态
+    await state.update_data(preview_data=preview_data)
 
     # 为每条消息添加操作按钮
     for msg_id, notification_id in preview_data.items():
         reject_kb = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="🚫 拒绝此通知", callback_data=f"admin:notify_reject:{notification_id}")],
-                [InlineKeyboardButton(text="👥 添加通知者", callback_data=f"admin:notify_add_sender:{notification_id}")],
+                [
+                    InlineKeyboardButton(text="🚫 拒绝此通知", callback_data=f"admin:notify_reject:{notification_id}"),
+                    InlineKeyboardButton(text="👥 添加通知者", callback_data=f"admin:notify_add_sender:{notification_id}")
+                ],
                 [NOTIFY_CLOSE_PREVIEW_BUTTON]
             ]
         )
@@ -382,7 +386,7 @@ async def handle_notify_reject(
         return
     
     # 拒绝该通知
-    notification.status = "rejected"
+    notification.status = NOTIFICATION_STATUS_REJECTED
     notification.updated_by = callback.from_user.id
     
     await session.commit()
@@ -393,7 +397,7 @@ async def handle_notify_reject(
     except Exception:
         pass
     
-    await callback.answer(f"🚫 已拒绝通知: {notification.item_name or notification.series_name or '未知'}" , show_alert=True)
+    await callback.answer(f"🚫 已拒绝通知: {notification.title or '未知'}")
 
 
 @router.callback_query(F.data.startswith("admin:notify_add_sender:"))
@@ -418,18 +422,24 @@ async def handle_add_sender_start(
 
 
 @router.callback_query(F.data == "admin:notify_close_preview")
-async def handle_close_preview(callback: types.CallbackQuery):
+async def handle_close_preview(callback: types.CallbackQuery, state: FSMContext):
     """关闭所有预览消息"""
     user_id = callback.from_user.id
-    global PREVIEW_CACHE
-    if 'PREVIEW_CACHE' in globals() and user_id in PREVIEW_CACHE:
-        msg_ids = PREVIEW_CACHE[user_id]
-        for mid in msg_ids:
+    
+    # 从FSM状态获取预览数据
+    data = await state.get_data()
+    preview_data = data.get("preview_data", {})
+    
+    if preview_data:
+        # 删除所有预览消息
+        for msg_id in preview_data.keys():
             try:
-                await callback.bot.delete_message(chat_id=user_id, message_id=mid)
+                await callback.bot.delete_message(chat_id=user_id, message_id=msg_id)
             except Exception:
                 pass # 忽略已删除或不存在的消息
-        del PREVIEW_CACHE[user_id]
+        
+        # 清除预览数据
+        await state.update_data(preview_data={})
     else:
         # 可能是缓存过期或重启，尝试删除当前这一条
         try:
