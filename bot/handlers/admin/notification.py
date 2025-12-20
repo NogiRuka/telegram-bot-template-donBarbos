@@ -318,17 +318,31 @@ async def handle_notify_preview(
 
     for notif, item in rows:
         msg_text, image_url = get_notification_content(item)
+        
+        # 创建操作键盘
+        reject_kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="🚫 拒绝此通知", callback_data=f"admin:notify_reject:{notif.id}"),
+                    InlineKeyboardButton(text="👥 添加通知者", callback_data=f"admin:notify_add_sender:{notif.id}")
+                ],
+                [NOTIFY_CLOSE_PREVIEW_BUTTON]
+            ]
+        )
+        
         try:
             if image_url:
                 msg = await callback.bot.send_photo(
                     callback.from_user.id,
                     photo=image_url,
                     caption=msg_text,
+                    reply_markup=reject_kb,
                 )
             else:
                 msg = await callback.bot.send_message(
                     callback.from_user.id,
                     msg_text,
+                    reply_markup=reject_kb,
                 )
             
             # 关联消息ID和通知ID
@@ -339,27 +353,6 @@ async def handle_notify_preview(
 
     # 存储预览数据到FSM状态
     await state.update_data(preview_data=preview_data)
-
-    # 为每条消息添加操作按钮
-    for msg_id, notification_id in preview_data.items():
-        reject_kb = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="🚫 拒绝此通知", callback_data=f"admin:notify_reject:{notification_id}"),
-                    InlineKeyboardButton(text="👥 添加通知者", callback_data=f"admin:notify_add_sender:{notification_id}")
-                ],
-                [NOTIFY_CLOSE_PREVIEW_BUTTON]
-            ]
-        )
-        
-        try:
-            await callback.bot.edit_message_reply_markup(
-                callback.from_user.id,
-                msg_id,
-                reply_markup=reject_kb,
-            )
-        except Exception:
-            pass
 
 
 @router.callback_query(F.data.startswith("admin:notify_reject:"))
