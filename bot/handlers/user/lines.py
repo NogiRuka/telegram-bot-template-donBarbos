@@ -2,6 +2,7 @@ from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from bot.utils.permissions import require_user_feature
 
 router = Router(name="user_lines")

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import copy
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -11,7 +12,6 @@ from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.utils.datetime import now, parse_iso_datetime
 from bot.utils.http import HttpRequestError
-import copy
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -268,7 +268,7 @@ async def get_item_details(item_id: str) -> dict[str, Any] | None:
 
     功能说明:
     - 使用模板用户ID调用 API 获取项目详情 (Path, Overview, ProviderIds 等)
-    
+
     输入参数:
     - item_id: 项目ID (WebHook 载荷中的 Item.Id)
 
@@ -278,7 +278,7 @@ async def get_item_details(item_id: str) -> dict[str, Any] | None:
     client = get_client()
     if client is None:
         return None
-    
+
     # 使用模板用户ID作为查看者，确保能看到媒体库内容
     # 如果未配置模板用户，可能导致无权限查看或返回信息不全
     user_id = settings.get_emby_template_user_id()
@@ -294,7 +294,7 @@ async def get_item_details(item_id: str) -> dict[str, Any] | None:
         )
         if items:
             return items[0]
-        
+
         logger.warning(f"⚠️ 未找到 Emby 项目: {item_id} (可能是权限问题或项目已删除)")
         return None
     except Exception as e:
@@ -304,32 +304,33 @@ async def get_item_details(item_id: str) -> dict[str, Any] | None:
 
 async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]) -> dict[str, bool]:
     """批量从 Emby 获取项目详情并存入 emby_items 表
-    
+
     功能说明:
     - 批量调用 Emby API 获取详细信息
     - 逐个构造 EmbyItemModel 并保存
     - 如果已存在则更新
-    
+
     输入参数:
     - session: 数据库会话
     - item_ids: Emby Item ID 列表
-    
+
     返回值:
     - dict[str, bool]: 结果映射 {item_id: success}
     """
+    from sqlalchemy import func
+
     from bot.database.models.emby_item import EmbyItemModel
     from bot.database.models.notification import NotificationModel
-    from sqlalchemy import func
-    
+
     if not item_ids:
         return {}
 
     client = get_client()
     if client is None:
         logger.warning("⚠️ 未配置 Emby 连接信息")
-        return {iid: False for iid in item_ids}
-    
-    results = {iid: False for iid in item_ids}
+        return dict.fromkeys(item_ids, False)
+
+    results = dict.fromkeys(item_ids, False)
 
     try:
         # 批量获取详情
@@ -346,21 +347,21 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
             logger.debug(f"📦 第一条数据示例 (ID: {items[0].get('Id')}): Name={items[0].get('Name')}")
         else:
             logger.warning(f"⚠️ Emby 接口返回为空! 请求 IDs: {item_ids}")
-        
+
         # 建立 item_id -> item_data 的映射
         items_map = {str(item.get("Id")): item for item in items}
-        
+
         # 批量查询现有记录
         existing_stmt = select(EmbyItemModel).where(EmbyItemModel.id.in_(item_ids))
         existing_res = await session.execute(existing_stmt)
         existing_models = {m.id: m for m in existing_res.scalars().all()}
-        
+
         for item_id in item_ids:
             item_details = items_map.get(item_id)
             if not item_details:
                 logger.warning(f"⚠️ 未找到 Emby 项目: {item_id}")
                 continue
-                
+
             try:
                 name = item_details.get("Name")
                 date_created = str(parse_iso_datetime(item_details.get("DateCreated")))
@@ -370,10 +371,10 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                 people = item_details.get("People")
                 tag_items = item_details.get("TagItems")
                 image_tags = item_details.get("ImageTags")
-                
+
                 # 状态字段 (主要用于Series类型)
                 status = item_details.get("Status")
-                
+
                 # 剧集进度字段 (仅Series类型有效)
                 current_season = None
                 current_episode = None
@@ -390,28 +391,26 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                                 "TotalRecordCount": total_episodes
                             }
                             logger.debug(f"📺 Series {item_id}——{name} 获取剧集详情: {total_episodes} 集")
-                            
+
                             # 分析剧集数据，找出最新的季和集
                             max_season = 0
                             max_episode_in_season = {}
-                            
+
                             for episode in episodes:
                                 if episode.get("Type") == "Episode":
                                     season_num = episode.get("ParentIndexNumber")
                                     episode_num = episode.get("IndexNumber")
-                                    
+
                                     if season_num is not None and episode_num is not None:
                                         # 更新最大季号
-                                        if season_num > max_season:
-                                            max_season = season_num
-                                        
+                                        max_season = max(max_season, season_num)
+
                                         # 记录每季的最大集号
                                         season_key = season_num
                                         if season_key not in max_episode_in_season:
                                             max_episode_in_season[season_key] = 0
-                                        if episode_num > max_episode_in_season[season_key]:
-                                            max_episode_in_season[season_key] = episode_num
-                            
+                                        max_episode_in_season[season_key] = max(max_episode_in_season[season_key], episode_num)
+
                             # 设置当前进度为最新季的最后一集
                             if max_season > 0 and max_season in max_episode_in_season:
                                 current_season = max_season
@@ -422,7 +421,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                     except Exception as e:
                         logger.error(f"❌ 获取剧集详情失败: {item_id}——{name} -> {e}")
                         episode_data = None
-                        
+
                         # 如果获取剧集详情失败，回退到原来的通知表查询方式
                         series_stmt = select(
                             func.max(NotificationModel.season_number).label("max_season"),
@@ -438,7 +437,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                             current_season = series_data.max_season
                             current_episode = series_data.max_episode
                             logger.debug(f"📺 Series {item_id} 最新进度(回退模式): 第{current_season}季第{current_episode}集")
-                
+
                 existing = existing_models.get(item_id)
                 if existing:
                     existing.name = name
@@ -474,7 +473,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
                     )
                     session.add(model)
                     logger.debug(f"✅ 新增 Emby Item: {name} ({item_id})")
-                
+
                 results[item_id] = True
             except Exception as e:
                 logger.error(f"❌ 保存 Emby Item 失败: {item_id} -> {e}")

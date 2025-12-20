@@ -1,10 +1,11 @@
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
-from bot.utils.permissions import require_user_feature
-from bot.utils.images import get_common_image
+
 from bot.keyboards.inline.user import get_user_tags_keyboard
 from bot.services.main_message import MainMessageService
+from bot.utils.images import get_common_image
+from bot.utils.permissions import require_user_feature
 
 router = Router(name="user_tags")
 
@@ -30,11 +31,11 @@ async def user_tags(
     - None
     """
     text = "🎯 标签屏蔽功能开发中..."
-    text += f"\n\n当前屏蔽标签: (暂无)"
-    
+    text += "\n\n当前屏蔽标签: (暂无)"
+
     # 获取账号中心键盘布局
     kb = get_user_tags_keyboard()
     image = get_common_image()
-    
+
     await main_msg.update_on_callback(callback, text, kb, image)
     await callback.answer()

@@ -1,4 +1,4 @@
-from aiogram import F, Router, types
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,7 +6,7 @@ from bot.keyboards.inline.user import get_user_profile_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
 from bot.utils.images import get_common_image
-from bot.utils.permissions import _resolve_role, require_user_feature
+from bot.utils.permissions import require_user_feature
 from bot.utils.text import escape_markdown_v2
 
 router = Router(name="user_profile")
@@ -50,15 +50,15 @@ async def user_profile(
     first_name = getattr(user, "first_name", "")
     last_name = getattr(user, "last_name", "") or ""
     full_name = f"{first_name} {last_name}".strip() or "未知"
-    
+
     username = f"@{callback.from_user.username}" if callback.from_user and callback.from_user.username else "未设置"
-    
+
     created_at = getattr(user, "created_at", None)
     created_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else "未知"
-    
+
     is_premium = getattr(user, "is_premium", None)
     premium_str = "是" if is_premium else ("否" if is_premium is not None else "未知")
-    
+
     last_interaction = getattr(ext, "last_interaction_at", None)
     last_interaction_str = last_interaction.strftime("%Y-%m-%d %H:%M:%S") if last_interaction else "未知"
 

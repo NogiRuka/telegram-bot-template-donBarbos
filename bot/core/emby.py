@@ -338,16 +338,16 @@ class EmbyClient:
         fields: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
         """获取剧集的集列表
-        
+
         功能说明:
         - 调用 `GET /Shows/{series_id}/Episodes` 获取剧集的所有集信息
-        
+
         输入参数:
         - series_id: 剧集ID (Series ID)
         - user_id: 用户ID (可选，用于权限验证)
         - season: 季号 (可选，过滤特定季)
         - fields: 返回字段列表 (对应 `Fields` 参数)
-        
+
         返回值:
         - tuple[list[dict[str, Any]], int]: (集列表, 总记录数)
         """
@@ -359,9 +359,9 @@ class EmbyClient:
         if fields:
             params["Fields"] = ",".join(fields)
 
-        
+
         data = await self.http.request("GET", f"/Shows/{series_id}/Episodes", params=params)
-        
+
         items: list[dict[str, Any]] = []
         total = 0
         if isinstance(data, dict):
@@ -371,5 +371,5 @@ class EmbyClient:
             # 兼容某些情况下直接返回列表
             items = [x for x in data if isinstance(x, dict)]
             total = len(items)
-        
+
         return items, total

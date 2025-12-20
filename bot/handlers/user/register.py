@@ -18,8 +18,8 @@ from bot.services.config_service import get_registration_window, is_registration
 from bot.services.main_message import MainMessageService
 from bot.services.users import create_and_bind_emby_user, has_emby_account
 from bot.utils.datetime import format_datetime, parse_iso_datetime
-from bot.utils.text import safe_alert_text
 from bot.utils.permissions import require_user_feature
+from bot.utils.text import safe_alert_text
 
 router = Router(name="user_register")
 
@@ -75,7 +75,7 @@ async def user_register(
                         formatted_end = format_datetime(end_dt)
                         hint += f"\n结束: {formatted_end}"
                         hint += f"\n时长: {dur} 分钟"
-                    
+
                     # 提示时区
                     hint += f" ({settings.TIMEZONE})"
                 else:
@@ -84,7 +84,7 @@ async def user_register(
                         hint += f"\n时长: {dur} 分钟"
             elif dur:
                 hint += f"\n时长: {dur} 分钟"
-            
+
             return await callback.answer(safe_alert_text(hint), show_alert=True)
 
         if not uid:
@@ -231,7 +231,7 @@ async def handle_register_input(
 
         # 创建用户
         ok, details, err = await create_and_bind_emby_user(session, uid, name, password)
-        
+
         if ok and details:
             await state.clear()
             caption = (

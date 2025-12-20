@@ -13,7 +13,6 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.keyboards.inline.constants import (
-    BACK_TO_HOME_LABEL,
     GROUP_BACK_TO_HOME_CALLBACK_DATA,
     GROUP_BACK_TO_HOME_LABEL,
 )

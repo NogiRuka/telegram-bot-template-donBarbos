@@ -1,6 +1,6 @@
 import contextlib
 
-from aiogram import Router, F, types
+from aiogram import F, Router, types
 from aiogram.filters import CommandStart
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

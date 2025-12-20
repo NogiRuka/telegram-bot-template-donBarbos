@@ -58,31 +58,31 @@ async def handle_emby_webhook(
     # 提取事件类型
     event_title = payload.get("Title")
     event_type = payload.get("Event")
-    
+
     # 提取 Item 信息（如果存在）
     item = payload.get("Item", {})
     item_id = item.get("Id")
     item_name = item.get("Name")
     item_type = item.get("Type")
-    
+
     # 提取剧集相关信息
     series_id = item.get("SeriesId")
     series_name = item.get("SeriesName")
     season_number = item.get("ParentIndexNumber")
     episode_number = item.get("IndexNumber")
-    
+
     # 所有事件都存入数据库，但只有 library.new 事件设置状态
     if event_type:
         logger.info(f"📥 收到 Emby Webhook 事件: {event_type}")
-        
+
         # 根据事件类型决定是否设置状态
         event_status = None  # 默认不设置状态
-        
+
         # 只有 library.new 事件设置状态
         if event_type == EVENT_TYPE_LIBRARY_NEW:
             event_status = "pending_completion"
             logger.info("🆕 收到新媒体入库通知")
-        
+
         # 存入数据库
         async with sessionmaker() as session:
             notification = NotificationModel(
@@ -101,14 +101,13 @@ async def handle_emby_webhook(
             session.add(notification)
             await session.commit()
             await session.refresh(notification)
-            
+
             # 记录入库日志
             logger.info(f"💾 通知入库, 标题: {event_title}, 事件类型: {event_type}, 状态: {event_status}")
 
         # 针对 library.new 事件的特殊处理
-        if event_type == EVENT_TYPE_LIBRARY_NEW:
-            if not item_id:
-                logger.warning("⚠️ Webhook 载荷中缺少 Item.Id")
+        if event_type == EVENT_TYPE_LIBRARY_NEW and not item_id:
+            logger.warning("⚠️ Webhook 载荷中缺少 Item.Id")
     else:
         logger.warning("⚠️ Webhook 载荷中缺少事件类型")
 

@@ -1,4 +1,4 @@
-from aiogram import F, Router, types
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,20 +14,20 @@ router = Router(name="user_account")
 @router.callback_query(F.data == "user:account")
 @require_user_feature("user.account")
 async def show_account_center(
-    callback: CallbackQuery, 
+    callback: CallbackQuery,
     session: AsyncSession,
     main_msg: MainMessageService,
 ) -> None:
     """展示账号中心
-    
+
     功能说明:
     - 展示二级账号中心菜单, 底部包含返回主面板
-    
+
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
     - main_msg: 主消息服务
-    
+
     返回值:
     - None
     """

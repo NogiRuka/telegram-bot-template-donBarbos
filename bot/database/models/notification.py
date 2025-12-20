@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any
 
-from sqlalchemy import String, JSON, Text
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
@@ -9,14 +9,14 @@ from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
 
 class NotificationModel(Base, BasicAuditMixin):
     """Emby 通知队列表
-    
+
     功能说明:
     - 存储来自 Webhook 的原始通知事件 (如 library.new)
     - 记录通知处理状态
-    
+
     字段:
     - type: 通知类型 (library.new 等)
-    - status: 状态 
+    - status: 状态
         - pending_completion: 待补全 (已收到 Webhook, 仅有基本ID)
         - pending_review: 待审核 (已从 Emby API 补全数据)
         - sent: 已发送
@@ -34,11 +34,11 @@ class NotificationModel(Base, BasicAuditMixin):
 
     title: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="通知标题")
     type: Mapped[str] = mapped_column(String(64), nullable=False, index=True, comment="通知类型")
-    
+
     status: Mapped[str | None] = mapped_column(
-        String(32), 
-        nullable=True, 
-        index=True, 
+        String(32),
+        nullable=True,
+        index=True,
         comment="状态: pending_completion/pending_review/sent/failed"
     )
 
@@ -51,7 +51,7 @@ class NotificationModel(Base, BasicAuditMixin):
     series_name: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="剧集名称")
     season_number: Mapped[int | None] = mapped_column(nullable=True, comment="季号 (ParentIndexNumber)")
     episode_number: Mapped[int | None] = mapped_column(nullable=True, comment="集号 (IndexNumber)")
-    
+
     target_channel_id: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="目标频道ID")
     target_group_id: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="目标群组ID")
 

@@ -219,11 +219,11 @@ class BotSettings(EnvBaseSettings):
         v = self.NOTIFICATION_CHANNEL_ID
         if not v:
             return []
-        
+
         # 如果已经是 int (虽然 Field 定义改为了 str | None，但为了稳健性)
         if isinstance(v, int):
             return [v]
-            
+
         results = []
         parts = [x.strip() for x in str(v).split(",") if x.strip()]
         for p in parts:

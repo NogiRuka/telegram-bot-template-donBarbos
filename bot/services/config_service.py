@@ -7,35 +7,18 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 
-from bot.database.models.config import ConfigModel, ConfigType
 from bot.config import (
-    # 配置键常量
-    KEY_BOT_FEATURES_ENABLED,
-    KEY_USER_FEATURES_ENABLED,
-    KEY_USER_REGISTER,
-    KEY_USER_INFO,
-    KEY_USER_LINES,
-    KEY_USER_DEVICES,
-    KEY_USER_PASSWORD,
-    KEY_USER_PROFILE,
-    KEY_USER_ACCOUNT,
-    KEY_ADMIN_FEATURES_ENABLED,
-    KEY_ADMIN_GROUPS,
-    KEY_ADMIN_STATS,
-    KEY_ADMIN_HITOKOTO,
-    KEY_ADMIN_OPEN_REGISTRATION,
-    KEY_ADMIN_NEW_ITEM_NOTIFICATION,
-    KEY_REGISTRATION_FREE_OPEN,
-    KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
-    KEY_ADMIN_HITOKOTO_CATEGORIES,
+    ADMIN_PERMISSIONS_MAPPING,
     # 功能映射
     DEFAULT_CONFIGS,
+    KEY_ADMIN_HITOKOTO_CATEGORIES,
+    KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
+    KEY_REGISTRATION_FREE_OPEN,
     OWNER_FEATURES_MAPPING,
-    USER_FEATURES_MAPPING,
-    ADMIN_PERMISSIONS_MAPPING,
-    ADMIN_PANEL_VISIBLE_FEATURES,
 )
-from bot.utils.datetime import parse_iso_datetime, now as get_now
+from bot.database.models.config import ConfigModel, ConfigType
+from bot.utils.datetime import now as get_now
+from bot.utils.datetime import parse_iso_datetime
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -164,7 +147,7 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
     """
     # 从映射中提取配置键, 确保列表与映射保持同步
     keys = [cfg_key for cfg_key, _ in OWNER_FEATURES_MAPPING.values()]
-    
+
     out: dict[str, bool] = {}
     for k in keys:
         val = await get_config(session, k)
@@ -331,7 +314,7 @@ async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
     """
     # 从映射中提取配置键, 确保列表与映射保持同步
     keys = [cfg_key for cfg_key, _ in ADMIN_PERMISSIONS_MAPPING.values()]
-    
+
     out: dict[str, bool] = {}
     for k in keys:
         val = await get_config(session, k)

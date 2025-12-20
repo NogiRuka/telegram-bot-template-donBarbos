@@ -2,8 +2,8 @@ from aiogram import Router
 
 from .admin_features import router as owner_admin_features_router
 from .admins import router as owner_admins_router
-from .user_features import router as owner_user_features_router
 from .home import router as owner_home_router
+from .user_features import router as owner_user_features_router
 
 
 def get_owner_router() -> Router:

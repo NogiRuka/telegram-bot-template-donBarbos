@@ -1,4 +1,4 @@
-from aiogram import F, Router, types
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 
 from bot.keyboards.inline.owner import get_owner_panel_keyboard
@@ -27,7 +27,7 @@ async def show_owner_panel(callback: CallbackQuery, main_msg: MainMessageService
     caption = "👑 所有者面板"
     kb = get_owner_panel_keyboard()
     image = get_common_image()
-    
+
     await main_msg.update_on_callback(callback, caption, kb, image_path=image)
     await callback.answer()
 

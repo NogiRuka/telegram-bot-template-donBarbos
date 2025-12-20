@@ -1,4 +1,4 @@
-from aiogram import F, Router, types
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,8 +14,8 @@ router = Router(name="admin_home")
 @router.callback_query(F.data == "admin:panel")
 @require_admin_priv
 async def show_admin_panel(
-    callback: CallbackQuery, 
-    session: AsyncSession, 
+    callback: CallbackQuery,
+    session: AsyncSession,
     main_msg: MainMessageService
 ) -> None:
     """展示管理员面板
@@ -37,7 +37,7 @@ async def show_admin_panel(
     await _resolve_role(session, user_id)
     image = get_common_image()
     caption = "🛡️ 管理员面板"
-    
+
     await main_msg.update_on_callback(callback, caption, kb, image_path=image)
     await callback.answer()
 
