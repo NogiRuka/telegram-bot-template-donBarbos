@@ -308,7 +308,7 @@ async def handle_notify_preview(
     rows = result.all()
 
     if not rows:
-        await callback.answer("没有可预览的通知", show_alert=True)
+        await callback.answer("🈚 没有可预览的通知")
         return
 
     await callback.answer(f"👀 正在生成 {len(rows)} 条预览…")
