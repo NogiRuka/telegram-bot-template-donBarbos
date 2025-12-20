@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models.emby_user import EmbyUserModel
-from bot.keyboards.inline.start_user import get_user_info_keyboard
+from bot.keyboards.inline.user import get_user_info_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
 from bot.utils.images import get_common_image

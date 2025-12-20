@@ -41,6 +41,7 @@ def get_account_center_keyboard(has_emby_account: bool) -> InlineKeyboardMarkup:
     """
     keyboard = InlineKeyboardBuilder()
 
+    # 有 Emby 账号的情况
     if has_emby_account:
         keyboard.add(USER_INFO_BUTTON)
         keyboard.add(USER_LINES_BUTTON)
@@ -98,7 +99,7 @@ def get_user_info_keyboard() -> InlineKeyboardMarkup:
         [BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(1, 1)
+    keyboard.adjust(2)
     return keyboard.as_markup()
 
 
@@ -119,4 +120,25 @@ def get_user_profile_keyboard() -> InlineKeyboardMarkup:
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     keyboard.adjust(1)
+    return keyboard.as_markup()
+
+
+def get_user_tags_keyboard() -> InlineKeyboardMarkup:
+    """用户标签屏蔽键盘
+
+    功能说明:
+    - 标签屏蔽页面底部键盘，仅提供返回主页按钮
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 内联键盘
+    """
+    buttons = [
+        [BACK_TO_ACCOUNT_BUTTON],
+        [BACK_TO_HOME_BUTTON],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    keyboard.adjust(2)
     return keyboard.as_markup()

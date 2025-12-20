@@ -10,7 +10,7 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
-from bot.keyboards.inline.start_user import (
+from bot.keyboards.inline.user import (
     get_account_center_keyboard,
     get_register_input_keyboard,
 )

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.start import get_common_image
 from bot.keyboards.inline.constants import ADMIN_PERMS_PANEL_LABEL
-from bot.keyboards.inline.start_owner import get_admin_perms_panel_keyboard
+from bot.keyboards.inline.owner import get_admin_perms_panel_keyboard
 from bot.services.config_service import (
     ADMIN_PERMISSIONS_MAPPING,
     list_admin_permissions,

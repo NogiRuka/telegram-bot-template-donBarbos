@@ -1,15 +1,15 @@
 import contextlib
 
-from aiogram import Router, types
+from aiogram import Router, F, types
 from aiogram.filters import CommandStart
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
 from bot.database.models import UserModel
-from bot.keyboards.inline.start_admin import get_start_admin_keyboard
-from bot.keyboards.inline.start_owner import get_start_owner_keyboard
-from bot.keyboards.inline.start_user import get_start_user_keyboard
+from bot.keyboards.inline.admin import get_start_admin_keyboard
+from bot.keyboards.inline.owner import get_start_owner_keyboard
+from bot.keyboards.inline.user import get_start_user_keyboard
 from bot.services.analytics import analytics
 from bot.services.config_service import list_features
 from bot.services.main_message import MainMessageService
@@ -18,27 +18,6 @@ from bot.utils.images import get_common_image
 from bot.utils.permissions import _resolve_role
 
 router = Router(name="start")
-
-
-def determine_role(user_id: int) -> str:
-    """角色判定
-
-    功能说明:
-    - 基于配置判断角色, 返回 "owner" | "admin" | "user"
-
-    输入参数:
-    - user_id: Telegram 用户ID
-
-    返回值:
-    - str: 角色标识
-    """
-    with contextlib.suppress(Exception):
-        if user_id == settings.get_owner_id():
-            return "owner"
-        if user_id in set(settings.get_admin_ids()):
-            return "admin"
-    return "user"
-
 
 async def build_home_view(session: AsyncSession | None, user_id: int | None) -> tuple[str, types.InlineKeyboardMarkup]:
     """构建首页文案与键盘
@@ -101,7 +80,7 @@ async def start_handler(message: types.Message, session: AsyncSession, main_msg:
     await main_msg.send_main(message, image or None, caption, kb)
 
 
-@router.callback_query(lambda c: c.data == "home:back")
+@router.callback_query(F.data == "back:home")
 async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """返回主面板
 

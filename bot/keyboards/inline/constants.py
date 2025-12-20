@@ -48,7 +48,7 @@ USER_TAGS_CALLBACK_DATA = "user:tags"
 
 # 返回账号中心
 BACK_TO_ACCOUNT_LABEL = "↩️ 返回账号中心"
-BACK_TO_ACCOUNT_CALLBACK_DATA = "back:account"
+BACK_TO_ACCOUNT_CALLBACK_DATA = "user:account"
 
 
 # ===== 管理员功能 =====
@@ -137,7 +137,7 @@ BACK_TO_OWNER_PANEL_CALLBACK_DATA = "owner:panel"
 
 # ===== 通用导航 =====
 BACK_TO_HOME_LABEL = "🏠 返回主面板"
-BACK_TO_HOME_CALLBACK_DATA = "home:back"
+BACK_TO_HOME_CALLBACK_DATA = "back:home"
 
 
 def format_with_status(label: str, enabled: bool) -> str:

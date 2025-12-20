@@ -6,7 +6,7 @@ from bot.keyboards.inline.constants import (
     FEATURES_PANEL_LABEL,
     ROBOT_SWITCH_LABEL,
 )
-from bot.keyboards.inline.start_owner import get_features_panel_keyboard
+from bot.keyboards.inline.owner import get_features_panel_keyboard
 from bot.services.config_service import (
     KEY_BOT_FEATURES_ENABLED,
     OWNER_FEATURES_MAPPING,
