@@ -13,6 +13,10 @@ from bot.services.config_service import (
     set_free_registration_status,
     set_registration_window,
 )
+from bot.keyboards.inline.buttons import (
+    BACK_TO_ADMIN_PANEL_BUTTON,
+    BACK_TO_HOME_BUTTON,
+)
 from bot.services.main_message import MainMessageService
 from bot.utils.datetime import format_datetime, parse_iso_datetime
 from bot.utils.images import get_common_image
@@ -150,11 +154,11 @@ async def input_registration_window(message: Message, session: AsyncSession, mai
     uid = message.from_user.id if message.from_user else None
     if uid is None:
         return
-    caption, kb = await _build_registration_caption_and_keyboard(session)
+    caption, kb = await _build_reg_kb(session)
     await main_msg.update(uid, caption, kb)
 
 
-async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tuple[str, InlineKeyboardMarkup]:
+async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarkup]:
     """构建开放注册面板的说明与键盘
 
     功能说明:
@@ -167,12 +171,12 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
     返回值:
     - tuple[str, InlineKeyboardMarkup]: (caption文本, 内联键盘)
     """
-    logger.debug("🔍 [_build_registration_caption_and_keyboard] 开始读取配置...")
+    logger.debug("🔍 [_build_reg_kb] 开始读取配置...")
     free_open = await get_free_registration_status(session)
-    logger.debug(f"🔍 [_build_registration_caption_and_keyboard] free_open={free_open}")
+    logger.debug(f"🔍 [_build_reg_kb] free_open={free_open}")
 
     window = await get_registration_window(session) or {}
-    logger.debug(f"🔍 [_build_registration_caption_and_keyboard] window={window}")
+    logger.debug(f"🔍 [_build_reg_kb] window={window}")
 
     start_iso = window.get("start_iso")
     duration = window.get("duration_minutes")
@@ -187,21 +191,21 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
             if duration is not None:
                 end_dt = dt + timedelta(minutes=int(duration))
                 end_str = format_datetime(end_dt)
-                logger.debug(f"✅ [_build_registration_caption_and_keyboard] 计算结束时间成功: {end_str}")
+                logger.debug(f"✅ [_build_reg_kb] 计算结束时间成功: {end_str}")
         else:
             formatted_start = start_iso
-            logger.warning(f"❌ [_build_registration_caption_and_keyboard] 无法解析时间: {start_iso}")
-
-    status_line = f"{OPEN_REGISTRATION_LABEL}: {'🟢 开启' if free_open else '🔴 关闭'}\n"
+            logger.warning(f"❌ [_build_reg_kb] 无法解析时间: {start_iso}")
+    status_line = f"注册状态：{'🟢 开启' if free_open else '🔴 关闭'}\n"
     caption = (
-        "🛂 开放注册\n\n"
+        f"{OPEN_REGISTRATION_LABEL}\n\n"
         + status_line
-        + f"开始时间: {formatted_start}\n"
-        + f"结束时间: {end_str}\n"
-        + f"持续分钟: {duration if duration is not None else '不限'}\n\n"
-        + f"输入格式示例: 20251130.2300.10 (默认为 {settings.TIMEZONE} 时间)"
+        + f"开始时间：{formatted_start}\n"
+        + f"结束时间：{end_str}\n"
+        + f"持续分钟：{duration if duration is not None else '不限'}\n\n"
+        + f"输入格式示例：<code>{datetime.now().strftime('%Y%m%d.%H%M')}.10</code>\n"
+        + f"时区：{settings.TIMEZONE}"
     )
-    logger.debug("✅ [_build_registration_caption_and_keyboard] 生成 caption 成功")
+    logger.debug("✅ [_build_reg_kb] 生成 caption 成功")
 
     rows: list[list[InlineKeyboardButton]] = []
     rows.append([
@@ -212,14 +216,14 @@ async def _build_registration_caption_and_keyboard(session: AsyncSession) -> tup
     ])
     rows.append([
         InlineKeyboardButton(text="1分钟", callback_data="admin:open_registration:set:1"),
-        InlineKeyboardButton(text="5分钟", callback_data="admin:open_registration:set:5"),
+        InlineKeyboardButton(text="10分钟", callback_data="admin:open_registration:set:10"),
         InlineKeyboardButton(text="30分钟", callback_data="admin:open_registration:set:30"),
         InlineKeyboardButton(text="60分钟", callback_data="admin:open_registration:set:60"),
     ])
     rows.append([
-        InlineKeyboardButton(text="⬅️ 返回", callback_data="admin:panel"),
-        InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+        [BACK_TO_ADMIN_PANEL_BUTTON],
+        [BACK_TO_HOME_BUTTON],
     ])
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
-    logger.debug("✅ [_build_registration_caption_and_keyboard] 键盘构建完成")
+    logger.debug("✅ [_build_reg_kb] 键盘构建完成")
     return caption, kb

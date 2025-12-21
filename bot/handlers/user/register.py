@@ -56,7 +56,6 @@ async def user_register(
     """
     uid = callback.from_user.id if callback.from_user else None
 
-    logger.info("用户开始注册: user_id={}", uid)
     try:
         if not await is_registration_open(session):
             window = await get_registration_window(session) or {}
@@ -92,6 +91,9 @@ async def user_register(
 
         if await has_emby_account(session, uid):
             return await callback.answer("ℹ️ 您已绑定 Emby 账号", show_alert=True)
+
+        # 真正开始注册流程，打印日志
+        logger.info("用户开始注册: user_id={}", uid)
 
         # 更新主消息提示输入
         caption = (

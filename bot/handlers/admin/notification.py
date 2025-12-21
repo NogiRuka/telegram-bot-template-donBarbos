@@ -65,7 +65,7 @@ async def show_notification_panel(
         .where(
             NotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
             NotificationModel.status.in_(
-                [NOTIFICATION_STATUS_PENDING_COMPLETION, NOTIFICATION_STATUS_PENDING_REVIEW, "rejected"]
+                [NOTIFICATION_STATUS_PENDING_COMPLETION, NOTIFICATION_STATUS_PENDING_REVIEW, NOTIFICATION_STATUS_REJECTED]
             ),
         )
         .group_by(NotificationModel.status)
@@ -207,7 +207,7 @@ async def handle_notify_complete(
     # 获取所有待补全的library.new通知
     stmt = select(NotificationModel).where(
         NotificationModel.status == NOTIFICATION_STATUS_PENDING_COMPLETION,
-        NotificationModel.type == "library.new"
+        NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
     )
     result = await session.execute(stmt)
     notifications = result.scalars().all()
@@ -282,29 +282,39 @@ async def handle_notify_preview(
     state: FSMContext
 ) -> None:
     """生成通知预览 - 每条消息关联具体通知ID"""
-
     preview_key = case(
         (
             (NotificationModel.item_type == "Episode")
             & (NotificationModel.series_id.isnot(None)),
             NotificationModel.series_id,
         ),
+        (
+            NotificationModel.item_type == "Series",
+            NotificationModel.item_id,
+        ),
         else_=NotificationModel.item_id,
     )
 
-    # 获取待审核的通知和对应的EmbyItem
-    stmt = (
-        select(NotificationModel, EmbyItemModel)
-        .join(EmbyItemModel, preview_key == EmbyItemModel.id)
+    subq = (
+        select(
+            func.min(NotificationModel.id).label("notif_id"),
+            preview_key.label("biz_id"),
+        )
         .where(
             NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
-            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
+            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
         )
-        .distinct(preview_key)
+        .group_by(preview_key)
+        .subquery()
     )
 
-    result = await session.execute(stmt)
-    rows = result.all()
+    stmt = (
+        select(NotificationModel, EmbyItemModel)
+        .join(subq, NotificationModel.id == subq.c.notif_id)
+        .join(EmbyItemModel, EmbyItemModel.id == subq.c.biz_id)
+    )
+
+    rows = (await session.execute(stmt)).all()
 
     if not rows:
         await callback.answer("🈚 没有可预览的通知")
@@ -358,8 +368,7 @@ async def handle_notify_preview(
 async def handle_notify_reject(
     callback: types.CallbackQuery,
     session: AsyncSession,
-    main_msg: MainMessageService
-) -> None:
+    main_msg: MainMessageService) -> None:
     """拒绝单条通知 - 将指定通知状态改为rejected"""
 
     # 从callback_data中提取通知ID

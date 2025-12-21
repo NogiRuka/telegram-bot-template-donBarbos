@@ -308,11 +308,6 @@
 │   │   ├── inline/             # 内联键盘
 │   │   └── reply/              # 回复键盘
 │   ├── services/               # 业务逻辑服务
-│   │   ├── notification/       # 通知服务包
-│   │   │   ├── action.py       # 通知动作
-│   │   │   ├── query.py        # 通知查询
-│   │   │   ├── send.py         # 通知发送
-│   │   │   └── utils.py        # 通知工具
 │   │   ├── analytics.py        # 分析服务聚合
 │   │   ├── config_service.py   # 配置服务
 │   │   ├── emby_service.py     # Emby 服务
