@@ -283,36 +283,13 @@ async def delete_message_safely(message) -> bool:
         return False
 
 
-async def delete_message_after_delay(message, delay: int = 3) -> None:
-    """延迟指定时间后删除消息。
-
-    功能说明:
-    - 等待指定秒数后删除消息
-    - 使用 try-except 包裹删除操作，避免删除失败影响主流程
-    - 适用于发送临时提示消息后自动清理的场景
-
-    输入参数:
-    - message: 要删除的消息对象，需要有 delete() 方法
-    - delay: 延迟删除的秒数，默认3秒
-
-    返回值:
-    - None
-    """
-    try:
-        await asyncio.sleep(delay)
-        await delete_message_safely(message)
-    except Exception:
-        # 忽略删除过程中的任何错误
-        pass
-
-
-def create_auto_delete_task(message, delay: int = 3) -> asyncio.Task:
-    """创建自动删除消息的任务。
+def delete_message_after_delay(message, delay: int = 3) -> asyncio.Task:
+    """延迟指定时间后删除消息，返回异步任务。
 
     功能说明:
     - 创建异步任务在指定时间后删除消息
     - 自动保存任务引用避免被垃圾回收
-    - 适用于需要自动清理临时消息的场景
+    - 适用于发送临时提示消息后自动清理的场景
 
     输入参数:
     - message: 要删除的消息对象, 需要有 delete() 方法
@@ -321,7 +298,15 @@ def create_auto_delete_task(message, delay: int = 3) -> asyncio.Task:
     返回值:
     - asyncio.Task: 创建的异步任务
     """
-    task = asyncio.create_task(delete_message_after_delay(message, delay))
+    async def _delayed_delete():
+        try:
+            await asyncio.sleep(delay)
+            await delete_message_safely(message)
+        except Exception:
+            # 忽略删除过程中的任何错误
+            pass
+
+    task = asyncio.create_task(_delayed_delete())
     # 保存任务引用避免被垃圾回收
     setattr(task, '_ignore', True)
     return task

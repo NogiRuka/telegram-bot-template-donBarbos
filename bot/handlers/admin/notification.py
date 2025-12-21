@@ -149,7 +149,7 @@ async def handle_notify_complete(
 
 
 async def delete_message_after_delay(message: types.Message, delay: int = 3) -> None:
-    """延迟指定时间后删除消息。
+    """延迟指定时间后删除消息（已废弃，使用 delete_message_after_delay 替代）。
 
     功能说明:
     - 等待指定秒数后删除消息
@@ -162,11 +162,8 @@ async def delete_message_after_delay(message: types.Message, delay: int = 3) -> 
     返回值:
     - None
     """
-    try:
-        await asyncio.sleep(delay)
-        await delete_message_safely(message)
-    except Exception as e:
-        logger.warning(f"延迟删除消息失败: {e}")
+    from bot.utils.notification import delete_message_after_delay as util_delete_after_delay
+    util_delete_after_delay(message, delay)
 
 
 @router.callback_query(F.data == "admin:notify_preview")
@@ -393,7 +390,7 @@ async def handle_add_sender_complete(
     )
 
     # 3秒后删除成功消息
-    create_auto_delete_task(success_msg, 3)
+    delete_message_after_delay(success_msg, 3)
 
     await state.clear()
 
