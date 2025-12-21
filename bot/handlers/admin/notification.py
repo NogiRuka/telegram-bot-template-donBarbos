@@ -29,7 +29,11 @@ from bot.keyboards.inline.constants import ADMIN_NEW_ITEM_NOTIFICATION_LABEL
 from bot.services.emby_service import fetch_and_save_item_details
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
-from bot.utils.notification import get_notification_status_counts
+from bot.utils.notification import (
+    get_check_id_for_notification,
+    get_notification_content,
+    get_notification_status_counts,
+)
 
 router = Router(name="notification")
 
@@ -51,9 +55,9 @@ async def show_notification_panel(
     text = (
         f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
         f"📊 <b>状态统计:</b>\n"
-        f"• 待补全: <b>{pending_completion}</b>\n"
-        f"• 待发送: <b>{pending_review}</b>\n"
-        f"• 已拒绝: <b>{rejected}</b>\n\n"
+        f"• 待补全：<b>{pending_completion}</b>\n"
+        f"• 待发送：<b>{pending_review}</b>\n"
+        f"• 已拒绝：<b>{rejected}</b>\n\n"
         f"请选择操作:"
     )
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
@@ -61,107 +65,7 @@ async def show_notification_panel(
     await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
 
 
-def get_check_id_for_notification(notif: NotificationModel) -> str:
-    """根据通知类型获取用于检测的ID
 
-    对于Episode类型使用series_id，其他类型使用item_id
-    """
-    if notif.item_type == "Episode" and notif.series_id:
-        return notif.series_id
-    return notif.item_id
-
-
-def get_item_ids_from_notifications(notifications: list[NotificationModel]) -> list[str]:
-    """从通知列表中提取需要去查询的item_id列表
-
-    对于Episode类型使用series_id，其他类型使用item_id，并去重
-    """
-    item_ids = []
-    for notif in notifications:
-        check_id = get_check_id_for_notification(notif)
-        if check_id:
-            item_ids.append(check_id)
-
-    # 去重
-    return list(set(item_ids))
-
-
-def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
-    """生成通知消息内容和图片URL"""
-    # 构造图片 URL
-    image_url = None
-    if item.image_tags:
-        # 优先使用Primary标签，如果没有则使用Logo标签
-        tag = None
-        image_type = None
-        if "Primary" in item.image_tags:
-            tag = item.image_tags["Primary"]
-            image_type = "Primary"
-        elif "Logo" in item.image_tags:
-            tag = item.image_tags["Logo"]
-            image_type = "Logo"
-
-        if tag and image_type:
-            base_url = settings.get_emby_base_url()
-            base_url = base_url.removesuffix("/")
-            image_url = f"{base_url}/Items/{item.id}/Images/{image_type}?tag={tag}"
-
-    # 解析媒体库名称 (Library Tag)
-    library_tag = ""
-    if item.path:
-        path = item.path.replace("\\", "/")
-        parts = [p for p in path.split("/") if p]
-
-        if "钙片" in parts:
-            idx = parts.index("钙片")
-            if idx + 1 < len(parts):
-                library_tag = f"#{parts[idx+1]}"
-        elif "剧集" in parts:
-             library_tag = "#剧集"
-        elif "电影" in parts:
-             library_tag = "#电影"
-
-    # 构造消息内容
-    overview = item.overview or ""
-
-    # 处理剧集信息（仅Series类型显示）
-    series_info = ""
-    if item.type == "Series":
-        # 进度信息
-        if item.current_season and item.current_episode:
-            series_info += f"📺 <b>进度：</b>第{item.current_season}季 · 第{item.current_episode}集\n"
-
-        # 状态信息
-        if item.status:
-            status_text = item.status
-            if item.status == "Continuing":
-                status_text = "更新中"
-            elif item.status == "Ended":
-                status_text = "已完结"
-            series_info += f"📊 <b>状态：</b>{status_text}\n"
-
-    # 用户指定的简洁格式 - 只在有内容时显示对应字段
-    msg_parts = [f"🎬 <b>名称：</b><code>{item.name}</code>"]
-
-    # 分类信息（只在有分类时显示）
-    if library_tag:
-        msg_parts.append(f"📂 <b>分类：</b>{library_tag}")
-
-    # 剧集信息
-    if series_info:
-        msg_parts.append(series_info.rstrip())
-
-    # 时间信息
-    msg_parts.append(f"📅 <b>时间：</b>{item.date_created if item.date_created else '未知'}")
-
-    # 简介信息（只在有简介时显示）
-    if overview:
-        overview_text = overview[:150] + "..." if len(overview) > 150 else overview
-        msg_parts.append(f"📝 <b>简介：</b>{overview_text}")
-
-    msg_text = "\n".join(msg_parts)
-
-    return msg_text, image_url
 
 
 @router.callback_query(F.data == "admin:notify_complete")
@@ -192,12 +96,10 @@ async def handle_notify_complete(
 
     for notif in notifications:
         key = notif.series_id if notif.item_type == "Episode" and notif.series_id else notif.item_id
-
         if not key:
             notif.status = NOTIFICATION_STATUS_FAILED
             fail_count += 1
             continue
-
         grouped.setdefault(key, []).append(notif)
 
     # ✅ 真实补全数量（作品数）
@@ -208,7 +110,6 @@ async def handle_notify_complete(
 
     # 3️⃣ 只对唯一 key 做补全
     unique_keys = list(grouped.keys())
-
     batch_results = await fetch_and_save_item_details(
         session,
         unique_keys
@@ -217,7 +118,6 @@ async def handle_notify_complete(
     # 4️⃣ 按 key 的补全结果，回写该组下所有通知状态
     for key, group in grouped.items():
         ok = batch_results.get(key, False)
-
         # ✅ key 级计数（只加一次）
         if ok:
             success_count += 1
@@ -231,47 +131,25 @@ async def handle_notify_complete(
                 if ok
                 else NOTIFICATION_STATUS_FAILED
             )
-
     await session.commit()
 
     # 5️⃣ 刷新面板统计（这里依然是行级，和你原来一致）
-    pending_completion = await session.scalar(
-        select(func.count(NotificationModel.id)).where(
-            NotificationModel.status == NOTIFICATION_STATUS_PENDING_COMPLETION,
-            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
-        )
-    ) or 0
-
-    pending_review = await session.scalar(
-        select(func.count(NotificationModel.id)).where(
-            NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
-            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
-        )
-    ) or 0
-
+    pending_completion, pending_review, _ = await get_notification_status_counts(session)
     text = (
         f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
         f"📊 <b>状态统计:</b>\n"
         f"• 待补全：<b>{pending_completion}</b>\n"
         f"• 待发送：<b>{pending_review}</b>\n\n"
         f"✅ <b>操作完成：</b> 成功 {success_count}, 失败 {fail_count}\n"
-        f"请选择操作:"
     )
-
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
-    await main_msg.update_on_callback(
-        callback,
-        text,
-        kb,
-        image_path=get_common_image()
-    )
+    await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
 
 
 @router.callback_query(F.data == "admin:notify_preview")
 async def handle_notify_preview(
     callback: types.CallbackQuery,
     session: AsyncSession,
-    main_msg: MainMessageService,
     state: FSMContext
 ) -> None:
     """生成通知预览 - 每条消息关联具体通知ID"""
@@ -360,8 +238,8 @@ async def handle_notify_preview(
 @router.callback_query(F.data.startswith("admin:notify_reject:"))
 async def handle_notify_reject(
     callback: types.CallbackQuery,
-    session: AsyncSession,
-    main_msg: MainMessageService) -> None:
+    session: AsyncSession
+    ) -> None:
     """拒绝单条通知 - 将指定通知状态改为rejected"""
 
     # 从callback_data中提取通知ID

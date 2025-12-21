@@ -18,19 +18,22 @@ if TYPE_CHECKING:
 
 from bot.database.models.notification import NotificationModel
 
+if TYPE_CHECKING:
+    from bot.database.models.notification import NotificationModel as NotificationModelType
+
 OVERVIEW_MAX_LEN = 150
 
 
 def _build_item_image_url(item: EmbyItemModel) -> str | None:
     """构造媒体封面图片URL。
 
-    功能说明：
+    功能说明:
     - 使用 `Primary` 或 `Logo` 图片Tag构造 Emby 图片访问链接
 
-    输入参数：
+    输入参数:
     - item: EmbyItemModel 媒体详情
 
-    返回值：
+    返回值:
     - str | None: 图片URL, 无可用图片时返回 None
     """
 
@@ -59,14 +62,14 @@ def _build_item_image_url(item: EmbyItemModel) -> str | None:
 def _extract_library_tag(path: str | None) -> str:
     """从媒体路径解析分类标签。
 
-    功能说明：
+    功能说明:
     - 兼容 Windows 路径分隔符
     - 约定目录包含 "钙片/剧集/电影" 时生成对应 tag
 
-    输入参数：
+    输入参数:
     - path: 文件路径或 None
 
-    返回值：
+    返回值:
     - str: 标签字符串, 不存在返回空串
     """
 
@@ -90,13 +93,13 @@ def _extract_library_tag(path: str | None) -> str:
 def _build_series_info(item: EmbyItemModel) -> str:
     """生成剧集进度与状态文本(仅 Series)。
 
-    功能说明：
+    功能说明:
     - 仅当 item.type == "Series" 时返回内容, 否则返回空串
 
-    输入参数：
+    输入参数:
     - item: EmbyItemModel 媒体详情
 
-    返回值：
+    返回值:
     - str: 剧集信息文本, 可能为空串
     """
 
@@ -121,13 +124,13 @@ def _build_series_info(item: EmbyItemModel) -> str:
 def _truncate_overview(overview: str) -> str:
     """截断简介文本.
 
-    功能说明：
+    功能说明:
     - 将简介限制在 `OVERVIEW_MAX_LEN` 以内, 超出部分追加省略号
 
-    输入参数：
+    输入参数:
     - overview: 原始简介文本
 
-    返回值：
+    返回值:
     - str: 截断后的简介文本
     """
 
@@ -139,14 +142,14 @@ def _truncate_overview(overview: str) -> str:
 def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
     """生成通知消息内容和图片URL。
 
-    功能说明：
+    功能说明:
     - 基于 `EmbyItemModel` 生成推送文案与图片链接
     - 图片链接使用 Emby `/Items/{Id}/Images/{Type}` 接口
 
-    输入参数：
+    输入参数:
     - item: EmbyItemModel 媒体详情
 
-    返回值：
+    返回值:
     - tuple[str, str | None]: (消息HTML文本, 图片URL或None)
     """
 
@@ -160,11 +163,11 @@ def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
     if series_info:
         msg_parts.append(series_info)
 
-    msg_parts.append(f"📅 <b>时间:</b>{item.date_created if item.date_created else '未知'}")
+    msg_parts.append(f"📅 <b>时间：</b>{item.date_created if item.date_created else '未知'}")
 
     overview = item.overview or ""
     if overview:
-        msg_parts.append(f"📝 <b>简介:</b>{_truncate_overview(overview)}")
+        msg_parts.append(f"📝 <b>简介：</b>{_truncate_overview(overview)}")
 
     return "\n".join(msg_parts), image_url
 
@@ -218,3 +221,42 @@ async def get_notification_status_counts(session: AsyncSession) -> tuple[int, in
     rejected = counts.get(NOTIFICATION_STATUS_REJECTED, 0)
 
     return pending_completion, pending_review, rejected
+
+
+def get_check_id_for_notification(notif: NotificationModelType) -> str:
+    """根据通知类型获取用于检测的ID。
+
+    功能说明:
+    - 对于Episode类型使用series_id，其他类型使用item_id
+
+    输入参数:
+    - notif: NotificationModel 通知模型
+
+    返回值:
+    - str: 用于检测的ID
+    """
+    if notif.item_type == "Episode" and notif.series_id:
+        return notif.series_id
+    return notif.item_id
+
+
+def get_item_ids_from_notifications(notifications: list[NotificationModelType]) -> list[str]:
+    """从通知列表中提取需要去查询的item_id列表。
+
+    功能说明:
+    - 对于Episode类型使用series_id，其他类型使用item_id，并去重
+
+    输入参数:
+    - notifications: list[NotificationModel] 通知列表
+
+    返回值:
+    - list[str]: 去重后的item_id列表
+    """
+    item_ids = []
+    for notif in notifications:
+        check_id = get_check_id_for_notification(notif)
+        if check_id:
+            item_ids.append(check_id)
+
+    # 去重
+    return list(set(item_ids))
