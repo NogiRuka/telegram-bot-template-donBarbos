@@ -29,9 +29,8 @@ from bot.keyboards.inline.constants import ADMIN_NEW_ITEM_NOTIFICATION_LABEL
 from bot.services.emby_service import fetch_and_save_item_details
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
+from bot.utils.message import delete_message, delete_message_after_delay
 from bot.utils.notification import (
-    create_auto_delete_task,
-    delete_message_safely,
     get_check_id_for_notification,
     get_notification_content,
     get_notification_status_counts,
@@ -65,9 +64,6 @@ async def show_notification_panel(
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
 
     await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
-
-
-
 
 
 @router.callback_query(F.data == "admin:notify_complete")
@@ -146,24 +142,6 @@ async def handle_notify_complete(
     )
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
     await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
-
-
-async def delete_message_after_delay(message: types.Message, delay: int = 3) -> None:
-    """延迟指定时间后删除消息（已废弃，使用 delete_message_after_delay 替代）。
-
-    功能说明:
-    - 等待指定秒数后删除消息
-    - 使用工具函数安全删除，避免删除失败影响主流程
-
-    输入参数:
-    - message: 要删除的消息对象
-    - delay: 延迟时间（秒）
-
-    返回值:
-    - None
-    """
-    from bot.utils.notification import delete_message_after_delay as util_delete_after_delay
-    util_delete_after_delay(message, delay)
 
 
 @router.callback_query(F.data == "admin:notify_preview")
@@ -259,9 +237,8 @@ async def handle_notify_preview(
 async def handle_notify_reject(
     callback: types.CallbackQuery,
     session: AsyncSession
-    ) -> None:
+) -> None:
     """拒绝单条通知 - 将指定通知状态改为rejected"""
-
     # 从callback_data中提取通知ID
     notification_id = int(callback.data.split(":")[2])
 
@@ -284,7 +261,7 @@ async def handle_notify_reject(
     await session.commit()
 
     # 删除预览消息
-    await delete_message_safely(callback.message)
+    await delete_message(callback.message)
 
     await callback.answer(f"🚫 已拒绝通知: {notification.title or '未知'}")
 
@@ -330,7 +307,7 @@ async def handle_close_preview(callback: types.CallbackQuery, state: FSMContext)
         await state.update_data(preview_data={})
     else:
         # 可能是缓存过期或重启，尝试删除当前这一条
-        await delete_message_safely(callback.message)
+        await delete_message(callback.message)
         await callback.answer("预览缓存已失效，仅删除当前消息", show_alert=False)
 
 
@@ -341,7 +318,6 @@ async def handle_add_sender_complete(
     state: FSMContext
 ) -> None:
     """处理添加通知者的输入"""
-
     data = await state.get_data()
     notification_id = data.get("notification_id")
 
@@ -361,7 +337,7 @@ async def handle_add_sender_complete(
         return
 
     # 删除用户输入的消息，保持对话框清洁
-    await delete_message_safely(message)
+    await delete_message(message)
 
     # 解析用户输入（可以是用户ID、用户名等）
     if not message.text:
@@ -390,7 +366,7 @@ async def handle_add_sender_complete(
     )
 
     # 3秒后删除成功消息
-    delete_message_after_delay(success_msg, 3)
+    delete_message_after_delay(success_msg)
 
     await state.clear()
 
