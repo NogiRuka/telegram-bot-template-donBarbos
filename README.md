@@ -251,11 +251,13 @@
 │   │       ├── base.py         # 模型基类（时间戳、ID等）
 │   │       ├── config.py       # 配置表
 │   │       ├── audit_log.py    # 审计日志
+│   │       ├── emby_item.py    # Emby 媒体项
 │   │       ├── emby_user.py    # Emby 用户
 │   │       ├── emby_user_history.py  # Emby 用户历史记录
 │   │       ├── group_config.py # 群组配置
 │   │       ├── hitokoto.py     # 一言数据
 │   │       ├── message.py      # 消息记录
+│   │       ├── notification.py # 通知记录
 │   │       ├── statistics.py   # 统计指标
 │   │       ├── user.py         # 用户
 │   │       ├── user_extend.py  # 用户扩展信息
@@ -267,6 +269,7 @@
 │   │   │   ├── groups.py       # 群组管理
 │   │   │   ├── hitokoto.py     # 一言管理
 │   │   │   ├── home.py         # 管理员首页
+│   │   │   ├── notification.py # 通知管理
 │   │   │   ├── registration.py # 注册管理
 │   │   │   └── stats.py        # 统计信息
 │   │   ├── group/              # 群组子路由
@@ -274,27 +277,21 @@
 │   │   │   ├── group_message_saver.py  # 群消息保存
 │   │   │   └── message_export.py       # 群消息导出
 │   │   ├── owner/              # 所有者专属命令
-│   │   │   ├── admin_perms.py  # 管理员权限管理
+│   │   │   ├── admin_features.py # 管理员功能管理
 │   │   │   ├── admins.py       # 管理员列表管理
-│   │   │   ├── features.py     # 功能开关
-│   │   │   └── home.py         # 所有者首页
+│   │   │   ├── home.py         # 所有者首页
+│   │   │   └── user_features.py # 用户功能管理
 │   │   ├── user/               # 普通用户子路由
 │   │   │   ├── account.py      # 账户操作
-│   │   │   ├── account_center.py  # 账户中心
 │   │   │   ├── devices.py      # 设备管理
 │   │   │   ├── info.py         # 用户信息
 │   │   │   ├── lines.py        # 线路选择
 │   │   │   ├── password.py     # 密码管理
 │   │   │   ├── profile.py      # 个人资料
-│   │   │   └── register.py     # 用户注册
+│   │   │   ├── register.py     # 用户注册
+│   │   │   └── tags.py         # 标签管理
 │   │   ├── admin_commands.py   # 顶层管理员命令
-│   │   ├── emby.py             # Emby 相关处理
-│   │   ├── export_users.py     # 用户导出
-│   │   ├── group_config.py     # 群组配置
-│   │   ├── group_message_saver.py  # 群消息保存
-│   │   ├── message_export.py   # 私聊消息导出
 │   │   ├── start.py            # /start 命令
-│   │   └── support.py          # 支持与反馈
 │   ├── middlewares/            # 中间件模块
 │   │   ├── auth.py             # 鉴权与管理员校验
 │   │   ├── bot_enabled.py      # Bot 开关检查
@@ -311,6 +308,11 @@
 │   │   ├── inline/             # 内联键盘
 │   │   └── reply/              # 回复键盘
 │   ├── services/               # 业务逻辑服务
+│   │   ├── notification/       # 通知服务包
+│   │   │   ├── action.py       # 通知动作
+│   │   │   ├── query.py        # 通知查询
+│   │   │   ├── send.py         # 通知发送
+│   │   │   └── utils.py        # 通知工具
 │   │   ├── analytics.py        # 分析服务聚合
 │   │   ├── config_service.py   # 配置服务
 │   │   ├── emby_service.py     # Emby 服务
@@ -331,6 +333,7 @@
 │       ├── hitokoto.py         # 一言工具
 │       ├── http.py             # HTTP 请求工具
 │       ├── permissions.py      # 权限工具
+│       ├── security.py         # 安全/加密工具
 │       ├── singleton.py        # 单例基类
 │       ├── text.py             # 文本处理工具
 │       ├── users_export.py     # 用户导出工具
