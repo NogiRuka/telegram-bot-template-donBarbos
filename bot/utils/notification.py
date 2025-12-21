@@ -1,11 +1,22 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from sqlalchemy import case, func, select
+
 from bot.core.config import settings
+from bot.core.constants import (
+    EVENT_TYPE_LIBRARY_NEW,
+    NOTIFICATION_STATUS_PENDING_COMPLETION,
+    NOTIFICATION_STATUS_PENDING_REVIEW,
+    NOTIFICATION_STATUS_REJECTED,
+)
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from bot.database.models.emby_item import EmbyItemModel
 
+from bot.database.models.notification import NotificationModel
 
 OVERVIEW_MAX_LEN = 150
 
@@ -149,10 +160,61 @@ def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
     if series_info:
         msg_parts.append(series_info)
 
-    msg_parts.append(f"📅 <b>时间：</b>{item.date_created if item.date_created else '未知'}")
+    msg_parts.append(f"📅 <b>时间:</b>{item.date_created if item.date_created else '未知'}")
 
     overview = item.overview or ""
     if overview:
-        msg_parts.append(f"📝 <b>简介：</b>{_truncate_overview(overview)}")
+        msg_parts.append(f"📝 <b>简介:</b>{_truncate_overview(overview)}")
 
     return "\n".join(msg_parts), image_url
+
+
+async def get_notification_status_counts(session: AsyncSession) -> tuple[int, int, int]:
+    """获取通知状态统计(待补全、待审核、已拒绝)。
+
+    功能说明:
+    - 统计新片通知中不同状态的数量
+    - 使用 case 语句对 Episode 和 Series 类型进行分组统计
+    - Episode 类型且有 series_id 的按 series_id 分组, Series 类型按 item_id 分组
+
+    输入参数:
+    - session: AsyncSession 数据库会话
+
+    返回值:
+    - tuple[int, int, int]: (待补全数量, 待审核数量, 已拒绝数量)
+    """
+    count_key = case(
+        (
+            (NotificationModel.item_type == "Episode")
+            & (NotificationModel.series_id.isnot(None)),
+            NotificationModel.series_id,
+        ),
+        (
+            NotificationModel.item_type == "Series",
+            NotificationModel.item_id,
+        ),
+        else_=NotificationModel.item_id,
+    )
+    stmt = (
+        select(
+            NotificationModel.status,
+            func.count(func.distinct(count_key)).label("cnt"),
+        )
+        .where(
+            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
+            NotificationModel.status.in_([
+                NOTIFICATION_STATUS_PENDING_COMPLETION,
+                NOTIFICATION_STATUS_PENDING_REVIEW,
+                NOTIFICATION_STATUS_REJECTED,
+            ]),
+        )
+        .group_by(NotificationModel.status)
+    )
+    rows = await session.execute(stmt)
+    counts = {row.status: row.cnt for row in rows}
+
+    pending_completion = counts.get(NOTIFICATION_STATUS_PENDING_COMPLETION, 0)
+    pending_review = counts.get(NOTIFICATION_STATUS_PENDING_REVIEW, 0)
+    rejected = counts.get(NOTIFICATION_STATUS_REJECTED, 0)
+
+    return pending_completion, pending_review, rejected

@@ -29,6 +29,7 @@ from bot.keyboards.inline.constants import ADMIN_NEW_ITEM_NOTIFICATION_LABEL
 from bot.services.emby_service import fetch_and_save_item_details
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
+from bot.utils.notification import get_notification_status_counts
 
 router = Router(name="notification")
 
@@ -45,37 +46,7 @@ async def show_notification_panel(
     main_msg: MainMessageService
 ) -> None:
     """显示新片通知管理面板"""
-    count_key = case(
-        (
-            (NotificationModel.item_type == "Episode")
-            & (NotificationModel.series_id.isnot(None)),
-            NotificationModel.series_id,
-        ),
-        (
-            NotificationModel.item_type == "Series",
-            NotificationModel.item_id,
-        ),
-        else_=NotificationModel.item_id,
-    )
-    stmt = (
-        select(
-            NotificationModel.status,
-            func.count(func.distinct(count_key)).label("cnt"),
-        )
-        .where(
-            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
-            NotificationModel.status.in_(
-                [NOTIFICATION_STATUS_PENDING_COMPLETION, NOTIFICATION_STATUS_PENDING_REVIEW, NOTIFICATION_STATUS_REJECTED]
-            ),
-        )
-        .group_by(NotificationModel.status)
-    )
-    rows = await session.execute(stmt)
-    counts = {row.status: row.cnt for row in rows}
-
-    pending_completion = counts.get(NOTIFICATION_STATUS_PENDING_COMPLETION, 0)
-    pending_review = counts.get(NOTIFICATION_STATUS_PENDING_REVIEW, 0)
-    rejected = counts.get("rejected", 0)
+    pending_completion, pending_review, rejected = await get_notification_status_counts(session)
 
     text = (
         f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
@@ -85,8 +56,8 @@ async def show_notification_panel(
         f"• 已拒绝: <b>{rejected}</b>\n\n"
         f"请选择操作:"
     )
-
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
+
     await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
 
 
@@ -199,12 +170,12 @@ async def handle_notify_complete(
     session: AsyncSession,
     main_msg: MainMessageService
 ) -> None:
-    """执行上新补全"""
+    """执行上新补全（口径与统计完全一致）"""
 
     success_count = 0
     fail_count = 0
 
-    # 获取所有待补全的library.new通知
+    # 1️⃣ 获取所有待补全的 library.new 通知（行级）
     stmt = select(NotificationModel).where(
         NotificationModel.status == NOTIFICATION_STATUS_PENDING_COMPLETION,
         NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
@@ -216,44 +187,61 @@ async def handle_notify_complete(
         await callback.answer("🈚 没有待补全的通知", show_alert=False)
         return
 
-    total = len(notifications)
-    # 提示改为 Alert 形式，不需要用户确认
-    await callback.answer(f"⏳ 开始补全 {total} 条记录...", show_alert=False)
-
-    # 提取需要去查询的item_ids（使用公共函数）
-    unique_item_ids = get_item_ids_from_notifications(notifications)
-
-    # 批量调用 Service
-    batch_results = await fetch_and_save_item_details(session, unique_item_ids)
+    # 2️⃣ 按统计规则分组（Episode → series_id，其它 → item_id）
+    grouped: dict[int, list[NotificationModel]] = {}
 
     for notif in notifications:
-        if not notif.item_id:
+        key = notif.series_id if notif.item_type == "Episode" and notif.series_id else notif.item_id
+
+        if not key:
             notif.status = NOTIFICATION_STATUS_FAILED
             fail_count += 1
             continue
 
-        # 根据批量结果更新状态
-        # Episode类型使用series_id检测，其他类型使用item_id
-        check_id = notif.item_id
-        if notif.item_type == "Episode" and notif.series_id:
-            check_id = notif.series_id
+        grouped.setdefault(key, []).append(notif)
 
-        if batch_results.get(check_id):
-            notif.status = NOTIFICATION_STATUS_PENDING_REVIEW
+    # ✅ 真实补全数量（作品数）
+    await callback.answer(
+        f"⏳ 开始补全 {len(grouped)} 个作品...",
+        show_alert=False
+    )
+
+    # 3️⃣ 只对唯一 key 做补全
+    unique_keys = list(grouped.keys())
+
+    batch_results = await fetch_and_save_item_details(
+        session,
+        unique_keys
+    )
+
+    # 4️⃣ 按 key 的补全结果，回写该组下所有通知状态
+    for key, group in grouped.items():
+        ok = batch_results.get(key, False)
+
+        # ✅ key 级计数（只加一次）
+        if ok:
             success_count += 1
         else:
-            notif.status = NOTIFICATION_STATUS_FAILED
             fail_count += 1
+
+        # 行级只改状态，不计数
+        for notif in group:
+            notif.status = (
+                NOTIFICATION_STATUS_PENDING_REVIEW
+                if ok
+                else NOTIFICATION_STATUS_FAILED
+            )
 
     await session.commit()
 
-    # 刷新界面显示结果
+    # 5️⃣ 刷新面板统计（这里依然是行级，和你原来一致）
     pending_completion = await session.scalar(
         select(func.count(NotificationModel.id)).where(
             NotificationModel.status == NOTIFICATION_STATUS_PENDING_COMPLETION,
             NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
         )
     ) or 0
+
     pending_review = await session.scalar(
         select(func.count(NotificationModel.id)).where(
             NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
@@ -264,14 +252,19 @@ async def handle_notify_complete(
     text = (
         f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
         f"📊 <b>状态统计:</b>\n"
-        f"• 待补全: <b>{pending_completion}</b>\n"
-        f"• 待发送: <b>{pending_review}</b>\n\n"
-        f"✅ <b>操作完成:</b> 成功 {success_count}, 失败 {fail_count}\n"
+        f"• 待补全：<b>{pending_completion}</b>\n"
+        f"• 待发送：<b>{pending_review}</b>\n\n"
+        f"✅ <b>操作完成：</b> 成功 {success_count}, 失败 {fail_count}\n"
         f"请选择操作:"
     )
 
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
-    await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
+    await main_msg.update_on_callback(
+        callback,
+        text,
+        kb,
+        image_path=get_common_image()
+    )
 
 
 @router.callback_query(F.data == "admin:notify_preview")
