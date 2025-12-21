@@ -1,5 +1,4 @@
 import asyncio
-import contextlib
 
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
@@ -31,6 +30,8 @@ from bot.services.emby_service import fetch_and_save_item_details
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
 from bot.utils.notification import (
+    create_auto_delete_task,
+    delete_message_safely,
     get_check_id_for_notification,
     get_notification_content,
     get_notification_status_counts,
@@ -147,12 +148,12 @@ async def handle_notify_complete(
     await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
 
 
-async def delete_message_after_delay(message: types.Message, delay: int) -> None:
-    """延迟删除消息
+async def delete_message_after_delay(message: types.Message, delay: int = 3) -> None:
+    """延迟指定时间后删除消息。
 
     功能说明:
-    - 等待指定时间后删除消息
-    - 用于保持对话框清洁
+    - 等待指定秒数后删除消息
+    - 使用工具函数安全删除，避免删除失败影响主流程
 
     输入参数:
     - message: 要删除的消息对象
@@ -163,8 +164,7 @@ async def delete_message_after_delay(message: types.Message, delay: int) -> None
     """
     try:
         await asyncio.sleep(delay)
-        with contextlib.suppress(Exception):
-            await message.delete()
+        await delete_message_safely(message)
     except Exception as e:
         logger.warning(f"延迟删除消息失败: {e}")
 
@@ -287,8 +287,7 @@ async def handle_notify_reject(
     await session.commit()
 
     # 删除预览消息
-    with contextlib.suppress(Exception):
-        await callback.message.delete()
+    await delete_message_safely(callback.message)
 
     await callback.answer(f"🚫 已拒绝通知: {notification.title or '未知'}")
 
@@ -334,8 +333,7 @@ async def handle_close_preview(callback: types.CallbackQuery, state: FSMContext)
         await state.update_data(preview_data={})
     else:
         # 可能是缓存过期或重启，尝试删除当前这一条
-        with contextlib.suppress(Exception):
-            await callback.message.delete()
+        await delete_message_safely(callback.message)
         await callback.answer("预览缓存已失效，仅删除当前消息", show_alert=False)
 
 
@@ -366,8 +364,7 @@ async def handle_add_sender_complete(
         return
 
     # 删除用户输入的消息，保持对话框清洁
-    with contextlib.suppress(Exception):
-        await message.delete()
+    await delete_message_safely(message)
 
     # 解析用户输入（可以是用户ID、用户名等）
     if not message.text:
@@ -396,9 +393,7 @@ async def handle_add_sender_complete(
     )
 
     # 3秒后删除成功消息
-    task = asyncio.create_task(delete_message_after_delay(success_msg, 3))
-    # 保存任务引用避免被垃圾回收
-    setattr(task, '_ignore', True)
+    create_auto_delete_task(success_msg, 3)
 
     await state.clear()
 
