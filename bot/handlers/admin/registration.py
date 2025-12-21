@@ -18,7 +18,7 @@ from bot.keyboards.inline.buttons import (
     BACK_TO_HOME_BUTTON,
 )
 from bot.services.main_message import MainMessageService
-from bot.utils.datetime import format_datetime, parse_iso_datetime
+from bot.utils.datetime import format_datetime, now, to_iso_string
 from bot.utils.images import get_common_image
 from bot.utils.permissions import require_admin_feature, require_admin_priv
 
@@ -47,7 +47,7 @@ async def open_registration_feature(
     - None
     """
 
-    caption, kb = await _build_registration_caption_and_keyboard(session)
+    caption, kb = await _build_reg_kb(session)
     logger.info(f"ℹ️ [open_registration_feature] caption内容: {caption}")
 
     await main_msg.update_on_callback(callback, caption, kb, get_common_image())
@@ -77,7 +77,7 @@ async def toggle_free_registration(
     current = await get_free_registration_status(session)
     new_val = not current
     await set_free_registration_status(session, new_val, operator_id=callback.from_user.id)
-    caption, kb = await _build_registration_caption_and_keyboard(session)
+    caption, kb = await _build_reg_kb(session)
     await main_msg.update_on_callback(callback, caption, kb, get_common_image())
     await callback.answer(f"{'🟢' if new_val else '🔴'} 自由注册已{'开启' if new_val else '关闭'}")
 
@@ -104,11 +104,12 @@ async def set_registration_preset(callback: CallbackQuery, session: AsyncSession
     except ValueError:
         await callback.answer("🔴 参数无效", show_alert=True)
         return
-    beijing = timezone(timedelta(hours=8))
-    start_dt = datetime.now(beijing)
-    start_iso = start_dt.isoformat()
+    
+    # 使用工具函数获取当前时间并转换为 ISO 格式
+    start_dt = now()
+    start_iso = to_iso_string(start_dt)
     await set_registration_window(session, start_iso, duration, operator_id=callback.from_user.id)
-    caption, kb = await _build_registration_caption_and_keyboard(session)
+    caption, kb = await _build_reg_kb(session)
     await main_msg.update_on_callback(callback, caption, kb, get_common_image())
     await callback.answer(f"🟢 已设置时间窗: {duration} 分钟")
 
