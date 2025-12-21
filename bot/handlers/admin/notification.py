@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 
 from aiogram import F, Router, types
@@ -146,6 +147,28 @@ async def handle_notify_complete(
     await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
 
 
+async def delete_message_after_delay(message: types.Message, delay: int) -> None:
+    """延迟删除消息
+
+    功能说明:
+    - 等待指定时间后删除消息
+    - 用于保持对话框清洁
+
+    输入参数:
+    - message: 要删除的消息对象
+    - delay: 延迟时间（秒）
+
+    返回值:
+    - None
+    """
+    try:
+        await asyncio.sleep(delay)
+        with contextlib.suppress(Exception):
+            await message.delete()
+    except Exception as e:
+        logger.warning(f"延迟删除消息失败: {e}")
+
+
 @router.callback_query(F.data == "admin:notify_preview")
 async def handle_notify_preview(
     callback: types.CallbackQuery,
@@ -284,11 +307,10 @@ async def handle_add_sender_start(
     await state.update_data(notification_id=notification_id)
     await state.set_state(NotificationStates.waiting_for_additional_sender)
 
-    await callback.message.answer(
+    await callback.answer(
         "请输入要添加的通知者信息（可以是用户ID、用户名等）：\n"
         "或者直接回复消息来引用用户"
     )
-    await callback.answer()
 
 
 @router.callback_query(F.data == "admin:notify_close_preview")
@@ -343,7 +365,16 @@ async def handle_add_sender_complete(
         await state.clear()
         return
 
+    # 删除用户输入的消息，保持对话框清洁
+    with contextlib.suppress(Exception):
+        await message.delete()
+
     # 解析用户输入（可以是用户ID、用户名等）
+    if not message.text:
+        await message.answer("❌ 请输入有效的通知者信息")
+        await state.clear()
+        return
+
     sender_info = message.text.strip()
 
     # 获取当前的发送者信息
@@ -353,14 +384,21 @@ async def handle_add_sender_complete(
     new_senders = f"{current_senders},{sender_info}" if current_senders else sender_info
 
     notification.target_channel_id = new_senders
-    notification.updated_by = message.from_user.id
+    if message.from_user:
+        notification.updated_by = message.from_user.id
 
     await session.commit()
 
-    await message.answer(
+    # 发送成功消息
+    success_msg = await message.answer(
         f"✅ 已为通知 '{notification.item_name or notification.series_name or '未知'}' "
         f"添加通知者: {sender_info}"
     )
+
+    # 3秒后删除成功消息
+    task = asyncio.create_task(delete_message_after_delay(success_msg, 3))
+    # 保存任务引用避免被垃圾回收
+    setattr(task, '_ignore', True)
 
     await state.clear()
 
