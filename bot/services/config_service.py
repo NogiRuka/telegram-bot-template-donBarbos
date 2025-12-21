@@ -18,7 +18,7 @@ from bot.config import (
 )
 from bot.database.models.config import ConfigModel, ConfigType
 from bot.utils.datetime import now as get_now
-from bot.utils.datetime import parse_iso_datetime
+from bot.utils.datetime import parse_iso_datetime, parse_formatted_datetime
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -160,7 +160,7 @@ async def get_registration_window(session: AsyncSession) -> dict[str, Any] | Non
 
     功能说明:
     - 从 `config` 表读取管理员设置的注册时间窗 JSON
-    - 返回结构: {"start_iso": str, "duration_minutes": int}
+    - 返回结构: {"start_time": str, "duration_minutes": int}
 
     输入参数:
     - session: 异步数据库会话
@@ -222,7 +222,7 @@ async def set_free_registration_status(session: AsyncSession, enabled: bool, ope
 
 async def set_registration_window(
     session: AsyncSession,
-    start_iso: str | None,
+    start_time: str | None,
     duration_minutes: int | None,
     operator_id: int | None = None,
 ) -> bool:
@@ -233,7 +233,7 @@ async def set_registration_window(
 
     输入参数:
     - session: 异步数据库会话
-    - start_iso: ISO8601 开始时间字符串, 为空表示立即生效
+    - start_time: 格式化开始时间字符串 (YYYY-MM-DD HH:MM:SS), 为空表示立即生效
     - duration_minutes: 持续分钟数, 为空表示不限时
     - operator_id: 操作者用户ID
 
@@ -241,8 +241,8 @@ async def set_registration_window(
     - bool: True 表示写入成功
     """
     payload: dict[str, Any] = {}
-    if start_iso:
-        payload["start_iso"] = start_iso
+    if start_time:
+        payload["start_time"] = start_time
     if duration_minutes is not None:
         payload["duration_minutes"] = int(duration_minutes)
     return await set_config(
@@ -281,13 +281,13 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
             # 如果有提供时间戳, 转换为datetime
             _now = datetime.fromtimestamp(now_ts).replace(microsecond=0)
 
-        start_iso = window.get("start_iso")
+        start_time = window.get("start_time")
         duration = window.get("duration_minutes")
-        if not start_iso and duration is None:
+        if not start_time and duration is None:
             return False
 
-        # 使用统一的 ISO 时间解析函数
-        start = parse_iso_datetime(start_iso) if start_iso else _now
+        # 使用统一的格式化时间解析函数
+        start = parse_formatted_datetime(start_time) if start_time else _now
         if start is None:
             return False
 

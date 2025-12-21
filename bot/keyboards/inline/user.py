@@ -97,6 +97,25 @@ def get_user_info_keyboard() -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
+def get_password_input_keyboard() -> InlineKeyboardMarkup:
+    """修改密码输入等待键盘
+
+    功能说明:
+    - 用户点击修改密码后展示, 仅包含取消修改按钮
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 内联键盘
+    """
+    buttons = [
+        [CANCEL_PASSWORD_CHANGE_BUTTON],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
 def get_user_profile_keyboard() -> InlineKeyboardMarkup:
     """用户个人资料键盘
 

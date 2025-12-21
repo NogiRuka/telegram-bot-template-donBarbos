@@ -50,6 +50,10 @@ USER_TAGS_CALLBACK_DATA = "user:tags"
 BACK_TO_ACCOUNT_LABEL = "↩️ 返回账号中心"
 BACK_TO_ACCOUNT_CALLBACK_DATA = "user:account"
 
+# 取消修改密码
+CANCEL_PASSWORD_CHANGE_LABEL = "❌ 取消修改"
+CANCEL_PASSWORD_CHANGE_CALLBACK_DATA = "user:cancel_password"
+
 
 # ===== 管理员功能 =====
 # 管理员面板

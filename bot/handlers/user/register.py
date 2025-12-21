@@ -17,7 +17,7 @@ from bot.keyboards.inline.user import (
 from bot.services.config_service import get_registration_window, is_registration_open
 from bot.services.main_message import MainMessageService
 from bot.services.users import create_and_bind_emby_user, has_emby_account
-from bot.utils.datetime import format_datetime, parse_iso_datetime
+from bot.utils.datetime import format_datetime, parse_formatted_datetime, now, get_friendly_timezone_name
 from bot.utils.permissions import require_user_feature
 from bot.utils.text import safe_alert_text
 
@@ -54,38 +54,48 @@ async def user_register(
     返回值:
     - None
     """
-    uid = callback.from_user.id if callback.from_user else None
-
     try:
+        # 首先检查注册是否开放，避免不必要的用户ID获取
         if not await is_registration_open(session):
             window = await get_registration_window(session) or {}
             hint = "🚫 暂未开放注册"
-            start_iso = window.get("start_iso")
+            start_time = window.get("start_time")
             dur = window.get("duration_minutes")
 
-            if start_iso:
-                dt_start = parse_iso_datetime(start_iso)
+            # 获取当前时间用于判断时间是否已经过去（使用应用时区）
+            current_time = now()
+            
+            if start_time:
+                dt_start = parse_formatted_datetime(start_time)
                 if dt_start:
-                    formatted_start = format_datetime(dt_start)
-                    hint += f"\n开始: {formatted_start}"
+                    # 检查开始时间是否已经过去
+                    if dt_start > current_time:
+                        formatted_start = format_datetime(dt_start)
+                        hint += f"\n开始: {formatted_start}"
 
-                    if dur:
-                        end_dt = dt_start + timedelta(minutes=int(dur))
-                        formatted_end = format_datetime(end_dt)
-                        hint += f"\n结束: {formatted_end}"
-                        hint += f"\n时长: {dur} 分钟"
+                        if dur:
+                            end_dt = dt_start + timedelta(minutes=int(dur))
+                            # 检查结束时间是否已经过去
+                            if end_dt > current_time:
+                                formatted_end = format_datetime(end_dt)
+                                hint += f"\n结束: {formatted_end}"
+                            hint += f"\n时长: {dur} 分钟"
 
-                    # 提示时区
-                    hint += f" ({settings.TIMEZONE})"
+                        # 提示时区（使用友好名称）
+                        hint += f" ({get_friendly_timezone_name(settings.TIMEZONE)})"
                 else:
-                    hint += f"\n开始: {start_iso}"
+                    # 无法解析时间，直接显示原始字符串
+                    hint += f"\n开始: {start_time}"
                     if dur:
                         hint += f"\n时长: {dur} 分钟"
             elif dur:
+                # 只有持续时间，没有开始时间
                 hint += f"\n时长: {dur} 分钟"
 
             return await callback.answer(safe_alert_text(hint), show_alert=True)
 
+        # 注册开放，再获取用户ID进行后续检查
+        uid = callback.from_user.id if callback.from_user else None
         if not uid:
             return await callback.answer("🔴 无法获取用户ID", show_alert=True)
 
@@ -210,6 +220,21 @@ async def handle_register_input(
         await state.clear()
         return
 
+    # 1. 检查注册是否开放
+    if not await is_registration_open(session):
+        await state.clear()
+        await main_msg.update(uid, "🚫 注册已关闭", get_account_center_keyboard(False))
+        return
+
+    # 2. 检查状态是否已被超时任务清除
+    # 防止 "超时提示" 和 "注册成功/失败" 同时出现的竞态条件
+    current_state = await state.get_state()
+    if current_state != RegisterStates.waiting_for_credentials.state:
+        return
+
+    # 3. 立即清除状态，防止后台超时任务触发
+    await state.clear()
+
     try:
         text = (message.text or "").strip()
         parts = text.split(maxsplit=1)
@@ -217,6 +242,9 @@ async def handle_register_input(
         if len(parts) != 2:
             caption = "❌ 格式错误\n\n请输入用户名和密码，以空格分隔：\n用户名 密码\n\n示例：myuser mypassword123"
             await main_msg.update(uid, caption, get_register_input_keyboard())
+            # 恢复状态并重启超时
+            await state.set_state(RegisterStates.waiting_for_credentials)
+            asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
             return
 
         name, password = parts[0], parts[1]
@@ -225,17 +253,26 @@ async def handle_register_input(
         if len(name) < 2:
             caption = "❌ 用户名至少需要 2 个字符\n\n请重新输入用户名和密码，以空格分隔：\n用户名 密码"
             await main_msg.update(uid, caption, get_register_input_keyboard())
+            # 恢复状态并重启超时
+            await state.set_state(RegisterStates.waiting_for_credentials)
+            asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
             return
         if len(password) < 6:
             caption = "❌ 密码至少需要 6 个字符\n\n请重新输入用户名和密码，以空格分隔：\n用户名 密码"
             await main_msg.update(uid, caption, get_register_input_keyboard())
+            # 恢复状态并重启超时
+            await state.set_state(RegisterStates.waiting_for_credentials)
+            asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
             return
+
+        # 更新界面提示正在处理中
+        await main_msg.update(uid, "⏳ 正在创建账号，请稍候...", get_register_input_keyboard())
 
         # 创建用户
         ok, details, err = await create_and_bind_emby_user(session, uid, name, password)
 
         if ok and details:
-            await state.clear()
+            # 注册成功，状态已在上方清除
             caption = (
                 f"✅ 注册成功\n\n"
                 f"📛 Emby 用户名: {details.get('name', '')}\n"
@@ -246,15 +283,18 @@ async def handle_register_input(
         else:
             err_msg = err or "未知错误"
             if "already exists" in err_msg or "already exist" in err_msg:
-                # 不清除状态，允许用户重新输入
+                # 允许用户重新输入
                 caption = (
                     f"❌ 用户名 '{name}' 已存在\n\n"
                     f"请更换一个用户名重试：\n"
                     f"新用户名 密码"
                 )
                 await main_msg.update(uid, caption, get_register_input_keyboard())
+                # 恢复状态并重启超时
+                await state.set_state(RegisterStates.waiting_for_credentials)
+                asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
             else:
-                await state.clear()
+                # 其他错误，保持状态清除
                 caption = f"❌ 注册失败\n\n{err_msg}"
                 await main_msg.update(uid, caption, get_account_center_keyboard(has_emby_account=False))
 

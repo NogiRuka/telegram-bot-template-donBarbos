@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -18,7 +18,7 @@ from bot.keyboards.inline.buttons import (
     BACK_TO_HOME_BUTTON,
 )
 from bot.services.main_message import MainMessageService
-from bot.utils.datetime import format_datetime, now, to_iso_string
+from bot.utils.datetime import format_datetime, now, parse_formatted_datetime, get_friendly_timezone_name
 from bot.utils.images import get_common_image
 from bot.utils.permissions import require_admin_feature, require_admin_priv
 
@@ -105,10 +105,10 @@ async def set_registration_preset(callback: CallbackQuery, session: AsyncSession
         await callback.answer("🔴 参数无效", show_alert=True)
         return
     
-    # 使用工具函数获取当前时间并转换为 ISO 格式
+    # 使用工具函数获取当前时间并使用统一格式存储
     start_dt = now()
-    start_iso = to_iso_string(start_dt)
-    await set_registration_window(session, start_iso, duration, operator_id=callback.from_user.id)
+    formatted_start = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+    await set_registration_window(session, formatted_start, duration, operator_id=callback.from_user.id)
     caption, kb = await _build_reg_kb(session)
     await main_msg.update_on_callback(callback, caption, kb, get_common_image())
     await callback.answer(f"🟢 已设置时间窗: {duration} 分钟")
@@ -144,10 +144,10 @@ async def input_registration_window(message: Message, session: AsyncSession, mai
         await message.answer("🔴 输入格式错误, 示例: 20251130.2300.10")
         return
 
-    beijing = timezone(timedelta(hours=8))
-    start_dt = datetime(year, month, day, hour, minute, tzinfo=beijing)
-    start_iso = start_dt.isoformat()
-    await set_registration_window(session, start_iso, duration, operator_id=message.from_user.id)
+    # 输入时间已经是配置时区的时间，直接使用统一格式存储
+    start_dt = datetime(year, month, day, hour, minute)
+    formatted_start = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+    await set_registration_window(session, formatted_start, duration, operator_id=message.from_user.id)
     with logger.catch():
         await main_msg.delete_input(message)
 
@@ -174,19 +174,17 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
     """
     logger.debug("🔍 [_build_reg_kb] 开始读取配置...")
     free_open = await get_free_registration_status(session)
-    logger.debug(f"🔍 [_build_reg_kb] free_open={free_open}")
 
     window = await get_registration_window(session) or {}
-    logger.debug(f"🔍 [_build_reg_kb] window={window}")
 
-    start_iso = window.get("start_iso")
+    start_time = window.get("start_time")
     duration = window.get("duration_minutes")
 
     # 计算结束时间
     end_str = "未设置"
     formatted_start = "未设置"
-    if start_iso:
-        dt = parse_iso_datetime(start_iso)
+    if start_time:
+        dt = parse_formatted_datetime(start_time)
         if dt:
             formatted_start = format_datetime(dt)
             if duration is not None:
@@ -194,8 +192,8 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
                 end_str = format_datetime(end_dt)
                 logger.debug(f"✅ [_build_reg_kb] 计算结束时间成功: {end_str}")
         else:
-            formatted_start = start_iso
-            logger.warning(f"❌ [_build_reg_kb] 无法解析时间: {start_iso}")
+            formatted_start = start_time
+            logger.warning(f"❌ [_build_reg_kb] 无法解析时间: {start_time}")
     status_line = f"注册状态：{'🟢 开启' if free_open else '🔴 关闭'}\n"
     caption = (
         f"{OPEN_REGISTRATION_LABEL}\n\n"
@@ -203,15 +201,15 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
         + f"开始时间：{formatted_start}\n"
         + f"结束时间：{end_str}\n"
         + f"持续分钟：{duration if duration is not None else '不限'}\n\n"
-        + f"输入格式示例：<code>{datetime.now().strftime('%Y%m%d.%H%M')}.10</code>\n"
-        + f"时区：{settings.TIMEZONE}"
+        + f"输入格式示例：<code>{now().strftime('%Y%m%d.%H%M')}.10</code>\n"
+        + f"时区：{get_friendly_timezone_name(settings.TIMEZONE)}"
     )
     logger.debug("✅ [_build_reg_kb] 生成 caption 成功")
 
     rows: list[list[InlineKeyboardButton]] = []
     rows.append([
         InlineKeyboardButton(
-            text=("🟢 关闭自由注册" if free_open else "🟢 开启自由注册"),
+            text=("🔴 关闭自由注册" if free_open else "🟢 开启自由注册"),
             callback_data="admin:open_registration:toggle_free",
         )
     ])
@@ -221,10 +219,7 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
         InlineKeyboardButton(text="30分钟", callback_data="admin:open_registration:set:30"),
         InlineKeyboardButton(text="60分钟", callback_data="admin:open_registration:set:60"),
     ])
-    rows.append([
-        [BACK_TO_ADMIN_PANEL_BUTTON],
-        [BACK_TO_HOME_BUTTON],
-    ])
+    rows.append([BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON])
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
     logger.debug("✅ [_build_reg_kb] 键盘构建完成")
     return caption, kb

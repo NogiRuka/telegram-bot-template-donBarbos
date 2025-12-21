@@ -51,15 +51,13 @@ async def show_notification_panel(
     main_msg: MainMessageService
 ) -> None:
     """显示新片通知管理面板"""
-    pending_completion, pending_review, rejected = await get_notification_status_counts(session)
+    pending_completion, pending_review, _ = await get_notification_status_counts(session)
 
     text = (
         f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
         f"📊 <b>状态统计:</b>\n"
         f"• 待补全：<b>{pending_completion}</b>\n"
         f"• 待发送：<b>{pending_review}</b>\n"
-        f"• 已拒绝：<b>{rejected}</b>\n\n"
-        f"请选择操作:"
     )
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
 

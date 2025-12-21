@@ -143,6 +143,32 @@ def format_datetime(
     return local_dt.strftime(fmt)
 
 
+def parse_formatted_datetime(s: str | None) -> datetime.datetime | None:
+    """解析格式化的日期时间字符串 (YYYY-MM-DD HH:MM:SS)
+
+    功能说明:
+    - 将格式化的日期时间字符串转为 Python datetime
+    - 假设输入时间为应用时区的时间
+    - 返回带应用时区信息的 datetime 对象
+
+    输入参数:
+    - s: 格式化日期时间字符串 (如 '2025-12-21 14:30:00')
+
+    返回值:
+    - datetime | None: 成功解析返回 datetime (应用时区), 失败返回 None
+    """
+    if not s:
+        return None
+    try:
+        # 解析为 naive datetime (无时区信息)
+        naive_dt = datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
+        # 添加应用时区信息
+        app_tz = get_app_timezone()
+        return naive_dt.replace(tzinfo=app_tz)
+    except (ValueError, TypeError):
+        return None
+
+
 def to_iso_string(dt: datetime.datetime | None) -> str | None:
     """将 datetime 转为 ISO 格式字符串 (应用时区)
 
@@ -182,3 +208,22 @@ def now() -> datetime.datetime:
     app_tz = get_app_timezone()
     local = dt.astimezone(app_tz)
     return local.replace(microsecond=0, tzinfo=None)
+
+
+def get_friendly_timezone_name(tz_name: str) -> str:
+    # 优先匹配常用映射
+    timezone_map = {
+        "Asia/Shanghai": "北京时间",
+        "Asia/Tokyo": "东京时间",
+        "UTC": "协调世界时 (UTC)"
+    }
+    
+    if tz_name in timezone_map:
+        return timezone_map[tz_name]
+    
+    # 如果不在映射里，对名称进行美化处理：'Europe/Paris' -> 'Paris (Europe)'
+    if "/" in tz_name:
+        region, city = tz_name.split('/')
+        return f"{city.replace('_', ' ')} ({region})"
+    
+    return tz_name

@@ -11,29 +11,14 @@ from bot.core.emby import EmbyClient
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.utils.datetime import now, parse_iso_datetime
+from bot.utils.emby import get_emby_client
 from bot.utils.http import HttpRequestError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-def get_client() -> EmbyClient | None:
-    """获取 Emby 客户端
 
-    功能说明:
-    - 从配置中直接构建 `EmbyClient`, 任一配置缺失返回 None
-
-    输入参数:
-    - 无
-
-    返回值:
-    - EmbyClient | None: 客户端实例或 None
-    """
-    base_url = settings.get_emby_base_url()
-    api_key = settings.get_emby_api_key()
-    if not base_url or not api_key:
-        return None
-    return EmbyClient(base_url, api_key)
 
 
 async def list_users(
@@ -60,7 +45,7 @@ async def list_users(
     返回值:
     - list[dict[str, Any]]: 用户列表, 客户端缺失时返回空列表
     """
-    client = get_client()
+    client = get_emby_client()
     if client is None:
         return []
     return await client.get_users(
@@ -95,7 +80,7 @@ async def create_user(
     返回值:
     - tuple[bool, dict[str, Any] | None, str | None]: (是否成功, UserDto, 失败原因)
     """
-    client = get_client()
+    client = get_emby_client()
     if client is None:
         return False, None, "未配置 Emby 连接信息"
 
@@ -167,7 +152,7 @@ async def sync_all_users_configuration(
     返回值:
     - tuple[int, int]: (成功更新数量, 失败数量)
     """
-    client = get_client()
+    client = get_emby_client()
     if client is None:
         logger.warning("⚠️ 未配置 Emby 连接信息, 无法同步配置")
         return 0, 0
@@ -275,7 +260,7 @@ async def get_item_details(item_id: str) -> dict[str, Any] | None:
     返回值:
     - dict | None: 项目详情字典, 失败返回 None
     """
-    client = get_client()
+    client = get_emby_client()
     if client is None:
         return None
 
@@ -325,7 +310,7 @@ async def fetch_and_save_item_details(session: AsyncSession, item_ids: list[str]
     if not item_ids:
         return {}
 
-    client = get_client()
+    client = get_emby_client()
     if client is None:
         logger.warning("⚠️ 未配置 Emby 连接信息")
         return dict.fromkeys(item_ids, False)
@@ -501,7 +486,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
     返回值:
     - tuple[int, int]: (插入数量, 更新数量)
     """
-    client = get_client()
+    client = get_emby_client()
     if client is None:
         logger.warning("⚠️ 未配置 Emby 连接信息, 跳过用户同步")
         return 0, 0

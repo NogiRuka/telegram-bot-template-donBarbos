@@ -613,12 +613,12 @@ async def admin_open_registration_command(message: Message, command: CommandObje
     try:
         # 解析命令参数
         args = (command.args or "").strip().split()
-        start_iso: str | None = None
+        start_time: str | None = None
         duration_minutes: int | None = None
 
-        # 第一个参数为开始时间（ISO格式）
+        # 第一个参数为开始时间（格式化字符串）
         if len(args) >= 1:
-            start_iso = args[0]
+            start_time = args[0]
         # 第二个参数为持续分钟数
         if len(args) >= 2:
             try:
@@ -628,10 +628,10 @@ async def admin_open_registration_command(message: Message, command: CommandObje
                 return
 
         # 设置注册窗口
-        await set_registration_window(session, start_iso, duration_minutes, operator_id=message.from_user.id)
+        await set_registration_window(session, start_time, duration_minutes, operator_id=message.from_user.id)
         # 获取最新窗口配置
         window = await get_registration_window(session) or {}
-        start = window.get("start_iso") or datetime.now(timezone.utc).isoformat()
+        start = window.get("start_time") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         dur = window.get("duration_minutes")
 
         # 构造回复文本
@@ -690,7 +690,7 @@ async def admin_registration_status_command(message: Message, session: AsyncSess
         open_flag = await is_registration_open(session)
         free_open = await get_free_registration_status(session)
         window = await get_registration_window(session) or {}
-        start = window.get("start_iso")
+        start = window.get("start_time")
         dur = window.get("duration_minutes")
         text = "📋 注册状态\n"
         text += f"开关: {'🟢 开启' if open_flag else '🔴 关闭'}\n"
