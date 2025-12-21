@@ -1,9 +1,3 @@
-"""日期时间处理工具函数
-
-提供统一的日期时间解析、格式化功能。
-时区来源于环境变量 `TIMEZONE`，精度到秒。
-"""
-
 from __future__ import annotations
 import contextlib
 import datetime
@@ -50,8 +44,45 @@ def get_app_timezone() -> datetime.tzinfo:
         hours = int(tzoffset[1:3])
         minutes = int(tzoffset[4:6])
         return datetime.timezone(datetime.timedelta(hours=sign * hours, minutes=sign * minutes))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return UTC
+
+
+def parse_datetime(s: Any) -> datetime.datetime | None:
+    """解析日期字符串为应用时区 datetime (精度到秒)
+
+    功能说明:
+    - 支持多种格式：'2025-12-21 20:13:14'、ISO格式等
+    - 去除微秒精度, 只保留到秒
+    - 统一转换为应用时区 (去除tzinfo)
+
+    输入参数:
+    - s: 任意类型的日期字符串 (如 '2025-12-21 20:13:14')
+
+    返回值:
+    - datetime | None: 成功解析返回 datetime (应用时区, 精度到秒), 失败返回 None
+    """
+    if not s:
+        return None
+    try:
+        text = str(s).strip()
+
+        # 如果是标准格式 2025-12-21 20:13:14, 直接解析
+        if len(text) == 19 and text[4] == "-" and text[7] == "-" and text[10] == " " and text[13] == ":" and text[16] == ":":
+            dt = datetime.datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+            return dt.replace(microsecond=0)
+
+        # 如果是ISO格式, 使用原来的解析逻辑
+        if text.endswith("Z"):
+            text = text.replace("Z", "+00:00")
+
+        dt = datetime.datetime.fromisoformat(text)
+        app_tz = get_app_timezone()
+        local = dt.replace(tzinfo=app_tz) if dt.tzinfo is None else dt.astimezone(app_tz)
+        return local.replace(microsecond=0, tzinfo=None)
+    except ValueError as e:
+        logger.debug(f"🔍 无法解析日期字段: {s}, 错误: {e}")
+        return None
 
 
 def parse_iso_datetime(s: Any) -> datetime.datetime | None:
@@ -78,11 +109,7 @@ def parse_iso_datetime(s: Any) -> datetime.datetime | None:
 
         dt = datetime.datetime.fromisoformat(text)
         app_tz = get_app_timezone()
-        if dt.tzinfo is None:
-            # 认为无时区的时间戳即为应用时区本地时间
-            local = dt.replace(tzinfo=app_tz)
-        else:
-            local = dt.astimezone(app_tz)
+        local = dt.replace(tzinfo=app_tz) if dt.tzinfo is None else dt.astimezone(app_tz)
         return local.replace(microsecond=0, tzinfo=None)
     except ValueError as e:
         logger.debug(f"🔍 无法解析日期字段: {s}, 错误: {e}")

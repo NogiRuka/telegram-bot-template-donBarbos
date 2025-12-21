@@ -278,7 +278,7 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
         # 使用统一的工具函数处理时间
         _now = get_now()  # 获取当前应用时区时间 (无时区信息)
         if now_ts is not None:
-            # 如果有提供时间戳，转换为datetime
+            # 如果有提供时间戳, 转换为datetime
             _now = datetime.fromtimestamp(now_ts).replace(microsecond=0)
 
         start_iso = window.get("start_iso")
