@@ -450,9 +450,24 @@ async def execute_send_all(
 
             msg_text, image_url = get_notification_content(item)
 
-            # 发送给所有目标频道
+            # 合并目标频道：配置的频道 + 通知原有的target_channel_id
+            all_target_chat_ids = list(target_chat_ids)  # 从配置获取的频道
+
+            # 如果通知本身有target_channel_id，也要发送给这些人
+            if notif.target_channel_id:
+                try:
+                    # 解析原有的target_channel_id（逗号分隔的字符串）
+                    existing_targets = [int(x.strip()) for x in notif.target_channel_id.split(",") if x.strip()]
+                    # 添加到目标列表中，避免重复
+                    for target in existing_targets:
+                        if target not in all_target_chat_ids:
+                            all_target_chat_ids.append(target)
+                except ValueError as e:
+                    logger.warning(f"⚠️ 解析通知的target_channel_id失败: {notif.target_channel_id} -> {e}")
+
+            # 发送给所有目标频道（配置频道 + 原有目标）
             send_success = False
-            for chat_id in target_chat_ids:
+            for chat_id in all_target_chat_ids:
                 try:
                     if image_url:
                         await callback.bot.send_photo(chat_id=chat_id, photo=image_url, caption=msg_text)
@@ -465,8 +480,8 @@ async def execute_send_all(
             # 只要有一个发送成功，就标记为成功
             if send_success:
                 notif.status = NOTIFICATION_STATUS_SENT
-                # 记录发送的目标ID列表
-                notif.target_channel_id = ",".join(str(x) for x in target_chat_ids)
+                # 记录发送的目标ID列表（包含配置频道和原有目标）
+                notif.target_channel_id = ",".join(str(x) for x in all_target_chat_ids)
                 # 记录发送者信息
                 notif.updated_by = callback.from_user.id
                 sent_count += 1
@@ -481,18 +496,13 @@ async def execute_send_all(
 
     await session.commit()
 
-    result_text = (
-        f"✅ <b>推送完成</b>\n\n"
-        f"📤 成功：<b>{sent_count}</b>\n"
-        f"❌ 失败：<b>{fail_count}</b>"
+    pending_completion, pending_review, _ = await get_notification_status_counts(session)
+    text = (
+        f"<b>{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}</b>\n\n"
+        f"📊 <b>状态统计:</b>\n"
+        f"• 待补全：<b>{pending_completion}</b>\n"
+        f"• 待发送：<b>{pending_review}</b>\n\n"
+        f"✅ <b>操作完成：</b> 成功 {sent_count}, 失败 {fail_count}\n"
     )
-
-    await main_msg.update_on_callback(
-        callback,
-        result_text,
-        get_notification_panel_keyboard(
-            pending_completion=0,
-            pending_review=0,
-        ),
-        image_path=get_common_image(),
-    )
+    kb = get_notification_panel_keyboard(pending_completion, pending_review)
+    await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
