@@ -484,8 +484,8 @@ async def create_and_bind_emby_user(
         from sqlalchemy.exc import SQLAlchemyError
 
         from bot.database.models import EmbyUserHistoryModel, EmbyUserModel
-        from bot.handlers.emby import hash_password
         from bot.services import emby_service
+        from bot.utils.security import hash_password
 
         # 已绑定检查
         res_ext = await session.execute(_select(UserExtendModel).where(UserExtendModel.user_id == user_id))
