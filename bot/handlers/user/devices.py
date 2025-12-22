@@ -121,7 +121,7 @@ async def user_devices(
         "📱 **我的设备管理**\n\n"
         f"当前设备数: {device_count} / {max_devices} {status_icon}\n"
         f"规则: 小于 {max_devices} 个设备时自动允许新设备，否则仅允许列表中的设备。\n\n"
-        "点击设备按钮可将其移除 (软删除) 👇"
+        "点击设备按钮可将其移除👇"
     )
     
     kb = InlineKeyboardBuilder()
@@ -144,12 +144,12 @@ async def user_devices(
 
 
 @router.callback_query(F.data.startswith("user:device:delete:"))
-async def handle_device_delete(
+async def handle_device_delete_confirm(
     callback: CallbackQuery,
     session: AsyncSession,
     main_msg: MainMessageService
 ) -> None:
-    """处理删除设备回调"""
+    """处理删除设备确认"""
     try:
         device_pk = int(callback.data.split(":")[-1])
     except ValueError:
@@ -158,7 +158,57 @@ async def handle_device_delete(
 
     user_id = callback.from_user.id
 
-    # 1. 验证权限 (确保设备属于该用户)
+    # 1. 验证权限
+    stmt = select(UserExtendModel).where(UserExtendModel.user_id == user_id)
+    res = await session.execute(stmt)
+    user_extend = res.scalar_one_or_none()
+    
+    if not user_extend or not user_extend.emby_user_id:
+        await callback.answer("❌ 未绑定 Emby 账号", show_alert=True)
+        return
+        
+    emby_user_id = user_extend.emby_user_id
+    
+    stmt_device = select(EmbyDeviceModel).where(
+        EmbyDeviceModel.id == device_pk,
+        EmbyDeviceModel.last_user_id == emby_user_id
+    )
+    res_device = await session.execute(stmt_device)
+    device = res_device.scalar_one_or_none()
+    
+    if not device:
+        await callback.answer("❌ 设备不存在或无权操作", show_alert=True)
+        return
+        
+    # 2. 弹出确认框
+    device_name = f"{device.name or 'Unknown'} ({device.app_name or 'App'})"
+    text = f"⚠️ **确认删除设备?**\n\n设备: {device_name}\n\n删除后该设备将无法连接服务器。"
+    
+    kb = InlineKeyboardBuilder()
+    kb.row(
+        InlineKeyboardButton(text="✅ 确认删除", callback_data=f"user:device:confirm_del:{device_pk}"),
+        InlineKeyboardButton(text="❌ 取消", callback_data="user:devices")
+    )
+    
+    await main_msg.update(user_id, text, kb.as_markup())
+
+
+@router.callback_query(F.data.startswith("user:device:confirm_del:"))
+async def handle_device_delete_action(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService
+) -> None:
+    """执行删除设备操作"""
+    try:
+        device_pk = int(callback.data.split(":")[-1])
+    except ValueError:
+        await callback.answer("❌ 无效的请求", show_alert=True)
+        return
+
+    user_id = callback.from_user.id
+
+    # 1. 验证权限
     stmt = select(UserExtendModel).where(UserExtendModel.user_id == user_id)
     res = await session.execute(stmt)
     user_extend = res.scalar_one_or_none()
@@ -182,7 +232,6 @@ async def handle_device_delete(
         
     if device.is_deleted:
         await callback.answer("⚠️ 设备已被删除", show_alert=True)
-        # 刷新界面
         await user_devices(callback, session, main_msg)
         return
 
