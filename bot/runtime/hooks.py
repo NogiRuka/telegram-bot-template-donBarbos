@@ -20,7 +20,7 @@ from bot.database.models.base import Base
 from bot.handlers import get_handlers_router
 from bot.keyboards.default_commands import remove_default_commands, set_default_commands
 from bot.services.config_service import ensure_config_defaults
-from bot.services.emby_service import save_all_emby_users
+from bot.services.emby_service import save_all_emby_users, cleanup_devices_by_policy
 
 if TYPE_CHECKING:
     from aiogram import Bot
@@ -55,6 +55,8 @@ async def on_startup() -> None:
             await ensure_config_defaults(session)
             try:
                 await save_all_emby_users(session)
+                # 启动时执行一次设备清理
+                await cleanup_devices_by_policy(session)
             except Exception as err:  # noqa: BLE001
                 logger.warning("⚠️ 启动时同步 Emby 用户失败: {}", err)
         await start_api_server()

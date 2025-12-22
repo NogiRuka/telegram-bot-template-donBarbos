@@ -640,10 +640,6 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
             
         await session.commit()
         logger.info(f"✅ Emby 设备同步完成: {count} 个")
-
-        # 同步完成后执行清理逻辑
-        await cleanup_devices_by_policy(session)
-
         return count
         
     except Exception as e:
