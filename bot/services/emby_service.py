@@ -7,7 +7,7 @@ from loguru import logger
 from sqlalchemy import select
 
 from bot.core.config import settings
-from bot.core.emby import EmbyClient
+from bot.database.models.emby_device import EmbyDeviceModel
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.utils.datetime import now, parse_iso_datetime
@@ -664,3 +664,98 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
         with logger.catch():
             await session.rollback()
         return 0, 0
+
+
+async def save_all_emby_devices(session: AsyncSession) -> int:
+    """保存所有 Emby 设备到数据库
+
+    功能说明:
+    - 调用 `GET /Devices` 获取所有设备
+    - 同步到 `emby_devices` 表
+    - 若存在则更新，不存在则插入
+
+    输入参数:
+    - session: 数据库会话
+
+    返回值:
+    - int: 同步的设备数量
+    """
+    client = get_emby_client()
+    if client is None:
+        logger.warning("⚠️ 未配置 Emby 连接信息, 跳过设备同步")
+        return 0
+
+    try:
+        devices, total = await client.get_devices()
+        if not devices:
+            logger.info("📭 Emby 返回空设备列表")
+            return 0
+            
+        logger.info(f"🔄 开始同步 Emby 设备, 共 {len(devices)} 个")
+        
+        # 批量查询现有记录
+        device_ids = [str(d.get("Id")) for d in devices if d.get("Id")]
+        if not device_ids:
+             return 0
+
+        existing_stmt = select(EmbyDeviceModel).where(EmbyDeviceModel.emby_device_id.in_(device_ids))
+        existing_res = await session.execute(existing_stmt)
+        existing_models = {m.emby_device_id: m for m in existing_res.scalars().all()}
+        
+        count = 0
+        for device_data in devices:
+            emby_device_id = str(device_data.get("Id"))
+            if not emby_device_id:
+                continue
+                
+            reported_id = device_data.get("ReportedDeviceId")
+            name = device_data.get("Name")
+            last_user_name = device_data.get("LastUserName")
+            app_name = device_data.get("AppName")
+            app_version = device_data.get("AppVersion")
+            last_user_id = device_data.get("LastUserId")
+            icon_url = device_data.get("IconUrl")
+            ip_address = device_data.get("IpAddress")
+            
+            date_last_activity_str = device_data.get("DateLastActivity")
+            date_last_activity = parse_iso_datetime(date_last_activity_str) if date_last_activity_str else None
+            
+            model = existing_models.get(emby_device_id)
+            if model:
+                # Update
+                model.reported_device_id = reported_id
+                model.name = name
+                model.last_user_name = last_user_name
+                model.app_name = app_name
+                model.app_version = app_version
+                model.last_user_id = last_user_id
+                model.date_last_activity = date_last_activity
+                model.icon_url = icon_url
+                model.ip_address = ip_address
+                model.raw_data = device_data
+            else:
+                # Insert
+                model = EmbyDeviceModel(
+                    emby_device_id=emby_device_id,
+                    reported_device_id=reported_id,
+                    name=name,
+                    last_user_name=last_user_name,
+                    app_name=app_name,
+                    app_version=app_version,
+                    last_user_id=last_user_id,
+                    date_last_activity=date_last_activity,
+                    icon_url=icon_url,
+                    ip_address=ip_address,
+                    raw_data=device_data
+                )
+                session.add(model)
+            count += 1
+            
+        await session.commit()
+        logger.info(f"✅ Emby 设备同步完成: {count} 个")
+        return count
+        
+    except Exception as e:
+        logger.error(f"❌ Emby 设备同步失败: {e}")
+        await session.rollback()
+        return 0

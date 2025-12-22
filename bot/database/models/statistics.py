@@ -9,9 +9,9 @@
 最后更新: 2025-10-21
 """
 
-from __future__ import annotations
 import datetime
 import json
+from datetime import date, datetime as dt
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -20,9 +20,6 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin
-
-if TYPE_CHECKING:
-    pass
 
 
 class StatisticType(str, Enum):
@@ -145,7 +142,7 @@ class StatisticsModel(Base, BasicAuditMixin):
         comment="统计周期，必填字段，标识统计数据的时间粒度，默认为日级统计",
     )
 
-    date: Mapped[datetime.date] = mapped_column(
+    date: Mapped[date] = mapped_column(
         Date, nullable=False, index=True, comment="统计日期，必填字段，标识统计数据对应的日期"
     )
 
@@ -204,11 +201,11 @@ class StatisticsModel(Base, BasicAuditMixin):
 
     # ==================== 时间范围字段 ====================
 
-    start_time: Mapped[datetime.datetime | None] = mapped_column(
+    start_time: Mapped[dt | None] = mapped_column(
         nullable=True, comment="开始时间，可选字段，统计周期的开始时间，用于精确的时间范围统计"
     )
 
-    end_time: Mapped[datetime.datetime | None] = mapped_column(
+    end_time: Mapped[dt | None] = mapped_column(
         nullable=True, comment="结束时间，可选字段，统计周期的结束时间，用于精确的时间范围统计"
     )
 
@@ -453,14 +450,14 @@ class StatisticsModel(Base, BasicAuditMixin):
     def create_statistic(
         cls,
         statistic_type: StatisticType,
-        for_date: datetime.date,
+        for_date: date,
         value: float,
         key: str | None = None,
         period: StatisticPeriod = StatisticPeriod.DAILY,
         category: str | None = None,
         extra_data: dict[str, Any] | None = None,
         **kwargs,
-    ) -> StatisticsModel:
+    ) -> "StatisticsModel":
         """
         创建统计记录
 

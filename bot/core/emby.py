@@ -70,6 +70,35 @@ class EmbyClient:
         items_list = list(data or [])
         return items_list, len(items_list)
 
+    async def get_devices(
+        self,
+        sort_order: str | None = None,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """获取设备列表
+
+        功能说明:
+        - 调用 `GET /Devices` 返回 `Items` 与 `TotalRecordCount`
+        - 仅管理员有权限
+
+        输入参数:
+        - sort_order: 排序 Ascending/Descending
+
+        返回值:
+        - tuple[list[dict[str, Any]], int]: (Items, 总记录数)
+        """
+        params: dict[str, Any] = {}
+        if sort_order:
+            params["SortOrder"] = str(sort_order)
+
+        data = await self.http.request("GET", "/Devices", params=params)
+        if isinstance(data, dict):
+            items = data.get("Items")
+            total = int(data.get("TotalRecordCount", 0))
+            items_list = list(items) if isinstance(items, list) else []
+            return items_list, total
+        items_list = list(data or [])
+        return items_list, len(items_list)
+
     async def create_user(
         self,
         name: str,

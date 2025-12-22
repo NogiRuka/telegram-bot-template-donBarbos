@@ -2,6 +2,8 @@ from .audit_log import ActionType, AuditLogModel
 from .base import Base
 from .config import ConfigModel, ConfigType
 from .emby_user import EmbyUserModel
+from .emby_device import EmbyDeviceModel
+from .emby_item import EmbyItemModel
 from .emby_user_history import EmbyUserHistoryModel
 from .group_config import GroupConfigModel, GroupType, MessageSaveMode
 from .hitokoto import HitokotoModel
@@ -21,6 +23,8 @@ __all__ = [
     "ConfigType",
     "EmbyUserHistoryModel",
     "EmbyUserModel",
+    "EmbyDeviceModel",
+    "EmbyItemModel",
     "GroupConfigModel",
     "GroupType",
     "HitokotoModel",
