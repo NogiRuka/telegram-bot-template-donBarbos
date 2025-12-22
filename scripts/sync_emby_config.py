@@ -7,10 +7,16 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import contextlib
+from datetime import datetime
 
 from loguru import logger
+from sqlalchemy import select, desc
 
 from bot.core.config import settings
+from bot.database.database import sessionmaker
+from bot.database.models.emby_device import EmbyDeviceModel
+from bot.database.models.emby_user import EmbyUserModel
+from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
 
 
@@ -99,31 +105,90 @@ async def sync_all_users_configuration(
 
     logger.info(f"🔄 开始批量同步 Emby 用户配置, 模板用户: {tid}, 目标用户数: {len(all_users)}")
 
-    for user in all_users:
-        uid = user.get("Id")
-        name = user.get("Name")
-        if not uid:
-            continue
+    async with sessionmaker() as session:
+        for user in all_users:
+            uid = user.get("Id")
+            name = user.get("Name")
+            if not uid:
+                continue
 
-        if uid in skips and not specific_user_ids:
-             # 只有在非指定模式下才检查排除列表
-             # 如果明确指定了 specific_user_ids，则即使在 exclude 中也应该执行（或者看逻辑，通常 specific 优先级更高）
-             # 这里保持 specific 优先级更高，不检查 skip
-             pass
-        elif uid in skips:
-             logger.debug(f"⏭️ 跳过用户: {name} ({uid})")
-             continue
+            if uid in skips and not specific_user_ids:
+                 pass
+            elif uid in skips:
+                 logger.debug(f"⏭️ 跳过用户: {name} ({uid})")
+                 continue
 
-        try:
-            # 更新 Configuration
-            await client.update_user_configuration(uid, template_config)
-            # 更新 Policy
-            await client.update_user_policy(uid, template_policy)
-            logger.debug(f"✅ 已更新用户配置: {name} ({uid})")
-            success_count += 1
-        except Exception as e:
-            logger.error(f"❌ 更新用户配置失败: {name} ({uid}) -> {e}")
-            fail_count += 1
+            try:
+                # 获取用户最大设备数配置
+                db_user_res = await session.execute(select(EmbyUserModel).where(EmbyUserModel.emby_user_id == uid))
+                db_user = db_user_res.scalar_one_or_none()
+                max_devices = db_user.max_devices if db_user else 3
+
+                # 查询用户设备
+                stmt = select(EmbyDeviceModel).where(
+                    EmbyDeviceModel.last_user_id == uid,
+                    EmbyDeviceModel.is_deleted == False
+                )
+                res = await session.execute(stmt)
+                devices = res.scalars().all()
+
+                enabled_ids = []
+                
+                if len(devices) <= max_devices:
+                    enabled_ids = [d.reported_device_id for d in devices if d.reported_device_id]
+                else:
+                    # 1. 根据 AppName 去重保留最新
+                    app_map = {}
+                    for d in devices:
+                        app_name = d.app_name or "Unknown"
+                        if app_name not in app_map:
+                            app_map[app_name] = d
+                        else:
+                            current = app_map[app_name]
+                            # 比较最后活动时间
+                            d_time = d.date_last_activity or datetime.min
+                            c_time = current.date_last_activity or datetime.min
+                            if d_time > c_time:
+                                app_map[app_name] = d
+                    
+                    unique_devices = list(app_map.values())
+                    
+                    # 2. 根据最后活动时间保留最新的 max_devices 个
+                    unique_devices.sort(key=lambda x: x.date_last_activity or datetime.min, reverse=True)
+                    keep_devices = unique_devices[:max_devices]
+                    
+                    enabled_ids = [d.reported_device_id for d in keep_devices if d.reported_device_id]
+                    
+                    # 3. 标记废弃设备
+                    keep_ids = set(d.id for d in keep_devices)
+                    has_changes = False
+                    for d in devices:
+                        if d.id not in keep_ids:
+                            d.is_deleted = True
+                            d.deleted_at = now()
+                            d.deleted_by = 0  # 0 表示系统
+                            d.remark = "超出最大设备数自动清理"
+                            session.add(d)
+                            has_changes = True
+                    
+                    if has_changes:
+                        await session.commit()
+                        logger.info(f"🧹 用户 {name} 设备清理: 总数 {len(devices)} -> 保留 {len(keep_devices)}")
+
+                # 构建新的 Policy
+                user_policy = template_policy.copy()
+                user_policy["EnabledDevices"] = enabled_ids
+                user_policy["EnableAllDevices"] = False  # 必须关闭此项以使 EnabledDevices 生效
+
+                # 更新 Configuration
+                await client.update_user_configuration(uid, template_config)
+                # 更新 Policy
+                await client.update_user_policy(uid, user_policy)
+                logger.debug(f"✅ 已更新用户配置: {name} ({uid})")
+                success_count += 1
+            except Exception as e:
+                logger.error(f"❌ 更新用户配置失败: {name} ({uid}) -> {e}")
+                fail_count += 1
 
     logger.info(f"✅ 批量同步完成: 成功 {success_count}, 失败 {fail_count}")
     return success_count, fail_count
@@ -134,18 +199,16 @@ async def main() -> None:
 
     # 用户指定的排除 ID
     exclude_ids = [
-        # "user_id_here",
+        "52588e7dbcbe4ea7a575dfe86a7f4a28",
+        "945e1aa74d964da183b3e6a0f0075d6f"
     ]
 
     # 针对失败用户进行重试
     specific_ids = [
-        "20dc095abfb14ef98559e4a9b4d7ac75"
+        
     ]
 
-    # success, fail = await sync_all_users_configuration(exclude_user_ids=exclude_ids)
-
-    # 只处理失败的用户
-    _success, _fail = await sync_all_users_configuration(specific_user_ids=specific_ids)
+    _success, _fail = await sync_all_users_configuration(exclude_user_ids=exclude_ids, specific_user_ids=specific_ids)
 
 
 if __name__ == "__main__":

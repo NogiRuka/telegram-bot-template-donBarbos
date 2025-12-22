@@ -1,15 +1,11 @@
-from __future__ import annotations
 from datetime import datetime as dt
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy import Index, String
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
-
-if TYPE_CHECKING:
-    pass
 
 
 class EmbyUserModel(Base, BasicAuditMixin):
@@ -39,7 +35,9 @@ class EmbyUserModel(Base, BasicAuditMixin):
     password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, comment="密码哈希 (bcrypt)")
 
     # 额外的时间字段(来自 Emby UserDto)
-    date_created: Mapped[dt | None] = mapped_column(nullable=True, comment="用户创建时间(来自 Emby 的 DateCreated)")
+    date_created: Mapped[dt | None] = mapped_column(
+        nullable=True, comment="用户创建时间(来自 Emby 的 DateCreated)"
+    )
     last_login_date: Mapped[dt | None] = mapped_column(
         nullable=True, comment="最后登录时间(来自 Emby 的 LastLoginDate)"
     )
@@ -49,6 +47,10 @@ class EmbyUserModel(Base, BasicAuditMixin):
 
     user_dto: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True, comment="Emby 返回的 UserDto JSON 对象"
+    )
+
+    max_devices: Mapped[int] = mapped_column(
+        default=3, nullable=False, comment="最大允许设备数"
     )
 
     __table_args__ = (Index("idx_emby_users_name", "name"),)
