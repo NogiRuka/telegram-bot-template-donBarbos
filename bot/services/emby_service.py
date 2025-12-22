@@ -640,9 +640,80 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
             
         await session.commit()
         logger.info(f"✅ Emby 设备同步完成: {count} 个")
+
+        # 同步完成后执行清理逻辑
+        await cleanup_devices_by_policy(session)
+
         return count
         
     except Exception as e:
         logger.error(f"❌ Emby 设备同步失败: {e}")
         await session.rollback()
+        return 0
+
+
+async def cleanup_devices_by_policy(session: AsyncSession) -> int:
+    """根据用户 Policy 清理设备
+
+    功能说明:
+    - 遍历所有 Emby 用户
+    - 检查 Policy 中的 EnableAllDevices 和 EnabledDevices
+    - 如果 EnableAllDevices 为 False，则软删除不在 EnabledDevices 中的设备
+    - 仅处理属于该用户(last_user_id)的设备
+
+    输入参数:
+    - session: 数据库会话
+
+    返回值:
+    - int: 被软删除的设备数量
+    """
+    try:
+        # 1. 获取所有用户
+        stmt = select(EmbyUserModel)
+        result = await session.execute(stmt)
+        users = result.scalars().all()
+
+        deleted_count = 0
+
+        for user in users:
+            if not user.user_dto:
+                continue
+                
+            policy = user.user_dto.get("Policy", {})
+            enable_all_devices = policy.get("EnableAllDevices", True)
+            enabled_devices = set(policy.get("EnabledDevices", []))
+
+            # 如果允许所有设备，则不需要清理
+            if enable_all_devices:
+                continue
+
+            # 2. 查找该用户的所有未删除设备
+            # 注意: 仅处理 last_user_id 匹配的设备
+            device_stmt = select(EmbyDeviceModel).where(
+                EmbyDeviceModel.last_user_id == user.emby_user_id,
+                EmbyDeviceModel.is_deleted == False
+            )
+            device_res = await session.execute(device_stmt)
+            user_devices = device_res.scalars().all()
+
+            for device in user_devices:
+                # 检查 reported_device_id 是否在允许列表中
+                # 注意: 如果 device.reported_device_id 为空，也视为不在允许列表中
+                if device.reported_device_id not in enabled_devices:
+                    device.is_deleted = True
+                    device.deleted_at = now()
+                    device.deleted_by = 0  # 0 表示系统
+                    device.remark = f"Policy限制: 不在 EnabledDevices 中 (EnableAllDevices=False)"
+                    session.add(device)
+                    deleted_count += 1
+                    logger.info(f"🗑️ 软删除设备: User={user.name}, Device={device.name or 'Unknown'} ({device.reported_device_id})")
+
+        if deleted_count > 0:
+            await session.commit()
+            logger.info(f"✅ 根据 Policy 清理了 {deleted_count} 个设备")
+        
+        return deleted_count
+
+    except Exception as e:
+        logger.error(f"❌ 设备清理失败: {e}")
         return 0
