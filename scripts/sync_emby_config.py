@@ -16,6 +16,7 @@ from bot.core.config import settings
 from bot.database.database import sessionmaker
 from bot.database.models.emby_device import EmbyDeviceModel
 from bot.database.models.emby_user import EmbyUserModel
+from bot.database.models.config import ConfigModel
 from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
 
@@ -63,39 +64,6 @@ async def sync_all_users_configuration(
         logger.error("❌ 模板用户的 Configuration 或 Policy 格式错误")
         return 0, 0
 
-    # 获取目标用户列表
-    all_users = []
-    if specific_user_ids:
-        # 指定了用户ID列表，直接构造用户对象列表（需获取Name以便日志显示）
-        for uid in specific_user_ids:
-            try:
-                # 尝试获取用户信息以获得正确的 Name
-                u = await client.get_user(uid)
-                if u:
-                    all_users.append(u)
-                else:
-                    # 获取失败或为空，构造一个只有 ID 的对象
-                    all_users.append({"Id": uid, "Name": "Unknown"})
-            except Exception:
-                # 获取失败，构造一个只有 ID 的对象
-                all_users.append({"Id": uid, "Name": "Unknown"})
-    else:
-        # 未指定用户，拉取所有用户
-        try:
-            start_index = 0
-            page_limit = 200
-            while True:
-                items, total = await client.get_users(start_index=start_index, limit=page_limit)
-                if not items:
-                    break
-                all_users.extend(items)
-                start_index += len(items)
-                if len(all_users) >= total or len(items) < page_limit:
-                    break
-        except Exception as e:
-            logger.error(f"❌ 获取用户列表失败: {e}")
-            return 0, 0
-
     # 准备排除列表
     skips = set(exclude_user_ids or [])
     skips.add(tid)  # 排除模板用户自己
@@ -103,9 +71,46 @@ async def sync_all_users_configuration(
     success_count = 0
     fail_count = 0
 
-    logger.info(f"🔄 开始批量同步 Emby 用户配置, 模板用户: {tid}, 目标用户数: {len(all_users)}")
-
     async with sessionmaker() as session:
+        # 获取 max_devices 全局配置
+        try:
+            config_res = await session.execute(select(ConfigModel).where(ConfigModel.key == "max_devices"))
+            config_obj = config_res.scalar_one_or_none()
+            max_devices = int(config_obj.value) if config_obj and config_obj.value else 3
+            logger.info(f"⚙️ 当前最大设备数限制: {max_devices}")
+        except Exception as e:
+            logger.warning(f"⚠️ 获取 max_devices 配置失败, 使用默认值 3: {e}")
+            max_devices = 3
+
+        # 获取目标用户列表 (从数据库获取)
+        all_users = []
+        try:
+            if specific_user_ids:
+                # 指定了用户ID列表
+                stmt = select(EmbyUserModel).where(EmbyUserModel.emby_user_id.in_(specific_user_ids))
+                res = await session.execute(stmt)
+                db_users = res.scalars().all()
+                all_users = [{"Id": u.emby_user_id, "Name": u.name} for u in db_users]
+                
+                # 检查是否有未找到的用户
+                found_ids = set(u["Id"] for u in all_users)
+                for uid in specific_user_ids:
+                    if uid not in found_ids:
+                         # 尝试从 API 获取作为补充? 或者直接标记未知
+                         # 这里简单处理，如果DB没有，就跳过或加个Unknown
+                         all_users.append({"Id": uid, "Name": "Unknown"})
+            else:
+                # 未指定用户，拉取所有用户
+                stmt = select(EmbyUserModel)
+                res = await session.execute(stmt)
+                db_users = res.scalars().all()
+                all_users = [{"Id": u.emby_user_id, "Name": u.name} for u in db_users]
+        except Exception as e:
+            logger.error(f"❌ 从数据库获取用户列表失败: {e}")
+            return 0, 0
+
+        logger.info(f"🔄 开始批量同步 Emby 用户配置, 模板用户: {tid}, 目标用户数: {len(all_users)}")
+
         for user in all_users:
             uid = user.get("Id")
             name = user.get("Name")
@@ -119,11 +124,6 @@ async def sync_all_users_configuration(
                  continue
 
             try:
-                # 获取用户最大设备数配置
-                db_user_res = await session.execute(select(EmbyUserModel).where(EmbyUserModel.emby_user_id == uid))
-                db_user = db_user_res.scalar_one_or_none()
-                max_devices = db_user.max_devices if db_user else 3
-
                 # 查询用户设备
                 stmt = select(EmbyDeviceModel).where(
                     EmbyDeviceModel.last_user_id == uid,

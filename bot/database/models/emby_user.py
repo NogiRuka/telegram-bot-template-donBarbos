@@ -49,10 +49,6 @@ class EmbyUserModel(Base, BasicAuditMixin):
         JSON, nullable=True, comment="Emby 返回的 UserDto JSON 对象"
     )
 
-    max_devices: Mapped[int] = mapped_column(
-        default=3, nullable=False, comment="最大允许设备数"
-    )
-
     __table_args__ = (Index("idx_emby_users_name", "name"),)
 
     repr_cols = ("id", "emby_user_id", "name", "created_at")
