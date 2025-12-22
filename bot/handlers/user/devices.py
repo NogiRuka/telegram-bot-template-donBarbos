@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.database.models.emby_device import EmbyDeviceModel
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.user_extend import UserExtendModel
+from bot.services.emby_service import cleanup_devices_by_policy, save_all_emby_devices
 from bot.services.main_message import MainMessageService
 from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
@@ -94,6 +95,13 @@ async def user_devices(
     if not user_extend or not user_extend.emby_user_id:
         await callback.answer("❌ 未绑定 Emby 账号", show_alert=True)
         return
+
+    # 同步最新设备状态
+    try:
+        await save_all_emby_devices(session)
+        await cleanup_devices_by_policy(session)
+    except Exception as e:
+        logger.warning(f"⚠️ 设备管理同步失败: {e}")
 
     emby_user_id = user_extend.emby_user_id
 
