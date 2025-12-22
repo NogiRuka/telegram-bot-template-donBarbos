@@ -70,7 +70,6 @@ async def open_announcement_panel(callback: CallbackQuery, session: AsyncSession
     kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
 
     await main_msg.update_on_callback(callback, caption, kb.as_markup(), image_path=get_common_image())
-    await callback.answer()
 
 
 @router.callback_query(F.data == "admin:announcement:edit")
@@ -121,7 +120,26 @@ async def clear_announcement(callback: CallbackQuery, session: AsyncSession, mai
     - None
     """
     await set_config(session, KEY_ANNOUNCEMENT_TEXT, None)
-    await open_announcement_panel(callback, session, main_msg)
+
+    # 直接更新界面，避免重新查库
+    display_text = "（当前未设置公告）"
+    caption = (
+        f"{ANNOUNCEMENT_LABEL}\n\n"
+        f"当前公告：\n{display_text}\n\n"
+        "操作：\n"
+        "• 编辑公告\n"
+        "• 清空公告\n"
+    )
+
+    kb = InlineKeyboardBuilder()
+    kb.row(
+        InlineKeyboardButton(text="✏️ 编辑公告", callback_data="admin:announcement:edit"),
+        InlineKeyboardButton(text="🗑️ 清空公告", callback_data="admin:announcement:clear"),
+    )
+    kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
+
+    await main_msg.update_on_callback(callback, caption, kb.as_markup(), image_path=get_common_image())
+    await callback.answer("公告已清空")
 
 
 @router.message(AnnouncementStates.waiting_for_text)
