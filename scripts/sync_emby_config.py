@@ -79,7 +79,7 @@ async def sync_all_users_configuration(
                 stmt = select(EmbyUserModel).where(EmbyUserModel.emby_user_id.in_(specific_user_ids))
                 res = await session.execute(stmt)
                 db_users = res.scalars().all()
-                all_users = [{"Id": u.emby_user_id, "Name": u.name, "MaxDevices": u.max_devices} for u in db_users]
+                all_users = [{"Id": u.emby_user_id, "Name": u.name, "MaxDevices": u.max_devices, "UserDto": u.user_dto} for u in db_users]
                 
                 # 检查是否有未找到的用户
                 found_ids = set(u["Id"] for u in all_users)
@@ -87,7 +87,7 @@ async def sync_all_users_configuration(
                     if uid not in found_ids:
                          # 尝试从 API 获取作为补充? 或者直接标记未知
                          # 这里简单处理，如果DB没有，就跳过或加个Unknown
-                         all_users.append({"Id": uid, "Name": "Unknown", "MaxDevices": 3})
+                         all_users.append({"Id": uid, "Name": "Unknown", "MaxDevices": 3, "UserDto": {}})
             else:
                 # 未指定用户，拉取所有用户
                 # 排除 exclude_user_ids 中的用户
@@ -97,7 +97,7 @@ async def sync_all_users_configuration(
                 
                 res = await session.execute(stmt)
                 db_users = res.scalars().all()
-                all_users = [{"Id": u.emby_user_id, "Name": u.name, "MaxDevices": u.max_devices} for u in db_users]
+                all_users = [{"Id": u.emby_user_id, "Name": u.name, "MaxDevices": u.max_devices, "UserDto": u.user_dto} for u in db_users]
         except Exception as e:
             logger.error(f"❌ 从数据库获取用户列表失败: {e}")
             return 0, 0
@@ -113,9 +113,7 @@ async def sync_all_users_configuration(
             if not uid:
                 continue
 
-            if uid in skips and not specific_user_ids:
-                 pass
-            elif uid in skips:
+            if uid in skips:
                  logger.debug(f"⏭️ 跳过用户: {name} ({uid})")
                  continue
 
@@ -147,25 +145,12 @@ async def sync_all_users_configuration(
                     # Case 3: 设备数 > 最大限制 (执行清理)
                     enable_all_devices = False
                     
-                    # 1. 根据 AppName 去重保留最新
-                    app_map = {}
-                    for d in devices:
-                        app_name = d.app_name or "Unknown"
-                        if app_name not in app_map:
-                            app_map[app_name] = d
-                        else:
-                            current = app_map[app_name]
-                            # 比较最后活动时间
-                            d_time = d.date_last_activity or datetime.min
-                            c_time = current.date_last_activity or datetime.min
-                            if d_time > c_time:
-                                app_map[app_name] = d
-                    
-                    unique_devices = list(app_map.values())
-                    
-                    # 2. 根据最后活动时间保留最新的 max_devices 个
-                    unique_devices.sort(key=lambda x: x.date_last_activity or datetime.min, reverse=True)
-                    keep_devices = unique_devices[:max_devices]
+                    # 直接按最后活动时间排序，保留最新的 max_devices 个
+                    # 之前使用 AppName 去重逻辑会导致多开浏览器场景下误删
+                    # sorted_devices = sorted(devices, key=lambda x: x.date_last_activity or datetime.min, reverse=True)
+                    # 由于 devices 是从 DB 取出的，可能已经是某种顺序，但显式排序更安全
+                    devices.sort(key=lambda x: x.date_last_activity or datetime.min, reverse=True)
+                    keep_devices = devices[:max_devices]
                     
                     enabled_ids = [d.reported_device_id for d in keep_devices if d.reported_device_id]
                     
@@ -190,8 +175,22 @@ async def sync_all_users_configuration(
                 user_policy["EnabledDevices"] = enabled_ids
                 user_policy["EnableAllDevices"] = enable_all_devices
 
-                # 更新 Configuration
-                await client.update_user_configuration(uid, template_config)
+                # 检查是否需要更新
+                # 获取当前 Policy (从 DB 中的 UserDto 获取，避免额外 API 调用)
+                current_user_dto = user.get("UserDto") or {}
+                current_policy = current_user_dto.get("Policy", {})
+                
+                # 比较 EnabledDevices (注意 Emby 返回的可能是 list，我们需要 set 比较且忽略顺序)
+                current_enabled = set(current_policy.get("EnabledDevices", []))
+                new_enabled = set(enabled_ids)
+                
+                current_all = current_policy.get("EnableAllDevices", False)
+                # 注意: Emby 有时返回 None 或缺省值，需确保类型一致
+                
+                if current_enabled == new_enabled and current_all == enable_all_devices:
+                    logger.debug(f"⏭️ 配置未变更，跳过更新: {name} ({uid})")
+                    continue
+
                 # 更新 Policy
                 await client.update_user_policy(uid, user_policy)
                 logger.debug(f"✅ 已更新用户配置: {name} ({uid})")
