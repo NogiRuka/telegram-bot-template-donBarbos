@@ -11,6 +11,7 @@ from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.user_extend import UserExtendModel
 from bot.services.emby_service import cleanup_devices_by_policy, save_all_emby_devices
 from bot.services.main_message import MainMessageService
+from bot.keyboards.inline.buttons import BACK_TO_ACCOUNT_BUTTON, BACK_TO_HOME_BUTTON
 from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
 from bot.utils.permissions import require_user_feature
@@ -101,10 +102,10 @@ async def user_devices(
         await save_all_emby_devices(session)
         await cleanup_devices_by_policy(session)
     except Exception as e:
-        logger.warning(f"⚠️ 设备管理同步失败: {e}")
+        logger.warning(f"⚠️ 进入设备管理页面时同步失败: {e}")
 
     emby_user_id = user_extend.emby_user_id
-
+    
     # 2. 获取 Emby 用户信息 (最大设备数)
     stmt_user = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
     res_user = await session.execute(stmt_user)
@@ -146,7 +147,7 @@ async def user_devices(
             callback_data=f"user:device:delete:{device.id}"
         ))
     
-    kb.row(InlineKeyboardButton(text="🔙 返回", callback_data="start"))
+    kb.row(BACK_TO_ACCOUNT_BUTTON, BACK_TO_HOME_BUTTON)
     
     await main_msg.update(user_id, text, kb.as_markup())
 
@@ -274,7 +275,7 @@ async def handle_device_delete_action(
     
     if success:
         await session.commit()
-        await callback.answer("✅ 设备已删除", show_alert=True)
+        await callback.answer("✅ 设备已删除", show_alert=False)
     else:
         await session.rollback()
         await callback.answer("🔴 删除失败 (Policy 更新错误)", show_alert=True)
