@@ -13,7 +13,6 @@ from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
 from bot.utils.permissions import require_user_feature
 from bot.utils.security import hash_password
-from bot.utils.text import safe_alert_text
 
 router = Router(name="user_password")
 
@@ -53,7 +52,7 @@ async def user_password(callback: CallbackQuery, session: AsyncSession, state: F
 
     try:
         # 检查用户是否已绑定 Emby 账号
-        user, user_extend = await get_user_and_extend(session, uid)
+        _user, user_extend = await get_user_and_extend(session, uid)
         if not user_extend or not user_extend.emby_user_id:
             return await callback.answer("🔴 您还未绑定 Emby 账号", show_alert=True)
 
@@ -133,12 +132,12 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
     """
     uid = message.from_user.id if message.from_user else None
     if not uid:
-        return
+        return None
 
     try:
         # 获取用户输入的密码
         new_password = message.text.strip() if message.text else ""
-        
+
         # 验证密码长度
         if len(new_password) < 6:
             await message.delete()
@@ -151,7 +150,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
         # 获取状态数据
         data = await state.get_data()
         emby_user_id = data.get("emby_user_id")
-        old_password_hash = data.get("old_password_hash")
+        data.get("old_password_hash")
 
         if not emby_user_id:
             await state.clear()
@@ -168,7 +167,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
 
         # 更新 Emby 用户密码
         from bot.utils.emby import get_emby_client
-        
+
         client = get_emby_client()
         if not client:
             await state.clear()
@@ -181,9 +180,10 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
 
         # 更新数据库中的密码哈希
         new_password_hash = hash_password(new_password)
-        from bot.database.models import EmbyUserModel, EmbyUserHistoryModel
         from sqlalchemy import select
-        
+
+        from bot.database.models import EmbyUserHistoryModel, EmbyUserModel
+
         result = await session.execute(select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id))
         emby_user = result.scalar_one_or_none()
         if emby_user:
@@ -209,7 +209,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
                 remark=emby_user.remark,
             )
             session.add(history)
-            
+
             # 再更新用户表为新密码哈希
             emby_user.password_hash = new_password_hash
             emby_user.updated_by = uid  # 更新操作者
@@ -265,16 +265,16 @@ async def cancel_password_change(callback: CallbackQuery, state: FSMContext, mai
     try:
         # 清理 FSM 状态
         await state.clear()
-        
+
         # 返回账号中心
         await main_msg.update_on_callback(
             callback,
             "✅ 已取消修改密码，已返回账号中心",
             get_account_center_keyboard(uid)
         )
-        
+
         logger.info("用户取消修改密码: user_id={}", uid)
-        
+
     except TelegramAPIError as e:
         logger.exception(f"❌ 取消修改密码 TelegramAPIError: user_id={uid} err={e!r}")
         await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)

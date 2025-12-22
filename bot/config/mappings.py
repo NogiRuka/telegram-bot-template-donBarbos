@@ -12,6 +12,7 @@ from bot.keyboards.inline.constants import (
     ACCOUNT_CENTER_LABEL,
     ADMIN_FEATURES_SWITCH_LABEL,
     ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
+    ANNOUNCEMENT_LABEL,
     GROUPS_LABEL,
     HITOKOTO_LABEL,
     OPEN_REGISTRATION_LABEL,
@@ -46,6 +47,7 @@ DEFAULT_CONFIGS: dict[str, bool] = {
     KEY_REGISTRATION_FREE_OPEN: False,
     KEY_ADMIN_HITOKOTO: True,
     KEY_ADMIN_NEW_ITEM_NOTIFICATION: True,
+    KEY_ADMIN_ANNOUNCEMENT: True,
 }
 
 # 所有者功能映射 - 用于管理员面板
@@ -85,6 +87,7 @@ ADMIN_PERMISSIONS_MAPPING: dict[str, tuple[str, str]] = {
     "hitokoto": (KEY_ADMIN_HITOKOTO, HITOKOTO_LABEL),
     "open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
     "new_item_notification": (KEY_ADMIN_NEW_ITEM_NOTIFICATION, ADMIN_NEW_ITEM_NOTIFICATION_LABEL),
+    "announcement": (KEY_ADMIN_ANNOUNCEMENT, ANNOUNCEMENT_LABEL),
 }
 
 # 在管理员面板中拥有独立按钮的功能
@@ -94,4 +97,5 @@ ADMIN_PANEL_VISIBLE_FEATURES: list[str] = [
     "hitokoto",
     "open_registration",
     "new_item_notification",
+    "announcement",
 ]

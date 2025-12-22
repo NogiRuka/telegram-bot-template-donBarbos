@@ -1,21 +1,17 @@
 """
 用户信息历史快照模型
-
+ 
 保存 users 表的快照, 用于追踪用户信息变更历史。
 """
-
-from __future__ import annotations
-import datetime
+ 
 from typing import TYPE_CHECKING
+from datetime import datetime as dt
 
 from sqlalchemy import BigInteger, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin
 from bot.utils.datetime import now
-
-if TYPE_CHECKING:
-    pass
 
 
 class UserHistoryModel(Base, BasicAuditMixin):
@@ -60,6 +56,6 @@ class UserHistoryModel(Base, BasicAuditMixin):
     added_to_attachment_menu: Mapped[bool | None] = mapped_column(nullable=True, comment="是否加入附件菜单")
 
     # 快照时间
-    snapshot_at: Mapped[datetime.datetime] = mapped_column(nullable=False, default=now, comment="快照时间")
+    snapshot_at: Mapped[dt] = mapped_column(nullable=False, default=now, comment="快照时间")
 
     __table_args__ = (Index("idx_user_history_user_snapshot", "user_id", "snapshot_at"),)

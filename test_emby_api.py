@@ -12,7 +12,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from bot.core.config import settings
-from bot.core.emby import EmbyClient
 from bot.utils.emby import get_emby_client
 
 
@@ -36,7 +35,6 @@ async def test_get_item() -> None:
     # 初始化 Emby 客户端
     emby_client = get_emby_client()
     if not emby_client:
-        print("❌ Emby 服务配置异常，请检查配置")
         return
 
     try:
@@ -82,7 +80,6 @@ async def test_get_recent_items() -> None:
     """
     emby_client = get_emby_client()
     if not emby_client:
-        print("❌ Emby 服务配置异常，请检查配置")
         return
 
     try:

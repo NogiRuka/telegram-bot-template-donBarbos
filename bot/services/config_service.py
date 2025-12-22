@@ -18,7 +18,7 @@ from bot.config import (
 )
 from bot.database.models.config import ConfigModel, ConfigType
 from bot.utils.datetime import now as get_now
-from bot.utils.datetime import parse_iso_datetime, parse_formatted_datetime
+from bot.utils.datetime import parse_formatted_datetime
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

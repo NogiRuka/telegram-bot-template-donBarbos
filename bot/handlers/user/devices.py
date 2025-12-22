@@ -139,7 +139,7 @@ async def user_devices(
     status_icon = "🟢" if device_count < max_devices else "🔴"
     
     text = (
-        f"**{USER_DEVICES_LABEL}**\n\n"
+        f"{USER_DEVICES_LABEL}\n\n"
         f"当前设备数: {device_count} / {max_devices} {status_icon}\n"
         f"规则: 小于 {max_devices} 个设备时自动允许新设备，否则仅允许列表中的设备。\n\n"
         "点击设备按钮可将其移除👇"
@@ -161,7 +161,7 @@ async def user_devices(
     
     kb.row(BACK_TO_ACCOUNT_BUTTON, BACK_TO_HOME_BUTTON)
     
-    await main_msg.update(user_id, text, kb.as_markup())
+    await main_msg.update_on_callback(callback, text, kb.as_markup())
 
 
 @router.callback_query(F.data.startswith("user:device:delete:"))
@@ -202,8 +202,9 @@ async def handle_device_delete_confirm(
         return
         
     # 2. 弹出确认框
-    device_name = f"{device.name or 'Unknown'} ({device.app_name or 'App'})"
-    text = f"⚠️ **确认删除设备?**\n\n设备: {device_name}\n\n删除后该设备将无法连接服务器。"
+    last_active = device.date_last_activity.strftime("%Y-%m-%d %H:%M") if device.date_last_activity else "未知"
+    device_name = f"{device.name or 'Unknown'} ({device.app_name or 'App'}) - 最后活跃: {last_active}"
+    text = f"⚠️ 确认删除设备?\n\n设备: {device_name}\n\n删除后该设备将无法连接服务器。"
     
     kb = InlineKeyboardBuilder()
     kb.row(

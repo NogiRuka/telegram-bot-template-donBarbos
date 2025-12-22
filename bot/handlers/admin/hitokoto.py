@@ -75,7 +75,79 @@ async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession, 
         "提示: 可多次点击切换, 选择会即时保存。"
     )
 
-
-
     await main_msg.update_on_callback(callback, caption, kb, get_common_image())
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:hitokoto:toggle:"))
+@require_admin_priv
+@require_admin_feature("admin.hitokoto")
+async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession) -> None:
+    """切换一言分类
+
+    功能说明:
+    - 切换指定分类选中状态, 实时更新配置但不关闭面板
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    try:
+        data = callback.data or ""
+        ch = data.split(":")[-1]
+        categories = await get_config(session, "admin.hitokoto.categories") or []
+        if ch in categories:
+            categories = [c for c in categories if c != ch]
+        else:
+            categories.append(ch)
+        operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
+        await set_config(
+            session,
+            "admin.hitokoto.categories",
+            categories,
+            ConfigType.LIST,
+            operator_id=operator_id,
+        )
+        type_names: dict[str, str] = {
+            "a": "动画",
+            "b": "漫画",
+            "c": "游戏",
+            "d": "文学",
+            "e": "原创",
+            "f": "来自网络",
+            "g": "其他",
+            "h": "影视",
+            "i": "诗词",
+            "j": "网易云",
+            "k": "哲学",
+            "l": "抖机灵",
+        }
+        all_types = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"]
+        rows: list[list[InlineKeyboardButton]] = []
+        current_row: list[InlineKeyboardButton] = []
+        for idx, t in enumerate(all_types, start=1):
+            enabled = t in categories
+            name = type_names.get(t, t)
+            label = f"{name} {'🟢' if enabled else '🔴'}"
+            current_row.append(InlineKeyboardButton(text=label, callback_data=f"admin:hitokoto:toggle:{t}"))
+            if idx % 4 == 0:
+                rows.append(current_row)
+                current_row = []
+        if current_row:
+            rows.append(current_row)
+        rows.append(
+            [
+                InlineKeyboardButton(text="⬅️ 返回", callback_data="admin:panel"),
+                InlineKeyboardButton(text="🏠 返回主面板", callback_data="home:back"),
+            ]
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=rows)
+        msg = callback.message
+        if msg:
+            await msg.edit_reply_markup(reply_markup=kb)
+        await callback.answer("已更新分类")
+    except (ValueError, TelegramBadRequest) as _:
+        await callback.answer("操作失败", show_alert=True)

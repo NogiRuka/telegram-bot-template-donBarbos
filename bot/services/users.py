@@ -534,7 +534,7 @@ async def create_and_bind_emby_user(
         logger.exception("❌ 注册流程系统异常: user_id={} err={}", user_id, str(e))
         return False, None, f"系统异常: {e!s}"
 
-        
+
 async def has_emby_account(session: AsyncSession, user_id: int) -> bool:
     """检查是否已绑定 Emby 账号
 

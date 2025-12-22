@@ -1,15 +1,11 @@
-from __future__ import annotations
 from datetime import datetime as dt
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy import Index, String
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
-
-if TYPE_CHECKING:
-    pass
 
 
 class EmbyUserHistoryModel(Base, BasicAuditMixin):
@@ -37,8 +33,14 @@ class EmbyUserHistoryModel(Base, BasicAuditMixin):
     password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, comment="密码哈希 (bcrypt)")
 
     # 额外的时间字段快照
-    date_created: Mapped[dt | None] = mapped_column(nullable=True, comment="用户创建时间快照(Emby DateCreated)")
-    last_login_date: Mapped[dt | None] = mapped_column(nullable=True, comment="最后登录时间快照(Emby LastLoginDate)")
+    date_created: Mapped[dt | None] = mapped_column(
+        nullable=True,
+        comment="用户创建时间快照(Emby DateCreated)",
+    )
+    last_login_date: Mapped[dt | None] = mapped_column(
+        nullable=True,
+        comment="最后登录时间快照(Emby LastLoginDate)",
+    )
     last_activity_date: Mapped[dt | None] = mapped_column(
         nullable=True, comment="最后活动时间快照(Emby LastActivityDate)"
     )

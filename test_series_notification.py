@@ -11,7 +11,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from bot.core.config import settings
-from bot.core.emby import EmbyClient
 from bot.utils.emby import get_emby_client
 
 
@@ -25,7 +24,6 @@ async def test_series_notification() -> None:
 
     client = get_emby_client()
     if not client:
-        print("❌ Emby 服务配置异常，请检查配置")
         return
 
     try:

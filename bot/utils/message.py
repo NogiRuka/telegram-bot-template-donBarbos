@@ -47,7 +47,7 @@ def delete_message_after_delay(message: Any, delay: int = 3) -> asyncio.Task:
     返回值:
     - asyncio.Task: 创建的异步任务
     """
-    async def _delayed_delete():
+    async def _delayed_delete() -> None:
         try:
             await asyncio.sleep(delay)
             await delete_message(message)
@@ -57,5 +57,5 @@ def delete_message_after_delay(message: Any, delay: int = 3) -> asyncio.Task:
 
     task = asyncio.create_task(_delayed_delete())
     # 保存任务引用避免被垃圾回收
-    setattr(task, '_ignore', True)
+    task._ignore = True
     return task

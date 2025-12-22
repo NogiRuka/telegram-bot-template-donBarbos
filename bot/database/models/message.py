@@ -9,19 +9,15 @@
 最后更新: 2025-10-21
 """
 
-from __future__ import annotations
+
 from datetime import datetime as dt
 from enum import Enum
-from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Index, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin
-
-if TYPE_CHECKING:
-    pass
 
 
 class MessageType(str, Enum):
@@ -191,7 +187,9 @@ class MessageModel(Base, BasicAuditMixin):
         default=False, comment="是否已编辑，默认False，True表示此消息已被用户编辑过"
     )
 
-    edit_date: Mapped[dt | None] = mapped_column(nullable=True, comment="编辑时间，可选字段，消息最后编辑的时间")
+    edit_date: Mapped[dt | None] = mapped_column(
+        nullable=True, comment="编辑时间，可选字段，消息最后编辑的时间"
+    )
 
     # 注意：is_deleted 和 deleted_at 字段已由 BasicAuditMixin 提供
 
@@ -355,7 +353,7 @@ class MessageModel(Base, BasicAuditMixin):
         else:
             self.word_count = 0
 
-    def mark_as_edited(self, edit_time: datetime.datetime | None = None) -> None:
+    def mark_as_edited(self, edit_time: dt | None = None) -> None:
         """
         标记消息为已编辑
 
@@ -367,7 +365,7 @@ class MessageModel(Base, BasicAuditMixin):
         self.is_edited = True
         self.edit_date = edit_time or _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0)
 
-    def soft_delete(self, delete_time: datetime.datetime | None = None) -> None:
+    def soft_delete(self, delete_time: dt | None = None) -> None:
         """
         软删除消息
 
@@ -568,7 +566,7 @@ class MessageModel(Base, BasicAuditMixin):
         file_id: str | None = None,
         file_size: int | None = None,
         **kwargs,
-    ) -> MessageModel:
+    ) -> "MessageModel":
         """
         从Telegram消息创建消息记录
 

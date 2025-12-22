@@ -217,13 +217,13 @@ def get_friendly_timezone_name(tz_name: str) -> str:
         "Asia/Tokyo": "东京时间",
         "UTC": "协调世界时 (UTC)"
     }
-    
+
     if tz_name in timezone_map:
         return timezone_map[tz_name]
-    
+
     # 如果不在映射里，对名称进行美化处理：'Europe/Paris' -> 'Paris (Europe)'
     if "/" in tz_name:
-        region, city = tz_name.split('/')
+        region, city = tz_name.split("/")
         return f"{city.replace('_', ' ')} ({region})"
-    
+
     return tz_name

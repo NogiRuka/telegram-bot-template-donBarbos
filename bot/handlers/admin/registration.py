@@ -6,6 +6,10 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
+from bot.keyboards.inline.buttons import (
+    BACK_TO_ADMIN_PANEL_BUTTON,
+    BACK_TO_HOME_BUTTON,
+)
 from bot.keyboards.inline.constants import OPEN_REGISTRATION_LABEL
 from bot.services.config_service import (
     get_free_registration_status,
@@ -13,12 +17,8 @@ from bot.services.config_service import (
     set_free_registration_status,
     set_registration_window,
 )
-from bot.keyboards.inline.buttons import (
-    BACK_TO_ADMIN_PANEL_BUTTON,
-    BACK_TO_HOME_BUTTON,
-)
 from bot.services.main_message import MainMessageService
-from bot.utils.datetime import format_datetime, now, parse_formatted_datetime, get_friendly_timezone_name
+from bot.utils.datetime import format_datetime, get_friendly_timezone_name, now, parse_formatted_datetime
 from bot.utils.images import get_common_image
 from bot.utils.permissions import require_admin_feature, require_admin_priv
 
@@ -104,7 +104,7 @@ async def set_registration_preset(callback: CallbackQuery, session: AsyncSession
     except ValueError:
         await callback.answer("🔴 参数无效", show_alert=True)
         return
-    
+
     # 使用工具函数获取当前时间并使用统一格式存储
     start_dt = now()
     formatted_start = start_dt.strftime("%Y-%m-%d %H:%M:%S")

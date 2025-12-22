@@ -17,7 +17,7 @@ from bot.keyboards.inline.user import (
 from bot.services.config_service import get_registration_window, is_registration_open
 from bot.services.main_message import MainMessageService
 from bot.services.users import create_and_bind_emby_user, has_emby_account
-from bot.utils.datetime import format_datetime, parse_formatted_datetime, now, get_friendly_timezone_name
+from bot.utils.datetime import format_datetime, get_friendly_timezone_name, now, parse_formatted_datetime
 from bot.utils.permissions import require_user_feature
 from bot.utils.text import safe_alert_text
 
@@ -64,7 +64,7 @@ async def user_register(
 
             # 获取当前时间用于判断时间是否已经过去（使用应用时区）
             current_time = now()
-            
+
             if start_time:
                 dt_start = parse_formatted_datetime(start_time)
                 if dt_start:

@@ -15,6 +15,8 @@ from bot.services.config_service import get_config
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+SNIPPET_MAX_LEN = 48
+
 
 async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = None) -> dict[str, Any] | None:
     """获取一言句子
@@ -53,7 +55,7 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
             ln = payload.get("length")
             duration_ms = int((time.perf_counter() - start_time) * 1000)
             snippet = str(payload.get("hitokoto") or "")
-            snippet = (snippet[:48] + "…") if len(snippet) > 48 else snippet
+            snippet = (snippet[:SNIPPET_MAX_LEN] + "…") if len(snippet) > SNIPPET_MAX_LEN else snippet
             logger.info(f"🟢 [Hitokoto] 响应 status={resp.status} | 耗时={duration_ms}ms")
             logger.info(f"📦 [Hitokoto] 数据 uuid={u} | type={t} | length={ln} | 片段='{snippet}'")
             try:
@@ -111,19 +113,23 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
         return None
 
 
-# Markdown 解析, 不进行 HTML 转义
-
-
-def build_start_caption(payload: dict[str, Any] | None, user_name: str, project_name: str) -> str:
+def build_start_caption(
+    payload: dict[str, Any] | None,
+    user_name: str,
+    project_name: str,
+    announcement: str | None = None,
+) -> str:
     """构建欢迎页文案
 
     功能说明:
     - 复用原始欢迎页模板, 使用 Markdown 链接与强调样式
+    - 可附加公告文案(存在时显示, 不存在则不显示)
 
     输入参数:
     - payload: 一言返回字典; 可为 None
     - user_name: 用户显示名称
     - project_name: 项目名称
+    - announcement: 公告文案; 可为 None
 
     返回值:
     - str: 用于 Markdown 解析模式的完整文案
@@ -131,4 +137,8 @@ def build_start_caption(payload: dict[str, Any] | None, user_name: str, project_
     hitokoto = "(ง •̀_•́)ง" if not payload else str(payload.get("hitokoto") or "(ง •̀_•́)ง")
     uuid = "" if not payload else str(payload.get("uuid") or "")
     link = f"https://hitokoto.cn?uuid={uuid}" if uuid else "https://hitokoto.cn/"
-    return f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name}_*\n🎐 欢迎使用{project_name}\n"
+    base = f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name}_*\n🎐 欢迎使用{project_name}\n"
+    ann = ""
+    if announcement:
+        ann = f"\n📢 公告：\n{announcement}\n"
+    return f"{base}{ann}"

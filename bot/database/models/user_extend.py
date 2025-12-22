@@ -4,19 +4,16 @@
 包含权限角色、电话、简介、多IP、最后交互时间等扩展字段。
 """
 
-from __future__ import annotations
+
 from datetime import datetime as dt
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy import JSON, Index, String
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
-
-if TYPE_CHECKING:
-    pass
 
 
 class UserRole(Enum):

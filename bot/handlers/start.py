@@ -5,13 +5,14 @@ from aiogram.filters import CommandStart
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config.constants import KEY_ANNOUNCEMENT_TEXT
 from bot.core.config import settings
 from bot.database.models import UserModel
 from bot.keyboards.inline.admin import get_start_admin_keyboard
 from bot.keyboards.inline.owner import get_start_owner_keyboard
 from bot.keyboards.inline.user import get_start_user_keyboard
 from bot.services.analytics import analytics
-from bot.services.config_service import list_features
+from bot.services.config_service import get_config, list_features
 from bot.services.main_message import MainMessageService
 from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
 from bot.utils.images import get_common_image
@@ -42,7 +43,16 @@ async def build_home_view(session: AsyncSession | None, user_id: int | None) -> 
             if user is not None:
                 user_name = user.get_full_name()
 
-    caption = build_start_caption(payload, user_name, settings.PROJECT_NAME)
+    announcement = None
+    if session is not None:
+        with contextlib.suppress(Exception):
+            announcement = await get_config(session, KEY_ANNOUNCEMENT_TEXT)
+            if isinstance(announcement, (dict, list, bool, int, float)):
+                announcement = str(announcement)
+            if announcement is not None:
+                announcement = announcement.strip() or None
+
+    caption = build_start_caption(payload, user_name, settings.PROJECT_NAME, announcement)
 
     role = await _resolve_role(session, user_id)
     kb_map = {
