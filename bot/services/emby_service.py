@@ -663,6 +663,10 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
             
         await session.commit()
         logger.info(f"✅ Emby 设备同步完成: 插入 {inserted}, 更新 {updated}, 删除 {deleted} 个")
+
+        # 同步完成后，执行策略清理 (自动限制设备数)
+        await cleanup_devices_by_policy(session)
+
         return inserted + updated
         
     except Exception as e:
