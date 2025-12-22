@@ -129,10 +129,24 @@ async def sync_all_users_configuration(
                 devices = res.scalars().all()
 
                 enabled_ids = []
+                enable_all_devices = False
                 
-                if len(devices) <= max_devices:
+                if len(devices) < max_devices:
+                    # Case 1: 设备数 < 最大限制
+                    # 允许新设备登录 (EnableAllDevices=True)
+                    # 同时更新 EnabledDevices 为当前列表 (虽不强制生效，但在切换状态时有用)
                     enabled_ids = [d.reported_device_id for d in devices if d.reported_device_id]
+                    enable_all_devices = True
+                elif len(devices) == max_devices:
+                    # Case 2: 设备数 = 最大限制
+                    # 禁止新设备 (EnableAllDevices=False)
+                    # 仅允许现有设备
+                    enabled_ids = [d.reported_device_id for d in devices if d.reported_device_id]
+                    enable_all_devices = False
                 else:
+                    # Case 3: 设备数 > 最大限制 (执行清理)
+                    enable_all_devices = False
+                    
                     # 1. 根据 AppName 去重保留最新
                     app_map = {}
                     for d in devices:
@@ -174,7 +188,7 @@ async def sync_all_users_configuration(
                 # 构建新的 Policy
                 user_policy = template_policy.copy()
                 user_policy["EnabledDevices"] = enabled_ids
-                user_policy["EnableAllDevices"] = False  # 必须关闭此项以使 EnabledDevices 生效
+                user_policy["EnableAllDevices"] = enable_all_devices
 
                 # 更新 Configuration
                 await client.update_user_configuration(uid, template_config)
