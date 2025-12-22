@@ -783,7 +783,30 @@ async def cleanup_devices_by_policy(
                     # 获取最新 UserDto 并更新本地
                     fresh_user_dto = await client.get_user(uid)
                     if fresh_user_dto:
+                        # 保存旧数据到历史表
+                        session.add(
+                            EmbyUserHistoryModel(
+                                emby_user_id=user.emby_user_id,
+                                name=user.name,
+                                password_hash=user.password_hash,
+                                date_created=user.date_created,
+                                last_login_date=user.last_login_date,
+                                last_activity_date=user.last_activity_date,
+                                user_dto=user.user_dto,
+                                action="update",
+                                created_at=user.created_at,
+                                updated_at=user.updated_at,
+                                created_by=user.created_by,
+                                updated_by=user.updated_by,
+                                is_deleted=user.is_deleted,
+                                deleted_at=user.deleted_at,
+                                deleted_by=user.deleted_by,
+                                remark=user.remark,
+                            )
+                        )
+                        
                         user.user_dto = fresh_user_dto
+                        user.remark = f"Policy更新: EnableAll={enable_all_devices}, Devices={len(enabled_ids)}"
                         session.add(user)
                         updated_users_count += 1
                         logger.info(f"🔄 更新用户 {user.name} Policy: EnableAll={enable_all_devices}, Devices={len(enabled_ids)}")
