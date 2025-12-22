@@ -678,13 +678,12 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
 async def cleanup_devices_by_policy(
     session: AsyncSession
 ) -> int:
-    """根据设备数量限制管理设备访问权限
+    """根据 Emby 用户 Policy 清理设备
 
     功能说明:
     - 遍历所有 Emby 用户
-    - 根据 max_devices 限制计算允许的设备列表
-    - 更新 Emby Policy (EnableAllDevices, EnabledDevices)
-    - 软删除超出限制的设备
+    - 读取用户 UserDto 中的 Policy (EnabledDevices, EnableAllDevices)
+    - 软删除不在允许列表中的设备
     - 排除: 管理员、模板用户
 
     输入参数:
@@ -693,13 +692,7 @@ async def cleanup_devices_by_policy(
     返回值:
     - int: 被软删除的设备数量
     """
-    from datetime import datetime
     
-    client = get_emby_client()
-    if client is None:
-        logger.warning("⚠️ 未配置 Emby 连接信息, 无法同步 Policy")
-        return 0
-
     try:
         # 1. 准备排除列表
         skips = set()
@@ -709,18 +702,6 @@ async def cleanup_devices_by_policy(
         if tid:
             skips.add(tid)
             
-        # 获取模板 Policy 用于后续构建 (类似于 sync_emby_config)
-        # 但这里主要目的是清理，是否必须使用模板 Policy？
-        # sync_emby_config 是 "sync to template"，这里是 "cleanup by policy"
-        # 用户的要求是 "逻辑改成 sync_emby_config 的"，意味着也要做 Policy 更新
-        template_policy = {}
-        if tid:
-            try:
-                template_user = await client.get_user(tid)
-                template_policy = template_user.get("Policy", {})
-            except Exception:
-                pass # 获取模板失败则无法进行完全一致的 Policy 构建，可能需跳过或使用空
-
         # 2. 获取所有用户
         stmt = select(EmbyUserModel)
         result = await session.execute(stmt)
@@ -730,7 +711,6 @@ async def cleanup_devices_by_policy(
         
         for user in users:
             uid = user.emby_user_id
-            name = user.name
             
             # 排除显式跳过的用户
             if uid in skips:
@@ -740,11 +720,15 @@ async def cleanup_devices_by_policy(
             user_dto = user.user_dto or {}
             policy = user_dto.get("Policy", {})
             if policy.get("IsAdministrator", False):
-                # logger.debug(f"⏭️ 跳过管理员用户: {name} ({uid})")
                 continue
-                
-            # 获取最大设备数 (默认为3)
-            max_devices = user.max_devices
+            
+            # 读取 Policy 配置
+            enable_all_devices = policy.get("EnableAllDevices", True)
+            enabled_devices = set(policy.get("EnabledDevices", []))
+            
+            # 如果允许所有设备，则不需要基于 Policy 清理
+            if enable_all_devices:
+                continue
             
             # 3. 获取用户设备
             device_stmt = select(EmbyDeviceModel).where(
@@ -754,79 +738,16 @@ async def cleanup_devices_by_policy(
             device_res = await session.execute(device_stmt)
             devices = device_res.scalars().all()
             
-            # 4. 应用 sync_emby_config 的核心逻辑
-            enabled_ids = []
-            enable_all_devices = False
-            
-            if len(devices) < max_devices:
-                # Case 1: 设备数 < 最大限制
-                # 允许新设备登录 (EnableAllDevices=True)
-                # 同时更新 EnabledDevices 为当前列表
-                enabled_ids = [d.reported_device_id for d in devices if d.reported_device_id]
-                enable_all_devices = True
-                
-            elif len(devices) == max_devices:
-                # Case 2: 设备数 = 最大限制
-                # 禁止新设备 (EnableAllDevices=False)
-                # 仅允许现有设备
-                enabled_ids = [d.reported_device_id for d in devices if d.reported_device_id]
-                enable_all_devices = False
-                
-            else:
-                # Case 3: 设备数 > 最大限制 (执行清理)
-                enable_all_devices = False
-                
-                # 直接按最后活动时间排序，保留最新的 max_devices 个
-                # 注意: devices 是 ORM 对象列表
-                devices.sort(key=lambda x: x.date_last_activity or datetime.min, reverse=True)
-                keep_devices = devices[:max_devices]
-                
-                enabled_ids = [d.reported_device_id for d in keep_devices if d.reported_device_id]
-                
-                # 标记废弃设备 (本地软删除)
-                keep_ids = set(d.id for d in keep_devices)
-                for d in devices:
-                    if d.id not in keep_ids:
-                        d.is_deleted = True
-                        d.deleted_at = now()
-                        d.deleted_by = 0  # 0 表示系统
-                        d.remark = "超出最大设备数自动清理"
-                        session.add(d)
-                        deleted_count += 1
-                        # logger.info(f"🗑️ 软删除设备: User={name}, Device={d.name or 'Unknown'}")
-
-            # 5. 更新 Emby Policy
-            # 如果没有模板 Policy，尝试使用用户当前的 Policy 作为基底
-            # 这样可以保留用户的其他设置 (如家长控制等)，仅修改设备相关
-            # sync_emby_config 是强制同步模板，这里如果不强制同步模板，应该用 current_policy
-            # 用户原话: "逻辑改成 sync_emby_config 的... exclude ... 模板用户和 Admin"
-            # 既然是 "cleanup"，通常不应重置用户所有设置。
-            # sync_emby_config 那个脚本是 "sync_configuration"，目的是统一配置。
-            # 这里是 "emby_service"，可能用于日常维护。
-            # 为了安全起见，使用用户当前的 Policy 作为基底修改，而不是模板。
-            # 除非用户明确想要强制同步模板。
-            # 考虑到函数名 cleanup_devices...，只修改设备相关字段更合理。
-            
-            target_policy = policy.copy() # 使用用户当前 Policy
-            target_policy["EnabledDevices"] = enabled_ids
-            target_policy["EnableAllDevices"] = enable_all_devices
-            
-            # 检查是否需要更新 (减少 API 调用)
-            current_enabled = set(policy.get("EnabledDevices", []))
-            new_enabled = set(enabled_ids)
-            current_all = policy.get("EnableAllDevices", True) # 默认为 True
-            
-            # 注意: Emby 有时返回 None
-            if current_all is None: current_all = True
-            
-            if current_enabled == new_enabled and current_all == enable_all_devices:
-                continue
-                
-            try:
-                await client.update_user_policy(uid, target_policy)
-                # logger.debug(f"✅ 更新用户 Policy: {name}")
-            except Exception as e:
-                logger.error(f"❌ 更新用户 Policy 失败: {name} ({uid}) -> {e}")
+            # 4. 软删除不在允许列表中的设备
+            for device in devices:
+                # 注意: 如果 device.reported_device_id 为空，也视为不在允许列表中
+                if device.reported_device_id not in enabled_devices:
+                    device.is_deleted = True
+                    device.deleted_at = now()
+                    device.deleted_by = 0  # 0 表示系统
+                    device.remark = "Policy限制: 不在 EnabledDevices 中 (EnableAllDevices=False)"
+                    session.add(device)
+                    deleted_count += 1
 
         if deleted_count > 0:
             await session.commit()
