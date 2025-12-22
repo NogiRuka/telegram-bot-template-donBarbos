@@ -612,24 +612,54 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
             
             model = existing_models.get(emby_device_id)
             if model:
-                # Update
-                # 如果之前被软删除，则恢复
+                # Check for changes
+                has_changes = False
+                
+                # 1. 如果设备之前被软删除，现在又出现了，则恢复
                 if model.is_deleted:
                     model.is_deleted = False
                     model.deleted_at = None
                     model.deleted_by = None
+                    model.remark = None
+                    has_changes = True
 
-                model.reported_device_id = reported_id
-                model.name = name
-                model.last_user_name = last_user_name
-                model.app_name = app_name
-                model.app_version = app_version
-                model.last_user_id = last_user_id
-                model.date_last_activity = date_last_activity
-                model.icon_url = icon_url
-                model.ip_address = ip_address
-                model.raw_data = device_data
-                updated += 1
+                # 2. 比较字段变更
+                if model.reported_device_id != reported_id:
+                    model.reported_device_id = reported_id
+                    has_changes = True
+                if model.name != name:
+                    model.name = name
+                    has_changes = True
+                if model.last_user_name != last_user_name:
+                    model.last_user_name = last_user_name
+                    has_changes = True
+                if model.app_name != app_name:
+                    model.app_name = app_name
+                    has_changes = True
+                if model.app_version != app_version:
+                    model.app_version = app_version
+                    has_changes = True
+                if model.last_user_id != last_user_id:
+                    model.last_user_id = last_user_id
+                    has_changes = True
+                if model.date_last_activity != date_last_activity:
+                    model.date_last_activity = date_last_activity
+                    has_changes = True
+                if model.icon_url != icon_url:
+                    model.icon_url = icon_url
+                    has_changes = True
+                if model.ip_address != ip_address:
+                    model.ip_address = ip_address
+                    has_changes = True
+                
+                # 比较 raw_data (可能包含其他未映射字段)
+                if model.raw_data != device_data:
+                    model.raw_data = device_data
+                    has_changes = True
+                
+                if has_changes:
+                    updated += 1
+                    session.add(model)
             else:
                 # Insert
                 model = EmbyDeviceModel(
