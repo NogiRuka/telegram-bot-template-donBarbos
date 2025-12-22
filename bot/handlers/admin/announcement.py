@@ -32,6 +32,37 @@ class AnnouncementStates(StatesGroup):
     waiting_for_text = State()
 
 
+def _build_panel_ui(current_text: str | None) -> tuple[str, InlineKeyboardBuilder]:
+    """构建公告面板的 UI 内容
+
+    功能说明:
+    - 根据当前公告内容生成 caption 和 keyboard
+
+    输入参数:
+    - current_text: 当前公告文本
+
+    返回值:
+    - tuple[str, InlineKeyboardBuilder]: (caption, keyboard_builder)
+    """
+    display_text = current_text if current_text else "（当前未设置公告）"
+    caption = (
+        f"{ANNOUNCEMENT_LABEL}\n\n"
+        f"当前公告：\n{display_text}\n\n"
+        "操作：\n"
+        "• 编辑公告\n"
+        "• 清空公告\n"
+    )
+
+    kb = InlineKeyboardBuilder()
+    kb.row(
+        InlineKeyboardButton(text="✏️ 编辑公告", callback_data="admin:announcement:edit"),
+        InlineKeyboardButton(text="🗑️ 清空公告", callback_data="admin:announcement:clear"),
+    )
+    kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
+    
+    return caption, kb
+
+
 @router.callback_query(F.data == "admin:announcement")
 @require_admin_priv
 @require_admin_feature(KEY_ADMIN_ANNOUNCEMENT)
@@ -52,22 +83,8 @@ async def open_announcement_panel(callback: CallbackQuery, session: AsyncSession
     """
     current_text = await get_config(session, KEY_ANNOUNCEMENT_TEXT)
     current_text = (str(current_text).strip() if current_text is not None else "")
-    display_text = current_text if current_text else "（当前未设置公告）"
-
-    caption = (
-        f"{ANNOUNCEMENT_LABEL}\n\n"
-        f"当前公告：\n{display_text}\n\n"
-        "操作：\n"
-        "• 编辑公告\n"
-        "• 清空公告\n"
-    )
-
-    kb = InlineKeyboardBuilder()
-    kb.row(
-        InlineKeyboardButton(text="✏️ 编辑公告", callback_data="admin:announcement:edit"),
-        InlineKeyboardButton(text="🗑️ 清空公告", callback_data="admin:announcement:clear"),
-    )
-    kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
+    
+    caption, kb = _build_panel_ui(current_text)
 
     await main_msg.update_on_callback(callback, caption, kb.as_markup(), image_path=get_common_image())
 
@@ -121,21 +138,7 @@ async def clear_announcement(callback: CallbackQuery, session: AsyncSession, mai
     await set_config(session, KEY_ANNOUNCEMENT_TEXT, None)
 
     # 直接更新界面，避免重新查库
-    display_text = "（当前未设置公告）"
-    caption = (
-        f"{ANNOUNCEMENT_LABEL}\n\n"
-        f"当前公告：\n{display_text}\n\n"
-        "操作：\n"
-        "• 编辑公告\n"
-        "• 清空公告\n"
-    )
-
-    kb = InlineKeyboardBuilder()
-    kb.row(
-        InlineKeyboardButton(text="✏️ 编辑公告", callback_data="admin:announcement:edit"),
-        InlineKeyboardButton(text="🗑️ 清空公告", callback_data="admin:announcement:clear"),
-    )
-    kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
+    caption, kb = _build_panel_ui(None)
 
     await main_msg.update_on_callback(callback, caption, kb.as_markup(), image_path=get_common_image())
     await callback.answer("公告已清空")
@@ -183,22 +186,8 @@ async def handle_announcement_text(
     # 重新查询以确保显示的是数据库中的最新值
     current_text = await get_config(session, KEY_ANNOUNCEMENT_TEXT)
     current_text = (str(current_text).strip() if current_text is not None else "")
-    display_text = current_text if current_text else "（当前未设置公告）"
-
-    caption = (
-        f"{ANNOUNCEMENT_LABEL}\n\n"
-        f"当前公告：\n{display_text}\n\n"
-        "操作：\n"
-        "• 编辑公告\n"
-        "• 清空公告\n"
-    )
-
-    kb = InlineKeyboardBuilder()
-    kb.row(
-        InlineKeyboardButton(text="✏️ 编辑公告", callback_data="admin:announcement:edit"),
-        InlineKeyboardButton(text="🗑️ 清空公告", callback_data="admin:announcement:clear"),
-    )
-    kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
+    
+    caption, kb = _build_panel_ui(current_text)
 
     if message.from_user:
         await main_msg.update(message.from_user.id, caption, kb.as_markup())
