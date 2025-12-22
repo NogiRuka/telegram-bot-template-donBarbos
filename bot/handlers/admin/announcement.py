@@ -11,6 +11,7 @@ from bot.keyboards.inline.constants import ANNOUNCEMENT_LABEL
 from bot.services.config_service import get_config, set_config
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
+from bot.utils.message import delete_message_after_delay
 from bot.utils.permissions import require_admin_feature, require_admin_priv
 
 router = Router(name="admin_announcement")
@@ -48,9 +49,6 @@ def _build_panel_ui(current_text: str | None) -> tuple[str, InlineKeyboardBuilde
     caption = (
         f"{ANNOUNCEMENT_LABEL}\n\n"
         f"当前公告：\n{display_text}\n\n"
-        "操作：\n"
-        "• 编辑公告\n"
-        "• 清空公告\n"
     )
 
     kb = InlineKeyboardBuilder()
@@ -179,8 +177,12 @@ async def handle_announcement_text(
         if not ok:
             # 更新失败，发送临时提示
             temp_msg = await message.answer("🔴 更新失败，请稍后重试")
-            # 可以选择稍后删除 temp_msg，这里暂不处理
+            delete_message_after_delay(temp_msg, 5)
             return
+        
+        # 更新成功，发送临时提示
+        success_msg = await message.answer("✅ 公告已更新")
+        delete_message_after_delay(success_msg, 3)
 
     # 无论成功与否（只要非空或空），都尝试刷新主面板显示最新状态
     # 重新查询以确保显示的是数据库中的最新值
