@@ -1,6 +1,7 @@
 from __future__ import annotations
 import copy
 import json
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -16,9 +17,6 @@ from bot.utils.http import HttpRequestError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-
-
 
 
 async def list_users(
@@ -662,7 +660,7 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
                     deleted += 1
             
         await session.commit()
-        logger.info(f"✅ Emby 设备同步完成: 插入 {inserted}, 更新 {updated}, 删除 {deleted} 个")
+        logger.info(f"✅ Emby 设备同步完成: 插入 {inserted}, 更新 {updated}, 删除 {deleted}")
 
         return inserted + updated
         
@@ -679,9 +677,10 @@ async def cleanup_devices_by_policy(
 
     功能说明:
     - 遍历所有 Emby 用户
-    - 读取用户 UserDto 中的 Policy (EnabledDevices, EnableAllDevices)
-    - 软删除不在允许列表中的设备
-    - 排除: 管理员、模板用户
+    - 根据 max_devices 计算允许的设备列表
+    - 软删除超出限制的设备
+    - 更新 Emby 用户 Policy (EnabledDevices, EnableAllDevices)
+    - 同步更新本地 EmbyUserModel 的 user_dto
 
     输入参数:
     - session: 数据库会话
@@ -690,6 +689,11 @@ async def cleanup_devices_by_policy(
     - int: 被软删除的设备数量
     """
     
+    # 0. 获取客户端
+    client = get_emby_client()
+    if not client:
+        return 0
+
     try:
         # 1. 准备排除列表
         skips = set()
@@ -705,6 +709,7 @@ async def cleanup_devices_by_policy(
         users = result.scalars().all()
 
         deleted_count = 0
+        updated_users_count = 0
         
         for user in users:
             uid = user.emby_user_id
@@ -719,14 +724,6 @@ async def cleanup_devices_by_policy(
             if policy.get("IsAdministrator", False):
                 continue
             
-            # 读取 Policy 配置
-            enable_all_devices = policy.get("EnableAllDevices", True)
-            enabled_devices = set(policy.get("EnabledDevices", []))
-            
-            # 如果允许所有设备，则不需要基于 Policy 清理
-            if enable_all_devices:
-                continue
-            
             # 3. 获取用户设备
             device_stmt = select(EmbyDeviceModel).where(
                 EmbyDeviceModel.last_user_id == uid,
@@ -735,20 +732,68 @@ async def cleanup_devices_by_policy(
             device_res = await session.execute(device_stmt)
             devices = device_res.scalars().all()
             
-            # 4. 软删除不在允许列表中的设备
-            for device in devices:
-                # 注意: 如果 device.reported_device_id 为空，也视为不在允许列表中
-                if device.reported_device_id not in enabled_devices:
+            # 4. 计算保留策略
+            max_devices = user.max_devices
+            # 按最后活动时间倒序排列
+            devices.sort(key=lambda x: x.date_last_activity or datetime.min, reverse=True)
+            
+            keep_devices = []
+            enable_all_devices = False
+            
+            if len(devices) < max_devices:
+                # 未满: 允许所有
+                keep_devices = devices
+                enable_all_devices = True
+            elif len(devices) == max_devices:
+                # 刚满: 仅允许现有
+                keep_devices = devices
+                enable_all_devices = False
+            else:
+                # 超出: 保留最新的N个
+                keep_devices = devices[:max_devices]
+                enable_all_devices = False
+                
+                # 软删除多余设备
+                for device in devices[max_devices:]:
                     device.is_deleted = True
                     device.deleted_at = now()
                     device.deleted_by = 0  # 0 表示系统
                     device.remark = "超出最大设备数自动清理"
                     session.add(device)
                     deleted_count += 1
+            
+            # 5. 检查并更新 Policy
+            enabled_ids = [d.reported_device_id for d in keep_devices if d.reported_device_id]
+            
+            current_enabled = set(policy.get("EnabledDevices", []))
+            current_all = policy.get("EnableAllDevices", True)
+            
+            new_enabled_set = set(enabled_ids)
+            
+            # 如果配置有变 (设备列表不同 或 开关状态不同)
+            if new_enabled_set != current_enabled or enable_all_devices != current_all:
+                new_policy = policy.copy()
+                new_policy["EnabledDevices"] = list(new_enabled_set)
+                new_policy["EnableAllDevices"] = enable_all_devices
+                
+                try:
+                    # 更新 Emby
+                    await client.update_user_policy(uid, new_policy)
+                    
+                    # 获取最新 UserDto 并更新本地
+                    fresh_user_dto = await client.get_user(uid)
+                    if fresh_user_dto:
+                        user.user_dto = fresh_user_dto
+                        session.add(user)
+                        updated_users_count += 1
+                        logger.info(f"🔄 更新用户 {user.name} Policy: EnableAll={enable_all_devices}, Devices={len(enabled_ids)}")
+                        
+                except Exception as e:
+                    logger.error(f"❌ 更新用户 {user.name} Policy 失败: {e}")
 
-        if deleted_count > 0:
+        if deleted_count > 0 or updated_users_count > 0:
             await session.commit()
-            logger.info(f"✅ 根据 Policy 清理了 {deleted_count} 个设备")
+            logger.info(f"✅ Policy 清理完成: 软删除 {deleted_count} 个设备, 更新 {updated_users_count} 个用户 Policy")
         
         return deleted_count
 
