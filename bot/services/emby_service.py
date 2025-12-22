@@ -560,17 +560,22 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
     - 调用 `GET /Devices` 获取所有设备
     - 同步到 `emby_devices` 表
     - 若存在则更新，不存在则插入
+    - 若数据库存在但 API 不存在，则软删除
 
     输入参数:
     - session: 数据库会话
 
     返回值:
-    - int: 同步的设备数量
+    - int: 同步的设备数量 (插入+更新)
     """
     client = get_emby_client()
     if client is None:
         logger.warning("⚠️ 未配置 Emby 连接信息, 跳过设备同步")
         return 0
+
+    inserted = 0
+    updated = 0
+    deleted = 0
 
     try:
         devices, total = await client.get_devices()
@@ -580,20 +585,20 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
             
         logger.info(f"🔄 开始同步 Emby 设备, 共 {len(devices)} 个")
         
-        # 批量查询现有记录
-        device_ids = [str(d.get("Id")) for d in devices if d.get("Id")]
-        if not device_ids:
-             return 0
-
-        existing_stmt = select(EmbyDeviceModel).where(EmbyDeviceModel.emby_device_id.in_(device_ids))
-        existing_res = await session.execute(existing_stmt)
+        # 1. 获取所有现有设备 (包括已软删除的，以便恢复)
+        stmt = select(EmbyDeviceModel)
+        existing_res = await session.execute(stmt)
         existing_models = {m.emby_device_id: m for m in existing_res.scalars().all()}
         
-        count = 0
+        api_device_ids = set()
+        
+        # 2. 遍历 API 数据进行 插入 或 更新
         for device_data in devices:
             emby_device_id = str(device_data.get("Id"))
             if not emby_device_id:
                 continue
+            
+            api_device_ids.add(emby_device_id)
                 
             reported_id = device_data.get("ReportedDeviceId")
             name = device_data.get("Name")
@@ -610,6 +615,12 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
             model = existing_models.get(emby_device_id)
             if model:
                 # Update
+                # 如果之前被软删除，则恢复
+                if model.is_deleted:
+                    model.is_deleted = False
+                    model.deleted_at = None
+                    model.deleted_by = None
+
                 model.reported_device_id = reported_id
                 model.name = name
                 model.last_user_name = last_user_name
@@ -620,6 +631,7 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
                 model.icon_url = icon_url
                 model.ip_address = ip_address
                 model.raw_data = device_data
+                updated += 1
             else:
                 # Insert
                 model = EmbyDeviceModel(
@@ -636,11 +648,21 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
                     raw_data=device_data
                 )
                 session.add(model)
-            count += 1
+                inserted += 1
+            
+        # 3. 处理删除: 数据库中有，但 API 中没有的
+        for eid, model in existing_models.items():
+            if eid not in api_device_ids:
+                if not model.is_deleted:
+                    model.is_deleted = True
+                    model.deleted_at = now()
+                    model.deleted_by = 0  # 0 表示系统
+                    session.add(model)
+                    deleted += 1
             
         await session.commit()
-        logger.info(f"✅ Emby 设备同步完成: {count} 个")
-        return count
+        logger.info(f"✅ Emby 设备同步完成: 插入 {inserted}, 更新 {updated}, 删除 {deleted} 个")
+        return inserted + updated
         
     except Exception as e:
         logger.error(f"❌ Emby 设备同步失败: {e}")
