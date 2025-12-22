@@ -13,6 +13,7 @@ from bot.database.models.user_extend import UserExtendModel
 from bot.services.emby_service import cleanup_devices_by_policy, save_all_emby_devices
 from bot.services.main_message import MainMessageService
 from bot.keyboards.inline.buttons import BACK_TO_ACCOUNT_BUTTON, BACK_TO_HOME_BUTTON
+from bot.keyboards.inline.constants import USER_DEVICES_LABEL
 from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
 from bot.utils.permissions import require_user_feature
@@ -138,7 +139,7 @@ async def user_devices(
     status_icon = "🟢" if device_count < max_devices else "🔴"
     
     text = (
-        "📱 **我的设备管理**\n\n"
+        f"**{USER_DEVICES_LABEL}**\n\n"
         f"当前设备数: {device_count} / {max_devices} {status_icon}\n"
         f"规则: 小于 {max_devices} 个设备时自动允许新设备，否则仅允许列表中的设备。\n\n"
         "点击设备按钮可将其移除👇"
