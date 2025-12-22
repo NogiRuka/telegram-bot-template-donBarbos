@@ -676,8 +676,7 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
 
 
 async def cleanup_devices_by_policy(
-    session: AsyncSession,
-    exclude_user_ids: list[str] | None = None
+    session: AsyncSession
 ) -> int:
     """根据设备数量限制管理设备访问权限
 
@@ -686,11 +685,10 @@ async def cleanup_devices_by_policy(
     - 根据 max_devices 限制计算允许的设备列表
     - 更新 Emby Policy (EnableAllDevices, EnabledDevices)
     - 软删除超出限制的设备
-    - 排除: 管理员、模板用户、指定排除用户
+    - 排除: 管理员、模板用户
 
     输入参数:
     - session: 数据库会话
-    - exclude_user_ids: 额外排除的用户ID列表
 
     返回值:
     - int: 被软删除的设备数量
@@ -700,14 +698,11 @@ async def cleanup_devices_by_policy(
     client = get_emby_client()
     if client is None:
         logger.warning("⚠️ 未配置 Emby 连接信息, 无法同步 Policy")
-        # 即使无法连接 Emby，也可以做本地软删除吗？
-        # 用户逻辑强依赖于 sync_emby_config 的逻辑，那个逻辑包含 API 更新
-        # 如果无法连接 API，仅做本地清理可能导致状态不一致
         return 0
 
     try:
         # 1. 准备排除列表
-        skips = set(exclude_user_ids or [])
+        skips = set()
         
         # 排除模板用户
         tid = settings.get_emby_template_user_id()
