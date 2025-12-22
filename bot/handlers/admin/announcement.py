@@ -97,9 +97,8 @@ async def start_edit_announcement(callback: CallbackQuery, state: FSMContext, ma
         "提示：发送文本后将立即生效"
     )
     kb = InlineKeyboardBuilder()
-    kb.row(BACK_TO_ADMIN_PANEL_BUTTON)
+    kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
     await main_msg.update_on_callback(callback, caption, kb.as_markup())
-    await callback.answer()
 
 
 @router.callback_query(F.data == "admin:announcement:clear")
@@ -147,11 +146,13 @@ async def handle_announcement_text(
     message: Message,
     session: AsyncSession,
     state: FSMContext,
+    main_msg: MainMessageService,
 ) -> None:
     """处理公告文本输入
 
     功能说明:
     - 将管理员发送的文本保存到配置表
+    - 删除用户输入并更新主消息面板
 
     输入参数:
     - message: 管理员消息
@@ -164,13 +165,40 @@ async def handle_announcement_text(
     """
     text = (message.text or "").strip()
     await state.clear()
+    await main_msg.delete_input(message)
 
     if not text:
-        await message.answer("🔴 公告内容不能为空")
-        return
-
-    ok = await set_config(session, KEY_ANNOUNCEMENT_TEXT, text)
-    if ok:
-        await message.answer("✅ 公告已更新")
+        # 如果文本为空，不做更新，或者提示错误（这里因为删除了输入，可能需要发送临时消息或忽略）
+        # 简单起见，如果为空，直接返回到面板
+        pass
     else:
-        await message.answer("🔴 更新失败，请稍后重试")
+        ok = await set_config(session, KEY_ANNOUNCEMENT_TEXT, text)
+        if not ok:
+            # 更新失败，发送临时提示
+            temp_msg = await message.answer("🔴 更新失败，请稍后重试")
+            # 可以选择稍后删除 temp_msg，这里暂不处理
+            return
+
+    # 无论成功与否（只要非空或空），都尝试刷新主面板显示最新状态
+    # 重新查询以确保显示的是数据库中的最新值
+    current_text = await get_config(session, KEY_ANNOUNCEMENT_TEXT)
+    current_text = (str(current_text).strip() if current_text is not None else "")
+    display_text = current_text if current_text else "（当前未设置公告）"
+
+    caption = (
+        f"{ANNOUNCEMENT_LABEL}\n\n"
+        f"当前公告：\n{display_text}\n\n"
+        "操作：\n"
+        "• 编辑公告\n"
+        "• 清空公告\n"
+    )
+
+    kb = InlineKeyboardBuilder()
+    kb.row(
+        InlineKeyboardButton(text="✏️ 编辑公告", callback_data="admin:announcement:edit"),
+        InlineKeyboardButton(text="🗑️ 清空公告", callback_data="admin:announcement:clear"),
+    )
+    kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
+
+    if message.from_user:
+        await main_msg.update(message.from_user.id, caption, kb.as_markup())
