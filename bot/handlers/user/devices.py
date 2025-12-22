@@ -6,6 +6,7 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.config import settings
 from bot.database.models.emby_device import EmbyDeviceModel
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.user_extend import UserExtendModel
@@ -30,6 +31,11 @@ async def _update_emby_policy(session: AsyncSession, emby_user_id: str, max_devi
     client = get_emby_client()
     if not client:
         return False
+        
+    # 0. 检查是否为模板用户
+    if emby_user_id == settings.get_emby_template_user_id():
+        logger.info(f"⏭️ 跳过排除用户(模板) Policy 更新: {emby_user_id}")
+        return True
 
     try:
         # 1. 获取当前有效设备
@@ -49,6 +55,11 @@ async def _update_emby_policy(session: AsyncSession, emby_user_id: str, max_devi
             return False
             
         policy = user_dto.get("Policy", {})
+        
+        # 检查是否为管理员
+        if policy.get("IsAdministrator", False):
+            logger.info(f"⏭️ 跳过排除用户(管理员) Policy 更新: {emby_user_id}")
+            return True
         
         # 3. 根据规则修改 Policy
         if current_count < max_devices:
