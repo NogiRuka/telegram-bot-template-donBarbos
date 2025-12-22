@@ -664,9 +664,6 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
         await session.commit()
         logger.info(f"✅ Emby 设备同步完成: 插入 {inserted}, 更新 {updated}, 删除 {deleted} 个")
 
-        # 同步完成后，执行策略清理 (自动限制设备数)
-        await cleanup_devices_by_policy(session)
-
         return inserted + updated
         
     except Exception as e:
@@ -745,7 +742,7 @@ async def cleanup_devices_by_policy(
                     device.is_deleted = True
                     device.deleted_at = now()
                     device.deleted_by = 0  # 0 表示系统
-                    device.remark = "Policy限制: 不在 EnabledDevices 中 (EnableAllDevices=False)"
+                    device.remark = "超出最大设备数自动清理"
                     session.add(device)
                     deleted_count += 1
 
