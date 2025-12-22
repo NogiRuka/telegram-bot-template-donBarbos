@@ -16,7 +16,6 @@ from bot.core.config import settings
 from bot.database.database import sessionmaker
 from bot.database.models.emby_device import EmbyDeviceModel
 from bot.database.models.emby_user import EmbyUserModel
-from bot.database.models.config import ConfigModel
 from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
 
@@ -72,16 +71,6 @@ async def sync_all_users_configuration(
     fail_count = 0
 
     async with sessionmaker() as session:
-        # 获取 max_devices 全局配置
-        try:
-            config_res = await session.execute(select(ConfigModel).where(ConfigModel.key == "max_devices"))
-            config_obj = config_res.scalar_one_or_none()
-            max_devices = int(config_obj.value) if config_obj and config_obj.value else 3
-            logger.info(f"⚙️ 当前最大设备数限制: {max_devices}")
-        except Exception as e:
-            logger.warning(f"⚠️ 获取 max_devices 配置失败, 使用默认值 3: {e}")
-            max_devices = 3
-
         # 获取目标用户列表 (从数据库获取)
         all_users = []
         try:
@@ -90,7 +79,7 @@ async def sync_all_users_configuration(
                 stmt = select(EmbyUserModel).where(EmbyUserModel.emby_user_id.in_(specific_user_ids))
                 res = await session.execute(stmt)
                 db_users = res.scalars().all()
-                all_users = [{"Id": u.emby_user_id, "Name": u.name} for u in db_users]
+                all_users = [{"Id": u.emby_user_id, "Name": u.name, "MaxDevices": u.max_devices} for u in db_users]
                 
                 # 检查是否有未找到的用户
                 found_ids = set(u["Id"] for u in all_users)
@@ -98,13 +87,13 @@ async def sync_all_users_configuration(
                     if uid not in found_ids:
                          # 尝试从 API 获取作为补充? 或者直接标记未知
                          # 这里简单处理，如果DB没有，就跳过或加个Unknown
-                         all_users.append({"Id": uid, "Name": "Unknown"})
+                         all_users.append({"Id": uid, "Name": "Unknown", "MaxDevices": 3})
             else:
                 # 未指定用户，拉取所有用户
                 stmt = select(EmbyUserModel)
                 res = await session.execute(stmt)
                 db_users = res.scalars().all()
-                all_users = [{"Id": u.emby_user_id, "Name": u.name} for u in db_users]
+                all_users = [{"Id": u.emby_user_id, "Name": u.name, "MaxDevices": u.max_devices} for u in db_users]
         except Exception as e:
             logger.error(f"❌ 从数据库获取用户列表失败: {e}")
             return 0, 0
@@ -114,6 +103,9 @@ async def sync_all_users_configuration(
         for user in all_users:
             uid = user.get("Id")
             name = user.get("Name")
+            # 优先使用数据库中的配置，如果没有则默认3
+            max_devices = user.get("MaxDevices", 3)
+            
             if not uid:
                 continue
 
