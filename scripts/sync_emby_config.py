@@ -90,7 +90,11 @@ async def sync_all_users_configuration(
                          all_users.append({"Id": uid, "Name": "Unknown", "MaxDevices": 3})
             else:
                 # 未指定用户，拉取所有用户
+                # 排除 exclude_user_ids 中的用户
                 stmt = select(EmbyUserModel)
+                if exclude_user_ids:
+                    stmt = stmt.where(EmbyUserModel.emby_user_id.notin_(exclude_user_ids))
+                
                 res = await session.execute(stmt)
                 db_users = res.scalars().all()
                 all_users = [{"Id": u.emby_user_id, "Name": u.name, "MaxDevices": u.max_devices} for u in db_users]
@@ -192,12 +196,13 @@ async def main() -> None:
     # 用户指定的排除 ID
     exclude_ids = [
         "52588e7dbcbe4ea7a575dfe86a7f4a28",
-        "945e1aa74d964da183b3e6a0f0075d6f"
+        "945e1aa74d964da183b3e6a0f0075d6f",
+        "0e26758dc85d40488314f9d77d8c9a7d"
     ]
 
     # 针对失败用户进行重试
     specific_ids = [
-        
+        # "ed43223312414d80accfdb722ddddc47"
     ]
 
     _success, _fail = await sync_all_users_configuration(exclude_user_ids=exclude_ids, specific_user_ids=specific_ids)
