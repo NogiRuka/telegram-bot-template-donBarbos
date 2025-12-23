@@ -899,3 +899,93 @@ async def cleanup_devices_by_policy(
     except Exception as e:
         logger.error(f"❌ 设备清理失败: {e}")
         return 0
+
+
+async def update_user_blocked_tags(
+    session: AsyncSession,
+    emby_user_id: str,
+    tags: list[str]
+) -> tuple[bool, str | None]:
+    """更新用户屏蔽标签
+    
+    功能说明:
+    - 获取最新 Policy
+    - 修改 BlockedTags
+    - 更新 Policy
+    - 更新本地缓存
+    
+    输入参数:
+    - session: 数据库会话
+    - emby_user_id: Emby 用户 ID
+    - tags: 新的屏蔽标签列表
+    
+    返回值:
+    - (success, error_message)
+    """
+    client = get_emby_client()
+    if client is None:
+        return False, "未配置 Emby 连接信息"
+        
+    try:
+        from sqlalchemy import select
+        from bot.database.models import EmbyUserModel, EmbyUserHistoryModel
+        from bot.utils.datetime import now
+
+        # 1. 获取最新用户信息
+        user_dto = await client.get_user(emby_user_id)
+        if not user_dto:
+            return False, "用户不存在"
+            
+        policy = user_dto.get("Policy", {})
+        
+        # 2. 比较变更
+        current_tags = policy.get("BlockedTags", [])
+        # 规范化比较：排序
+        if sorted(current_tags) == sorted(tags):
+            return True, None # 无变更
+            
+        # 3. 更新 Policy
+        new_policy = policy.copy()
+        new_policy["BlockedTags"] = tags
+        
+        await client.update_user_policy(emby_user_id, new_policy)
+        
+        # 4. 更新本地缓存
+        fresh_user_dto = await client.get_user(emby_user_id)
+        
+        # 更新数据库
+        stmt = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
+        res = await session.execute(stmt)
+        model = res.scalar_one_or_none()
+        
+        if model:
+            # 记录历史
+            session.add(
+                EmbyUserHistoryModel(
+                    emby_user_id=model.emby_user_id,
+                    name=model.name,
+                    password_hash=model.password_hash,
+                    date_created=model.date_created,
+                    last_login_date=model.last_login_date,
+                    last_activity_date=model.last_activity_date,
+                    user_dto=model.user_dto,
+                    action="update",
+                    created_at=model.created_at,
+                    updated_at=model.updated_at,
+                    created_by=model.created_by,
+                    updated_by=model.updated_by,
+                    is_deleted=model.is_deleted,
+                    deleted_at=model.deleted_at,
+                    deleted_by=model.deleted_by,
+                    remark=f"更新屏蔽标签: {tags}",
+                )
+            )
+            model.user_dto = fresh_user_dto
+            model.remark = f"更新屏蔽标签: {tags}"
+            await session.commit()
+            
+        return True, None
+        
+    except Exception as e:
+        logger.error(f"❌ 更新屏蔽标签失败: {e}")
+        return False, str(e)

@@ -139,7 +139,7 @@ def get_user_tags_keyboard() -> InlineKeyboardMarkup:
     """用户标签屏蔽键盘
 
     功能说明:
-    - 标签屏蔽页面底部键盘，仅提供返回主页按钮
+    - 标签屏蔽页面底部键盘，提供屏蔽管理功能入口
 
     输入参数:
     - 无
@@ -148,9 +148,30 @@ def get_user_tags_keyboard() -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 内联键盘
     """
     buttons = [
+        [TAGS_BLOCK_AV_BUTTON, TAGS_CUSTOM_BUTTON],
+        [TAGS_CLEAR_BUTTON],
         [BACK_TO_ACCOUNT_BUTTON],
         [BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(2)
+    keyboard.adjust(2, 1, 1, 1)
+    return keyboard.as_markup()
+
+
+def get_tags_edit_keyboard() -> InlineKeyboardMarkup:
+    """标签编辑取消键盘
+
+    功能说明:
+    - 标签编辑状态下使用
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 内联键盘
+    """
+    buttons = [
+        [TAGS_CANCEL_EDIT_BUTTON],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
