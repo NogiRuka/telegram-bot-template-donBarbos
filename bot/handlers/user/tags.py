@@ -13,6 +13,7 @@ from bot.keyboards.inline.constants import (
     TAGS_CLEAR_CALLBACK_DATA,
     TAGS_CANCEL_EDIT_CALLBACK_DATA,
     USER_TAGS_CALLBACK_DATA,
+    USER_TAGS_LABEL,
 )
 from bot.services.main_message import MainMessageService
 from bot.services.emby_service import update_user_blocked_tags
@@ -76,7 +77,7 @@ async def user_tags(
         tags_display = ", ".join(blocked_tags)
 
     text = (
-        "🚫 <b>标签屏蔽管理</b>\n\n"
+        f"{USER_TAGS_LABEL}\n\n"
         "您可以通过设置屏蔽标签来隐藏不想看到的内容。\n"
         "例如屏蔽 'AV' 标签可以隐藏相关成人内容。\n\n"
         f"📋 <b>当前屏蔽标签:</b>\n{tags_display}"
@@ -120,7 +121,7 @@ async def start_custom_tags(
     """开始自定义屏蔽标签"""
     text = (
         "✏️ <b>输入屏蔽标签</b>\n\n"
-        "请输入您想要屏蔽的标签，多个标签请用<b>逗号</b>或<b>空格</b>分隔。\n"
+        "请输入您想要屏蔽的标签，多个标签请用<b>逗号</b>或<b>换行</b>分隔。\n"
         "例如: <code>AV, 恐怖, 惊悚</code>\n\n"
         "⚠️ 注意: 这将<b>覆盖</b>当前的屏蔽设置。"
     )
@@ -166,9 +167,8 @@ async def process_custom_tags(
         await main_msg.update(uid, "❌ 未找到绑定的 Emby 账号")
         return
 
-    # 解析标签：支持中英文逗号、空格分隔
-    # split by , or ， or whitespace
-    tags = [t.strip() for t in re.split(r'[,，\s]+', text) if t.strip()]
+    # 解析标签：支持中英文逗号、换行分隔，保留标签内的空格
+    tags = [t.strip() for t in re.split(r'[,，\n]+', text) if t.strip()]
     
     success, err = await update_user_blocked_tags(session, emby_user.emby_user_id, tags)
     
