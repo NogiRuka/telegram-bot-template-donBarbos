@@ -38,36 +38,22 @@ async def get_emby_user_model(session: AsyncSession, user_id: int) -> EmbyUserMo
     return res.scalar_one_or_none()
 
 
-@router.callback_query(F.data == USER_TAGS_CALLBACK_DATA)
-@require_user_feature("user.tags")
-async def user_tags(
-    callback: CallbackQuery,
+async def show_tags_menu(
     session: AsyncSession,
     main_msg: MainMessageService,
+    uid: int,
+    callback: CallbackQuery | None = None
 ) -> None:
-    """处理标签屏蔽页面
-
-    功能说明:
-    - 显示当前标签屏蔽状态
-    - 提供标签管理功能入口
-
-    输入参数:
-    - callback: 回调查询对象
-    - session: 数据库会话
-    - main_msg: 主消息服务
-
-    返回值:
-    - None
-    """
-    uid = callback.from_user.id
-    
-    # 获取 Emby 用户信息
+    """显示标签管理菜单（公共逻辑）"""
     emby_user = await get_emby_user_model(session, uid)
     if not emby_user:
-        await callback.answer("❌ 未找到绑定的 Emby 账号")
+        msg = "❌ 未找到绑定的 Emby 账号"
+        if callback:
+            await callback.answer(msg)
+        else:
+            await main_msg.update(uid, msg)
         return
 
-    # 获取当前屏蔽标签
     policy = (emby_user.user_dto or {}).get("Policy", {})
     blocked_tags = policy.get("BlockedTags", [])
     
@@ -86,8 +72,22 @@ async def user_tags(
     kb = get_user_tags_keyboard()
     image = get_common_image()
 
-    await main_msg.update_on_callback(callback, text, kb, image)
-    await callback.answer()
+    if callback:
+        await main_msg.update_on_callback(callback, text, kb, image)
+        await callback.answer()
+    else:
+        await main_msg.update(uid, text, kb, image)
+
+
+@router.callback_query(F.data == USER_TAGS_CALLBACK_DATA)
+@require_user_feature("user.tags")
+async def user_tags(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService,
+) -> None:
+    """处理标签屏蔽页面"""
+    await show_tags_menu(session, main_msg, callback.from_user.id, callback)
 
 
 @router.callback_query(F.data == TAGS_CLEAR_CALLBACK_DATA)
@@ -107,7 +107,7 @@ async def clear_tags(
     if success:
         await callback.answer("✅ 已清除所有屏蔽标签")
         # 刷新页面
-        await user_tags(callback, session, main_msg)
+        await show_tags_menu(session, main_msg, uid, callback)
     else:
         await callback.answer(f"❌ 操作失败: {err}", show_alert=True)
 
@@ -141,7 +141,7 @@ async def cancel_edit_tags(
 ) -> None:
     """取消编辑"""
     await state.clear()
-    await user_tags(callback, session, main_msg)
+    await show_tags_menu(session, main_msg, callback.from_user.id, callback)
 
 
 @router.message(TagsStates.waiting_for_tags)
@@ -176,34 +176,6 @@ async def process_custom_tags(
     
     if success:
         # 刷新页面并提示
-        # 由于这里是 message handler，不能直接调 callback handler，需要构造界面
-        # 但我们可以复用 user_tags 逻辑，不过需要构造一个 fake callback 或者直接调 main_msg.update
-        # 最简单的是直接调 main_msg.update 模仿 user_tags 的输出
-        
-        # 重新获取最新状态用于显示
-        # 为避免代码重复，最好封装 display_tags_page，但现在我们直接重新查询一次
-        
-        policy = (emby_user.user_dto or {}).get("Policy", {})
-        # 注意：这里 policy 可能还是旧的缓存对象，如果 update_user_blocked_tags 内部更新了 model，那么这里需要 refresh
-        # 实际上 update_user_blocked_tags 已经更新了 session 中的 model
-        await session.refresh(emby_user)
-        
-        policy = (emby_user.user_dto or {}).get("Policy", {})
-        blocked_tags = policy.get("BlockedTags", [])
-        if not blocked_tags:
-            tags_display = "(无)"
-        else:
-            tags_display = ", ".join(blocked_tags)
-
-        page_text = (
-            "🚫 <b>标签屏蔽管理</b>\n\n"
-            "您可以通过设置屏蔽标签来隐藏不想看到的内容。\n"
-            "例如屏蔽 'AV' 标签可以隐藏相关成人内容。\n\n"
-            f"📋 <b>当前屏蔽标签:</b>\n{tags_display}"
-        )
-        kb = get_user_tags_keyboard()
-        image = get_common_image()
-        
-        await main_msg.update(uid, page_text, kb, image)
+        await show_tags_menu(session, main_msg, uid)
     else:
         await main_msg.update(uid, f"❌ 操作失败: {err}", get_user_tags_keyboard())
