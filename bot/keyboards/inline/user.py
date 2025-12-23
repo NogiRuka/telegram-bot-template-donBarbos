@@ -148,13 +148,12 @@ def get_user_tags_keyboard() -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 内联键盘
     """
     buttons = [
-        [TAGS_BLOCK_AV_BUTTON, TAGS_CUSTOM_BUTTON],
-        [TAGS_CLEAR_BUTTON],
+        [TAGS_CUSTOM_BUTTON, TAGS_CLEAR_BUTTON],
         [BACK_TO_ACCOUNT_BUTTON],
         [BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(2, 1, 1, 1)
+    keyboard.adjust(2, 1, 1)
     return keyboard.as_markup()
 
 

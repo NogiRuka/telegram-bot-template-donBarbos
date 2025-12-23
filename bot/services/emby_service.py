@@ -977,7 +977,7 @@ async def update_user_blocked_tags(
                     is_deleted=model.is_deleted,
                     deleted_at=model.deleted_at,
                     deleted_by=model.deleted_by,
-                    remark=f"更新屏蔽标签: {tags}",
+                    remark=model.remark,
                 )
             )
             model.user_dto = fresh_user_dto

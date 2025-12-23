@@ -45,8 +45,6 @@ USER_PASSWORD_CALLBACK_DATA = "user:password"
 # 标签屏蔽
 USER_TAGS_LABEL = "🚫 标签屏蔽"
 USER_TAGS_CALLBACK_DATA = "user:tags"
-TAGS_BLOCK_AV_LABEL = "🚫 一键屏蔽 AV"
-TAGS_BLOCK_AV_CALLBACK_DATA = "user:tags:block_av"
 TAGS_CUSTOM_LABEL = "✏️ 自定义屏蔽"
 TAGS_CUSTOM_CALLBACK_DATA = "user:tags:custom"
 TAGS_CLEAR_LABEL = "🗑️ 清除所有屏蔽"

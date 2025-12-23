@@ -9,7 +9,6 @@ from sqlalchemy import select
 from bot.database.models import UserExtendModel, EmbyUserModel
 from bot.keyboards.inline.user import get_user_tags_keyboard, get_tags_edit_keyboard
 from bot.keyboards.inline.constants import (
-    TAGS_BLOCK_AV_CALLBACK_DATA,
     TAGS_CUSTOM_CALLBACK_DATA,
     TAGS_CLEAR_CALLBACK_DATA,
     TAGS_CANCEL_EDIT_CALLBACK_DATA,
@@ -64,7 +63,7 @@ async def user_tags(
     # 获取 Emby 用户信息
     emby_user = await get_emby_user_model(session, uid)
     if not emby_user:
-        await callback.answer("❌ 未找到绑定的 Emby 账号", show_alert=True)
+        await callback.answer("❌ 未找到绑定的 Emby 账号")
         return
 
     # 获取当前屏蔽标签
@@ -88,35 +87,6 @@ async def user_tags(
 
     await main_msg.update_on_callback(callback, text, kb, image)
     await callback.answer()
-
-
-@router.callback_query(F.data == TAGS_BLOCK_AV_CALLBACK_DATA)
-async def block_av_tags(
-    callback: CallbackQuery,
-    session: AsyncSession,
-    main_msg: MainMessageService,
-) -> None:
-    """一键屏蔽 AV 标签"""
-    uid = callback.from_user.id
-    emby_user = await get_emby_user_model(session, uid)
-    if not emby_user:
-        await callback.answer("❌ 未找到绑定的 Emby 账号", show_alert=True)
-        return
-
-    # 获取当前标签并合并
-    policy = (emby_user.user_dto or {}).get("Policy", {})
-    current_tags = set(policy.get("BlockedTags", []))
-    current_tags.add("AV") # 添加 AV 标签
-    
-    new_tags = list(current_tags)
-    
-    success, err = await update_user_blocked_tags(session, emby_user.emby_user_id, new_tags)
-    if success:
-        await callback.answer("✅ 已添加 AV 标签屏蔽")
-        # 刷新页面
-        await user_tags(callback, session, main_msg)
-    else:
-        await callback.answer(f"❌ 操作失败: {err}", show_alert=True)
 
 
 @router.callback_query(F.data == TAGS_CLEAR_CALLBACK_DATA)
