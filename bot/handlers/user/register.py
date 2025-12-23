@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import timedelta
 
 from aiogram import F, Router
@@ -14,6 +15,7 @@ from bot.keyboards.inline.user import (
     get_account_center_keyboard,
     get_register_input_keyboard,
 )
+from bot.keyboards.inline.constants import ACCOUNT_CENTER_LABEL
 from bot.services.config_service import get_registration_window, is_registration_open
 from bot.services.main_message import MainMessageService
 from bot.services.users import create_and_bind_emby_user, has_emby_account
@@ -31,6 +33,7 @@ class RegisterStates(StatesGroup):
     """注册状态组"""
 
     waiting_for_credentials = State()
+    processing = State()
 
 
 @router.callback_query(F.data == "user:register")
@@ -110,7 +113,7 @@ async def user_register(
             "📝 注册 Emby 账号\n\n"
             "请输入用户名和密码，以空格分隔：\n"
             "用户名 密码\n\n"
-            "示例：myuser mypassword123\n\n"
+            "示例：桜色男孩 123456\n\n"
             f"⏰ 请在 {REGISTER_TIMEOUT_SECONDS // 60} 分钟内完成输入"
         )
 
@@ -182,7 +185,7 @@ async def cancel_register(
 
         if uid:
             user_has_emby = await has_emby_account(session, uid)
-            await main_msg.update_on_callback(callback, "🧩 账号中心", get_account_center_keyboard(user_has_emby))
+            await main_msg.update_on_callback(callback, ACCOUNT_CENTER_LABEL, get_account_center_keyboard(user_has_emby))
 
         await callback.answer("✅ 已取消注册")
         logger.info("ℹ️ 用户取消注册: user_id={}", uid)
@@ -201,6 +204,8 @@ async def handle_register_input(
     功能说明:
     - 解析用户输入，创建 Emby 账号
     - 删除用户消息，更新主消息显示结果
+    - 增加并发锁机制防止重复提交
+    - 增加输入字符校验
 
     输入参数:
     - message: 用户消息
@@ -211,6 +216,9 @@ async def handle_register_input(
     返回值:
     - None
     """
+    # 0. 立即锁定状态，防止并发重复提交
+    await state.set_state(RegisterStates.processing)
+
     uid = message.from_user.id if message.from_user else None
 
     # 删除用户输入消息
@@ -225,15 +233,6 @@ async def handle_register_input(
         await state.clear()
         await main_msg.update(uid, "🚫 注册已关闭", get_account_center_keyboard(False))
         return
-
-    # 2. 检查状态是否已被超时任务清除
-    # 防止 "超时提示" 和 "注册成功/失败" 同时出现的竞态条件
-    current_state = await state.get_state()
-    if current_state != RegisterStates.waiting_for_credentials.state:
-        return
-
-    # 3. 立即清除状态，防止后台超时任务触发
-    await state.clear()
 
     try:
         text = (message.text or "").strip()
@@ -257,6 +256,16 @@ async def handle_register_input(
             await state.set_state(RegisterStates.waiting_for_credentials)
             asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
             return
+
+        # 校验非法字符
+        if not re.match(r'^[^/\\:<>?|*"]+$', name):
+            caption = "❌ 用户名包含非法字符\n\n请重新输入用户名和密码，以空格分隔：\n用户名 密码"
+            await main_msg.update(uid, caption, get_register_input_keyboard())
+            # 恢复状态并重启超时
+            await state.set_state(RegisterStates.waiting_for_credentials)
+            asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
+            return
+
         if len(password) < 6:
             caption = "❌ 密码至少需要 6 个字符\n\n请重新输入用户名和密码，以空格分隔：\n用户名 密码"
             await main_msg.update(uid, caption, get_register_input_keyboard())
@@ -272,7 +281,8 @@ async def handle_register_input(
         ok, details, err = await create_and_bind_emby_user(session, uid, name, password)
 
         if ok and details:
-            # 注册成功，状态已在上方清除
+            # 注册成功，状态清除
+            await state.clear()
             caption = (
                 f"✅ 注册成功\n\n"
                 f"📛 Emby 用户名: {details.get('name', '')}\n"
@@ -295,6 +305,7 @@ async def handle_register_input(
                 asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
             else:
                 # 其他错误，保持状态清除
+                await state.clear()
                 caption = f"❌ 注册失败\n\n{err_msg}"
                 await main_msg.update(uid, caption, get_account_center_keyboard(has_emby_account=False))
 

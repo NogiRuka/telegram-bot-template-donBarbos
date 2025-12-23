@@ -1,5 +1,4 @@
 from aiogram import F, Router
-from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
@@ -203,7 +202,7 @@ async def handle_device_delete_confirm(
         
     # 2. 弹出确认框
     last_active = device.date_last_activity.strftime("%Y-%m-%d %H:%M") if device.date_last_activity else "未知"
-    device_name = f"{device.name or 'Unknown'} ({device.app_name or 'App'}) - 最后活跃: {last_active}"
+    device_name = f"{device.name or 'Unknown'} ({device.app_name or 'App'})\n最后活跃: {last_active}"
     text = f"⚠️ 确认删除设备?\n\n设备: {device_name}\n\n删除后该设备将无法连接服务器。"
     
     kb = InlineKeyboardBuilder()
@@ -291,7 +290,7 @@ async def handle_device_delete_action(
         await callback.answer("✅ 设备已删除", show_alert=False)
     else:
         await session.rollback()
-        await callback.answer("🔴 删除失败 (Policy 更新错误)", show_alert=True)
+        await callback.answer("🔴 删除失败", show_alert=True)
         
     # 5. 刷新界面
     await user_devices(callback, session, main_msg)
