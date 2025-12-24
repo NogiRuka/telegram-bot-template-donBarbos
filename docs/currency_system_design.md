@@ -49,20 +49,20 @@
 使用通用的命名规范，便于维护和扩展。所有表均包含基础审计字段 (`created_at`, `updated_at`, `is_deleted` 等)。
 
 ### 1. `user_extend` (用户扩展表)
-复用已有的 `user_extend` 表，新增积分系统相关字段。
+复用已有的 `user_extend` 表，新增经济系统相关字段。
 
 | 字段名 | 类型 | 属性 | 说明 |
 | :--- | :--- | :--- | :--- |
 | `user_id` | BigInt | PK, FK | 关联 `users.id` |
 | ... | ... | ... | (原有字段: role, emby_user_id, bio 等) |
-| `points_balance` | Integer | Default 0 | 当前积分余额 |
-| `points_total` | BigInt | Default 0 | 历史累计获取总量 (用于等级/成就) |
+| `currency_balance` | Integer | Default 0 | 当前代币余额 |
+| `currency_total` | BigInt | Default 0 | 历史累计获取总量 (用于等级/成就) |
 | `streak_days` | Integer | Default 0 | 当前连续签到天数 |
 | `last_checkin_date` | Date | Nullable | 上次签到日期 (用于计算断签) |
 | `created_at` | DateTime | Auto | 创建时间 |
 | `updated_at` | DateTime | Auto | 最后更新时间 |
 
-### 2. `points_ledgers` (积分流水表)
+### 2. `currency_ledgers` (流水表)
 不可变日志，用于审计和回溯。
 
 | 字段名 | 类型 | 属性 | 说明 |
@@ -78,7 +78,7 @@
 
 为了支持管理员动态调整数值和管理商品，我们将规则与商品信息存入数据库。
 
-### 1. `points_rules` (积分规则表)
+### 1. `currency_rules` (规则表)
 存储各种行为的奖惩数值，支持动态调整。
 
 | 字段名 | 类型 | 属性 | 说明 |
@@ -95,19 +95,20 @@
 *   `checkin_streak_bonus`: 10 (连签每日加成%)
 *   `invite_bonus`: 50 (邀请奖励)
 
-### 2. `points_products` (积分商品表)
-存储商店可售卖的商品信息，支持上下架、有效期管理以及**购买条件限制**。
+### 2. `currency_products` (商品表)
+存储商店可售卖的商品信息，支持上下架、有效期管理以及**双重权限控制**。
 
 | 字段名 | 类型 | 属性 | 说明 |
 | :--- | :--- | :--- | :--- |
 | `id` | Integer | PK, Auto | 商品ID |
 | `name` | Varchar(128) | Not Null | 商品名称 (如 "Emby 1天权限") |
 | `description` | Text | Nullable | 商品描述 |
-| `price` | Integer | Not Null | 价格 (积分) |
+| `price` | Integer | Not Null | 价格 (代币) |
 | `category` | Varchar(32) | Index | 分类: `emby_duration`, `item`, `title` |
 | `reward_value` | JSON | Nullable | 实际效果参数 (如 `{"days": 1}`, `{"title": "🌸"}`) |
 | `stock` | Integer | Default -1 | 库存 (-1表示无限) |
-| `requirements` | JSON | Nullable | **购买条件**: 灵活的条件配置，如 `{"min_role": "admin", "has_emby": true, "min_days": 30}` |
+| `visible_conditions` | JSON | Nullable | **可见条件**: 谁可以看到该商品 (如 `{"min_role": "admin"}`) |
+| `purchase_conditions`| JSON | Nullable | **购买条件**: 谁可以购买该商品 (如 `{"has_emby": true, "min_days": 30}`) |
 | `start_time` | DateTime | Nullable | 上架时间 (空表示立即) |
 | `end_time` | DateTime | Nullable | 下架时间 (空表示永久) |
 | `is_active` | Boolean | Default True | 是否上架 |
