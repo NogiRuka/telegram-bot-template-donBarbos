@@ -63,6 +63,13 @@ class UserExtendModel(Base, BasicAuditMixin):
         String(64), nullable=True, index=True, comment="Emby 用户ID(字符串)"
     )
 
+    # 经济系统
+    currency_balance: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"), comment="当前代币余额")
+    currency_total: Mapped[int] = mapped_column(BigInteger, default=0, server_default=text("0"), comment="历史累计获取总量")
+    streak_days: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"), comment="当前连续签到天数")
+    max_streak_days: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"), comment="历史最高连续签到天数")
+    last_checkin_date: Mapped[date | None] = mapped_column(Date, nullable=True, comment="上次签到日期")
+
     # IP 列表与最后交互时间
     ip_list: Mapped[dict[str, Any] | list[Any] | None] = mapped_column(JSON, nullable=True, comment="访问过的IP数组")
     last_interaction_at: Mapped[dt | None] = mapped_column(
