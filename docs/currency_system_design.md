@@ -46,7 +46,17 @@
 
 ## 3. 数据库设计 (Schema Optimization)
 
-使用通用的命名规范，便于维护和扩展。所有表均包含基础审计字段 (`created_at`, `updated_at`, `is_deleted` 等)。
+使用通用的命名规范，便于维护和扩展。
+
+> **注意**: 所有数据表模型均需继承 `BasicAuditMixin`，自动包含以下审计字段：
+> *   `created_at` (创建时间)
+> *   `updated_at` (更新时间)
+> *   `created_by` (创建者ID)
+> *   `updated_by` (更新者ID)
+> *   `is_deleted` (软删除标记)
+> *   `deleted_at` (删除时间)
+> *   `deleted_by` (删除者ID)
+> *   `remark` (备注)
 
 ### 1. `user_extend` (用户扩展表)
 复用已有的 `user_extend` 表，新增经济系统相关字段。
@@ -59,8 +69,7 @@
 | `currency_total` | BigInt | Default 0 | 历史累计获取总量 (用于等级/成就) |
 | `streak_days` | Integer | Default 0 | 当前连续签到天数 |
 | `last_checkin_date` | Date | Nullable | 上次签到日期 (用于计算断签) |
-| `created_at` | DateTime | Auto | 创建时间 |
-| `updated_at` | DateTime | Auto | 最后更新时间 |
+| `...` | ... | ... | **BasicAuditMixin 字段** |
 
 ### 2. `currency_transactions` (流水表)
 不可变日志，用于审计和回溯。
@@ -74,7 +83,7 @@
 | `event_type` | Varchar(32)| Index | 事件类型: `daily_checkin`, `redeem_emby` 等 |
 | `description` | Varchar(255) | Nullable | **流水描述**: 人类可读的说明 (如 "购买 Emby 30天") |
 | `meta` | JSON | Nullable | 扩展信息 (如: `{"streak": 5, "product_id": 1}`) |
-| `created_at` | DateTime | Auto | 发生时间 |
+| `...` | ... | ... | **BasicAuditMixin 字段** |
 
 ## 4. 动态配置与商品系统 (Dynamic Configuration & Products)
 
@@ -90,7 +99,7 @@
 | `value` | Integer | Not Null | 数值 (如 20, 10) |
 | `description` | Varchar(255) | Nullable | 规则说明 |
 | `is_active` | Boolean | Default True | 是否启用 |
-| `updated_at` | DateTime | Auto | 最后更新时间 |
+| `...` | ... | ... | **BasicAuditMixin 字段** |
 
 **示例数据**:
 *   `checkin_base`: 20 (签到基础奖励)
@@ -114,8 +123,7 @@
 | `start_time` | DateTime | Nullable | 上架时间 (空表示立即) |
 | `end_time` | DateTime | Nullable | 下架时间 (空表示永久) |
 | `is_active` | Boolean | Default True | 是否上架 |
-| `created_at` | DateTime | Auto | 创建时间 |
-| `updated_at` | DateTime | Auto | 最后更新时间 |
+| `...` | ... | ... | **BasicAuditMixin 字段** |
 
 ## 5. 签到算法 (Algorithm)
 
