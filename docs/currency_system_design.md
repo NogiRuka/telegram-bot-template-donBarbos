@@ -124,7 +124,8 @@ checkin.monthly_bonus —— 连签 30 天大礼包（50 💧）
 | `name` | Varchar(128) | Not Null | 商品名称 (如 "Emby 1天权限") |
 | `description` | Text | Nullable | 商品描述 |
 | `price` | Integer | Not Null | 价格 (代币) |
-| `category` | Varchar(32) | Index | 分类: `retro_checkin`, `emby_image`, `custom_title` |
+| `category` | Varchar(32) | Index | 分类: `tools`, `emby`, `group` |
+| `action_type` | Varchar(32) | Index | 行为类型: `retro_checkin`, `emby_image`, `custom_title` |
 | `reward_value` | JSON | Nullable | 实际效果参数 (如 `{"days": 1}`, `{"title": "🌸"}`) |
 | `stock` | Integer | Default -1 | 库存 (-1表示无限) |
 | `visible_conditions` | JSON | Nullable | **可见条件**: 谁可以看到该商品 (如 `{"has_emby": true}`) |
