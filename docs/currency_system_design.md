@@ -62,7 +62,7 @@
 | `created_at` | DateTime | Auto | 创建时间 |
 | `updated_at` | DateTime | Auto | 最后更新时间 |
 
-### 2. `currency_ledgers` (流水表)
+### 2. `currency_transactions` (流水表)
 不可变日志，用于审计和回溯。
 
 | 字段名 | 类型 | 属性 | 说明 |
@@ -70,8 +70,10 @@
 | `id` | BigInt | PK, Auto | 流水ID |
 | `user_id` | BigInt | FK, Index | 关联 `users.id` |
 | `amount` | Integer | Not Null | 变动数值 (正数为获取，负数为消耗) |
+| `balance_after` | Integer | Not Null | **变动后余额** (快照，防止计算误差) |
 | `event_type` | Varchar(32)| Index | 事件类型: `daily_checkin`, `redeem_emby` 等 |
-| `meta` | JSON | Nullable | 扩展信息 (如: `{"streak": 5}`) |
+| `description` | Varchar(255) | Nullable | **流水描述**: 人类可读的说明 (如 "购买 Emby 30天") |
+| `meta` | JSON | Nullable | 扩展信息 (如: `{"streak": 5, "product_id": 1}`) |
 | `created_at` | DateTime | Auto | 发生时间 |
 
 ## 4. 动态配置与商品系统 (Dynamic Configuration & Products)
@@ -107,8 +109,8 @@
 | `category` | Varchar(32) | Index | 分类: `emby_duration`, `item`, `title` |
 | `reward_value` | JSON | Nullable | 实际效果参数 (如 `{"days": 1}`, `{"title": "🌸"}`) |
 | `stock` | Integer | Default -1 | 库存 (-1表示无限) |
-| `visible_conditions` | JSON | Nullable | **可见条件**: 谁可以看到该商品 (如 `{"min_role": "admin"}`) |
-| `purchase_conditions`| JSON | Nullable | **购买条件**: 谁可以购买该商品 (如 `{"has_emby": true, "min_days": 30}`) |
+| `visible_conditions` | JSON | Nullable | **可见条件**: 谁可以看到该商品 (如 `{"has_emby": true}`) |
+| `purchase_conditions`| JSON | Nullable | **购买条件**: 谁可以购买该商品 (如 `{"min_days": 30}`) |
 | `start_time` | DateTime | Nullable | 上架时间 (空表示立即) |
 | `end_time` | DateTime | Nullable | 下架时间 (空表示永久) |
 | `is_active` | Boolean | Default True | 是否上架 |
