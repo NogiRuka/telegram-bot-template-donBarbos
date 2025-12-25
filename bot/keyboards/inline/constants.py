@@ -60,6 +60,18 @@ BACK_TO_ACCOUNT_CALLBACK_DATA = "user:account"
 CANCEL_PASSWORD_CHANGE_LABEL = "❌ 取消修改"
 CANCEL_PASSWORD_CHANGE_CALLBACK_DATA = "user:cancel_password"
 
+# 签到与商店
+DAILY_CHECKIN_LABEL = "📅 每日签到"
+DAILY_CHECKIN_CHECKED_LABEL = "✅ 今日已签"
+DAILY_CHECKIN_CALLBACK_DATA = "user:checkin"
+
+ESSENCE_STORE_LABEL = "🛍️ 精粹商店"
+ESSENCE_STORE_CALLBACK_DATA = "user:store"
+STORE_PRODUCT_PREFIX = "store:product:"
+STORE_BUY_PREFIX = "store:buy:"
+STORE_BACK_LABEL = "🔙 返回"
+STORE_BACK_CALLBACK_DATA = "store:back"
+
 
 # ===== 管理员功能 =====
 # 管理员面板

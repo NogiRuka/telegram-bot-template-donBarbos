@@ -53,6 +53,7 @@ async def on_startup() -> None:
         await ensure_database_and_schema()
         async with sessionmaker() as session:
             await ensure_config_defaults(session)
+            await CurrencyService.ensure_products(session)
             try:
                 await save_all_emby_users(session)
                 await save_all_emby_devices(session)

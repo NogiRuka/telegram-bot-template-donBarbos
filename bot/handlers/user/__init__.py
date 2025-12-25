@@ -8,6 +8,7 @@ from .password import router as password_router
 from .profile import router as profile_router
 from .register import router as register_router
 from .tags import router as tags_router
+from .checkin import router as checkin_router
 
 
 def get_user_router() -> Router:
@@ -31,4 +32,6 @@ def get_user_router() -> Router:
     router.include_router(password_router)
     router.include_router(profile_router)
     router.include_router(tags_router)
+    router.include_router(checkin_router)
+    router.include_router(store_router)
     return router
