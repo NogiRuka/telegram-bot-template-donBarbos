@@ -101,10 +101,6 @@ async def user_profile(
         f"🔥 连签天数: {streak_days} 天",
         f"🏆 最高连签: {max_streak_days} 天",
         f"📝 上次签到: {escape_markdown_v2(last_checkin_str)}",
-        "",
-        "*系统信息*",
-        f"📅 注册时间: {escape_markdown_v2(created_str)}",
-        f"⏱ 最后活跃: {escape_markdown_v2(last_interaction_str)}",
     ]
 
     caption = "\n".join(lines)
