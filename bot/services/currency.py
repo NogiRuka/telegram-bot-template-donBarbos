@@ -19,7 +19,7 @@ from bot.database.models import (
     UserExtendModel,
 )
 from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL
-from bot.utils.datetime import get_app_timezone, now
+from bot.utils.datetime import now
 
 # CURRENCY_NAME = "精粹"
 # CURRENCY_SYMBOL = "💧"
@@ -72,6 +72,8 @@ class CurrencyService:
         random_bonus_max = await CurrencyService.get_config(session, "checkin.random_bonus", 5)
         weekly_bonus_val = await CurrencyService.get_config(session, "checkin.weekly_bonus", 20)
         monthly_bonus_val = await CurrencyService.get_config(session, "checkin.monthly_bonus", 50)
+        lucky_prob = await CurrencyService.get_config(session, "checkin.lucky_prob", 5)
+        lucky_bonus_val = await CurrencyService.get_config(session, "checkin.lucky_bonus", 5)
 
         # 4. 计算连签
         streak = user_ext.streak_days
@@ -99,8 +101,13 @@ class CurrencyService:
         # 否则触发周签奖励 (每7天)
         elif streak > 0 and streak % 7 == 0:
             weekly_bonus = weekly_bonus_val
+            
+        # 幸运暴击
+        lucky_bonus = 0
+        if random.randint(1, 100) <= lucky_prob:
+            lucky_bonus = lucky_bonus_val
 
-        total_reward = base_reward + streak_bonus + random_val + weekly_bonus + monthly_bonus
+        total_reward = base_reward + streak_bonus + random_val + weekly_bonus + monthly_bonus + lucky_bonus
 
         # 6. 更新数据库
         user_ext.last_checkin_date = today
@@ -122,6 +129,8 @@ class CurrencyService:
             meta["weekly_bonus"] = weekly_bonus
         if monthly_bonus > 0:
             meta["monthly_bonus"] = monthly_bonus
+        if lucky_bonus > 0:
+            meta["lucky_bonus"] = lucky_bonus
 
         tx = CurrencyTransactionModel(
             user_id=user_id,
@@ -145,6 +154,8 @@ class CurrencyService:
             msg_parts.append(f"📅 周签奖励：+{weekly_bonus} {CURRENCY_SYMBOL}")
         if monthly_bonus > 0:
             msg_parts.append(f"🎁 月签大礼包：+{monthly_bonus} {CURRENCY_SYMBOL}")
+        if lucky_bonus > 0:
+            msg_parts.append(f"🎲 幸运暴击！\n额外获得：{CURRENCY_SYMBOL} +{lucky_bonus}")
             
         msg_parts.append(f"当前{CURRENCY_NAME}：{user_ext.currency_balance} {CURRENCY_SYMBOL}")
         
@@ -164,6 +175,8 @@ class CurrencyService:
             "checkin.random_bonus": (5, "随机浮动奖励上限"),
             "checkin.weekly_bonus": (20, "连签7天额外奖励"),
             "checkin.monthly_bonus": (50, "连签30天大礼包"),
+            "checkin.lucky_prob": (5, "幸运暴击概率(%)"),
+            "checkin.lucky_bonus": (5, "幸运暴击奖励"),
         }
         
         # 查询现有配置
