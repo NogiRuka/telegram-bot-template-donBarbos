@@ -49,55 +49,35 @@ async def user_info(
     user, ext = await get_user_and_extend(session, uid)
 
     # 查询 Emby 绑定信息
-    emby_info = "未绑定"
+    emby_user = None
     if ext and ext.emby_user_id:
         res = await session.execute(select(EmbyUserModel).where(EmbyUserModel.emby_user_id == ext.emby_user_id))
         emby_user = res.scalar_one_or_none()
-        if emby_user:
-            emby_info = escape_markdown_v2(emby_user.name)
-        else:
-            emby_info = f"已绑定但未同步 \\(ID: `{escape_markdown_v2(ext.emby_user_id)}`\\)"
-
-    # 角色与状态
-    role = ext.role.value if ext and ext.role else "user"  # 直接使用 ext 中的角色信息
-    status_text = "正常" if (user and not getattr(user, "is_deleted", False)) else "已删除"
-
-    # 字段整理
-    first_name = getattr(user, "first_name", "")
-    last_name = getattr(user, "last_name", "") or ""
-    full_name = f"{first_name} {last_name}".strip() or "未知"
-
-    username = f"@{callback.from_user.username}" if callback.from_user and callback.from_user.username else "未设置"
-    language = getattr(user, "language_code", "zh-hans") or "zh-hans"
-
-    created_at = getattr(user, "created_at", None)
-    created_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else "未知"
-
-    is_premium = getattr(user, "is_premium", None)
-    premium_str = "是" if is_premium else ("否" if is_premium is not None else "未知")
-
-    last_interaction = getattr(ext, "last_interaction_at", None)
-    last_interaction_str = last_interaction.strftime("%Y-%m-%d %H:%M:%S") if last_interaction else "未知"
 
     # 构建 MarkdownV2 caption
     lines = [
-        "👤 *个人信息中心*",
+        "*Emby 账号信息*",
         "",
-        "*基本资料*",
-        f"🆔 用户ID: `{uid}`",
-        f"📛 昵称: {escape_markdown_v2(full_name)}",
-        f"🔗 用户名: {escape_markdown_v2(username)}",
-        f"🌐 语言: {escape_markdown_v2(language)}",
-        "",
-        "*账户状态*",
-        f"🛡 角色: {role.value if hasattr(role, 'value') else str(role)}",
-        f"📡 状态: {status_text}",
-        f"💎 Premium: {premium_str}",
-        f"📅 注册时间: {escape_markdown_v2(created_str)}",
-        f"⏱ 最后活跃: {escape_markdown_v2(last_interaction_str)}",
-        "",
-        "*Emby 绑定*",
-        f"🎬 账号: {emby_info}",
+    ]
+
+    if emby_user:
+        e_created = emby_user.date_created.strftime("%Y-%m-%d") if emby_user.date_created else "未知"
+        e_last_login = emby_user.last_login_date.strftime("%Y-%m-%d %H:%M:%S") if emby_user.last_login_date else "从未登录"
+        e_last_activity = emby_user.last_activity_date.strftime("%Y-%m-%d %H:%M:%S") if emby_user.last_activity_date else "从未活动"
+        
+        lines.extend([
+            f"� 账号: `{escape_markdown_v2(emby_user.name)}`",
+            f"🆔 ID: `{escape_markdown_v2(emby_user.emby_user_id)}`",
+            f"📅 创建时间: {escape_markdown_v2(e_created)}",
+            f"� 最后登录: {escape_markdown_v2(e_last_login)}",
+            f"🎬 最后活动: {escape_markdown_v2(e_last_activity)}",
+            f"� 设备限制: {emby_user.max_devices}",
+        ])
+    elif ext and ext.emby_user_id:
+        lines.append(f"⚠️ 已绑定 ID: `{escape_markdown_v2(ext.emby_user_id)}`")
+        lines.append("但尚未同步详细信息")
+    else:
+        lines.append("⚠️ 尚未绑定 Emby 账号")
     ]
 
     caption = "\n".join(lines)
