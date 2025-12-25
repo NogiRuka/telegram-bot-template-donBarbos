@@ -76,6 +76,12 @@ async def user_profile(
     last_interaction = getattr(ext, "last_interaction_at", None)
     last_interaction_str = last_interaction.strftime("%Y-%m-%d %H:%M:%S") if last_interaction else "未知"
 
+    # 签到信息
+    streak_days = getattr(ext, "streak_days", 0)
+    max_streak_days = getattr(ext, "max_streak_days", 0)
+    last_checkin = getattr(ext, "last_checkin_date", None)
+    last_checkin_str = last_checkin.strftime("%Y-%m-%d") if last_checkin else "从未签到"
+
     # 构建 MarkdownV2 caption
     lines = [
         f"*{PROFILE_LABEL}*",
@@ -90,6 +96,13 @@ async def user_profile(
         f"📡 状态: {status_text}",
         f"💎 Premium: {premium_str}",
         f"💰 {CURRENCY_NAME}: {balance} {CURRENCY_SYMBOL}",
+        "",
+        "*签到数据*",
+        f"🔥 连签天数: {streak_days} 天",
+        f"🏆 最高连签: {max_streak_days} 天",
+        f"📝 上次签到: {escape_markdown_v2(last_checkin_str)}",
+        "",
+        "*系统信息*",
         f"📅 注册时间: {escape_markdown_v2(created_str)}",
         f"⏱ 最后活跃: {escape_markdown_v2(last_interaction_str)}",
     ]
