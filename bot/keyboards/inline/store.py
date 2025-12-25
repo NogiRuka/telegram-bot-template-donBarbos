@@ -2,11 +2,13 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.database.models.currency_product import CurrencyProductModel
+from bot.keyboards.inline.buttons import (
+    STORE_BACK_BUTTON,
+    BACK_TO_STORE_BUTTON
+)
 from bot.keyboards.inline.constants import (
     STORE_PRODUCT_PREFIX,
     STORE_BUY_PREFIX,
-    STORE_BACK_LABEL,
-    STORE_BACK_CALLBACK_DATA,
     CURRENCY_SYMBOL,
 )
 
@@ -36,7 +38,7 @@ def get_store_keyboard(products: list[CurrencyProductModel]) -> InlineKeyboardMa
     
     # 底部返回按钮
     builder.row(
-        InlineKeyboardButton(text=STORE_BACK_LABEL, callback_data=STORE_BACK_CALLBACK_DATA)
+        STORE_BACK_BUTTON
     )
     
     return builder.as_markup()
@@ -66,7 +68,7 @@ def get_product_detail_keyboard(product: CurrencyProductModel) -> InlineKeyboard
     
     # 返回按钮
     builder.row(
-        InlineKeyboardButton(text="🔙 返回商店", callback_data=ESSENCE_STORE_CALLBACK_DATA)
+        BACK_TO_STORE_BUTTON
     )
     
     return builder.as_markup()

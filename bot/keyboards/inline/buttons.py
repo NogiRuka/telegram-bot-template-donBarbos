@@ -18,8 +18,10 @@ TAGS_CLEAR_BUTTON = InlineKeyboardButton(text=TAGS_CLEAR_LABEL, callback_data=TA
 TAGS_CANCEL_EDIT_BUTTON = InlineKeyboardButton(text=TAGS_CANCEL_EDIT_LABEL, callback_data=TAGS_CANCEL_EDIT_CALLBACK_DATA)
 DAILY_CHECKIN_BUTTON = InlineKeyboardButton(text=DAILY_CHECKIN_LABEL, callback_data=DAILY_CHECKIN_CALLBACK_DATA)
 ESSENCE_STORE_BUTTON = InlineKeyboardButton(text=ESSENCE_STORE_LABEL, callback_data=ESSENCE_STORE_CALLBACK_DATA)
+BACK_TO_STORE_BUTTON = InlineKeyboardButton(text="🔙 返回商店", callback_data=ESSENCE_STORE_CALLBACK_DATA)
 BACK_TO_ACCOUNT_BUTTON = InlineKeyboardButton(text=BACK_TO_ACCOUNT_LABEL, callback_data=BACK_TO_ACCOUNT_CALLBACK_DATA)
 CANCEL_PASSWORD_CHANGE_BUTTON = InlineKeyboardButton(text=CANCEL_PASSWORD_CHANGE_LABEL, callback_data=CANCEL_PASSWORD_CHANGE_CALLBACK_DATA)
+STORE_BACK_BUTTON = InlineKeyboardButton(text=STORE_BACK_LABEL, callback_data=STORE_BACK_CALLBACK_DATA)
 
 # ===== 管理员功能 =====
 ADMIN_PANEL_BUTTON = InlineKeyboardButton(text=ADMIN_PANEL_LABEL, callback_data=ADMIN_PANEL_CALLBACK_DATA)
@@ -47,6 +49,14 @@ BACK_TO_OWNER_PANEL_BUTTON = InlineKeyboardButton(text=BACK_TO_OWNER_PANEL_LABEL
 # ===== 通用导航 =====
 BACK_TO_HOME_BUTTON = InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data=BACK_TO_HOME_CALLBACK_DATA)
 
+
+# ===== 主面板按钮 =====
+MAIN_BUTTONS = [
+    [PROFILE_BUTTON],
+    [ACCOUNT_CENTER_BUTTON],
+    [ESSENCE_STORE_BUTTON],
+    [DAILY_CHECKIN_BUTTON],
+]
 
 # ===== 用户功能 =====
 USER_PANEL_BUTTONS = [
