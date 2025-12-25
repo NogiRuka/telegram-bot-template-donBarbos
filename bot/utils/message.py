@@ -89,10 +89,10 @@ async def send_temp_message(
     try:
         messager = None
         if hasattr(messageable, "message") and messageable.message:
-            # Handle CallbackQuery
+            # 处理回调查询 (CallbackQuery)
             messager = messageable.message
         elif hasattr(messageable, "answer"):
-            # Handle Message
+            # 处理普通消息 (Message)
             messager = messageable
             
         if not messager:
