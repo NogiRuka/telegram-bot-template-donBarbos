@@ -65,31 +65,50 @@ def delete_message_after_delay(message: Any, delay: int = 3) -> asyncio.Task:
 async def send_temp_message(
     messageable: Union[Message, CallbackQuery], 
     text: str, 
-    delay: int = 10
+    delay: int = 10,
+    reply_markup: Any = None,
+    photo: Union[str, Any] = None
 ) -> asyncio.Task | None:
     """发送一条临时消息，并在指定时间后自动删除。
     
     功能说明:
     - 统一封装发送消息并延迟删除的逻辑
     - 支持 Message 或 CallbackQuery 对象
+    - 支持发送图片和键盘
     
     输入参数:
     - messageable: Message 或 CallbackQuery 对象，用于发送回复
-    - text: 消息内容
+    - text: 消息内容（若发送图片则作为 caption）
     - delay: 延迟删除秒数，默认10秒
+    - reply_markup: 键盘标记（可选）
+    - photo: 图片对象或 file_id/url（可选）
     
     返回值:
     - asyncio.Task | None: 删除任务，如果发送失败则返回 None
     """
     try:
+        messager = None
         if hasattr(messageable, "message") and messageable.message:
             # Handle CallbackQuery
-            sent_msg = await messageable.message.answer(text=text)
+            messager = messageable.message
         elif hasattr(messageable, "answer"):
             # Handle Message
-            sent_msg = await messageable.answer(text=text)
-        else:
+            messager = messageable
+            
+        if not messager:
             return None
+
+        if photo:
+            sent_msg = await messager.answer_photo(
+                photo=photo,
+                caption=text,
+                reply_markup=reply_markup
+            )
+        else:
+            sent_msg = await messager.answer(
+                text=text,
+                reply_markup=reply_markup
+            )
             
         return delete_message_after_delay(sent_msg, delay)
     except Exception:
