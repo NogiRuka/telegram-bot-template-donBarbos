@@ -35,18 +35,8 @@ async def user_info(
     返回值:
     - None
     """
-    msg = callback.message
-    if not isinstance(msg, types.Message):
-        await callback.answer("🔴 无法获取消息对象", show_alert=True)
-        return
-
-    uid = callback.from_user.id if callback.from_user else None
-    if not uid:
-        await callback.answer("🔴 无法获取用户ID", show_alert=True)
-        return
-
     # 查询用户账号信息
-    user, ext = await get_user_and_extend(session, uid)
+    user, ext = await get_user_and_extend(session, callback.from_user.id)
 
     # 查询 Emby 绑定信息
     emby_user = None
