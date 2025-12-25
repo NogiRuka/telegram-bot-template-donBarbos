@@ -2,7 +2,10 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL
+from bot.keyboards.inline.constants import PROFILE_LABEL
 from bot.keyboards.inline.user import get_user_profile_keyboard
+from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
 from bot.utils.images import get_common_image
@@ -41,9 +44,20 @@ async def user_profile(
 
     # 查询用户账号信息
     user, ext = await get_user_and_extend(session, uid)
+    
+    # 获取货币余额
+    balance = await CurrencyService.get_user_balance(session, uid)
 
     # 角色与状态
-    role = getattr(ext, "role", "user")
+    role_map = {
+        "user": "普通用户",
+        "admin": "管理员",
+        "owner": "所有者"
+    }
+    role_val = getattr(ext, "role", "user")
+    role_str = role_val.value if hasattr(role_val, "value") else str(role_val)
+    role_display = role_map.get(role_str, role_str)
+    
     status_text = "正常" if (user and not getattr(user, "is_deleted", False)) else "已删除"
 
     # 字段整理
@@ -56,15 +70,15 @@ async def user_profile(
     created_at = getattr(user, "created_at", None)
     created_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else "未知"
 
-    is_premium = getattr(user, "is_premium", None)
-    premium_str = "是" if is_premium else ("否" if is_premium is not None else "未知")
+    is_premium = getattr(user, "is_premium", False)
+    premium_str = "是" if is_premium else "否"
 
     last_interaction = getattr(ext, "last_interaction_at", None)
     last_interaction_str = last_interaction.strftime("%Y-%m-%d %H:%M:%S") if last_interaction else "未知"
 
     # 构建 MarkdownV2 caption
     lines = [
-        "👤 *个人资料*",
+        f"*{PROFILE_LABEL}*",
         "",
         "*基本信息*",
         f"🆔 用户ID: `{uid}`",
@@ -72,9 +86,10 @@ async def user_profile(
         f"🔗 用户名: {escape_markdown_v2(username)}",
         "",
         "*账户状态*",
-        f"🛡 角色: {role.value if hasattr(role, 'value') else str(role)}",
+        f"🛡 角色: {role_display}",
         f"📡 状态: {status_text}",
         f"💎 Premium: {premium_str}",
+        f"💰 {CURRENCY_NAME}: {balance} {CURRENCY_SYMBOL}",
         f"📅 注册时间: {escape_markdown_v2(created_str)}",
         f"⏱ 最后活跃: {escape_markdown_v2(last_interaction_str)}",
     ]
