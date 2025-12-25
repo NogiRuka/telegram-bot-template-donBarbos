@@ -117,7 +117,7 @@ class CurrencyService:
 
         # TODO: 运势功能后续添加
         msg = (
-            f"签到成功！\n"
+            f"🎉 签到成功！\n"
             f"获得: +{total_reward} {CURRENCY_SYMBOL}\n"
             f"连续: {streak} 天 (加成 +{int(streak_bonus_pct*100)}%)\n"
             f"当前余额: {user_ext.currency_balance} {CURRENCY_SYMBOL}"
@@ -147,7 +147,7 @@ class CurrencyService:
         """
         user_ext = await CurrencyService.get_user_extend(session, user_id)
         if not user_ext:
-            logger.warning(f"尝试给不存在的用户 {user_id} 变更代币")
+            logger.warning(f"⚠️ 尝试给不存在的用户 {user_id} 变更代币")
             return 0
 
         # 检查余额是否足够 (如果是扣除)
