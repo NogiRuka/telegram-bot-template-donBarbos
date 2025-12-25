@@ -20,16 +20,18 @@ from bot.utils.permissions import _resolve_role
 
 router = Router(name="start")
 
-async def build_home_view(session: AsyncSession | None, user_id: int | None) -> tuple[str, types.InlineKeyboardMarkup]:
+async def build_home_view(session: AsyncSession | None, user_id: int | None, append_text: str | None = None) -> tuple[str, types.InlineKeyboardMarkup]:
     """构建首页文案与键盘
 
     功能说明:
     - 拉取一言内容并生成首页文案(含项目名)
     - 根据数据库中的用户角色返回对应首页键盘
+    - 支持追加文本内容
 
     输入参数:
     - session: 异步数据库会话, 可为 None
     - user_id: Telegram 用户ID, 可为 None
+    - append_text: 需追加的文本内容, 可为 None
 
     返回值:
     - tuple[str, InlineKeyboardMarkup]: (caption, keyboard)

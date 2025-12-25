@@ -18,7 +18,7 @@ from bot.database.models import (
     CurrencyTransactionModel,
     UserExtendModel,
 )
-from bot.core.constants import CURRENCY_SYMBOL
+from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL
 from bot.utils.datetime import get_app_timezone
 
 # CURRENCY_NAME = "精粹"
@@ -120,7 +120,7 @@ class CurrencyService:
             f"🎉 签到成功！\n"
             f"获得：+{total_reward} {CURRENCY_SYMBOL}\n"
             f"连续：{streak} 天 (加成 +{int(streak_bonus_pct*100)}%)\n"
-            f"当前余额：{user_ext.currency_balance} {CURRENCY_SYMBOL}"
+            f"当前{CURRENCY_NAME}：{user_ext.currency_balance} {CURRENCY_SYMBOL}"
         )
         return True, msg
 

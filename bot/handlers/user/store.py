@@ -46,7 +46,6 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
     user_id = callback.from_user.id
     
     product = await CurrencyService.get_product(session, product_id)
-    balance = await CurrencyService.get_user_balance(session, user_id)
         
     if not product:
         await callback.answer("商品不存在", show_alert=True)
@@ -57,8 +56,7 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
         f"名称：{product.name}\n"
         f"价格：{product.price} {CURRENCY_SYMBOL}\n"
         f"库存：{'无限' if product.stock == -1 else product.stock}\n\n"
-        f"描述：{product.description or '暂无描述'}\n\n"
-        f"当前余额：{balance} {CURRENCY_SYMBOL}"
+        f"描述：{product.description or '暂无描述'}"
     )
     
     await main_msg.update_on_callback(
