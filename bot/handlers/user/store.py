@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
-from bot.database.db import get_db_session
+from bot.database.database import sessionmaker
 from bot.keyboards.inline.constants import (
     ESSENCE_STORE_CALLBACK_DATA,
     STORE_PRODUCT_PREFIX,
@@ -19,7 +19,7 @@ async def handle_store_list(callback: CallbackQuery):
     """处理商店列表展示"""
     user_id = callback.from_user.id
     
-    async with get_db_session() as session:
+    async with sessionmaker() as session:
         # 获取用户余额
         balance = await CurrencyService.get_user_balance(session, user_id)
         # 获取商品列表
@@ -44,7 +44,7 @@ async def handle_product_detail(callback: CallbackQuery):
     product_id = int(callback.data.replace(STORE_PRODUCT_PREFIX, ""))
     user_id = callback.from_user.id
     
-    async with get_db_session() as session:
+    async with sessionmaker() as session:
         product = await CurrencyService.get_product(session, product_id)
         balance = await CurrencyService.get_user_balance(session, user_id)
         
@@ -74,7 +74,7 @@ async def handle_product_purchase(callback: CallbackQuery):
     product_id = int(callback.data.replace(STORE_BUY_PREFIX, ""))
     user_id = callback.from_user.id
     
-    async with get_db_session() as session:
+    async with sessionmaker() as session:
         success, message = await CurrencyService.purchase_product(session, user_id, product_id)
         
         # 如果购买成功，刷新页面显示最新余额

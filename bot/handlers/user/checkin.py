@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.db import get_db_session
+from bot.database.database import sessionmaker
 from bot.keyboards.inline.constants import DAILY_CHECKIN_CALLBACK_DATA
 from bot.services.currency import CurrencyService
 
@@ -25,7 +25,7 @@ async def handle_daily_checkin(callback: CallbackQuery):
     """
     user_id = callback.from_user.id
     
-    async with get_db_session() as session:
+    async with sessionmaker() as session:
         success, message = await CurrencyService.daily_checkin(session, user_id)
         
     await callback.answer(text=message, show_alert=True)

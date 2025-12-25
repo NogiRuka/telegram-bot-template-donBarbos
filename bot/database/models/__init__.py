@@ -1,6 +1,7 @@
 from .audit_log import ActionType, AuditLogModel
 from .base import Base
 from .config import ConfigModel, ConfigType
+from .currency import CurrencyConfigModel, CurrencyProductModel, CurrencyTransactionModel
 from .emby_user import EmbyUserModel
 from .emby_device import EmbyDeviceModel
 from .emby_item import EmbyItemModel

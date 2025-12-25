@@ -72,6 +72,9 @@ STORE_BUY_PREFIX = "store:buy:"
 STORE_BACK_LABEL = "🔙 返回"
 STORE_BACK_CALLBACK_DATA = "store:back"
 
+CURRENCY_NAME = "精粹"
+CURRENCY_SYMBOL = "💧"
+
 
 # ===== 管理员功能 =====
 # 管理员面板

@@ -9,6 +9,7 @@ from .profile import router as profile_router
 from .register import router as register_router
 from .tags import router as tags_router
 from .checkin import router as checkin_router
+from .store import router as store_router
 
 
 def get_user_router() -> Router:
