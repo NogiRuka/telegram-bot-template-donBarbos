@@ -67,9 +67,11 @@ class CurrencyService:
             return False, "📅 今天已经签到过了，明天再来吧！"
 
         # 3. 读取配置
-        base_reward = await CurrencyService.get_config(session, "checkin.base", 20)
-        streak_bonus_rate = await CurrencyService.get_config(session, "checkin.streak_bonus_rate", 10)  # 10%
+        base_reward = await CurrencyService.get_config(session, "checkin.base", 10)
+        streak_bonus_rate = await CurrencyService.get_config(session, "checkin.streak_bonus_rate", 5)  # 5%
         random_bonus_max = await CurrencyService.get_config(session, "checkin.random_bonus", 5)
+        weekly_bonus_val = await CurrencyService.get_config(session, "checkin.weekly_bonus", 20)
+        monthly_bonus_val = await CurrencyService.get_config(session, "checkin.monthly_bonus", 50)
 
         # 4. 计算连签
         streak = user_ext.streak_days
@@ -87,7 +89,18 @@ class CurrencyService:
 
         random_val = random.randint(0, random_bonus_max)
 
-        total_reward = base_reward + streak_bonus + random_val
+        # 额外周期奖励
+        weekly_bonus = 0
+        monthly_bonus = 0
+        
+        # 优先触发月签大礼包 (每30天)
+        if streak > 0 and streak % 30 == 0:
+            monthly_bonus = monthly_bonus_val
+        # 否则触发周签奖励 (每7天)
+        elif streak > 0 and streak % 7 == 0:
+            weekly_bonus = weekly_bonus_val
+
+        total_reward = base_reward + streak_bonus + random_val + weekly_bonus + monthly_bonus
 
         # 6. 更新数据库
         user_ext.last_checkin_date = today
@@ -99,30 +112,77 @@ class CurrencyService:
             user_ext.max_streak_days = streak
 
         # 7. 记录流水
+        meta = {
+            "base": base_reward,
+            "streak_bonus": streak_bonus,
+            "random": random_val,
+            "streak_days": streak,
+        }
+        if weekly_bonus > 0:
+            meta["weekly_bonus"] = weekly_bonus
+        if monthly_bonus > 0:
+            meta["monthly_bonus"] = monthly_bonus
+
         tx = CurrencyTransactionModel(
             user_id=user_id,
             amount=total_reward,
             balance_after=user_ext.currency_balance,
             event_type="daily_checkin",
             description=f"每日签到 (连签 {streak} 天)",
-            meta={
-                "base": base_reward,
-                "streak_bonus": streak_bonus,
-                "random": random_val,
-                "streak_days": streak,
-            },
+            meta=meta,
         )
         session.add(tx)
         await session.commit()
 
         # TODO: 运势功能后续添加
-        msg = (
-            f"🎉 签到成功！\n"
-            f"获得：+{total_reward} {CURRENCY_SYMBOL}\n"
-            f"连续：{streak} 天 (加成 +{int(streak_bonus_pct*100)}%)\n"
-            f"当前{CURRENCY_NAME}：{user_ext.currency_balance} {CURRENCY_SYMBOL}"
-        )
+        msg_parts = [
+            f"🎉 签到成功！",
+            f"获得：+{total_reward} {CURRENCY_SYMBOL}",
+            f"连续：{streak} 天 (加成 +{int(streak_bonus_pct*100)}%)"
+        ]
+        
+        if weekly_bonus > 0:
+            msg_parts.append(f"📅 周签奖励：+{weekly_bonus} {CURRENCY_SYMBOL}")
+        if monthly_bonus > 0:
+            msg_parts.append(f"🎁 月签大礼包：+{monthly_bonus} {CURRENCY_SYMBOL}")
+            
+        msg_parts.append(f"当前{CURRENCY_NAME}：{user_ext.currency_balance} {CURRENCY_SYMBOL}")
+        
+        msg = "\n".join(msg_parts)
         return True, msg
+
+    @staticmethod
+    async def ensure_configs(session: AsyncSession) -> None:
+        """初始化经济系统配置
+        
+        如果配置不存在，则使用默认值创建。
+        """
+        # 默认配置定义: key -> (value, description)
+        defaults = {
+            "checkin.base": (10, "每日签到基础奖励"),
+            "checkin.streak_bonus_rate": (5, "连签加成百分比(%)"),
+            "checkin.random_bonus": (5, "随机浮动奖励上限"),
+            "checkin.weekly_bonus": (20, "连签7天额外奖励"),
+            "checkin.monthly_bonus": (50, "连签30天大礼包"),
+        }
+        
+        # 查询现有配置
+        stmt = select(CurrencyConfigModel.config_key)
+        result = await session.execute(stmt)
+        existing_keys = set(result.scalars().all())
+        
+        # 插入缺失的配置
+        for key, (val, desc) in defaults.items():
+            if key not in existing_keys:
+                logger.info(f"初始化经济配置: {key} = {val}")
+                config = CurrencyConfigModel(
+                    config_key=key,
+                    value=val,
+                    description=desc
+                )
+                session.add(config)
+        
+        await session.commit()
 
     @staticmethod
     async def add_currency(

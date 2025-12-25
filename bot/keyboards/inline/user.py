@@ -16,7 +16,7 @@ def get_start_user_keyboard() -> InlineKeyboardMarkup:
     返回值:
     - InlineKeyboardMarkup: 内联键盘
     """
-    buttons = MAIN_BUTTONS
+    buttons = MAIN_USER_BUTTONS
     keyboard = InlineKeyboardBuilder(markup=buttons)
     keyboard.adjust(2, 2)
     return keyboard.as_markup()
