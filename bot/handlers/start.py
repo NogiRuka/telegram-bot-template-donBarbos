@@ -20,23 +20,36 @@ from bot.utils.permissions import _resolve_role
 
 router = Router(name="start")
 
-async def build_home_view(session: AsyncSession | None, user_id: int | None, append_text: str | None = None) -> tuple[str, types.InlineKeyboardMarkup]:
+from typing import Any
+
+async def build_home_view(
+    session: AsyncSession | None, 
+    user_id: int | None, 
+    append_text: str | None = None,
+    hitokoto_payload: dict[str, Any] | None = None
+) -> tuple[str, types.InlineKeyboardMarkup]:
     """构建首页文案与键盘
 
     功能说明:
     - 拉取一言内容并生成首页文案(含项目名)
     - 根据数据库中的用户角色返回对应首页键盘
     - 支持追加文本内容
+    - 支持传入指定的一言内容(避免刷新)
 
     输入参数:
     - session: 异步数据库会话, 可为 None
     - user_id: Telegram 用户ID, 可为 None
     - append_text: 需追加的文本内容, 可为 None
+    - hitokoto_payload: 指定的一言内容字典, 若提供则不重新拉取
 
     返回值:
     - tuple[str, InlineKeyboardMarkup]: (caption, keyboard)
     """
-    payload = await fetch_hitokoto(session, created_by=user_id)
+    if hitokoto_payload:
+        payload = hitokoto_payload
+    else:
+        payload = await fetch_hitokoto(session, created_by=user_id)
+    
     user_name = "(ง •̀_•́)ง"
     if session is not None and user_id is not None:
         with contextlib.suppress(Exception):
