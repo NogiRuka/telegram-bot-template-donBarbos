@@ -9,6 +9,9 @@ from bot.handlers.start import build_home_view
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
 
+router = Router(name="user_checkin")
+
+
 @router.callback_query(F.data == DAILY_CHECKIN_CALLBACK_DATA)
 async def handle_daily_checkin(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """处理每日签到回调

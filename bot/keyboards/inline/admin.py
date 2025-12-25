@@ -101,7 +101,7 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
                 callback_data=NOTIFY_PREVIEW_CALLBACK_DATA,
             ),
         ],
-        [NOTIFY_SEND_BUTTON]
+        [NOTIFY_SEND_BUTTON],
         [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
