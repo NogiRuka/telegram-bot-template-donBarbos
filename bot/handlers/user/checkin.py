@@ -2,7 +2,6 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.database import sessionmaker
 from bot.keyboards.inline.constants import DAILY_CHECKIN_CALLBACK_DATA
 from bot.services.currency import CurrencyService
 
@@ -10,7 +9,7 @@ router = Router(name="user_checkin")
 
 
 @router.callback_query(F.data == DAILY_CHECKIN_CALLBACK_DATA)
-async def handle_daily_checkin(callback: CallbackQuery):
+async def handle_daily_checkin(callback: CallbackQuery, session: AsyncSession):
     """处理每日签到回调
 
     功能说明:
@@ -19,13 +18,13 @@ async def handle_daily_checkin(callback: CallbackQuery):
 
     输入参数:
     - callback: CallbackQuery 对象
+    - session: 异步数据库会话
 
     返回值:
     - None
     """
     user_id = callback.from_user.id
     
-    async with sessionmaker() as session:
-        success, message = await CurrencyService.daily_checkin(session, user_id)
+    success, message = await CurrencyService.daily_checkin(session, user_id)
         
     await callback.answer(text=message, show_alert=True)
