@@ -52,7 +52,7 @@ async def user_info(
     ]
 
     if emby_user:
-        e_created = emby_user.date_created.strftime("%Y-%m-%d") if emby_user.date_created else "未知"
+        e_created = emby_user.date_created.strftime("%Y-%m-%d %H:%M:%S") if emby_user.date_created else "未知"
         e_last_login = emby_user.last_login_date.strftime("%Y-%m-%d %H:%M:%S") if emby_user.last_login_date else "从未登录"
         e_last_activity = emby_user.last_activity_date.strftime("%Y-%m-%d %H:%M:%S") if emby_user.last_activity_date else "从未活动"
         
@@ -62,16 +62,16 @@ async def user_info(
             policy = emby_user.user_dto.get("Policy", {})
             is_disabled = policy.get("IsDisabled", False)
         
-        status_str = "🚫 已禁用" if is_disabled else "✅ 正常"
+        status_str = "🚫 已禁用" if is_disabled else "🟢 正常"
 
         lines.extend([
-            f"👤 账号: `{escape_markdown_v2(emby_user.name)}`",
-            f"🆔 ID: `{escape_markdown_v2(emby_user.emby_user_id)}`",
-            f"📡 状态: {status_str}",
-            f"📅 创建时间: {escape_markdown_v2(e_created)}",
-            f"🔐 最后登录: {escape_markdown_v2(e_last_login)}",
-            f"🎬 最后活动: {escape_markdown_v2(e_last_activity)}",
-            f"📱 设备限制: {emby_user.max_devices}",
+            f"🎬 Emby 账号：`{escape_markdown_v2(emby_user.name)}`",
+            f"🆔 用户 ID：`{escape_markdown_v2(emby_user.emby_user_id)}`",
+            f"📡 账号状态：{status_str}",
+            f"📱 设备上限：{emby_user.max_devices} 台",
+            f"🗓 创建时间：{escape_markdown_v2(e_created)}",
+            f"🔐 最近登录：{escape_markdown_v2(e_last_login)}",
+            f"🎥 最近活动：{escape_markdown_v2(e_last_activity)}",
         ])
     elif ext and ext.emby_user_id:
         lines.append(f"⚠️ 已绑定 ID: `{escape_markdown_v2(ext.emby_user_id)}`")
