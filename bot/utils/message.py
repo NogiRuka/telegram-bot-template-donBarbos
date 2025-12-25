@@ -6,10 +6,11 @@
 
 from __future__ import annotations
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from typing import Any
+    from aiogram.types import Message, CallbackQuery
 
 
 async def delete_message(message: Any) -> bool:
@@ -59,3 +60,37 @@ def delete_message_after_delay(message: Any, delay: int = 3) -> asyncio.Task:
     # 保存任务引用避免被垃圾回收
     task._ignore = True
     return task
+
+
+async def send_temp_message(
+    messageable: Union[Message, CallbackQuery], 
+    text: str, 
+    delay: int = 10
+) -> asyncio.Task | None:
+    """发送一条临时消息，并在指定时间后自动删除。
+    
+    功能说明:
+    - 统一封装发送消息并延迟删除的逻辑
+    - 支持 Message 或 CallbackQuery 对象
+    
+    输入参数:
+    - messageable: Message 或 CallbackQuery 对象，用于发送回复
+    - text: 消息内容
+    - delay: 延迟删除秒数，默认10秒
+    
+    返回值:
+    - asyncio.Task | None: 删除任务，如果发送失败则返回 None
+    """
+    try:
+        if hasattr(messageable, "message") and messageable.message:
+            # Handle CallbackQuery
+            sent_msg = await messageable.message.answer(text=text)
+        elif hasattr(messageable, "answer"):
+            # Handle Message
+            sent_msg = await messageable.answer(text=text)
+        else:
+            return None
+            
+        return delete_message_after_delay(sent_msg, delay)
+    except Exception:
+        return None
