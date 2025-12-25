@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.constants import CURRENCY_SYMBOL
+from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL
 from bot.keyboards.inline.constants import (
     ESSENCE_STORE_CALLBACK_DATA,
     STORE_PRODUCT_PREFIX,
@@ -28,7 +28,7 @@ async def handle_store_list(callback: CallbackQuery, session: AsyncSession, main
     currency_name = CURRENCY_NAME
     text = (
         f"🛍️ **精粹商店**\n\n"
-        f"当前余额: {balance} {CURRENCY_SYMBOL} ({currency_name})\n\n"
+        f"当前{currency_name}: {balance} {CURRENCY_SYMBOL}\n\n"
         f"请选择要购买的商品:"
     )
     
@@ -54,11 +54,11 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
         
     text = (
         f"📦 **商品详情**\n\n"
-        f"名称: {product.name}\n"
-        f"价格: {product.price} {CURRENCY_SYMBOL}\n"
-        f"库存: {'无限' if product.stock == -1 else product.stock}\n\n"
-        f"描述: {product.description or '暂无描述'}\n\n"
-        f"当前余额: {balance} {CURRENCY_SYMBOL}"
+        f"名称：{product.name}\n"
+        f"价格：{product.price} {CURRENCY_SYMBOL}\n"
+        f"库存：{'无限' if product.stock == -1 else product.stock}\n\n"
+        f"描述：{product.description or '暂无描述'}\n\n"
+        f"当前余额：{balance} {CURRENCY_SYMBOL}"
     )
     
     await main_msg.update_on_callback(

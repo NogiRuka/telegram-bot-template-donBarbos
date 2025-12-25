@@ -118,9 +118,9 @@ class CurrencyService:
         # TODO: 运势功能后续添加
         msg = (
             f"🎉 签到成功！\n"
-            f"获得: +{total_reward} {CURRENCY_SYMBOL}\n"
-            f"连续: {streak} 天 (加成 +{int(streak_bonus_pct*100)}%)\n"
-            f"当前余额: {user_ext.currency_balance} {CURRENCY_SYMBOL}"
+            f"获得：+{total_reward} {CURRENCY_SYMBOL}\n"
+            f"连续：{streak} 天 (加成 +{int(streak_bonus_pct*100)}%)\n"
+            f"当前余额：{user_ext.currency_balance} {CURRENCY_SYMBOL}"
         )
         return True, msg
 
