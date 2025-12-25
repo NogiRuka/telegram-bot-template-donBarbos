@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models.emby_user import EmbyUserModel
+from bot.keyboards.inline.constants import USER_INFO_LABEL
 from bot.keyboards.inline.user import get_user_info_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
@@ -46,7 +47,7 @@ async def user_info(
 
     # 构建 MarkdownV2 caption
     lines = [
-        "*Emby 账号信息*",
+        f"*{USER_INFO_LABEL}*",
         "",
     ]
 
@@ -55,13 +56,22 @@ async def user_info(
         e_last_login = emby_user.last_login_date.strftime("%Y-%m-%d %H:%M:%S") if emby_user.last_login_date else "从未登录"
         e_last_activity = emby_user.last_activity_date.strftime("%Y-%m-%d %H:%M:%S") if emby_user.last_activity_date else "从未活动"
         
+        # 获取禁用状态
+        is_disabled = False
+        if emby_user.user_dto and isinstance(emby_user.user_dto, dict):
+            policy = emby_user.user_dto.get("Policy", {})
+            is_disabled = policy.get("IsDisabled", False)
+        
+        status_str = "🚫 已禁用" if is_disabled else "✅ 正常"
+
         lines.extend([
-            f"� 账号: `{escape_markdown_v2(emby_user.name)}`",
+            f"👤 账号: `{escape_markdown_v2(emby_user.name)}`",
             f"🆔 ID: `{escape_markdown_v2(emby_user.emby_user_id)}`",
+            f"📡 状态: {status_str}",
             f"📅 创建时间: {escape_markdown_v2(e_created)}",
-            f"� 最后登录: {escape_markdown_v2(e_last_login)}",
+            f"🔐 最后登录: {escape_markdown_v2(e_last_login)}",
             f"🎬 最后活动: {escape_markdown_v2(e_last_activity)}",
-            f"� 设备限制: {emby_user.max_devices}",
+            f"📱 设备限制: {emby_user.max_devices}",
         ])
     elif ext and ext.emby_user_id:
         lines.append(f"⚠️ 已绑定 ID: `{escape_markdown_v2(ext.emby_user_id)}`")
@@ -74,4 +84,3 @@ async def user_info(
     image = get_common_image()
     kb = get_user_info_keyboard()
     await main_msg.update_on_callback(callback, caption, kb, image)
-    await callback.answer()
