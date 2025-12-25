@@ -18,7 +18,7 @@ from bot.database.models import (
     CurrencyTransactionModel,
     UserExtendModel,
 )
-from bot.keyboards.inline.constants import CURRENCY_SYMBOL
+from bot.core.constants import CURRENCY_SYMBOL
 from bot.utils.datetime import get_app_timezone
 
 # CURRENCY_NAME = "精粹"

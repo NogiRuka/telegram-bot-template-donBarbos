@@ -7,11 +7,9 @@ from bot.config import (
     KEY_ADMIN_FEATURES_ENABLED,
 )
 from bot.keyboards.inline.buttons import (
-    ACCOUNT_CENTER_BUTTON,
-    ADMIN_PANEL_BUTTON,
+    MAIN_ADMIN_BUTTONS,
     BACK_TO_ADMIN_PANEL_BUTTON,
     BACK_TO_HOME_BUTTON,
-    PROFILE_BUTTON,
     NOTIFY_SEND_BUTTON
 )
 from bot.keyboards.inline.constants import (
@@ -34,13 +32,9 @@ def get_start_admin_keyboard() -> InlineKeyboardMarkup:
     返回值:
     - InlineKeyboardMarkup: 内联键盘
     """
-    buttons = [
-        [PROFILE_BUTTON],
-        [ACCOUNT_CENTER_BUTTON],
-        [ADMIN_PANEL_BUTTON],
-    ]
+    buttons = MAIN_ADMIN_BUTTONS
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(2, 1)
+    keyboard.adjust(2, 2, 1)
     return keyboard.as_markup()
 
 

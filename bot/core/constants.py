@@ -6,6 +6,10 @@
 - 便于统一管理和维护
 """
 
+# 经济系统常量
+CURRENCY_NAME = "精粹"
+CURRENCY_SYMBOL = "💧"
+
 # Emby Webhook 事件类型常量
 EVENT_TYPE_LIBRARY_NEW = "library.new"
 EVENT_TYPE_PLAYBACK_START = "playback.start"

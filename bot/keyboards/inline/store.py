@@ -3,13 +3,13 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.database.models.currency_product import CurrencyProductModel
 from bot.keyboards.inline.buttons import (
-    STORE_BACK_BUTTON,
+    BACK_TO_HOME_BUTTON,
     BACK_TO_STORE_BUTTON
 )
+from bot.core.constants import CURRENCY_SYMBOL
 from bot.keyboards.inline.constants import (
     STORE_PRODUCT_PREFIX,
     STORE_BUY_PREFIX,
-    CURRENCY_SYMBOL,
 )
 
 
@@ -38,7 +38,7 @@ def get_store_keyboard(products: list[CurrencyProductModel]) -> InlineKeyboardMa
     
     # 底部返回按钮
     builder.row(
-        STORE_BACK_BUTTON
+        BACK_TO_HOME_BUTTON
     )
     
     return builder.as_markup()

@@ -2,11 +2,11 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.constants import CURRENCY_SYMBOL
 from bot.keyboards.inline.constants import (
     ESSENCE_STORE_CALLBACK_DATA,
     STORE_PRODUCT_PREFIX,
     STORE_BUY_PREFIX,
-    CURRENCY_SYMBOL,
 )
 from bot.keyboards.inline.store import get_store_keyboard, get_product_detail_keyboard
 from bot.services.currency import CurrencyService
@@ -25,9 +25,10 @@ async def handle_store_list(callback: CallbackQuery, session: AsyncSession, main
     # 获取商品列表
     products = await CurrencyService.get_products(session)
         
+    currency_name = CURRENCY_NAME
     text = (
         f"🛍️ **精粹商店**\n\n"
-        f"当前余额: {balance} {CURRENCY_SYMBOL}\n\n"
+        f"当前余额: {balance} {CURRENCY_SYMBOL} ({currency_name})\n\n"
         f"请选择要购买的商品:"
     )
     

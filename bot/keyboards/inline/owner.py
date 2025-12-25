@@ -3,14 +3,11 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.config import ADMIN_PERMISSIONS_MAPPING, USER_FEATURES_MAPPING
 from bot.keyboards.inline.buttons import (
-    ACCOUNT_CENTER_BUTTON,
+    MAIN_OWNER_BUTTONS,
     ADMIN_LIST_BUTTON,
-    ADMIN_PANEL_BUTTON,
     BACK_TO_HOME_BUTTON,
     BACK_TO_OWNER_PANEL_BUTTON,
-    OWNER_PANEL_BUTTON,
     OWNER_PANEL_BUTTONS,
-    PROFILE_BUTTON,
 )
 from bot.keyboards.inline.constants import (
     ADMIN_PERMS_TOGGLE_FEATURES_CALLBACK_DATA,
@@ -30,14 +27,9 @@ def get_start_owner_keyboard() -> InlineKeyboardMarkup:
     返回值:
     - InlineKeyboardMarkup: 内联键盘
     """
-    buttons = [
-        [PROFILE_BUTTON],
-        [ACCOUNT_CENTER_BUTTON],
-        [ADMIN_PANEL_BUTTON],
-        [OWNER_PANEL_BUTTON],
-    ]
+    buttons = MAIN_OWNER_BUTTONS
     kb = InlineKeyboardBuilder(markup=buttons)
-    kb.adjust(2, 1, 1)
+    kb.adjust(2, 2, 1, 1)
     return kb.as_markup()
 
 
