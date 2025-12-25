@@ -68,7 +68,7 @@ def get_product_detail_keyboard(product: CurrencyProductModel) -> InlineKeyboard
     
     # 返回按钮
     builder.row(
-        BACK_TO_STORE_BUTTON
+        BACK_TO_STORE_BUTTON, BACK_TO_HOME_BUTTON
     )
     
     return builder.as_markup()

@@ -2,7 +2,7 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.keyboards.inline.constants import ACCOUNT_CENTER_CALLBACK_DATA, BACK_TO_ACCOUNT_CALLBACK_DATA
+from bot.keyboards.inline.constants import ACCOUNT_CENTER_CALLBACK_DATA, BACK_TO_ACCOUNT_CALLBACK_DATA, ACCOUNT_CENTER_LABEL
 from bot.keyboards.inline.user import get_account_center_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import has_emby_account
@@ -42,5 +42,4 @@ async def show_account_center(
 
     kb = get_account_center_keyboard(user_has_emby)
     image = get_common_image()
-    await main_msg.update_on_callback(callback, "🧩 账号中心", kb, image)
-    await callback.answer()
+    await main_msg.update_on_callback(callback, ACCOUNT_CENTER_LABEL, kb, image)

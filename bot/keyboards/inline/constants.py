@@ -10,6 +10,7 @@
 命名风格:
 - 常量使用大写加下划线
 """
+from bot.core.constants import CURRENCY_SYMBOL
 
 # ===== 用户功能 =====
 # 个人信息
@@ -17,7 +18,7 @@ PROFILE_LABEL = "👤 个人信息"
 PROFILE_CALLBACK_DATA = "user:profile"
 
 # 账号中心
-ACCOUNT_CENTER_LABEL = "🧩 账号中心"
+ACCOUNT_CENTER_LABEL = "🎬 账号中心"
 ACCOUNT_CENTER_CALLBACK_DATA = "user:account"
 
 # 注册相关
@@ -61,8 +62,7 @@ CANCEL_PASSWORD_CHANGE_LABEL = "❌ 取消修改"
 CANCEL_PASSWORD_CHANGE_CALLBACK_DATA = "user:cancel_password"
 
 # 签到与商店
-DAILY_CHECKIN_LABEL = "📅 每日签到"
-DAILY_CHECKIN_CHECKED_LABEL = "✅ 今日已签"
+DAILY_CHECKIN_LABEL = f"{CURRENCY_SYMBOL} 每日签到"
 DAILY_CHECKIN_CALLBACK_DATA = "user:checkin"
 
 ESSENCE_STORE_LABEL = "🛍️ 精粹商店"

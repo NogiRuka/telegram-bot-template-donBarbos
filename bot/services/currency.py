@@ -5,11 +5,10 @@
 """
 
 import random
-from datetime import date, datetime, timedelta
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import func, select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import (
@@ -64,7 +63,7 @@ class CurrencyService:
         # 2. 检查是否已签到
         today = now().date()
         if user_ext.last_checkin_date == today:
-            return False, "📅 今天已经签到过了，明天再来吧！"
+            return False, f"{CURRENCY_SYMBOL} 今日签到已完成，明天再来领取奖励吧！"
 
         # 3. 读取配置
         base_reward = await CurrencyService.get_config(session, "checkin.base", 10)
@@ -151,7 +150,7 @@ class CurrencyService:
         ]
         
         if weekly_bonus > 0:
-            msg_parts.append(f"📅 周签奖励：+{weekly_bonus} {CURRENCY_SYMBOL}")
+            msg_parts.append(f"📈 周签奖励：+{weekly_bonus} {CURRENCY_SYMBOL}")
         if monthly_bonus > 0:
             msg_parts.append(f"🎁 月签大礼包：+{monthly_bonus} {CURRENCY_SYMBOL}")
         if lucky_bonus > 0:
@@ -187,7 +186,7 @@ class CurrencyService:
         # 插入缺失的配置
         for key, (val, desc) in defaults.items():
             if key not in existing_keys:
-                logger.info(f"初始化经济配置: {key} = {val}")
+                # logger.info(f"初始化经济配置: {key} = {val}")
                 config = CurrencyConfigModel(
                     config_key=key,
                     value=val,
