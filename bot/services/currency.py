@@ -19,7 +19,7 @@ from bot.database.models import (
     UserExtendModel,
 )
 from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL
-from bot.utils.datetime import get_app_timezone
+from bot.utils.datetime import get_app_timezone, now
 
 # CURRENCY_NAME = "精粹"
 # CURRENCY_SYMBOL = "💧"
@@ -62,7 +62,7 @@ class CurrencyService:
             return False, "⚠️ 用户数据不存在，请先发送 /start 与机器人交互。"
 
         # 2. 检查是否已签到
-        today = datetime.now(get_app_timezone()).date()
+        today = now().date()
         if user_ext.last_checkin_date == today:
             return False, "📅 今天已经签到过了，明天再来吧！"
 
