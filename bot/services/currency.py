@@ -59,12 +59,12 @@ class CurrencyService:
         if not user_ext:
             # 如果不存在，尝试初始化（通常在用户首次交互时已创建）
             # 这里简单返回失败，提示用户先与机器人交互
-            return False, "用户数据不存在，请先发送 /start 与机器人交互。"
+            return False, "⚠️ 用户数据不存在，请先发送 /start 与机器人交互。"
 
         # 2. 检查是否已签到
         today = datetime.now(get_app_timezone()).date()
         if user_ext.last_checkin_date == today:
-            return False, "今天已经签到过了，明天再来吧！"
+            return False, "📅 今天已经签到过了，明天再来吧！"
 
         # 3. 读取配置
         base_reward = await CurrencyService.get_config(session, "checkin.base", 20)
@@ -194,13 +194,13 @@ class CurrencyService:
         product = await CurrencyService.get_product(session, product_id)
         
         if not product:
-            return False, "商品不存在"
+            return False, "❌ 商品不存在"
             
         if not product.is_active:
-            return False, "商品已下架"
+            return False, "🚫 商品已下架"
             
         if product.stock != -1 and product.stock <= 0:
-            return False, "商品库存不足"
+            return False, "📦 商品库存不足"
             
         # 2. 扣除代币
         try:
@@ -213,7 +213,7 @@ class CurrencyService:
                 meta={"product_id": product.id, "product_name": product.name}
             )
         except ValueError:
-            return False, f"余额不足，需要 {product.price} {CURRENCY_SYMBOL}"
+            return False, f"💸 余额不足，需要 {product.price} {CURRENCY_SYMBOL}"
             
         # 3. 扣减库存 (如果是有限库存)
         if product.stock != -1:
@@ -221,7 +221,7 @@ class CurrencyService:
             session.add(product)
             await session.commit()
             
-        return True, f"购买成功！消耗 {product.price} {CURRENCY_SYMBOL}"
+        return True, f"🛍️ 购买成功！消耗 {product.price} {CURRENCY_SYMBOL}"
 
     @staticmethod
     async def ensure_products(session: AsyncSession) -> None:
