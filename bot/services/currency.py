@@ -152,7 +152,7 @@ class CurrencyService:
 
         # 检查余额是否足够 (如果是扣除)
         if amount < 0 and user_ext.currency_balance + amount < 0:
-            raise ValueError("余额不足")
+            raise ValueError("💸 余额不足")
 
         user_ext.currency_balance += amount
         if amount > 0:
