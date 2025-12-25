@@ -71,6 +71,7 @@ STORE_PRODUCT_PREFIX = "store:product:"
 STORE_BUY_PREFIX = "store:buy:"
 STORE_BACK_LABEL = "🔙 返回"
 STORE_BACK_CALLBACK_DATA = "store:back"
+BACK_TO_STORE_LABEL = "🔙 返回商店"
 
 CURRENCY_NAME = "精粹"
 CURRENCY_SYMBOL = "💧"
