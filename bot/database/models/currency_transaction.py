@@ -26,7 +26,7 @@ class CurrencyTransactionModel(Base, BasicAuditMixin):
     
     id: Mapped[auto_int_pk] = mapped_column(primary_key=True, autoincrement=True, comment="流水ID")
     
-    user_id: Mapped[big_int_pk] = mapped_column(index=True, nullable=False, comment="关联 users.id")
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False, comment="关联 users.id")
     
     amount: Mapped[int] = mapped_column(nullable=False, comment="变动数值")
     
