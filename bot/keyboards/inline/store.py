@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.database.models.currency import CurrencyProductModel
+from bot.database.models.currency_product import CurrencyProductModel
 from bot.keyboards.inline.constants import (
     STORE_PRODUCT_PREFIX,
     STORE_BUY_PREFIX,

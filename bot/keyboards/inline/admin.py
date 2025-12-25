@@ -12,14 +12,13 @@ from bot.keyboards.inline.buttons import (
     BACK_TO_ADMIN_PANEL_BUTTON,
     BACK_TO_HOME_BUTTON,
     PROFILE_BUTTON,
+    NOTIFY_SEND_BUTTON
 )
 from bot.keyboards.inline.constants import (
     NOTIFY_COMPLETE_CALLBACK_DATA,
     NOTIFY_COMPLETE_LABEL,
     NOTIFY_PREVIEW_CALLBACK_DATA,
     NOTIFY_PREVIEW_LABEL,
-    NOTIFY_SEND_CALLBACK_DATA,
-    NOTIFY_SEND_LABEL,
 )
 
 
@@ -107,12 +106,9 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
                 text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})",
                 callback_data=NOTIFY_PREVIEW_CALLBACK_DATA,
             ),
-            InlineKeyboardButton(text=NOTIFY_SEND_LABEL, callback_data=NOTIFY_SEND_CALLBACK_DATA),
         ],
-        [BACK_TO_ADMIN_PANEL_BUTTON],
-        [BACK_TO_HOME_BUTTON],
+        [NOTIFY_SEND_BUTTON]
+        [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    # 第一行3个功能键, 后两行各1个导航键
-    keyboard.adjust(3, 2)
     return keyboard.as_markup()
