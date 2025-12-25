@@ -69,6 +69,9 @@ async def build_home_view(
 
     caption = build_start_caption(payload, user_name, settings.PROJECT_NAME, announcement)
 
+    if append_text:
+        caption += f"\n\n{append_text}"
+
     role = await _resolve_role(session, user_id)
     kb_map = {
         "owner": get_start_owner_keyboard(),
