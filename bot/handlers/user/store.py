@@ -14,8 +14,11 @@ from bot.services.currency import CurrencyService
 router = Router(name="user_store")
 
 
+from bot.services.main_message import MainMessageService
+
+
 @router.callback_query(F.data == ESSENCE_STORE_CALLBACK_DATA)
-async def handle_store_list(callback: CallbackQuery):
+async def handle_store_list(callback: CallbackQuery, main_msg: MainMessageService):
     """处理商店列表展示"""
     user_id = callback.from_user.id
     
@@ -31,15 +34,15 @@ async def handle_store_list(callback: CallbackQuery):
         f"请选择要购买的商品:"
     )
     
-    await callback.message.edit_text(
-        text=text,
-        reply_markup=get_store_keyboard(products),
-        parse_mode="Markdown"
+    await main_msg.update_on_callback(
+        callback,
+        text,
+        get_store_keyboard(products)
     )
 
 
 @router.callback_query(F.data.startswith(STORE_PRODUCT_PREFIX))
-async def handle_product_detail(callback: CallbackQuery):
+async def handle_product_detail(callback: CallbackQuery, main_msg: MainMessageService):
     """处理商品详情展示"""
     product_id = int(callback.data.replace(STORE_PRODUCT_PREFIX, ""))
     user_id = callback.from_user.id
@@ -61,15 +64,15 @@ async def handle_product_detail(callback: CallbackQuery):
         f"当前余额: {balance} {CURRENCY_SYMBOL}"
     )
     
-    await callback.message.edit_text(
-        text=text,
-        reply_markup=get_product_detail_keyboard(product),
-        parse_mode="Markdown"
+    await main_msg.update_on_callback(
+        callback,
+        text,
+        get_product_detail_keyboard(product)
     )
 
 
 @router.callback_query(F.data.startswith(STORE_BUY_PREFIX))
-async def handle_product_purchase(callback: CallbackQuery):
+async def handle_product_purchase(callback: CallbackQuery, main_msg: MainMessageService):
     """处理购买请求"""
     product_id = int(callback.data.replace(STORE_BUY_PREFIX, ""))
     user_id = callback.from_user.id
@@ -94,10 +97,12 @@ async def handle_product_purchase(callback: CallbackQuery):
                     f"当前余额: {balance} {CURRENCY_SYMBOL}\n\n"
                     f"✅ {message}"
                 )
-                await callback.message.edit_text(
-                    text=text,
-                    reply_markup=get_product_detail_keyboard(product),
-                    parse_mode="Markdown"
+                await main_msg.update_on_callback(
+                    callback,
+                    text,
+                    get_product_detail_keyboard(product)
                 )
-        
-    await callback.answer(message, show_alert=True)
+            else:
+                await callback.answer(message, show_alert=True)
+        else:
+            await callback.answer(message, show_alert=True)

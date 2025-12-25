@@ -2,6 +2,7 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.keyboards.inline.constants import ACCOUNT_CENTER_CALLBACK_DATA, STORE_BACK_CALLBACK_DATA
 from bot.keyboards.inline.user import get_account_center_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import has_emby_account
@@ -11,7 +12,7 @@ from bot.utils.permissions import require_user_feature
 router = Router(name="user_account")
 
 
-@router.callback_query(F.data == "user:account")
+@router.callback_query(F.data.in_({ACCOUNT_CENTER_CALLBACK_DATA, STORE_BACK_CALLBACK_DATA}))
 @require_user_feature("user.account")
 async def show_account_center(
     callback: CallbackQuery,
