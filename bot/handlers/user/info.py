@@ -78,7 +78,6 @@ async def user_info(
         lines.append("但尚未同步详细信息")
     else:
         lines.append("⚠️ 尚未绑定 Emby 账号")
-    ]
 
     caption = "\n".join(lines)
 
