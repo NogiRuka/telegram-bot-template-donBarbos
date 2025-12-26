@@ -5,10 +5,11 @@
 """
 
 import random
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import (
@@ -53,113 +54,118 @@ class CurrencyService:
 
         返回: (是否成功, 提示信息)
         """
-        # 1. 获取用户数据
-        user_ext = await CurrencyService.get_user_extend(session, user_id)
-        if not user_ext:
-            # 如果不存在，尝试初始化（通常在用户首次交互时已创建）
-            # 这里简单返回失败，提示用户先与机器人交互
-            return False, "⚠️ 用户数据不存在，请先发送 /start 与机器人交互。"
+        try:
+            # 1. 获取用户数据
+            user_ext = await CurrencyService.get_user_extend(session, user_id)
+            if not user_ext:
+                # 如果不存在，尝试初始化（通常在用户首次交互时已创建）
+                # 这里简单返回失败，提示用户先与机器人交互
+                return False, "⚠️ 用户数据不存在，请先发送 /start 与机器人交互。"
 
-        # 2. 检查是否已签到
-        today = now().date()
-        if user_ext.last_checkin_date == today:
-            return False, f"{CURRENCY_SYMBOL} 今日签到已完成，明天再来领取奖励吧！"
+            # 2. 检查是否已签到
+            today = now().date()
+            if user_ext.last_checkin_date == today:
+                return False, f"{CURRENCY_SYMBOL} 今日签到已完成，明天再来领取奖励吧！"
 
-        # 3. 读取配置
-        base_reward = await CurrencyService.get_config(session, "checkin.base", 10)
-        streak_bonus_rate = await CurrencyService.get_config(session, "checkin.streak_bonus_rate", 5)  # 5%
-        random_bonus_max = await CurrencyService.get_config(session, "checkin.random_bonus", 5)
-        weekly_bonus_val = await CurrencyService.get_config(session, "checkin.weekly_bonus", 20)
-        monthly_bonus_val = await CurrencyService.get_config(session, "checkin.monthly_bonus", 50)
-        lucky_prob = await CurrencyService.get_config(session, "checkin.lucky_prob", 5)
-        lucky_bonus_val = await CurrencyService.get_config(session, "checkin.lucky_bonus", 5)
+            # 3. 读取配置
+            base_reward = await CurrencyService.get_config(session, "checkin.base", 10)
+            streak_bonus_rate = await CurrencyService.get_config(session, "checkin.streak_bonus_rate", 5)  # 5%
+            random_bonus_max = await CurrencyService.get_config(session, "checkin.random_bonus", 5)
+            weekly_bonus_val = await CurrencyService.get_config(session, "checkin.weekly_bonus", 20)
+            monthly_bonus_val = await CurrencyService.get_config(session, "checkin.monthly_bonus", 50)
+            lucky_prob = await CurrencyService.get_config(session, "checkin.lucky_prob", 5)
+            lucky_bonus_val = await CurrencyService.get_config(session, "checkin.lucky_bonus", 5)
 
-        # 4. 计算连签
-        streak = user_ext.streak_days
-        last_date = user_ext.last_checkin_date
+            # 4. 计算连签
+            streak = user_ext.streak_days
+            last_date = user_ext.last_checkin_date
 
-        if last_date and (today - last_date).days == 1:
-            streak += 1
-        else:
-            streak = 1
+            if last_date and (today - last_date).days == 1:
+                streak += 1
+            else:
+                streak = 1
 
-        # 5. 计算奖励
-        # 连签加成: bonus = base * min(streak * rate, 1.0)
-        streak_bonus_pct = min(streak * (streak_bonus_rate / 100.0), 1.0)
-        streak_bonus = int(base_reward * streak_bonus_pct)
+            # 5. 计算奖励
+            # 连签加成: bonus = base * min(streak * rate, 1.0)
+            streak_bonus_pct = min(streak * (streak_bonus_rate / 100.0), 1.0)
+            streak_bonus = int(base_reward * streak_bonus_pct)
 
-        random_val = random.randint(0, random_bonus_max)
+            random_val = random.randint(0, random_bonus_max)
 
-        # 额外周期奖励
-        weekly_bonus = 0
-        monthly_bonus = 0
-        
-        # 优先触发月签大礼包 (每30天)
-        if streak > 0 and streak % 30 == 0:
-            monthly_bonus = monthly_bonus_val
-        # 否则触发周签奖励 (每7天)
-        elif streak > 0 and streak % 7 == 0:
-            weekly_bonus = weekly_bonus_val
+            # 额外周期奖励
+            weekly_bonus = 0
+            monthly_bonus = 0
             
-        # 幸运暴击
-        lucky_bonus = 0
-        if random.randint(1, 100) <= lucky_prob:
-            lucky_bonus = lucky_bonus_val
+            # 优先触发月签大礼包 (每30天)
+            if streak > 0 and streak % 30 == 0:
+                monthly_bonus = monthly_bonus_val
+            # 否则触发周签奖励 (每7天)
+            elif streak > 0 and streak % 7 == 0:
+                weekly_bonus = weekly_bonus_val
+                
+            # 幸运暴击
+            lucky_bonus = 0
+            if random.randint(1, 100) <= lucky_prob:
+                lucky_bonus = lucky_bonus_val
 
-        total_reward = base_reward + streak_bonus + random_val + weekly_bonus + monthly_bonus + lucky_bonus
+            total_reward = base_reward + streak_bonus + random_val + weekly_bonus + monthly_bonus + lucky_bonus
 
-        # 6. 更新数据库
-        user_ext.last_checkin_date = today
-        user_ext.streak_days = streak
-        user_ext.currency_balance += total_reward
-        user_ext.currency_total += total_reward
+            # 6. 更新数据库
+            user_ext.last_checkin_date = today
+            user_ext.streak_days = streak
+            user_ext.currency_balance += total_reward
+            user_ext.currency_total += total_reward
 
-        if streak > user_ext.max_streak_days:
-            user_ext.max_streak_days = streak
+            if streak > user_ext.max_streak_days:
+                user_ext.max_streak_days = streak
 
-        # 7. 记录流水
-        meta = {
-            "base": base_reward,
-            "streak_bonus": streak_bonus,
-            "random": random_val,
-            "streak_days": streak,
-        }
-        if weekly_bonus > 0:
-            meta["weekly_bonus"] = weekly_bonus
-        if monthly_bonus > 0:
-            meta["monthly_bonus"] = monthly_bonus
-        if lucky_bonus > 0:
-            meta["lucky_bonus"] = lucky_bonus
+            # 7. 记录流水
+            meta = {
+                "base": base_reward,
+                "streak_bonus": streak_bonus,
+                "random": random_val,
+                "streak_days": streak,
+            }
+            if weekly_bonus > 0:
+                meta["weekly_bonus"] = weekly_bonus
+            if monthly_bonus > 0:
+                meta["monthly_bonus"] = monthly_bonus
+            if lucky_bonus > 0:
+                meta["lucky_bonus"] = lucky_bonus
 
-        tx = CurrencyTransactionModel(
-            user_id=user_id,
-            amount=total_reward,
-            balance_after=user_ext.currency_balance,
-            event_type="daily_checkin",
-            description=f"每日签到 (连签 {streak} 天)",
-            meta=meta,
-        )
-        session.add(tx)
-        await session.commit()
+            tx = CurrencyTransactionModel(
+                user_id=user_id,
+                amount=total_reward,
+                balance_after=user_ext.currency_balance,
+                event_type="daily_checkin",
+                description=f"每日签到 (连签 {streak} 天)",
+                meta=meta,
+            )
+            session.add(tx)
+            await session.commit()
 
-        # TODO: 运势功能后续添加
-        msg_parts = [
-            f"🎉 签到成功！",
-            f"获得：+{total_reward} {CURRENCY_SYMBOL}",
-            f"连续：{streak} 天 (加成 +{int(streak_bonus_pct*100)}%)"
-        ]
-        
-        if weekly_bonus > 0:
-            msg_parts.append(f"📈 周签奖励：+{weekly_bonus} {CURRENCY_SYMBOL}")
-        if monthly_bonus > 0:
-            msg_parts.append(f"🎁 月签大礼包：+{monthly_bonus} {CURRENCY_SYMBOL}")
-        if lucky_bonus > 0:
-            msg_parts.append(f"🎲 幸运暴击！\n额外获得：{CURRENCY_SYMBOL} +{lucky_bonus}")
+            # TODO: 运势功能后续添加
+            msg_parts = [
+                f"🎉 签到成功！",
+                f"获得：+{total_reward} {CURRENCY_SYMBOL}",
+                f"连续：{streak} 天 (加成 +{int(streak_bonus_pct*100)}%)"
+            ]
             
-        msg_parts.append(f"当前{CURRENCY_NAME}：{user_ext.currency_balance} {CURRENCY_SYMBOL}")
-        
-        msg = "\n".join(msg_parts)
-        return True, msg
+            if weekly_bonus > 0:
+                msg_parts.append(f"📈 周签奖励：+{weekly_bonus} {CURRENCY_SYMBOL}")
+            if monthly_bonus > 0:
+                msg_parts.append(f"🎁 月签大礼包：+{monthly_bonus} {CURRENCY_SYMBOL}")
+            if lucky_bonus > 0:
+                msg_parts.append(f"🎲 幸运暴击！\n额外获得：{CURRENCY_SYMBOL} +{lucky_bonus}")
+                
+            msg_parts.append(f"当前{CURRENCY_NAME}：{user_ext.currency_balance} {CURRENCY_SYMBOL}")
+            
+            msg = "\n".join(msg_parts)
+            return True, msg
+
+        except Exception as e:
+            logger.exception(f"用户 {user_id} 签到失败: {e}")
+            return False, "⚠️ 签到服务暂时不可用，请稍后重试。"
 
     @staticmethod
     async def ensure_configs(session: AsyncSession) -> None:
@@ -291,9 +297,34 @@ class CurrencyService:
         if product.stock != -1:
             product.stock -= 1
             session.add(product)
-            await session.commit()
             
-        return True, f"🛍️ 购买成功！消耗 {product.price} {CURRENCY_SYMBOL}"
+        # 4. 执行商品效果
+        effect_msg = await CurrencyService._handle_product_effect(session, user_id, product)
+        
+        await session.commit()
+            
+        return True, f"🛍️ 购买成功！消耗 {product.price} {CURRENCY_SYMBOL}\n{effect_msg}"
+
+    @staticmethod
+    async def _handle_product_effect(session: AsyncSession, user_id: int, product: CurrencyProductModel) -> str:
+        """处理商品生效逻辑"""
+        try:
+            if product.action_type == "retro_checkin":
+                # 尝试补签逻辑
+                # 这里是一个简单的实现示例：检查是否断签，如果断签则恢复一天连签（需完善逻辑）
+                # 由于缺乏断签前的数据，这里暂时仅做提示，或者可以实现为增加一次签到机会
+                return "✅ 补签卡已使用。请联系管理员确认补签详情（功能完善中）。"
+                
+            elif product.action_type == "emby_image":
+                return "ℹ️ 请联系频道管理员并提供您的图片以修改 Emby 头像。"
+                
+            elif product.action_type == "custom_title":
+                return "ℹ️ 请联系频道管理员设置您的自定义群组头衔。"
+                
+            return "✅ 商品已发放。"
+        except Exception as e:
+            logger.exception(f"商品 {product.id} 效果执行失败: {e}")
+            return "⚠️ 商品效果执行出现异常，请联系管理员。"
 
     @staticmethod
     async def ensure_products(session: AsyncSession) -> None:
@@ -315,18 +346,18 @@ class CurrencyService:
                 "price": 100,
                 "category": "emby",
                 "action_type": "emby_image",
-                "description": "修改 Emby 上的用户图像（购买后请联系管理员）。",
+                "description": "修改 Emby 上的用户图像（购买后请联系频道）。",
                 "stock": -1,
                 "is_active": True,
             },
             {
                 "id": 3,
                 "name": "自定义头衔",
-                "price": 200,
+                "price": 100,
                 "category": "group",
                 "action_type": "custom_title",
-                "description": "在群组中显示自定义头衔（购买后请联系管理员）。",
-                "stock": -1,
+                "description": "在群组中显示自定义头衔（购买后请联系频道）。",
+                "stock": 20,
                 "is_active": True,
             },
         ]
