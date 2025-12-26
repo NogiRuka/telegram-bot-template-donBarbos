@@ -7,12 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.constants import CURRENCY_SYMBOL, CURRENCY_NAME
 from bot.keyboards.inline.constants import (
     CURRENCY_ADMIN_CALLBACK_DATA,
+)
+from bot.keyboards.inline.buttons import (
     BACK_TO_ADMIN_PANEL_BUTTON,
 )
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.admin import CurrencyAdminState
-from bot.services.users import UserService
+from bot.services.users import get_user
 
 router = Router(name="currency_admin")
 

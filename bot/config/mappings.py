@@ -90,6 +90,8 @@ ADMIN_PERMISSIONS_MAPPING: dict[str, tuple[str, str]] = {
     "open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
     "new_item_notification": (KEY_ADMIN_NEW_ITEM_NOTIFICATION, ADMIN_NEW_ITEM_NOTIFICATION_LABEL),
     "announcement": (KEY_ADMIN_ANNOUNCEMENT, ANNOUNCEMENT_LABEL),
+    "store": (KEY_ADMIN_STORE, STORE_ADMIN_LABEL),
+    "currency": (KEY_ADMIN_CURRENCY, CURRENCY_ADMIN_LABEL),
 }
 
 # 在管理员面板中拥有独立按钮的功能

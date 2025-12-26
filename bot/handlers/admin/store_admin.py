@@ -10,8 +10,8 @@ from bot.keyboards.inline.constants import (
     STORE_ADMIN_PRODUCT_PREFIX,
     STORE_ADMIN_EDIT_PREFIX,
     STORE_ADMIN_TOGGLE_PREFIX,
-    BACK_TO_ADMIN_PANEL_BUTTON,
 )
+from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.admin import StoreAdminState
