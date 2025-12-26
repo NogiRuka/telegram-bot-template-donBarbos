@@ -29,6 +29,8 @@ KEY_ADMIN_HITOKOTO = "admin.hitokoto"
 KEY_ADMIN_OPEN_REGISTRATION = "admin.open_registration"
 KEY_ADMIN_NEW_ITEM_NOTIFICATION = "admin.new_item_notification"
 KEY_ADMIN_ANNOUNCEMENT = "admin.announcement"
+KEY_ADMIN_STORE = "admin.store"
+KEY_ADMIN_CURRENCY = "admin.currency"
 
 # 注册相关配置
 KEY_REGISTRATION_FREE_OPEN = "registration.free_open"

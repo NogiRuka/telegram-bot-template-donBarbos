@@ -10,15 +10,7 @@ from bot.keyboards.inline.buttons import (
     MAIN_ADMIN_BUTTONS,
     BACK_TO_ADMIN_PANEL_BUTTON,
     BACK_TO_HOME_BUTTON,
-    NOTIFY_SEND_BUTTON,
-    GROUPS_BUTTON,
-    STATS_BUTTON,
-    OPEN_REGISTRATION_BUTTON,
-    HITOKOTO_BUTTON,
-    ADMIN_NEW_ITEM_NOTIFICATION_BUTTON,
-    ANNOUNCEMENT_BUTTON,
-    STORE_ADMIN_BUTTON,
-    CURRENCY_ADMIN_BUTTON,
+    NOTIFY_SEND_BUTTON
 )
 from bot.keyboards.inline.constants import (
     NOTIFY_COMPLETE_CALLBACK_DATA,
@@ -46,26 +38,41 @@ def get_start_admin_keyboard() -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
-def get_admin_panel_keyboard() -> InlineKeyboardMarkup:
+def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     """管理员面板键盘
-    
+
     功能说明:
-    - 提供管理员功能的入口列表与返回主面板按钮
-    
+    - 二级入口: 管理功能集合, 底部包含返回主面板
+
     输入参数:
-    - 无
-    
+    - perms: 管理员功能开关映射
+
     返回值:
-    - InlineKeyboardMarkup: 面板键盘
+    - InlineKeyboardMarkup: 内联键盘
     """
-    buttons = [
-        [GROUPS_BUTTON, STATS_BUTTON],
-        [OPEN_REGISTRATION_BUTTON, HITOKOTO_BUTTON],
-        [ADMIN_NEW_ITEM_NOTIFICATION_BUTTON, ANNOUNCEMENT_BUTTON],
-        [STORE_ADMIN_BUTTON, CURRENCY_ADMIN_BUTTON],
-        [BACK_TO_HOME_BUTTON],
-    ]
+    buttons: list[list[InlineKeyboardButton]] = []
+    master_enabled = perms.get(KEY_ADMIN_FEATURES_ENABLED, False)
+
+    for short_code in ADMIN_PANEL_VISIBLE_FEATURES:
+        if short_code not in ADMIN_PERMISSIONS_MAPPING:
+            continue
+
+        config_key, label = ADMIN_PERMISSIONS_MAPPING[short_code]
+        if master_enabled and perms.get(config_key, False):
+            buttons.append([InlineKeyboardButton(text=label, callback_data=f"admin:{short_code}")])
+
+    buttons.append([BACK_TO_HOME_BUTTON])
     keyboard = InlineKeyboardBuilder(markup=buttons)
+
+    # 动态调整布局: 每行2个, 最后1个返回键单独一行
+    # 如果按钮数量(不含返回键)是奇数, 则最后一个功能键单独一行
+    count = len(buttons) - 1
+    layout = [2] * (count // 2)
+    if count % 2 == 1:
+        layout.append(1)
+    layout.append(1)  # 返回键
+
+    keyboard.adjust(*layout)
     return keyboard.as_markup()
 
 

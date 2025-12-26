@@ -19,6 +19,8 @@ from bot.keyboards.inline.constants import (
     PROFILE_LABEL,
     ROBOT_SWITCH_LABEL,
     STATS_LABEL,
+    STORE_ADMIN_LABEL,
+    CURRENCY_ADMIN_LABEL,
     USER_DEVICES_LABEL,
     USER_FEATURES_SWITCH_LABEL,
     USER_INFO_LABEL,
@@ -98,4 +100,6 @@ ADMIN_PANEL_VISIBLE_FEATURES: list[str] = [
     "open_registration",
     "new_item_notification",
     "announcement",
+    "store",
+    "currency",
 ]
