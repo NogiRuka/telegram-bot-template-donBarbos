@@ -1,0 +1,131 @@
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, Message, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from bot.core.constants import CURRENCY_SYMBOL, CURRENCY_NAME
+from bot.keyboards.inline.constants import (
+    CURRENCY_ADMIN_CALLBACK_DATA,
+    BACK_TO_ADMIN_PANEL_BUTTON,
+)
+from bot.services.currency import CurrencyService
+from bot.services.main_message import MainMessageService
+from bot.states.admin import CurrencyAdminState
+from bot.services.users import UserService
+
+router = Router(name="currency_admin")
+
+@router.callback_query(F.data == CURRENCY_ADMIN_CALLBACK_DATA)
+async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService):
+    """精粹管理 - 开始"""
+    await callback.message.answer("💎 **精粹管理**\n\n请发送用户的 ID (或者回复用户的消息) 来查询/管理余额:")
+    await state.set_state(CurrencyAdminState.waiting_for_user)
+    await callback.answer()
+
+@router.message(CurrencyAdminState.waiting_for_user)
+async def process_user_lookup(message: Message, state: FSMContext, session: AsyncSession):
+    user_id = None
+    
+    # 尝试从回复中获取
+    if message.reply_to_message and message.reply_to_message.from_user:
+        user_id = message.reply_to_message.from_user.id
+    else:
+        # 尝试从文本中解析 ID
+        try:
+            user_id = int(message.text.strip())
+        except ValueError:
+            await message.answer("❌ 无效的用户 ID，请输入数字 ID。")
+            return
+            
+    # 检查用户是否存在
+    user = await UserService.get_user_by_id(session, user_id)
+    if not user:
+        await message.answer("❌ 找不到该用户。")
+        return
+        
+    # 获取余额
+    balance = await CurrencyService.get_user_balance(session, user_id)
+    
+    await state.update_data(target_user_id=user_id, current_balance=balance)
+    
+    kb = InlineKeyboardBuilder()
+    kb.button(text="➕ 手动加/扣币", callback_data="admin:currency:modify")
+    kb.button(text="❌ 取消", callback_data="admin:currency:cancel")
+    kb.adjust(1)
+    
+    text = (
+        f"👤 **用户查询结果**\n\n"
+        f"ID: `{user.id}`\n"
+        f"姓名: {user.full_name}\n"
+        f"当前余额: {balance} {CURRENCY_SYMBOL}"
+    )
+    
+    await message.answer(text, reply_markup=kb.as_markup())
+    # 此时不清除 state，因为可能要进行 modify，但 modify 是 callback 触发，需要手动转换状态或保持 data
+
+@router.callback_query(F.data == "admin:currency:modify")
+async def handle_modify_start(callback: CallbackQuery, state: FSMContext):
+    """开始修改余额"""
+    await callback.message.answer(
+        f"请输入要变动的数值 (整数):\n"
+        f"➕ 正数增加 (例如 100)\n"
+        f"➖ 负数扣除 (例如 -50)"
+    )
+    await state.set_state(CurrencyAdminState.waiting_for_amount)
+    await callback.answer()
+
+@router.callback_query(F.data == "admin:currency:cancel")
+async def handle_cancel(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.edit_text("已取消操作。")
+
+@router.message(CurrencyAdminState.waiting_for_amount)
+async def process_amount(message: Message, state: FSMContext):
+    try:
+        amount = int(message.text)
+        if amount == 0:
+             await message.answer("❌ 变动值不能为 0")
+             return
+    except ValueError:
+        await message.answer("❌ 请输入有效的整数。")
+        return
+        
+    await state.update_data(amount=amount)
+    
+    await message.answer("📝 请输入操作原因 (必填):")
+    await state.set_state(CurrencyAdminState.waiting_for_reason)
+
+@router.message(CurrencyAdminState.waiting_for_reason)
+async def process_reason(message: Message, state: FSMContext, session: AsyncSession):
+    reason = message.text.strip()
+    if not reason:
+        await message.answer("❌ 原因不能为空。")
+        return
+        
+    data = await state.get_data()
+    user_id = data["target_user_id"]
+    amount = data["amount"]
+    
+    try:
+        new_balance = await CurrencyService.add_currency(
+            session,
+            user_id,
+            amount,
+            "admin_manual",
+            f"管理员手动操作: {reason}",
+            meta={"admin_id": message.from_user.id}
+        )
+        
+        action = "增加" if amount > 0 else "扣除"
+        await message.answer(
+            f"✅ 操作成功！\n"
+            f"用户 ID: `{user_id}`\n"
+            f"变动: {action} {abs(amount)} {CURRENCY_SYMBOL}\n"
+            f"原因: {reason}\n"
+            f"最新余额: {new_balance} {CURRENCY_SYMBOL}"
+        )
+    except Exception as e:
+        await message.answer(f"❌ 操作失败: {str(e)}")
+        
+    await state.clear()

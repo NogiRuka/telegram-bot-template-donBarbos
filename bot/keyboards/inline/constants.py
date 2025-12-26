@@ -104,6 +104,17 @@ ADMIN_NEW_ITEM_NOTIFICATION_CALLBACK_DATA = "admin:notify"
 ANNOUNCEMENT_LABEL = "📢 公告管理"
 ADMIN_ANNOUNCEMENT_CALLBACK_DATA = "admin:announcement"
 
+# 商店管理
+STORE_ADMIN_LABEL = "🏪 商店管理"
+STORE_ADMIN_CALLBACK_DATA = "admin:store"
+STORE_ADMIN_PRODUCT_PREFIX = "admin:store:product:"
+STORE_ADMIN_EDIT_PREFIX = "admin:store:edit:"
+STORE_ADMIN_TOGGLE_PREFIX = "admin:store:toggle:"
+
+# 精粹管理
+CURRENCY_ADMIN_LABEL = "💎 精粹管理"
+CURRENCY_ADMIN_CALLBACK_DATA = "admin:currency"
+
 # 上新补全
 NOTIFY_COMPLETE_LABEL = "🔄 上新补全"
 NOTIFY_COMPLETE_CALLBACK_DATA = "admin:notify_complete"

@@ -25,6 +25,12 @@ BACK_TO_STORE_BUTTON = InlineKeyboardButton(text=BACK_TO_STORE_LABEL, callback_d
 # ===== 管理员功能 =====
 ADMIN_PANEL_BUTTON = InlineKeyboardButton(text=ADMIN_PANEL_LABEL, callback_data=ADMIN_PANEL_CALLBACK_DATA)
 
+# 商店管理按钮
+STORE_ADMIN_BUTTON = InlineKeyboardButton(text=STORE_ADMIN_LABEL, callback_data=STORE_ADMIN_CALLBACK_DATA)
+
+# 精粹管理按钮
+CURRENCY_ADMIN_BUTTON = InlineKeyboardButton(text=CURRENCY_ADMIN_LABEL, callback_data=CURRENCY_ADMIN_CALLBACK_DATA)
+
 # 新片通知相关按钮
 NOTIFY_COMPLETE_BUTTON = InlineKeyboardButton(text=NOTIFY_COMPLETE_LABEL, callback_data=NOTIFY_COMPLETE_CALLBACK_DATA)
 NOTIFY_PREVIEW_BUTTON = InlineKeyboardButton(text=NOTIFY_PREVIEW_LABEL, callback_data=NOTIFY_PREVIEW_CALLBACK_DATA)
