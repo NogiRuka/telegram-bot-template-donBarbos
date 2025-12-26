@@ -326,7 +326,8 @@ class CurrencyService:
             elif product.action_type == "custom_title":
                 return True, "ℹ️ 请联系频道管理员设置您的自定义群组头衔。"
                 
-            return True, "✅ 商品已发放。"
+            # 默认回复
+            return True, "✅ 商品已发放。请联系频道处理。"
         except Exception as e:
             logger.exception(f"商品 {product.id} 效果执行失败: {e}")
             return False, "⚠️ 商品效果执行出现异常，请联系管理员。"
