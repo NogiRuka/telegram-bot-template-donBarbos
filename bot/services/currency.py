@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import (
@@ -299,32 +299,113 @@ class CurrencyService:
             session.add(product)
             
         # 4. 执行商品效果
-        effect_msg = await CurrencyService._handle_product_effect(session, user_id, product)
+        success, effect_msg = await CurrencyService._handle_product_effect(session, user_id, product)
+        
+        if not success:
+            await session.rollback()
+            return False, effect_msg
         
         await session.commit()
             
         return True, f"🛍️ 购买成功！消耗 {product.price} {CURRENCY_SYMBOL}\n{effect_msg}"
 
     @staticmethod
-    async def _handle_product_effect(session: AsyncSession, user_id: int, product: CurrencyProductModel) -> str:
-        """处理商品生效逻辑"""
+    async def _handle_product_effect(session: AsyncSession, user_id: int, product: CurrencyProductModel) -> tuple[bool, str]:
+        """处理商品生效逻辑
+        
+        返回: (是否成功, 提示信息)
+        """
         try:
             if product.action_type == "retro_checkin":
                 # 尝试补签逻辑
-                # 这里是一个简单的实现示例：检查是否断签，如果断签则恢复一天连签（需完善逻辑）
-                # 由于缺乏断签前的数据，这里暂时仅做提示，或者可以实现为增加一次签到机会
-                return "✅ 补签卡已使用。请联系管理员确认补签详情（功能完善中）。"
+                return await CurrencyService._try_retro_checkin(session, user_id)
                 
             elif product.action_type == "emby_image":
-                return "ℹ️ 请联系频道管理员并提供您的图片以修改 Emby 头像。"
+                return True, "ℹ️ 请联系频道管理员并提供您的图片以修改 Emby 头像。"
                 
             elif product.action_type == "custom_title":
-                return "ℹ️ 请联系频道管理员设置您的自定义群组头衔。"
+                return True, "ℹ️ 请联系频道管理员设置您的自定义群组头衔。"
                 
-            return "✅ 商品已发放。"
+            return True, "✅ 商品已发放。"
         except Exception as e:
             logger.exception(f"商品 {product.id} 效果执行失败: {e}")
-            return "⚠️ 商品效果执行出现异常，请联系管理员。"
+            return False, "⚠️ 商品效果执行出现异常，请联系管理员。"
+
+    @staticmethod
+    async def _try_retro_checkin(session: AsyncSession, user_id: int) -> tuple[bool, str]:
+        """尝试执行补签逻辑"""
+        user_ext = await CurrencyService.get_user_extend(session, user_id)
+        if not user_ext:
+            return False, "⚠️ 用户数据不存在。"
+            
+        today = now().date()
+        last_date = user_ext.last_checkin_date
+        
+        if not last_date:
+            return False, "⚠️ 你还没有签到过，无法使用补签卡。"
+            
+        gap = (today - last_date).days
+        
+        # 情况 1: 今天还没签，且断签 1 天 (例如今天 27, 上次 25。Gap=2)
+        if gap == 2:
+            # 补签昨天 (Today-1)
+            # 逻辑：将 last_checkin_date 设为昨天，streak + 1
+            # 这样用户今天再签到时，streak 会继续 +1
+            user_ext.last_checkin_date = today - timedelta(days=1)
+            user_ext.streak_days += 1
+            
+            # 更新最大连签
+            if user_ext.streak_days > user_ext.max_streak_days:
+                user_ext.max_streak_days = user_ext.streak_days
+                
+            session.add(user_ext)
+            return True, f"✅ 成功补签 {user_ext.last_checkin_date}！\n当前连签已恢复为 {user_ext.streak_days} 天。\n⚠️ 请记得今天也要签到哦！"
+            
+        # 情况 2: 今天已经签了 (Gap=0)，但昨天断签导致 streak 重置为 1
+        elif gap == 0:
+            if user_ext.streak_days > 1:
+                return False, "📅 你的连签状态正常，无需补签。"
+                
+            # 查找上一条签到记录 (排除今天)
+            stmt = select(CurrencyTransactionModel).where(
+                CurrencyTransactionModel.user_id == user_id,
+                CurrencyTransactionModel.event_type == 'daily_checkin',
+                func.date(CurrencyTransactionModel.created_at) < today
+            ).order_by(CurrencyTransactionModel.created_at.desc()).limit(1)
+            
+            result = await session.execute(stmt)
+            last_tx = result.scalar_one_or_none()
+            
+            if not last_tx:
+                return False, "🤔 找不到之前的签到记录，无法恢复连签。"
+                
+            last_tx_date = last_tx.created_at.date()
+            gap_tx = (today - last_tx_date).days
+            
+            # 如果上一条是前天 (Today-2)，说明只漏了昨天 (Today-1)
+            if gap_tx == 2:
+                # 恢复连签
+                # 获取旧的 streak
+                old_streak = last_tx.meta.get('streak_days', 0) if last_tx.meta else 0
+                
+                # 新 streak = 旧 + 1(补昨天) + 1(今天)
+                new_streak = old_streak + 2
+                
+                user_ext.streak_days = new_streak
+                if new_streak > user_ext.max_streak_days:
+                    user_ext.max_streak_days = new_streak
+                
+                session.add(user_ext)
+                return True, f"✅ 成功补救昨天的断签！\n连签天数已恢复为 {new_streak} 天。"
+            else:
+                return False, f"❌ 断签时间过长 (上次签到 {last_tx_date})，补签卡仅能恢复最近一天的断签。"
+                
+        # 其他情况
+        elif gap == 1:
+            return False, "📅 昨天已签到，无需补签。"
+        else:
+            return False, f"❌ 断签时间过长 (上次签到 {last_date})，补签卡仅能恢复最近一天的断签。"
+
 
     @staticmethod
     async def ensure_products(session: AsyncSession) -> None:
