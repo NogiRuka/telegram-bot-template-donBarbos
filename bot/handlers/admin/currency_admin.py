@@ -2,8 +2,10 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.database.models import UserModel
 from bot.core.constants import CURRENCY_SYMBOL, CURRENCY_NAME
 from bot.keyboards.inline.constants import (
     CURRENCY_ADMIN_CALLBACK_DATA,
@@ -12,7 +14,6 @@ from bot.keyboards.inline.buttons import (
     BACK_TO_ADMIN_PANEL_BUTTON,
 )
 from bot.services.currency import CurrencyService
-from bot.services.users import get_user
 from bot.services.main_message import MainMessageService
 from bot.states.admin import CurrencyAdminState
 
@@ -41,7 +42,8 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
             return
             
     # 检查用户是否存在
-    user = await UserService.get_user_by_id(session, user_id)
+    user_result = await session.execute(select(UserModel).where(UserModel.id == user_id))
+    user = user_result.scalar_one_or_none()
     if not user:
         await message.answer("❌ 找不到该用户。")
         return
