@@ -97,6 +97,17 @@ async def get_first_name(session: AsyncSession, user_id: int) -> str:
 
 
 async def get_user(session: AsyncSession, user_id: int) -> UserModel | None:
-    """根据 ID 获取用户模型实例"""
+    """根据 ID 获取用户模型实例
+
+    功能说明:
+    - 查询数据库获取完整的用户模型对象
+
+    输入参数:
+    - session: 异步数据库会话
+    - user_id: 用户 ID
+
+    返回值:
+    - UserModel | None: 用户模型实例，若不存在返回 None
+    """
     result = await session.execute(select(UserModel).where(UserModel.id == user_id))
     return result.scalar_one_or_none()

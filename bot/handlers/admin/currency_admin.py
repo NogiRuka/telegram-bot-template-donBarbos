@@ -12,9 +12,9 @@ from bot.keyboards.inline.buttons import (
     BACK_TO_ADMIN_PANEL_BUTTON,
 )
 from bot.services.currency import CurrencyService
+from bot.services.users import get_user
 from bot.services.main_message import MainMessageService
 from bot.states.admin import CurrencyAdminState
-from bot.services.users import get_user
 
 router = Router(name="currency_admin")
 
