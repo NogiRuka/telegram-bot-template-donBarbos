@@ -249,11 +249,37 @@ class CurrencyService:
         return user_ext.currency_balance
 
     @staticmethod
-    async def get_products(session: AsyncSession) -> list[CurrencyProductModel]:
-        """获取上架商品列表"""
-        stmt = select(CurrencyProductModel).where(CurrencyProductModel.is_active.is_(True)).order_by(CurrencyProductModel.price)
+    async def get_products(session: AsyncSession, only_active: bool = True) -> list[CurrencyProductModel]:
+        """获取商品列表"""
+        stmt = select(CurrencyProductModel)
+        if only_active:
+            stmt = stmt.where(CurrencyProductModel.is_active.is_(True))
+        
+        stmt = stmt.order_by(CurrencyProductModel.price)
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+    @staticmethod
+    async def update_product(
+        session: AsyncSession, 
+        product_id: int, 
+        **kwargs
+    ) -> CurrencyProductModel | None:
+        """更新商品信息
+        
+        支持更新的字段: description, price, stock, is_active
+        """
+        product = await CurrencyService.get_product(session, product_id)
+        if not product:
+            return None
+            
+        for key, value in kwargs.items():
+            if hasattr(product, key):
+                setattr(product, key, value)
+                
+        session.add(product)
+        await session.commit()
+        return product
 
     @staticmethod
     async def get_product(session: AsyncSession, product_id: int) -> CurrencyProductModel | None:
@@ -327,7 +353,7 @@ class CurrencyService:
                 return True, "ℹ️ 请联系频道管理员设置您的自定义群组头衔。"
                 
             # 默认回复
-            return True, "✅ 商品已发放。请联系频道处理。"
+            return True, "✅ 商品购买成功。请联系频道处理。"
         except Exception as e:
             logger.exception(f"商品 {product.id} 效果执行失败: {e}")
             return False, "⚠️ 商品效果执行出现异常，请联系管理员。"
