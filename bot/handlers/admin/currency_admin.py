@@ -97,7 +97,7 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
 @router.callback_query(F.data == "admin:currency:modify")
 async def handle_modify_start(callback: CallbackQuery, state: FSMContext):
     """开始修改余额"""
-    send_toast(callback.message, "请输入要变动的数值 (整数):\n➕ 正数增加 (例如 100)\n➖ 负数扣除 (例如 -50)")
+    await send_toast(callback.message, "请输入要变动的数值 (整数):\n➕ 正数增加 (例如 100)\n➖ 负数扣除 (例如 -50)")
     await state.set_state(CurrencyAdminState.waiting_for_amount)
     await callback.answer()
 
@@ -120,15 +120,15 @@ async def process_amount(message: Message, state: FSMContext):
     try:
         amount = int(message.text)
         if amount == 0:
-             send_toast(message, "❌ 变动值不能为 0")
+             await send_toast(message, "❌ 变动值不能为 0")
              return
     except ValueError:
-        send_toast(message, "❌ 请输入有效的整数。")
+        await send_toast(message, "❌ 请输入有效的整数。")
         return
         
     await state.update_data(amount=amount)
     
-    send_toast(message, "📝 请输入操作原因 (必填):")
+    await send_toast(message, "📝 请输入操作原因 (必填):")
     await state.set_state(CurrencyAdminState.waiting_for_reason)
 
 @router.message(CurrencyAdminState.waiting_for_reason)
@@ -141,7 +141,7 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
     
     reason = message.text.strip()
     if not reason:
-        send_toast(message, "❌ 原因不能为空。")
+        await send_toast(message, "❌ 原因不能为空。")
         return
         
     data = await state.get_data()
@@ -166,8 +166,8 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
             f"原因: {reason}\n"
             f"最新余额: {new_balance} {CURRENCY_SYMBOL}"
         )
-        send_temp_message(message, text, delay=30, parse_mode="MarkdownV2")
+        await send_temp_message(message, text, delay=30, parse_mode="MarkdownV2")
     except Exception as e:
-        send_toast(message, f"❌ 操作失败: {str(e)}")
+        await send_toast(message, f"❌ 操作失败: {str(e)}")
 
     await state.clear()
