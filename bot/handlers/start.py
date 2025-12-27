@@ -103,7 +103,7 @@ async def start_handler(message: types.Message, session: AsyncSession, main_msg:
     caption, kb = await build_home_view(session, uid)
 
     image = get_common_image()
-    await main_msg.send_main(message, image or None, caption, kb)
+    await main_msg.render(uid, caption, kb, image)
 
 
 @router.callback_query(F.data == "back:home")

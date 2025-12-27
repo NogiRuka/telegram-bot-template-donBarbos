@@ -74,9 +74,7 @@ async def _refresh_product_view(user_id: int, product_id: int, session: AsyncSes
     product = await CurrencyService.get_product(session, product_id)
     if product:
         text, markup = _get_product_view(product)
-        # Note: update_by_message requires a Message object which we don't have here (we only have user input message).
-        # So we use update() which uses the stored main message ID.
-        await main_msg.update(user_id, text, markup, image_path=get_common_image())
+        await main_msg.render(user_id, text, markup)
 
 @router.callback_query(F.data.startswith(STORE_ADMIN_PRODUCT_PREFIX))
 async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):

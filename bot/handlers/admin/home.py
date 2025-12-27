@@ -37,8 +37,7 @@ async def show_admin_panel(
     kb = get_admin_panel_keyboard(features)
     user_id = callback.from_user.id if callback.from_user else None
     await _resolve_role(session, user_id)
-    image = get_common_image()
 
-    await main_msg.update_on_callback(callback, ADMIN_PANEL_LABEL, kb, image_path=image)
+    await main_msg.update_on_callback(callback, ADMIN_PANEL_LABEL, kb)
     await callback.answer()
 
