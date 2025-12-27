@@ -12,11 +12,13 @@ from bot.keyboards.inline.constants import (
     STORE_ADMIN_TOGGLE_PREFIX,
 )
 from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON, BACK_TO_STORE_ADMIN_BUTTON
+from bot.keyboards.inline.constants import STORE_ADMIN_LABEL
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.admin import StoreAdminState
 from bot.utils.message import send_toast, extract_id
 from bot.utils.text import escape_markdown_v2
+
 from loguru import logger
 
 
@@ -37,7 +39,7 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
     
     kb.adjust(1)
     kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
-    text = ("🏪 商店管理\n\n请选择要管理的商品 (🟢上架中 / 🔴已下架):")
+    text = (f"*{STORE_ADMIN_LABEL}*\n\n请选择要管理的商品 （🟢上架中 / 🔴已下架）")
     
     await main_msg.update_on_callback(
         callback,

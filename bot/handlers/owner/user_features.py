@@ -34,7 +34,7 @@ async def show_features_panel(callback: CallbackQuery, session: AsyncSession, ma
     features = await list_user_features(session)
     kb = get_user_features_panel_keyboard(features)
 
-    await main_msg.update_on_callback(callback, USER_FEATURES_PANEL_LABEL, kb)
+    await main_msg.update_on_callback(callback, f"*{USER_FEATURES_PANEL_LABEL}*", kb)
     await callback.answer()
 
 
@@ -59,7 +59,7 @@ async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession, 
     key = parts[-1] if len(parts) >= min_parts else ""
 
     if not key or key not in USER_FEATURES_MAPPING:
-        await callback.answer("🔴 无效的开关项", show_alert=True)
+        await callback.answer(f"🔴 无效的开关项: {key}", show_alert=True)
         return
 
     try:

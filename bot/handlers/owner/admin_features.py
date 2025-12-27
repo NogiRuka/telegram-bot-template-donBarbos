@@ -32,7 +32,7 @@ async def show_admin_features_panel(callback: CallbackQuery, session: AsyncSessi
     features = await list_admin_features(session)
     kb = get_admin_features_panel_keyboard(features)
 
-    await main_msg.update_on_callback(callback, ADMIN_FEATURES_PANEL_LABEL, kb)
+    await main_msg.update_on_callback(callback, f"*{ADMIN_FEATURES_PANEL_LABEL}*", kb)
     await callback.answer()
 
 

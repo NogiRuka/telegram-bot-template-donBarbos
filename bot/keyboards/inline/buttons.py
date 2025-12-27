@@ -25,6 +25,12 @@ BACK_TO_STORE_BUTTON = InlineKeyboardButton(text=BACK_TO_STORE_LABEL, callback_d
 # ===== 管理员功能 =====
 ADMIN_PANEL_BUTTON = InlineKeyboardButton(text=ADMIN_PANEL_LABEL, callback_data=ADMIN_PANEL_CALLBACK_DATA)
 
+# 一言管理按钮
+HITOKOTO_ADMIN_BUTTON = InlineKeyboardButton(text=HITOKOTO_LABEL, callback_data=HITOKOTO_CALLBACK_DATA)
+BACK_TO_HITOKOTO_ADMIN_BUTTON = InlineKeyboardButton(text=BACK_TO_HITOKOTO_LABEL, callback_data=HITOKOTO_CALLBACK_DATA)
+
+
+
 # 商店管理按钮
 STORE_ADMIN_BUTTON = InlineKeyboardButton(text=STORE_ADMIN_LABEL, callback_data=STORE_ADMIN_CALLBACK_DATA)
 BACK_TO_STORE_ADMIN_BUTTON = InlineKeyboardButton(text=BACK_TO_STORE_LABEL, callback_data=STORE_ADMIN_CALLBACK_DATA)

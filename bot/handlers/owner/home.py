@@ -2,6 +2,7 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 
 from bot.keyboards.inline.owner import get_owner_panel_keyboard
+from bot.keyboards.inline.constants import OWNER_PANEL_LABEL
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_owner
 
@@ -23,9 +24,8 @@ async def show_owner_panel(callback: CallbackQuery, main_msg: MainMessageService
     返回值:
     - None
     """
-    caption = "👑 所有者面板"
     kb = get_owner_panel_keyboard()
 
-    await main_msg.update_on_callback(callback, caption, kb)
+    await main_msg.update_on_callback(callback, f"*{OWNER_PANEL_LABEL}*", kb)
     await callback.answer()
 

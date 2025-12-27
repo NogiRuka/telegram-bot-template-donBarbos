@@ -3,6 +3,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config.constants import KEY_ADMIN_HITOKOTO_CATEGORY
 from bot.database.models.config import ConfigType
 from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, BACK_TO_ADMIN_PANEL_BUTTON
 from bot.keyboards.inline.constants import HITOKOTO_LABEL
@@ -47,7 +48,7 @@ def _build_hitokoto_ui(categories: list[str]) -> tuple[str, InlineKeyboardMarkup
     """
     type_names, all_types = _get_hitokoto_types()
     
-    # Build Keyboard
+    # 构建键盘
     rows: list[list[InlineKeyboardButton]] = []
     current_row: list[InlineKeyboardButton] = []
     for idx, ch in enumerate(all_types, start=1):
@@ -64,7 +65,7 @@ def _build_hitokoto_ui(categories: list[str]) -> tuple[str, InlineKeyboardMarkup
     rows.append([BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON])
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
 
-    # Build Caption
+    # 构建文案
     current_names = [type_names.get(ch, ch) for ch in categories]
     caption = (
         f"{HITOKOTO_LABEL}\n\n"
@@ -88,14 +89,8 @@ async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession, 
     功能说明:
     - 在管理员面板中展示一言分类选择面板, 使用中文分类名, 每行四个按钮, 底部提供返回与返回主面板
 
-    输入参数:
-    - callback: 回调对象
-    - session: 异步数据库会话
-
-    返回值:
-    - None
     """
-    categories = await get_config(session, "admin.hitokoto.categories") or []
+    categories = await get_config(session, KEY_ADMIN_HITOKOTO_CATEGORY) or []
     caption, kb = _build_hitokoto_ui(categories)
     await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer()
@@ -110,18 +105,11 @@ async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession, 
     功能说明:
     - 切换指定分类选中状态, 实时更新配置但不关闭面板
 
-    输入参数:
-    - callback: 回调对象
-    - session: 异步数据库会话
-    - main_msg: 主消息服务
-
-    返回值:
-    - None
     """
     try:
         data = callback.data or ""
         ch = data.split(":")[-1]
-        categories = await get_config(session, "admin.hitokoto.categories") or []
+        categories = await get_config(session, KEY_ADMIN_HITOKOTO_CATEGORY) or []
         if ch in categories:
             categories = [c for c in categories if c != ch]
         else:
@@ -130,7 +118,7 @@ async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession, 
         operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
         await set_config(
             session,
-            "admin.hitokoto.categories",
+            KEY_ADMIN_HITOKOTO_CATEGORY,
             categories,
             ConfigType.LIST,
             operator_id=operator_id,

@@ -46,7 +46,7 @@ def _build_panel_ui(current_text: str | None) -> tuple[str, InlineKeyboardBuilde
     """
     display_text = current_text if current_text else "（当前未设置公告）"
     caption = (
-        f"{ANNOUNCEMENT_LABEL}\n\n"
+        f"*{ANNOUNCEMENT_LABEL}*\n\n"
         f"当前公告：\n{display_text}\n\n"
     )
 

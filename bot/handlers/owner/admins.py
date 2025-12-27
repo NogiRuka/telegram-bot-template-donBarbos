@@ -3,6 +3,7 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.owner import get_admins_panel_keyboard
+from bot.keyboards.inline.constants import OWNER_ADMINS_LABEL
 from bot.services.users import list_admins
 from bot.utils.permissions import _resolve_role, require_owner
 from bot.utils.view import render_view
@@ -24,7 +25,7 @@ async def show_admins_panel(callback: CallbackQuery) -> None:
     返回值:
     - None
     """
-    caption = "👮 管理员管理\n\n可查看管理员列表与管理权限"
+    caption = f"{OWNER_ADMINS_LABEL}\n\n可查看管理员列表与管理权限"
     kb = get_admins_panel_keyboard()
     msg = callback.message
     if isinstance(msg, types.Message):
