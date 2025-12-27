@@ -72,8 +72,6 @@ USER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
 ADMIN_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "features": (KEY_ADMIN_FEATURES_ENABLED, ADMIN_FEATURES_SWITCH_LABEL),
     "groups": (KEY_ADMIN_GROUPS, GROUPS_LABEL),
-    "channels": (KEY_ADMIN_CHANNELS, CHANNELS_LABEL),
-    "admins": (KEY_ADMIN_ADMINS, ADMINS_LABEL),
     "stats": (KEY_ADMIN_STATS, STATS_LABEL),
     "hitokoto": (KEY_ADMIN_HITOKOTO, HITOKOTO_LABEL),
     "open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),

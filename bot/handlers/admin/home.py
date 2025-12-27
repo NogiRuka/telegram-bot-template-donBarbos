@@ -3,7 +3,7 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.admin import get_admin_panel_keyboard
-from bot.services.config_service import list_admin_permissions
+from bot.services.config_service import list_admin_features
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
 from bot.utils.permissions import _resolve_role, require_admin_priv
@@ -31,7 +31,7 @@ async def show_admin_panel(
     返回值:
     - None
     """
-    perms = await list_admin_permissions(session)
+    perms = await list_admin_features(session)
     kb = get_admin_panel_keyboard(perms)
     user_id = callback.from_user.id if callback.from_user else None
     await _resolve_role(session, user_id)
