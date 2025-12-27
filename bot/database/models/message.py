@@ -436,9 +436,9 @@ class MessageModel(Base, BasicAuditMixin):
 
                 # 根据实体类型添加格式化标记
                 if entity_type == "bold":
-                    replacement = f"**{entity_text}**"
-                elif entity_type == "italic":
                     replacement = f"*{entity_text}*"
+                elif entity_type == "italic":
+                    replacement = f"_{entity_text}_"
                 elif entity_type == "code":
                     replacement = f"`{entity_text}`"
                 elif entity_type == "pre":
@@ -512,9 +512,9 @@ class MessageModel(Base, BasicAuditMixin):
 
                 # 根据实体类型添加格式化标记
                 if entity_type == "bold":
-                    replacement = f"**{entity_text}**"
-                elif entity_type == "italic":
                     replacement = f"*{entity_text}*"
+                elif entity_type == "italic":
+                    replacement = f"_{entity_text}_"
                 elif entity_type == "code":
                     replacement = f"`{entity_text}`"
                 elif entity_type == "pre":

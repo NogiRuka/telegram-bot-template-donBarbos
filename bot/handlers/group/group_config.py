@@ -72,39 +72,39 @@ async def cmd_group_config(message: types.Message, session: AsyncSession) -> Non
 
         # 构建配置信息文本
         config_text = f"""
-🔧 **群组消息保存配置**
+🔧 *群组消息保存配置*
 
-📊 **基本信息**
+📊 *基本信息*
 • 群组: {config.get_group_info_display()}
 • 群组ID: `{config.chat_id}`
 • 群组类型: {config.group_type.value}
 
-⚙️ **保存设置**
+⚙️ *保存设置*
 • 状态: {config.get_save_status_display()}
 • 保存模式: {config.message_save_mode.value}
 • 已保存消息: {config.total_messages_saved} 条
 • 数据库总消息: {total_messages} 条
 
-📋 **过滤设置**
+📋 *过滤设置*
 • 文本消息: {"✅" if config.save_text_messages else "❌"}
 • 媒体消息: {"✅" if config.save_media_messages else "❌"}
 • 转发消息: {"✅" if config.save_forwarded_messages else "❌"}
 • 回复消息: {"✅" if config.save_reply_messages else "❌"}
 • 机器人消息: {"✅" if config.save_bot_messages else "❌"}
 
-⏰ **时间设置**
+⏰ *时间设置*
 • 开始时间: {config.save_start_date.strftime("%Y-%m-%d %H:%M") if config.save_start_date else "未设置"}
 • 结束时间: {config.save_end_date.strftime("%Y-%m-%d %H:%M") if config.save_end_date else "未设置"}
 
-📏 **限制设置**
+📏 *限制设置*
 • 每日最大消息数: {config.max_messages_per_day or "无限制"}
 • 最大文件大小: {config.max_file_size_mb or "无限制"} MB
 
-🔍 **关键词过滤**
+🔍 *关键词过滤*
 • 包含关键词: {len(json.loads(config.include_keywords)) if config.include_keywords else 0} 个
 • 排除关键词: {len(json.loads(config.exclude_keywords)) if config.exclude_keywords else 0} 个
 
-📝 **备注**: {config.notes or "无"}
+📝 *备注*: {config.notes or "无"}
         """
 
         await message.reply(config_text, reply_markup=get_group_config_keyboard(config.id), parse_mode="Markdown")
@@ -148,12 +148,12 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
         elif action == "change_mode":
             # 显示保存模式选择
             await callback.message.edit_text(
-                "🔧 **选择消息保存模式**\n\n"
-                "• **保存所有消息**: 保存群组中的所有消息\n"
-                "• **仅保存文本**: 只保存文本消息\n"
-                "• **仅保存媒体**: 只保存图片、视频等媒体消息\n"
-                "• **仅保存重要消息**: 只保存回复和转发消息\n"
-                "• **禁用**: 停止保存消息",
+                "🔧 *选择消息保存模式*\n\n"
+                "• *保存所有消息*: 保存群组中的所有消息\n"
+                "• *仅保存文本*: 只保存文本消息\n"
+                "• *仅保存媒体*: 只保存图片、视频等媒体消息\n"
+                "• *仅保存重要消息*: 只保存回复和转发消息\n"
+                "• *禁用*: 停止保存消息",
                 reply_markup=get_save_mode_keyboard(config.id),
                 parse_mode="Markdown",
             )
@@ -191,9 +191,9 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
         elif action == "clear_messages":
             # 显示确认对话框
             await callback.message.edit_text(
-                "⚠️ **确认清空消息**\n\n"
+                "⚠️ *确认清空消息*\n\n"
                 f"您确定要清空群组 `{config.chat_title}` 的所有已保存消息吗？\n\n"
-                "**此操作不可撤销！**",
+                "*此操作不可撤销！*",
                 reply_markup=get_confirm_keyboard(f"confirm_clear:{config.id}", f"group_config_back:{config.id}"),
                 parse_mode="Markdown",
             )
@@ -349,7 +349,7 @@ async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None
         await session.commit()
 
         await message.reply(
-            "✅ **消息保存已启用**\n\n现在将自动保存此群组的所有消息。\n使用 `/group_config` 查看详细配置。",
+            "✅ *消息保存已启用*\n\n现在将自动保存此群组的所有消息。\n使用 `/group_config` 查看详细配置。",
             parse_mode="Markdown",
         )
 
@@ -382,7 +382,7 @@ async def cmd_save_disable(message: types.Message, session: AsyncSession) -> Non
             await session.commit()
 
             await message.reply(
-                "❌ **消息保存已禁用**\n\n已停止保存此群组的消息。\n使用 `/save_enable` 重新启用。",
+                "❌ *消息保存已禁用*\n\n已停止保存此群组的消息。\n使用 `/save_enable` 重新启用。",
                 parse_mode="Markdown",
             )
         else:

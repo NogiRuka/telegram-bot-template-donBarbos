@@ -76,20 +76,20 @@ async def admin_help_command(message: Message) -> None:
     - None
     """
     help_text = """
-🛡️ **管理员/所有者命令帮助**
+🛡️ *管理员/所有者命令帮助*
 
-**群组管理:**
+*群组管理:*
 • `/admin_groups` - 查看所有群组配置
 • `/admin_enable_group <chat_id>` - 启用群组消息保存
 • `/admin_disable_group <chat_id>` - 禁用群组消息保存
 • `/admin_group_info <chat_id>` - 查看群组详细信息
 
-**数据管理:**
+*数据管理:*
 • `/admin_cleanup` - 清理过期数据
 • `/admin_stats` - 查看全局统计
 • `/admin_export_all` - 导出所有群组数据
 
-**系统管理:**
+*系统管理:*
 • `/admin_broadcast <消息>` - 向所有群组广播消息
 • `/admin_maintenance` - 进入维护模式
 • `/admin_status` - 查看系统状态
@@ -97,7 +97,7 @@ async def admin_help_command(message: Message) -> None:
 • `/admin_close_registration` - 关闭注册
 • `/admin_registration_status` - 查看注册开关与时间窗
 
-**注意:** 管理员命令需管理员或所有者权限; 危险操作仅所有者可执行
+*注意:* 管理员命令需管理员或所有者权限; 危险操作仅所有者可执行
     """
     await message.answer(help_text, parse_mode="Markdown")
 
@@ -125,26 +125,26 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
         if not configs:
             await message.answer("📋 暂无群组配置")
             return
-        groups_text = "📋 **所有群组配置**\n\n"
+        groups_text = "📋 *所有群组配置*\n\n"
         for config in configs:
             status = "🟢 启用" if config.is_message_save_enabled else "🔴 禁用"
             group_type = "超级群组" if config.group_type == GroupType.SUPERGROUP else "普通群组"
-            groups_text += f"**群组 {config.chat_id}**\n"
+            groups_text += f"*群组 {config.chat_id}*\n"
             groups_text += f"  状态: {status}\n"
             groups_text += f"  类型: {group_type}\n"
             groups_text += f"  保存模式: {config.message_save_mode.value}\n"
             groups_text += f"  已保存消息: {config.total_messages_saved}\n"
             groups_text += f"  创建时间: {config.created_at.strftime('%Y-%m-%d %H:%M')}\n\n"
         if len(groups_text) > MAX_MESSAGE_LENGTH:
-            groups_text = "📋 **所有群组配置**\n\n"
+            groups_text = "📋 *所有群组配置*\n\n"
             enabled_count = sum(1 for c in configs if c.is_message_save_enabled)
             total_messages = sum(c.total_messages_saved for c in configs)
-            groups_text += "📊 **统计信息:**\n"
+            groups_text += "📊 *统计信息:*\n"
             groups_text += f"  总群组数: {len(configs)}\n"
             groups_text += f"  启用群组: {enabled_count}\n"
             groups_text += f"  禁用群组: {len(configs) - enabled_count}\n"
             groups_text += f"  总消息数: {total_messages}\n\n"
-            groups_text += "📝 **群组列表:**\n"
+            groups_text += "📝 *群组列表:*\n"
             for config in configs[:SUMMARY_LIMIT]:
                 status = "🟢" if config.is_message_save_enabled else "🔴"
                 groups_text += f"  {status} 群组 {config.chat_id} ({config.total_messages_saved} 条消息)\n"
@@ -262,28 +262,28 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
             return
         export_service = MessageExportService(session)
         stats = await export_service.get_message_statistics(chat_id, days=30)
-        info_text = f"📊 **群组 {chat_id} 详细信息**\n\n"
+        info_text = f"📊 *群组 {chat_id} 详细信息*\n\n"
         status = "🟢 启用" if config.is_message_save_enabled else "🔴 禁用"
         group_type = "超级群组" if config.group_type == GroupType.SUPERGROUP else "普通群组"
-        info_text += "**基本信息:**\n"
+        info_text += "*基本信息:*\n"
         info_text += f"  状态: {status}\n"
         info_text += f"  类型: {group_type}\n"
         info_text += f"  保存模式: {config.message_save_mode.value}\n"
         info_text += f"  创建时间: {config.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n"
         info_text += f"  更新时间: {config.updated_at.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        info_text += "**过滤设置:**\n"
+        info_text += "*过滤设置:*\n"
         info_text += f"  保存文本: {'🟢' if config.save_text else '🔴'}\n"
         info_text += f"  保存媒体: {'🟢' if config.save_media else '🔴'}\n"
         info_text += f"  保存转发: {'🟢' if config.save_forwarded else '🔴'}\n"
         info_text += f"  保存回复: {'🟢' if config.save_replies else '🔴'}\n"
         info_text += f"  保存机器人: {'🟢' if config.save_bot_messages else '🔴'}\n\n"
         if stats:
-            info_text += "**统计信息(最近30天):**\n"
+            info_text += "*统计信息(最近30天):*\n"
             info_text += f"  总消息数: {stats.get('total_messages', 0)}\n"
             info_text += f"  活跃用户: {len(stats.get('top_users', []))}\n"
             if stats.get("message_types"):
                 info_text += f"  消息类型: {len(stats['message_types'])} 种\n"
-        info_text += "\n**历史统计:**\n"
+        info_text += "\n*历史统计:*\n"
         info_text += f"  累计消息: {config.total_messages_saved}\n"
         info_text += f"  累计用户: {config.total_users}\n"
         await message.answer(info_text, parse_mode="Markdown")
@@ -318,7 +318,7 @@ async def admin_cleanup_command(message: Message, session: AsyncSession) -> None
             await message.answer("🟢 没有需要清理的过期数据")
             return
         await message.answer(
-            f"🗑️ **数据清理确认**\n\n将删除 {message_count} 条90天前的消息\n此操作不可撤销, 是否继续?",
+            f"🗑️ *数据清理确认*\n\n将删除 {message_count} 条90天前的消息\n此操作不可撤销, 是否继续?",
             reply_markup=get_confirm_keyboard(f"admin_cleanup_confirm:{message_count}", "admin_cleanup_cancel"),
             parse_mode="Markdown",
         )
@@ -351,7 +351,7 @@ async def handle_cleanup_confirm(callback: CallbackQuery, session: AsyncSession)
         await session.commit()
         deleted_count = result.rowcount
         await callback.message.edit_text(
-            f"🟢 **数据清理完成**\n\n"
+            f"🟢 *数据清理完成*\n\n"
             f"已删除 {deleted_count} 条过期消息\n"
             f"清理时间: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}",
             parse_mode="Markdown",
@@ -387,19 +387,19 @@ async def admin_stats_command(message: Message, session: AsyncSession) -> None:
         recent_query = select(func.count(MessageModel.id)).where(MessageModel.created_at >= recent_date)
         recent_result = await session.execute(recent_query)
         recent_messages = recent_result.scalar() or 0
-        stats_text = "📊 **全局统计信息**\n\n"
-        stats_text += "**群组统计:**\n"
+        stats_text = "📊 *全局统计信息*\n\n"
+        stats_text += "*群组统计:*\n"
         stats_text += f"  总群组数: {total_groups}\n"
         stats_text += f"  启用群组: {enabled_groups}\n"
         stats_text += f"  禁用群组: {total_groups - enabled_groups}\n"
         stats_text += (
             f"  启用率: {(enabled_groups / total_groups * 100):.1f}%\n\n" if total_groups > 0 else "  启用率: 0%\n\n"
         )
-        stats_text += "**消息统计:**\n"
+        stats_text += "*消息统计:*\n"
         stats_text += f"  总消息数: {total_messages:,}\n"
         stats_text += f"  最近30天: {recent_messages:,}\n"
         stats_text += f"  日均消息: {recent_messages / 30:.1f}\n\n"
-        stats_text += "**系统信息:**\n"
+        stats_text += "*系统信息:*\n"
         stats_text += f"  统计时间: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}\n"
         stats_text += "  运行状态: 🟢 正常"
         await message.answer(stats_text, parse_mode="Markdown")

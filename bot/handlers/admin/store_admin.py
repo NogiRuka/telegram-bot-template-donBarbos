@@ -37,7 +37,7 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
     
     await main_msg.update_on_callback(
         callback,
-        "🏪 **商店管理**\n\n请选择要管理的商品 (🟢上架中 / 🔴已下架):",
+        "🏪 *商店管理*\n\n请选择要管理的商品 (🟢上架中 / 🔴已下架):",
         kb.as_markup()
     )
 
@@ -52,7 +52,7 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
         return
 
     text = (
-        f"📦 **商品管理 - {product.name}**\n\n"
+        f"📦 *商品管理 - {product.name}*\n\n"
         f"ID: `{product.id}`\n"
         f"名称: {product.name}\n"
         f"价格: {product.price} {CURRENCY_SYMBOL}\n"

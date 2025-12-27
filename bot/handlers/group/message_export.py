@@ -42,7 +42,7 @@ async def export_messages_command(message: Message, session: AsyncSession) -> No
             await message.answer("❌ 此群组未启用消息保存功能\n请先使用 /group_config 命令启用消息保存")
             return
         await message.answer(
-            "📤 **消息导出功能**\n\n请选择导出格式和时间范围：",
+            "📤 *消息导出功能*\n\n请选择导出格式和时间范围：",
             reply_markup=get_message_export_keyboard(message.chat.id),
             parse_mode="Markdown",
         )
@@ -66,10 +66,10 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
         if not stats:
             await message.answer("❌ 获取统计信息失败")
             return
-        stats_text = "📊 **群组消息统计（最近30天）**\n\n"
-        stats_text += f"📈 **总消息数**: {stats['total_messages']}\n\n"
+        stats_text = "📊 *群组消息统计（最近30天）*\n\n"
+        stats_text += f"📈 *总消息数*: {stats['total_messages']}\n\n"
         if stats["message_types"]:
-            stats_text += "📝 **消息类型分布**:\n"
+            stats_text += "📝 *消息类型分布*:\n"
             type_names = {
                 "text": "文本消息",
                 "photo": "图片消息",
@@ -89,7 +89,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
                 stats_text += f"  • {type_name}: {count}\n"
             stats_text += "\n"
         if stats["top_users"]:
-            stats_text += "👥 **最活跃用户（前5名）**:\n"
+            stats_text += "👥 *最活跃用户（前5名）*:\n"
             for i, user in enumerate(stats["top_users"][:5], 1):
                 stats_text += f"  {i}. 用户 {user['user_id']}: {user['message_count']} 条消息\n"
             stats_text += "\n"
@@ -97,7 +97,7 @@ async def message_stats_command(message: Message, session: AsyncSession) -> None
             recent_days = stats["daily_statistics"][-7:]
             if recent_days:
                 avg_daily = sum(day["count"] for day in recent_days) / len(recent_days)
-                stats_text += f"📅 **最近7天平均**: {avg_daily:.1f} 条消息/天\n"
+                stats_text += f"📅 *最近7天平均*: {avg_daily:.1f} 条消息/天\n"
         stats_text += f"\n🕐 统计时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         await message.answer(stats_text, parse_mode="Markdown")
     except Exception as e:
@@ -166,7 +166,7 @@ async def handle_export_range(callback: CallbackQuery, session: AsyncSession) ->
         elif range_type == "all":
             range_text = "全部消息"
         await callback.message.edit_text(
-            f"📤 **消息导出功能**\n\n已选择时间范围: **{range_text}**\n请选择导出格式：",
+            f"📤 *消息导出功能*\n\n已选择时间范围: *{range_text}*\n请选择导出格式：",
             reply_markup=get_message_export_keyboard(chat_id),
             parse_mode="Markdown",
         )
@@ -186,7 +186,7 @@ async def search_messages_command(message: Message, state: FSMContext) -> None:
         if chat_member.status not in ["administrator", "creator"]:
             await message.answer("❌ 只有群组管理员可以搜索消息")
             return
-        await message.answer("🔍 **消息搜索功能**\n\n请输入要搜索的关键词：", parse_mode="Markdown")
+        await message.answer("🔍 *消息搜索功能*\n\n请输入要搜索的关键词：", parse_mode="Markdown")
         await state.set_state(MessageExportStates.waiting_for_search_text)
         await state.update_data(chat_id=message.chat.id)
     except Exception as e:
@@ -219,11 +219,11 @@ async def handle_search_text(message: Message, state: FSMContext, session: Async
             await message.answer(f'🔍 未找到包含 "{search_text}" 的消息')
             await state.clear()
             return
-        result_text = "🔍 **搜索结果**\n\n"
+        result_text = "🔍 *搜索结果*\n\n"
         result_text += f"关键词: `{search_text}`\n"
         result_text += f"找到 {total_count} 条相关消息（显示前20条）\n\n"
         for i, msg in enumerate(messages[:10], 1):
-            result_text += f"**{i}.** 用户 {msg.user_id} ({msg.created_at.strftime('%m-%d %H:%M')})\n"
+            result_text += f"*{i}.* 用户 {msg.user_id} ({msg.created_at.strftime('%m-%d %H:%M')})\n"
             content = msg.text or msg.caption or "[媒体消息]"
             if len(content) > 100:
                 content = content[:100] + "..."

@@ -118,3 +118,60 @@ async def send_temp_message(
         return delete_message_after_delay(sent_msg, delay)
     except Exception:
         return None
+
+async def send_toast(
+    messageable: Union[Message, CallbackQuery], 
+    text: str, 
+    delay: int = 3,
+    reply_markup: Any = None,
+    photo: Union[str, Any] = None,
+    parse_mode: str = "MarkdownV2"
+) -> asyncio.Task | None:
+    """发送一条临时消息，并在指定时间后自动删除。
+    
+    功能说明:
+    - 统一封装发送消息并延迟删除的逻辑
+    - 支持 Message 或 CallbackQuery 对象
+    - 支持发送图片和键盘
+    - 默认使用 MarkdownV2 格式
+    
+    输入参数:
+    - messageable: Message 或 CallbackQuery 对象，用于发送回复
+    - text: 消息内容（若发送图片则作为 caption）
+    - delay: 延迟删除秒数，默认3秒
+    - reply_markup: 键盘标记（可选）
+    - photo: 图片对象或 file_id/url（可选）
+    - parse_mode: 消息解析模式，默认 "MarkdownV2"
+    
+    返回值:
+    - asyncio.Task | None: 删除任务，如果发送失败则返回 None
+    """
+    try:
+        messager = None
+        if hasattr(messageable, "message") and messageable.message:
+            # 处理回调查询 (CallbackQuery)
+            messager = messageable.message
+        elif hasattr(messageable, "answer"):
+            # 处理普通消息 (Message)
+            messager = messageable
+            
+        if not messager:
+            return None
+
+        if photo:
+            sent_msg = await messager.answer_photo(
+                photo=photo,
+                caption=text,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode
+            )
+        else:
+            sent_msg = await messager.answer(
+                text=text,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode
+            )
+            
+        return delete_message_after_delay(sent_msg, delay)
+    except Exception:
+        return None
