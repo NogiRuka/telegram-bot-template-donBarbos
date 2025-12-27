@@ -22,12 +22,18 @@ router = Router(name="currency_admin")
 @router.callback_query(F.data == CURRENCY_ADMIN_CALLBACK_DATA)
 async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService):
     """精粹管理 - 开始"""
-    await callback.message.answer("💎 **精粹管理**\n\n请发送用户的 ID (或者回复用户的消息) 来查询/管理余额:")
+    await callback.message.answer("💎 *精粹管理*\n\n请发送用户的 ID (或者回复用户的消息) 来查询/管理余额:")
     await state.set_state(CurrencyAdminState.waiting_for_user)
     await callback.answer()
 
 @router.message(CurrencyAdminState.waiting_for_user)
 async def process_user_lookup(message: Message, state: FSMContext, session: AsyncSession):
+    # 尝试删除用户发送的消息
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
     user_id = None
     
     # 尝试从回复中获取
@@ -57,11 +63,15 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
     kb.button(text="➕ 手动加/扣币", callback_data="admin:currency:modify")
     kb.button(text="❌ 取消", callback_data="admin:currency:cancel")
     kb.adjust(1)
+
+    first_name = getattr(user, "first_name", "")
+    last_name = getattr(user, "last_name", "") or ""
+    full_name = f"{first_name} {last_name}".strip() or "未知"
     
     text = (
-        f"👤 **用户查询结果**\n\n"
+        f"👤 *用户查询结果*\n\n"
         f"ID: `{user.id}`\n"
-        f"姓名: {user.full_name}\n"
+        f"姓名: {full_name}\n"
         f"当前余额: {balance} {CURRENCY_SYMBOL}"
     )
     
