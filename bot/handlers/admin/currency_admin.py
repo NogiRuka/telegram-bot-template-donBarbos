@@ -27,7 +27,7 @@ async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext
     await callback.answer()
 
 @router.message(CurrencyAdminState.waiting_for_user)
-async def process_user_lookup(message: Message, state: FSMContext, session: AsyncSession):
+async def process_user_lookup(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
     # 尝试删除用户发送的消息
     try:
         await message.delete()
@@ -96,6 +96,12 @@ async def handle_cancel(callback: CallbackQuery, state: FSMContext):
 
 @router.message(CurrencyAdminState.waiting_for_amount)
 async def process_amount(message: Message, state: FSMContext):
+    # 尝试删除用户发送的消息
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
     try:
         amount = int(message.text)
         if amount == 0:
