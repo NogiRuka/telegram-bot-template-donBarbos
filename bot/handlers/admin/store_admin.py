@@ -16,6 +16,10 @@ from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.admin import StoreAdminState
 from bot.database.models import CurrencyProductModel
+from bot.utils.images import get_common_image
+from bot.utils.message import send_toast
+
+
 
 router = Router(name="store_admin")
 
@@ -28,7 +32,7 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
     for product in products:
         status = "🟢" if product.is_active else "🔴"
         kb.button(
-            text=f"{status} {product.name} ({product.price})",
+            text=f"{status} {product.name} ({product.price} {CURRENCY_SYMBOL})",
             callback_data=f"{STORE_ADMIN_PRODUCT_PREFIX}{product.id}"
         )
     
@@ -38,7 +42,8 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
     await main_msg.update_on_callback(
         callback,
         "🏪 *商店管理*\n\n请选择要管理的商品 (🟢上架中 / 🔴已下架):",
-        kb.as_markup()
+        kb.as_markup(),
+        image_path=get_common_image()
     )
 
 @router.callback_query(F.data.startswith(STORE_ADMIN_PRODUCT_PREFIX))
@@ -48,7 +53,7 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
     product = await CurrencyService.get_product(session, product_id)
     
     if not product:
-        await callback.answer("商品不存在", show_alert=True)
+        await send_toast(callback.message, "存在", show_alert=True)
         return
 
     text = (
@@ -91,7 +96,9 @@ async def handle_toggle_active(callback: CallbackQuery, session: AsyncSession, m
         # 刷新详情页
         await handle_product_detail(callback, session, main_msg)
     else:
-        await callback.answer("商品不存在", show_alert=True)
+        await send_toast(callback.message, "⚠️ 商品不存在", show_alert=True)
+
+
 
 @router.callback_query(F.data.startswith(STORE_ADMIN_EDIT_PREFIX))
 async def handle_edit_start(callback: CallbackQuery, state: FSMContext):
@@ -102,13 +109,13 @@ async def handle_edit_start(callback: CallbackQuery, state: FSMContext):
     await state.update_data(product_id=product_id)
     
     if action == "price":
-        await callback.message.answer("请输入新的价格 (整数):")
+        await send_toast(callback.message, "✏️ 请输入新的价格 (整数):")
         await state.set_state(StoreAdminState.waiting_for_price)
     elif action == "stock":
-        await callback.message.answer("请输入新的库存 (-1 为无限):")
+        await send_toast(callback.message, "📦 请输入新的库存 (-1 为无限):")
         await state.set_state(StoreAdminState.waiting_for_stock)
     elif action == "desc":
-        await callback.message.answer("请输入新的描述:")
+        await send_toast(callback.message, "📝 请输入新的描述:")
         await state.set_state(StoreAdminState.waiting_for_description)
     
     await callback.answer()
@@ -120,14 +127,14 @@ async def process_price_update(message: Message, state: FSMContext, session: Asy
         if price < 0:
             raise ValueError
     except ValueError:
-        await message.answer("❌ 请输入有效的非负整数。")
+        await send_toast(message, "❌ 请输入有效的非负整数。")
         return
         
     data = await state.get_data()
     product_id = data["product_id"]
     
     await CurrencyService.update_product(session, product_id, price=price)
-    await message.answer(f"✅ 价格已更新为 {price}")
+    await send_toast(message, f"✅ 价格已更新为 {price} {CURRENCY_SYMBOL}")
     await state.clear()
 
 @router.message(StoreAdminState.waiting_for_stock)
@@ -135,14 +142,14 @@ async def process_stock_update(message: Message, state: FSMContext, session: Asy
     try:
         stock = int(message.text)
     except ValueError:
-        await message.answer("❌ 请输入有效的整数。")
+        await send_toast(message, "❌ 请输入有效的整数。")
         return
         
     data = await state.get_data()
     product_id = data["product_id"]
     
     await CurrencyService.update_product(session, product_id, stock=stock)
-    await message.answer(f"✅ 库存已更新为 {stock}")
+    await send_toast(message, f"✅ 库存已更新为 {stock}")
     await state.clear()
 
 @router.message(StoreAdminState.waiting_for_description)
@@ -153,5 +160,5 @@ async def process_desc_update(message: Message, state: FSMContext, session: Asyn
     product_id = data["product_id"]
     
     await CurrencyService.update_product(session, product_id, description=desc)
-    await message.answer(f"✅ 描述已更新。")
+    await send_toast(message, "✅ 描述已更新")
     await state.clear()
