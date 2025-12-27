@@ -47,7 +47,6 @@ async def handle_store_list(callback: CallbackQuery, session: AsyncSession, main
 async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """处理商品详情展示"""
     product_id = int(callback.data.replace(STORE_PRODUCT_PREFIX, ""))
-    user_id = callback.from_user.id
     
     product = await CurrencyService.get_product(session, product_id)
         
