@@ -98,10 +98,8 @@ async def start_handler(message: types.Message, session: AsyncSession, main_msg:
     - None
     """
     uid = message.from_user.id if message.from_user else None
-    with contextlib.suppress(Exception):
-        await list_features(session)
 
-    # 构建与首次进入一致的首页文案与键盘
+    # 构建首页文案与键盘
     caption, kb = await build_home_view(session, uid)
 
     image = get_common_image()

@@ -159,8 +159,8 @@ ADMIN_LIST_CALLBACK_DATA = "owner:admin_list"
 ADMIN_LIST_VIEW_CALLBACK_DATA = "owner:admins:list"
 
 # 功能开关
-FEATURES_PANEL_LABEL = "🧩 功能开关"
-FEATURES_PANEL_CALLBACK_DATA = "owner:features"
+USER_FEATURES_PANEL_LABEL = "🧩 用户功能开关"
+USER_FEATURES_PANEL_CALLBACK_DATA = "owner:user_features"
 
 # 用户注册
 USER_REGISTER_LABEL = "🔥 用户注册"
@@ -175,13 +175,13 @@ USER_FEATURES_SWITCH_LABEL = "🧲 用户总开关"
 USER_FEATURES_SWITCH_CALLBACK_DATA = "owner:user_features"
 
 # 管理员权限
-ADMIN_PERMS_PANEL_LABEL = "🛡️ 管理员权限"
-ADMIN_PERMS_PANEL_CALLBACK_DATA = "owner:admin_perms"
+ADMIN_FEATURES_PANEL_LABEL = "🛡️ 管理员功能"
+ADMIN_FEATURES_PANEL_CALLBACK_DATA = "owner:admin_features"
 
 # 管理员总开关
 ADMIN_FEATURES_SWITCH_LABEL = "🧲 管理员总开关"
 ADMIN_FEATURES_SWITCH_CALLBACK_DATA = "owner:admin_features"
-ADMIN_PERMS_TOGGLE_FEATURES_CALLBACK_DATA = "owner:admin_perms:toggle:features"
+ADMIN_FEATURES_TOGGLE_FEATURES_CALLBACK_DATA = "owner:admin_features:toggle:features"
 
 # 返回所有者面板
 BACK_TO_OWNER_PANEL_LABEL = "↩️ 返回所有者面板"

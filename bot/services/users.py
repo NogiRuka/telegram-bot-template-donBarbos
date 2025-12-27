@@ -87,8 +87,6 @@ async def user_exists(session: AsyncSession, user_id: int) -> bool:
 
 
 
-
-
 @cached(key_builder=lambda session, user_id: build_key(user_id))
 async def get_first_name(session: AsyncSession, user_id: int) -> str:
     query = select(UserModel.first_name).filter_by(id=user_id)
@@ -97,8 +95,6 @@ async def get_first_name(session: AsyncSession, user_id: int) -> str:
 
     first_name = result.scalar_one_or_none()
     return first_name or ""
-
-
 
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))

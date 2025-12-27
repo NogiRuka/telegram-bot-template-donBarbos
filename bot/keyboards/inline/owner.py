@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.config import ADMIN_PERMISSIONS_MAPPING, USER_FEATURES_MAPPING
+from bot.config import ADMIN_FEATURES_MAPPING, USER_FEATURES_MAPPING
 from bot.keyboards.inline.buttons import (
     MAIN_OWNER_BUTTONS,
     ADMIN_LIST_BUTTON,
@@ -10,7 +10,6 @@ from bot.keyboards.inline.buttons import (
     OWNER_PANEL_BUTTONS,
 )
 from bot.keyboards.inline.constants import (
-    ADMIN_PERMS_TOGGLE_FEATURES_CALLBACK_DATA,
     format_with_status,
 )
 
@@ -94,7 +93,7 @@ def get_user_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboar
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=format_with_status(label, is_enabled), callback_data=f"owner:features:toggle:{short_code}"
+                    text=format_with_status(label, is_enabled), callback_data=f"owner:user_features:toggle:{short_code}"
                 )
             ]
         )
@@ -138,35 +137,35 @@ def get_user_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboar
     return keyboard.as_markup()
 
 
-def get_admin_perms_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
-    """管理员权限面板键盘
+def get_admin_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
+    """管理员功能面板键盘
 
     功能说明:
     - 控制管理员可使用的功能权限开关, 状态使用 emoji (🟢/🔴) 显示
     - 底部包含返回上一级与返回主面板按钮
 
     输入参数:
-    - perms: 管理员权限映射
+    - features: 管理员功能开关映射
 
     返回值:
-    - InlineKeyboardMarkup: 管理员权限面板键盘
+    - InlineKeyboardMarkup: 管理员功能面板键盘
     """
 
     buttons: list[list[InlineKeyboardButton]] = []
 
     # 1. 动态添加管理员功能开关
-    for short_code, (cfg_key, label) in ADMIN_PERMISSIONS_MAPPING.items():
+    for short_code, (cfg_key, label) in ADMIN_FEATURES_MAPPING.items():
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=format_with_status(label, perms.get(cfg_key, False)),
-                    callback_data=f"owner:admin_perms:toggle:{short_code}",
+                    text=format_with_status(label, features.get(cfg_key, False)),
+                    callback_data=f"owner:admin_features:toggle:{short_code}",
                 )
             ]
         )
 
     # 2. 添加返回开关
-    buttons.append([BACK_TO_OWNER_PANEL_BUTTON], [BACK_TO_HOME_BUTTON])
+    buttons.append([BACK_TO_OWNER_PANEL_BUTTON, BACK_TO_HOME_BUTTON])
 
     keyboard = InlineKeyboardBuilder(markup=buttons)
 

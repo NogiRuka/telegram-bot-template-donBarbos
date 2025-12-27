@@ -3,12 +3,11 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config import KEY_BOT_FEATURES_ENABLED, OWNER_FEATURES_MAPPING
+from bot.config import USER_FEATURES_MAPPING
 from bot.keyboards.inline.constants import (
-    FEATURES_PANEL_LABEL,
-    ROBOT_SWITCH_LABEL,
+    USER_FEATURES_PANEL_LABEL,
 )
-from bot.keyboards.inline.owner import get_features_panel_keyboard
+from bot.keyboards.inline.owner import get_user_features_panel_keyboard
 from bot.services.config_service import list_features, toggle_config
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
@@ -17,7 +16,7 @@ from bot.utils.permissions import require_owner
 router = Router(name="owner_user_features")
 
 
-@router.callback_query(F.data == "owner:features")
+@router.callback_query(F.data == "owner:user_features")
 @require_owner
 async def show_features_panel(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """显示用户功能开关面板
@@ -34,39 +33,20 @@ async def show_features_panel(callback: CallbackQuery, session: AsyncSession, ma
     - None
     """
     features = await list_features(session)
-    kb = get_features_panel_keyboard(features)
+    kb = get_user_features_panel_keyboard(features)
     image = get_common_image()
 
-    await main_msg.update_on_callback(callback, FEATURES_PANEL_LABEL, kb, image_path=image)
+    await main_msg.update_on_callback(callback, USER_FEATURES_PANEL_LABEL, kb, image_path=image)
     await callback.answer()
 
 
-@router.callback_query(F.data == "owner:toggle:bot")
-@require_owner
-async def toggle_bot_enabled(callback: CallbackQuery, session: AsyncSession) -> None:
-    """切换机器人总开关
-
-    功能说明:
-    - 翻转 `bot.features.enabled` 状态并返回提示
-
-    输入参数:
-    - callback: 回调对象
-    - session: 异步数据库会话
-
-    返回值:
-    - None
-    """
-    new_val = await toggle_config(session, KEY_BOT_FEATURES_ENABLED)
-    await callback.answer(f"{'🟢' if new_val else '🔴'} {ROBOT_SWITCH_LABEL}: {'开启' if new_val else '关闭'}")
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith("owner:features:toggle:"))
+@router.callback_query(lambda c: c.data and c.data.startswith("owner:user_features:toggle:"))
 @require_owner
 async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """统一切换用户功能开关
 
     功能说明:
-    - 处理 `owner:features:toggle:*` 的所有用户功能开关, 统一翻转配置并刷新用户功能面板
+    - 处理 `owner:user_features:toggle:*` 的所有用户功能开关, 统一翻转配置并刷新用户功能面板
 
     输入参数:
     - callback: 回调对象
@@ -80,12 +60,12 @@ async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession, 
     min_parts = 4
     key = parts[-1] if len(parts) >= min_parts else ""
 
-    if not key or key not in OWNER_FEATURES_MAPPING:
+    if not key or key not in USER_FEATURES_MAPPING:
         await callback.answer("🔴 无效的开关项", show_alert=True)
         return
 
     try:
-        config_key, label = OWNER_FEATURES_MAPPING[key]
+        config_key, label = USER_FEATURES_MAPPING[key]
         operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
         new_val = await toggle_config(session, config_key, operator_id=operator_id)
         features = await list_features(session)
@@ -94,6 +74,6 @@ async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession, 
         return
 
     await main_msg.update_on_callback(
-        callback, FEATURES_PANEL_LABEL, get_user_features_panel_keyboard(features), image_path=get_common_image()
+        callback, USER_FEATURES_PANEL_LABEL, get_user_features_panel_keyboard(features), image_path=get_common_image()
     )
     await callback.answer(f"{'🟢' if new_val else '🔴'} {label}: {'启用' if new_val else '禁用'}")

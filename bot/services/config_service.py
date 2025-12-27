@@ -8,13 +8,13 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from bot.config import (
-    ADMIN_PERMISSIONS_MAPPING,
+    ADMIN_FEATURES_MAPPING,
     # 功能映射
     DEFAULT_CONFIGS,
     KEY_ADMIN_HITOKOTO_CATEGORIES,
     KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
     KEY_REGISTRATION_FREE_OPEN,
-    OWNER_FEATURES_MAPPING,
+    USER_FEATURES_MAPPING,
 )
 from bot.database.models.config import ConfigModel, ConfigType
 from bot.utils.datetime import now as get_now
@@ -146,7 +146,7 @@ async def list_features(session: AsyncSession) -> dict[str, bool]:
     - dict[str, bool]: 功能键到布尔值的映射
     """
     # 从映射中提取配置键, 确保列表与映射保持同步
-    keys = [cfg_key for cfg_key, _ in OWNER_FEATURES_MAPPING.values()]
+    keys = [cfg_key for cfg_key, _ in USER_FEATURES_MAPPING.values()]
 
     out: dict[str, bool] = {}
     for k in keys:
@@ -300,20 +300,20 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
         return False
 
 
-async def list_admin_permissions(session: AsyncSession) -> dict[str, bool]:
-    """列出管理员权限开关
+async def list_admin_features(session: AsyncSession) -> dict[str, bool]:
+    """列出管理员功能开关
 
     功能说明:
-    - 返回管理员权限开关的布尔值集合
+    - 返回管理员功能开关的布尔值集合
 
     输入参数:
     - session: 异步数据库会话
 
     返回值:
-    - dict[str, bool]: 权限键到布尔值的映射
+    - dict[str, bool]: 功能键到布尔值的映射
     """
     # 从映射中提取配置键, 确保列表与映射保持同步
-    keys = [cfg_key for cfg_key, _ in ADMIN_PERMISSIONS_MAPPING.values()]
+    keys = [cfg_key for cfg_key, _ in ADMIN_FEATURES_MAPPING.values()]
 
     out: dict[str, bool] = {}
     for k in keys:

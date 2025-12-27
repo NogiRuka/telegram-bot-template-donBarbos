@@ -3,7 +3,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.config import (
     ADMIN_PANEL_VISIBLE_FEATURES,
-    ADMIN_PERMISSIONS_MAPPING,
+    ADMIN_FEATURES_MAPPING,
     KEY_ADMIN_FEATURES_ENABLED,
 )
 from bot.keyboards.inline.buttons import (
@@ -54,10 +54,10 @@ def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     master_enabled = perms.get(KEY_ADMIN_FEATURES_ENABLED, False)
 
     for short_code in ADMIN_PANEL_VISIBLE_FEATURES:
-        if short_code not in ADMIN_PERMISSIONS_MAPPING:
+        if short_code not in ADMIN_FEATURES_MAPPING:
             continue
 
-        config_key, label = ADMIN_PERMISSIONS_MAPPING[short_code]
+        config_key, label = ADMIN_FEATURES_MAPPING[short_code]
         if master_enabled and perms.get(config_key, False):
             buttons.append([InlineKeyboardButton(text=label, callback_data=f"admin:{short_code}")])
 

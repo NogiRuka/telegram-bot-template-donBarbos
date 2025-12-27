@@ -54,21 +54,6 @@ DEFAULT_CONFIGS: dict[str, bool] = {
     KEY_ADMIN_CURRENCY: True,
 }
 
-# 所有者功能映射 - 用于管理员面板
-OWNER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
-    "bot": (KEY_BOT_FEATURES_ENABLED, ROBOT_SWITCH_LABEL),
-    "all": (KEY_USER_FEATURES_ENABLED, USER_FEATURES_SWITCH_LABEL),
-    "register": (KEY_USER_REGISTER, USER_REGISTER_LABEL),
-    "info": (KEY_USER_INFO, USER_INFO_LABEL),
-    "password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
-    "lines": (KEY_USER_LINES, USER_LINES_LABEL),
-    "devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
-    "profile": (KEY_USER_PROFILE, PROFILE_LABEL),
-    "account": (KEY_USER_ACCOUNT, ACCOUNT_CENTER_LABEL),
-    "tags": (KEY_USER_TAGS, USER_TAGS_LABEL),
-    "admin_open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
-}
-
 # 用户功能开关映射 - 用于用户功能管理
 USER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "bot": (KEY_BOT_FEATURES_ENABLED, ROBOT_SWITCH_LABEL),
@@ -83,10 +68,12 @@ USER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "tags": (KEY_USER_TAGS, USER_TAGS_LABEL),
 }
 
-# 管理员权限映射 - 用于管理员权限管理
-ADMIN_PERMISSIONS_MAPPING: dict[str, tuple[str, str]] = {
+# 管理员功能映射 - 用于管理员权限控制
+ADMIN_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "features": (KEY_ADMIN_FEATURES_ENABLED, ADMIN_FEATURES_SWITCH_LABEL),
     "groups": (KEY_ADMIN_GROUPS, GROUPS_LABEL),
+    "channels": (KEY_ADMIN_CHANNELS, CHANNELS_LABEL),
+    "admins": (KEY_ADMIN_ADMINS, ADMINS_LABEL),
     "stats": (KEY_ADMIN_STATS, STATS_LABEL),
     "hitokoto": (KEY_ADMIN_HITOKOTO, HITOKOTO_LABEL),
     "open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
