@@ -19,7 +19,6 @@ from bot.services.config_service import (
 )
 from bot.services.main_message import MainMessageService
 from bot.utils.datetime import format_datetime, get_friendly_timezone_name, now, parse_formatted_datetime
-from bot.utils.images import get_common_image
 from bot.utils.permissions import require_admin_feature, require_admin_priv
 
 router = Router(name="admin_registration")
@@ -50,7 +49,7 @@ async def open_registration_feature(
     caption, kb = await _build_reg_kb(session)
     logger.info(f"ℹ️ [open_registration_feature] caption内容: {caption}")
 
-    await main_msg.update_on_callback(callback, caption, kb, get_common_image())
+    await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer()
 
 
@@ -78,7 +77,7 @@ async def toggle_free_registration(
     new_val = not current
     await set_free_registration_status(session, new_val, operator_id=callback.from_user.id)
     caption, kb = await _build_reg_kb(session)
-    await main_msg.update_on_callback(callback, caption, kb, get_common_image())
+    await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer(f"{'🟢' if new_val else '🔴'} 自由注册已{'开启' if new_val else '关闭'}")
 
 
@@ -110,7 +109,7 @@ async def set_registration_preset(callback: CallbackQuery, session: AsyncSession
     formatted_start = start_dt.strftime("%Y-%m-%d %H:%M:%S")
     await set_registration_window(session, formatted_start, duration, operator_id=callback.from_user.id)
     caption, kb = await _build_reg_kb(session)
-    await main_msg.update_on_callback(callback, caption, kb, get_common_image())
+    await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer(f"🟢 已设置时间窗: {duration} 分钟")
 
 

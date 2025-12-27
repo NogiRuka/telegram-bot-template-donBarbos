@@ -8,7 +8,6 @@ from bot.keyboards.inline.constants import USER_INFO_LABEL
 from bot.keyboards.inline.user import get_user_info_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
-from bot.utils.images import get_common_image
 from bot.utils.permissions import require_user_feature
 from bot.utils.text import escape_markdown_v2
 
@@ -81,6 +80,5 @@ async def user_info(
 
     caption = "\n".join(lines)
 
-    image = get_common_image()
     kb = get_user_info_keyboard()
-    await main_msg.update_on_callback(callback, caption, kb, image)
+    await main_msg.update_on_callback(callback, caption, kb)

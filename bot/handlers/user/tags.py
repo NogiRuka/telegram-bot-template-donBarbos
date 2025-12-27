@@ -17,7 +17,6 @@ from bot.keyboards.inline.constants import (
 )
 from bot.services.main_message import MainMessageService
 from bot.services.emby_service import update_user_blocked_tags
-from bot.utils.images import get_common_image
 from bot.utils.permissions import require_user_feature
 
 router = Router(name="user_tags")
@@ -70,13 +69,12 @@ async def show_tags_menu(
     )
 
     kb = get_user_tags_keyboard()
-    image = get_common_image()
 
     if callback:
-        await main_msg.update_on_callback(callback, text, kb, image)
+        await main_msg.update_on_callback(callback, text, kb)
         await callback.answer()
     else:
-        await main_msg.update(uid, text, kb, image)
+        await main_msg.update(uid, text, kb)
 
 
 @router.callback_query(F.data == USER_TAGS_CALLBACK_DATA)

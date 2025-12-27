@@ -52,7 +52,7 @@ async def render_view(
         return False
 
     success = False
-    if image_exists and is_media_message:
+    if image_exists and is_media_message and p:
         file = FSInputFile(str(p))
         async def op_media_md() -> None:
             media_obj = InputMediaPhoto(media=file, caption=caption, parse_mode="MarkdownV2")

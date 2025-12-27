@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.owner import get_admins_panel_keyboard
 from bot.services.users import list_admins
-from bot.utils.images import get_common_image
 from bot.utils.permissions import _resolve_role, require_owner
 from bot.utils.view import render_view
 
@@ -29,8 +28,7 @@ async def show_admins_panel(callback: CallbackQuery) -> None:
     kb = get_admins_panel_keyboard()
     msg = callback.message
     if isinstance(msg, types.Message):
-        image = get_common_image()
-        await render_view(msg, image, caption, kb)
+        await render_view(msg, caption, kb)
     await callback.answer()
 
 
@@ -68,7 +66,6 @@ async def list_admins_view(callback: CallbackQuery, session: AsyncSession) -> No
     caption = "\n".join(lines)
     msg = callback.message
     if isinstance(msg, types.Message):
-        image = get_common_image()
-        await render_view(msg, image, caption, get_admins_panel_keyboard())
+        await render_view(msg, caption, get_admins_panel_keyboard())
     await callback.answer()
 

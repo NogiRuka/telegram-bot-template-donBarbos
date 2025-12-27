@@ -7,7 +7,6 @@ from bot.keyboards.inline.constants import ADMIN_PANEL_LABEL
 
 from bot.services.config_service import list_admin_features
 from bot.services.main_message import MainMessageService
-from bot.utils.images import get_common_image
 from bot.utils.permissions import _resolve_role, require_admin_priv
 
 router = Router(name="admin_home")

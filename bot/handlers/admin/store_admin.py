@@ -15,7 +15,6 @@ from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOM
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.admin import StoreAdminState
-from bot.utils.images import get_common_image
 from bot.utils.message import send_toast, extract_id
 from bot.utils.text import escape_markdown_v2
 from loguru import logger
@@ -43,8 +42,7 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
     await main_msg.update_on_callback(
         callback,
         text,
-        kb.as_markup(),
-        image_path=get_common_image()
+        kb.as_markup()
     )
 
 
@@ -93,7 +91,7 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
 
     text, markup = _get_product_view(product)
     
-    await main_msg.update_on_callback(callback, text, markup, image_path=get_common_image())
+    await main_msg.update_on_callback(callback, text, markup)
 
 @router.callback_query(F.data.startswith(STORE_ADMIN_TOGGLE_PREFIX))
 async def handle_toggle_active(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
@@ -111,7 +109,7 @@ async def handle_toggle_active(callback: CallbackQuery, session: AsyncSession, m
         # 刷新详情页
         product = await CurrencyService.get_product(session, product_id) # reload
         text, markup = _get_product_view(product)
-        await main_msg.update_on_callback(callback, text, markup, image_path=get_common_image())
+        await main_msg.update_on_callback(callback, text, markup)
     else:
         await callback.answer("⚠️ 商品不存在")
 

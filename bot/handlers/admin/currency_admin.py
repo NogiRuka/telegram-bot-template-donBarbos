@@ -189,16 +189,19 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
         
         if prompt_message_id:
             try:
-                await message.bot.edit_message_text(
+                msg = await message.bot.edit_message_text(
                     text=text,
                     chat_id=message.chat.id,
                     message_id=prompt_message_id,
                     parse_mode="MarkdownV2"
                 )
+                if isinstance(msg, Message):
+                    delete_message_after_delay(msg, 5)
             except Exception:
                 logger.error(f"❌ 编辑消息失败: {prompt_message_id}")
+                await send_toast(message, text, delay=5)
         else:
-             send_toast(message, text, delay = 5)
+             await send_toast(message, text, delay=5)
 
     except Exception as e:
         await send_toast(message, f"❌ 操作失败: {escape_markdown_v2(str(e))}", delay = 5)

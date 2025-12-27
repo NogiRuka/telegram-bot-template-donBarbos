@@ -10,7 +10,6 @@ from bot.keyboards.inline.constants import (
 from bot.keyboards.inline.owner import get_user_features_panel_keyboard
 from bot.services.config_service import list_user_features, toggle_config
 from bot.services.main_message import MainMessageService
-from bot.utils.images import get_common_image
 from bot.utils.permissions import require_owner
 
 router = Router(name="owner_user_features")
@@ -34,9 +33,8 @@ async def show_features_panel(callback: CallbackQuery, session: AsyncSession, ma
     """
     features = await list_user_features(session)
     kb = get_user_features_panel_keyboard(features)
-    image = get_common_image()
 
-    await main_msg.update_on_callback(callback, USER_FEATURES_PANEL_LABEL, kb, image_path=image)
+    await main_msg.update_on_callback(callback, USER_FEATURES_PANEL_LABEL, kb)
     await callback.answer()
 
 
@@ -68,12 +66,12 @@ async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession, 
         config_key, label = USER_FEATURES_MAPPING[key]
         operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
         new_val = await toggle_config(session, config_key, operator_id=operator_id)
-        features = await list_features(session)
+        features = await list_user_features(session)
     except SQLAlchemyError:
         await callback.answer("🔴 操作失败, 请稍后重试", show_alert=True)
         return
 
     await main_msg.update_on_callback(
-        callback, USER_FEATURES_PANEL_LABEL, get_user_features_panel_keyboard(features), image_path=get_common_image()
+        callback, USER_FEATURES_PANEL_LABEL, get_user_features_panel_keyboard(features)
     )
     await callback.answer(f"{'🟢' if new_val else '🔴'} {label}: {'启用' if new_val else '禁用'}")

@@ -27,7 +27,6 @@ from bot.keyboards.inline.buttons import (
 from bot.keyboards.inline.constants import ADMIN_NEW_ITEM_NOTIFICATION_LABEL
 from bot.services.emby_service import fetch_and_save_item_details
 from bot.services.main_message import MainMessageService
-from bot.utils.images import get_common_image
 from bot.utils.message import delete_message, delete_message_after_delay
 from bot.utils.notification import (
     get_check_id_for_notification,
@@ -60,7 +59,7 @@ async def show_notification_panel(
     )
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
 
-    await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
+    await main_msg.update_on_callback(callback, text, kb)
 
 
 @router.callback_query(F.data == "admin:notify_complete")
@@ -138,7 +137,7 @@ async def handle_notify_complete(
         f"✅ <b>操作完成：</b> 成功 {success_count}, 失败 {fail_count}\n"
     )
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
-    await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
+    await main_msg.update_on_callback(callback, text, kb)
 
 
 @router.callback_query(F.data == "admin:notify_preview")
@@ -583,4 +582,4 @@ async def execute_send_all(
         f"✅ <b>操作完成：</b> 成功 {sent_count}, 失败 {fail_count}\n"
     )
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
-    await main_msg.update_on_callback(callback, text, kb, image_path=get_common_image())
+    await main_msg.update_on_callback(callback, text, kb)

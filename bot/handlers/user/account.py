@@ -6,7 +6,6 @@ from bot.keyboards.inline.constants import ACCOUNT_CENTER_CALLBACK_DATA, BACK_TO
 from bot.keyboards.inline.user import get_account_center_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import has_emby_account
-from bot.utils.images import get_common_image
 from bot.utils.permissions import require_user_feature
 
 router = Router(name="user_account")
@@ -41,5 +40,4 @@ async def show_account_center(
         user_has_emby = False
 
     kb = get_account_center_keyboard(user_has_emby)
-    image = get_common_image()
-    await main_msg.update_on_callback(callback, ACCOUNT_CENTER_LABEL, kb, image)
+    await main_msg.update_on_callback(callback, ACCOUNT_CENTER_LABEL, kb)

@@ -10,7 +10,6 @@ from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOM
 from bot.keyboards.inline.constants import ANNOUNCEMENT_LABEL
 from bot.services.config_service import get_config, set_config
 from bot.services.main_message import MainMessageService
-from bot.utils.images import get_common_image
 from bot.utils.message import delete_message_after_delay
 from bot.utils.permissions import require_admin_feature, require_admin_priv
 
@@ -84,7 +83,7 @@ async def open_announcement_panel(callback: CallbackQuery, session: AsyncSession
     
     caption, kb = _build_panel_ui(current_text)
 
-    await main_msg.update_on_callback(callback, caption, kb.as_markup(), image_path=get_common_image())
+    await main_msg.update_on_callback(callback, caption, kb.as_markup())
 
 
 @router.callback_query(F.data == "admin:announcement:edit")
@@ -138,7 +137,7 @@ async def clear_announcement(callback: CallbackQuery, session: AsyncSession, mai
     # 直接更新界面，避免重新查库
     caption, kb = _build_panel_ui(None)
 
-    await main_msg.update_on_callback(callback, caption, kb.as_markup(), image_path=get_common_image())
+    await main_msg.update_on_callback(callback, caption, kb.as_markup())
     await callback.answer("公告已清空")
 
 

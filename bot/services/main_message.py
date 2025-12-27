@@ -5,7 +5,6 @@ from aiogram import types
 from aiogram.types import FSInputFile
 from loguru import logger
 
-from bot.utils.images import get_common_image
 from bot.utils.view import edit_message_content_by_id, render_view
 
 if TYPE_CHECKING:
@@ -193,24 +192,32 @@ class MainMessageService:
         user_id: int,
         caption: str,
         kb: types.InlineKeyboardMarkup,
-        image_path: str,
+        image_path: str | None = None,
     ) -> bool:
         """
-        主消息固定为：photo + caption
+        主消息固定为：photo + caption (兼容文本)
         """
         ids = self.get_main_msg(user_id)
         logger.debug(f"🔍 update: user_id={user_id}, ids={ids}")
 
         async def _send_new():
             try:
-                file = FSInputFile(image_path)
-                msg = await self.bot.send_photo(
-                    chat_id=user_id,
-                    photo=file,
-                    caption=caption,
-                    reply_markup=kb,
-                    parse_mode="MarkdownV2",
-                )
+                if image_path:
+                    file = FSInputFile(image_path)
+                    msg = await self.bot.send_photo(
+                        chat_id=user_id,
+                        photo=file,
+                        caption=caption,
+                        reply_markup=kb,
+                        parse_mode="MarkdownV2",
+                    )
+                else:
+                    msg = await self.bot.send_message(
+                        chat_id=user_id,
+                        text=caption,
+                        reply_markup=kb,
+                        parse_mode="MarkdownV2",
+                    )
                 self._messages[user_id] = (msg.chat.id, msg.message_id)
                 return True
             except Exception as e:
@@ -286,8 +293,9 @@ class MainMessageService:
         - bool: 是否更新成功
         """
         with logger.catch():
-            ok = await render_view(msg, image_path or "", caption, kb)
-            await self.remember(msg)
+            ok = await render_view(msg, caption, kb, image_path=image_path)
+            if msg.from_user:
+                self.remember(msg.from_user.id, msg)
             return ok
 
     async def update_on_callback(
@@ -295,7 +303,6 @@ class MainMessageService:
         callback: types.CallbackQuery,
         caption: str,
         kb: types.InlineKeyboardMarkup,
-        image_path: str | None = None,
     ) -> bool:
         """
         回调场景下刷新主消息
@@ -308,4 +315,4 @@ class MainMessageService:
         if not uid:
             return False
 
-        return await self.render(uid, caption, kb, image_path)
+        return await self.render(uid, caption, kb, image_path=None)

@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
-from bot.utils.images import get_common_image
 from bot.utils.permissions import require_admin_feature, require_admin_priv
 
 router = Router(name="admin_hitokoto")
@@ -75,7 +74,7 @@ async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession, 
         "提示: 可多次点击切换, 选择会即时保存。"
     )
 
-    await main_msg.update_on_callback(callback, caption, kb, get_common_image())
+    await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer()
 
 

@@ -4,7 +4,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import ADMIN_FEATURES_MAPPING
-from bot.handlers.start import get_common_image
 from bot.keyboards.inline.constants import ADMIN_FEATURES_PANEL_LABEL
 from bot.keyboards.inline.owner import get_admin_features_panel_keyboard
 from bot.services.config_service import list_admin_features, toggle_config
@@ -32,9 +31,8 @@ async def show_admin_features_panel(callback: CallbackQuery, session: AsyncSessi
     """
     features = await list_admin_features(session)
     kb = get_admin_features_panel_keyboard(features)
-    image = get_common_image()
 
-    await main_msg.update_on_callback(callback, ADMIN_FEATURES_PANEL_LABEL, kb, image_path=image)
+    await main_msg.update_on_callback(callback, ADMIN_FEATURES_PANEL_LABEL, kb)
     await callback.answer()
 
 
@@ -74,6 +72,6 @@ async def toggle_admin_features(
         return
 
     await main_msg.update_on_callback(
-        callback, ADMIN_FEATURES_PANEL_LABEL, get_admin_features_panel_keyboard(features), image_path=get_common_image()
+        callback, ADMIN_FEATURES_PANEL_LABEL, get_admin_features_panel_keyboard(features)
     )
     await callback.answer(f"{'🟢' if new_val else '🔴'} {label}: {'启用' if new_val else '禁用'}")

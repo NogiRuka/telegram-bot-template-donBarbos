@@ -15,7 +15,6 @@ from bot.services.analytics import analytics
 from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
 from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
-from bot.utils.images import get_common_image
 from bot.utils.permissions import _resolve_role
 
 router = Router(name="start")
@@ -102,8 +101,7 @@ async def start_handler(message: types.Message, session: AsyncSession, main_msg:
     # 构建首页文案与键盘
     caption, kb = await build_home_view(session, uid)
 
-    image = get_common_image()
-    await main_msg.render(uid, caption, kb, image)
+    await main_msg.render(uid, caption, kb)
 
 
 @router.callback_query(F.data == "back:home")
@@ -123,6 +121,6 @@ async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, mai
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)
 
-    await main_msg.update_on_callback(callback, caption, kb, get_common_image())
+    await main_msg.update_on_callback(callback, caption, kb)
 
     await callback.answer()
