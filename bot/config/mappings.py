@@ -50,6 +50,8 @@ DEFAULT_CONFIGS: dict[str, bool] = {
     KEY_ADMIN_HITOKOTO: True,
     KEY_ADMIN_NEW_ITEM_NOTIFICATION: True,
     KEY_ADMIN_ANNOUNCEMENT: True,
+    KEY_ADMIN_STORE: True,
+    KEY_ADMIN_CURRENCY: True,
 }
 
 # 所有者功能映射 - 用于管理员面板
