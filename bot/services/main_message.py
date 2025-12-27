@@ -138,14 +138,14 @@ class MainMessageService:
             if image_path:
                 try:
                     file = FSInputFile(image_path)
-                    msg = await self.bot.send_photo(chat_id=user_id, photo=file, caption=caption, reply_markup=kb)
+                    msg = await self.bot.send_photo(chat_id=user_id, photo=file, caption=caption, reply_markup=kb, parse_mode="MarkdownV2")
                     self._messages[user_id] = (msg.chat.id, msg.message_id)
                     return True
                 except Exception as e:
                     logger.error(f"❌ update: 发送兜底图片消息失败: {e}")
             else:
                 try:
-                    msg = await self.bot.send_message(chat_id=user_id, text=caption, reply_markup=kb)
+                    msg = await self.bot.send_message(chat_id=user_id, text=caption, reply_markup=kb, parse_mode="MarkdownV2")
                     self._messages[user_id] = (msg.chat.id, msg.message_id)
                     return True
                 except Exception as e:
@@ -153,13 +153,6 @@ class MainMessageService:
             return False
 
         chat_id, message_id = ids
-        
-        # 如果需要更新图片，目前 edit_message_content_by_id 仅支持修改文本/caption
-        # 若要修改图片本身或从纯文本转为图片，通常需要删除旧消息发新消息，或者使用 editMessageMedia
-        # 这里为了简化，如果提供了 image_path 且当前可能不是图片消息，或者需要刷新图片
-        # 我们可以尝试使用 edit_message_media，或者简单地删除重发。
-        # 鉴于 MainMessageService 的设计，edit_message_content_by_id 主要处理 caption/kb
-        # 如果传入了 image_path，我们尝试调用 render_view 逻辑的变体，或者直接 delete & send
         
         if image_path:
             # 简单粗暴：删除旧消息，发送新消息（确保图片显示）
@@ -171,7 +164,7 @@ class MainMessageService:
             
             try:
                 file = FSInputFile(image_path)
-                msg = await self.bot.send_photo(chat_id=chat_id, photo=file, caption=caption, reply_markup=kb)
+                msg = await self.bot.send_photo(chat_id=chat_id, photo=file, caption=caption, reply_markup=kb, parse_mode="MarkdownV2")
                 self._messages[user_id] = (msg.chat.id, msg.message_id)
                 return True
             except Exception as e:

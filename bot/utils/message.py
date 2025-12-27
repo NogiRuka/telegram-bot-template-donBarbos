@@ -6,11 +6,11 @@
 
 from __future__ import annotations
 import asyncio
-from typing import TYPE_CHECKING, Union
+from typing import Union
+from loguru import logger
 
-if TYPE_CHECKING:
-    from typing import Any
-    from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery
+
 
 
 async def delete_message(message: Any) -> bool:
@@ -133,41 +133,22 @@ async def send_temp_message(
         return None
 
 async def send_toast(
-    messageable: Union[Message, CallbackQuery], 
-    text: str, 
+    messageable: Union[Message, CallbackQuery],
+    text: str,
     delay: int = 3,
     reply_markup: Any = None,
     photo: Union[str, Any] = None,
-    parse_mode: str = "MarkdownV2"
+    parse_mode: str | None = None
 ) -> asyncio.Task | None:
-    """发送一条临时消息，并在指定时间后自动删除。
-    
-    功能说明:
-    - 统一封装发送消息并延迟删除的逻辑
-    - 支持 Message 或 CallbackQuery 对象
-    - 支持发送图片和键盘
-    - 默认使用 MarkdownV2 格式
-    
-    输入参数:
-    - messageable: Message 或 CallbackQuery 对象，用于发送回复
-    - text: 消息内容（若发送图片则作为 caption）
-    - delay: 延迟删除秒数，默认3秒
-    - reply_markup: 键盘标记（可选）
-    - photo: 图片对象或 file_id/url（可选）
-    - parse_mode: 消息解析模式，默认 "MarkdownV2"
-    
-    返回值:
-    - asyncio.Task | None: 删除任务，如果发送失败则返回 None
-    """
     try:
-        messager = None
-        if hasattr(messageable, "message") and messageable.message:
-            # 处理回调查询 (CallbackQuery)
+        # ✅ 明确区分类型，别他妈猜
+        if isinstance(messageable, CallbackQuery):
             messager = messageable.message
-        elif hasattr(messageable, "answer"):
-            # 处理普通消息 (Message)
+        elif isinstance(messageable, Message):
             messager = messageable
-            
+        else:
+            return None
+
         if not messager:
             return None
 
@@ -184,7 +165,12 @@ async def send_toast(
                 reply_markup=reply_markup,
                 parse_mode=parse_mode
             )
-            
+
+        # ✅ 延迟删除
         return delete_message_after_delay(sent_msg, delay)
-    except Exception:
-        return None
+    except Exception as e:
+        logger.error(e)
+
+
+def extract_id(callback_data: str) -> int:
+    return int(callback_data.rsplit(":", 1)[-1])

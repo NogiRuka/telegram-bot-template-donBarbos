@@ -27,6 +27,8 @@ ADMIN_PANEL_BUTTON = InlineKeyboardButton(text=ADMIN_PANEL_LABEL, callback_data=
 
 # 商店管理按钮
 STORE_ADMIN_BUTTON = InlineKeyboardButton(text=STORE_ADMIN_LABEL, callback_data=STORE_ADMIN_CALLBACK_DATA)
+BACK_TO_STORE_ADMIN_BUTTON = InlineKeyboardButton(text=BACK_TO_STORE_LABEL, callback_data=STORE_ADMIN_CALLBACK_DATA)
+
 
 # 精粹管理按钮
 CURRENCY_ADMIN_BUTTON = InlineKeyboardButton(text=CURRENCY_ADMIN_LABEL, callback_data=CURRENCY_ADMIN_CALLBACK_DATA)

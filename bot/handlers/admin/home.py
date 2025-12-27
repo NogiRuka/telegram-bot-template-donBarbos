@@ -3,6 +3,8 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.admin import get_admin_panel_keyboard
+from bot.keyboards.inline.constants import ADMIN_PANEL_LABEL
+
 from bot.services.config_service import list_admin_features
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
@@ -36,8 +38,7 @@ async def show_admin_panel(
     user_id = callback.from_user.id if callback.from_user else None
     await _resolve_role(session, user_id)
     image = get_common_image()
-    caption = "🛡️ 管理员面板"
 
-    await main_msg.update_on_callback(callback, caption, kb, image_path=image)
+    await main_msg.update_on_callback(callback, ADMIN_PANEL_LABEL, kb, image_path=image)
     await callback.answer()
 
