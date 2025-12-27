@@ -195,14 +195,12 @@ async def handle_notify_preview(
         msg_text, image_url = get_notification_content(item)
 
         # 创建操作键盘
-        status_text = "🔄 状态: " + (item.status or "未知")
+        status_text = "🔄 状态: " + ("更新中" if item.status == "Continuing" else "已完结")
         reject_kb = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
-                    InlineKeyboardButton(text="🚫 拒绝此通知", callback_data=f"admin:notify_reject:{notif.id}"),
-                    InlineKeyboardButton(text="👥 添加通知者", callback_data=f"admin:notify_add_sender:{notif.id}")
-                ],
-                [
+                    InlineKeyboardButton(text="🚫 拒绝", callback_data=f"admin:notify_reject:{notif.id}"),
+                    InlineKeyboardButton(text="👥 添加通知者", callback_data=f"admin:notify_add_sender:{notif.id}"),
                     InlineKeyboardButton(text=status_text, callback_data=f"admin:notify_toggle_status:{notif.id}")
                 ],
                 [NOTIFY_CLOSE_PREVIEW_BUTTON]

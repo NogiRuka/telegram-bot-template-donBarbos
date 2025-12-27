@@ -16,7 +16,7 @@ from bot.keyboards.inline.buttons import (
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.admin import CurrencyAdminState
-from bot.utils.message import send_temp_message
+from bot.utils.message import send_temp_message, delete_message_after_delay
 from bot.utils.text import escape_markdown_v2
 
 router = Router(name="currency_admin")
@@ -28,6 +28,9 @@ async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext
     await state.update_data(prompt_message_id=msg.message_id)
     await state.set_state(CurrencyAdminState.waiting_for_user)
     await callback.answer()
+
+    # 30秒无操作自动删除提示
+    delete_message_after_delay(msg, 30)
 
 @router.message(CurrencyAdminState.waiting_for_user)
 async def process_user_lookup(message: Message, state: FSMContext, session: AsyncSession):
