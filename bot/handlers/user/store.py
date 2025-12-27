@@ -10,20 +10,17 @@ from bot.keyboards.inline.constants import (
     STORE_BUY_PREFIX,
 )
 from bot.keyboards.inline.store import get_store_keyboard, get_product_detail_keyboard
-from bot.services.config_service import get_config
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
+from bot.utils.permissions import require_user_feature
 
 router = Router(name="user_store")
 
 
 @router.callback_query(F.data == ESSENCE_STORE_CALLBACK_DATA)
+@require_user_feature(KEY_USER_STORE)
 async def handle_store_list(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """处理商店列表展示"""
-    if not await get_config(session, KEY_USER_STORE):
-        await callback.answer("🔴 该功能已关闭", show_alert=True)
-        return
-
     user_id = callback.from_user.id
     
     # 获取用户余额
@@ -46,12 +43,9 @@ async def handle_store_list(callback: CallbackQuery, session: AsyncSession, main
 
 
 @router.callback_query(F.data.startswith(STORE_PRODUCT_PREFIX))
+@require_user_feature(KEY_USER_STORE)
 async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """处理商品详情展示"""
-    if not await get_config(session, KEY_USER_STORE):
-        await callback.answer("🔴 该功能已关闭", show_alert=True)
-        return
-
     product_id = int(callback.data.replace(STORE_PRODUCT_PREFIX, ""))
     user_id = callback.from_user.id
     
@@ -77,12 +71,9 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
 
 
 @router.callback_query(F.data.startswith(STORE_BUY_PREFIX))
+@require_user_feature(KEY_USER_STORE)
 async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """处理购买请求"""
-    if not await get_config(session, KEY_USER_STORE):
-        await callback.answer("🔴 该功能已关闭", show_alert=True)
-        return
-
     product_id = int(callback.data.replace(STORE_BUY_PREFIX, ""))
     user_id = callback.from_user.id
     
