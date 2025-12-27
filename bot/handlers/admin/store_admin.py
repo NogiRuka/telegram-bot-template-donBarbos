@@ -48,6 +48,74 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
     )
 
 
+def _get_product_view(product):
+    text = (
+        f"📦 *商品管理 \- {escape_markdown_v2(product.name)}*\n\n"
+        f"ID: `{product.id}`\n"
+        f"名称: {escape_markdown_v2(product.name)}\n"
+        f"价格: {product.price} {escape_markdown_v2(CURRENCY_SYMBOL)}\n"
+        f"库存: {'无限' if product.stock == -1 else product.stock}\n"
+        f"状态: {'🟢 上架中' if product.is_active else '🔴 已下架'}\n"
+        f"描述: {escape_markdown_v2(product.description or '无')}\n"
+        f"类型: {escape_markdown_v2(product.category)} / {escape_markdown_v2(product.action_type)}"
+    )
+    
+    kb = InlineKeyboardBuilder()
+    toggle_text = "🚫 下架" if product.is_active else "✅ 上架"
+    kb.button(text=toggle_text, callback_data=f"{STORE_ADMIN_TOGGLE_PREFIX}{product.id}")
+    kb.button(text="✏️ 价格", callback_data=f"{STORE_ADMIN_EDIT_PREFIX}price:{product.id}")
+    kb.button(text="✏️ 库存", callback_data=f"{STORE_ADMIN_EDIT_PREFIX}stock:{product.id}")
+    kb.button(text="✏️ 描述", callback_data=f"{STORE_ADMIN_EDIT_PREFIX}desc:{product.id}")
+    kb.adjust(1, 3, 2)
+    kb.row(BACK_TO_STORE_ADMIN_BUTTON, BACK_TO_HOME_BUTTON)
+    return text, kb.as_markup()
+
+async def _refresh_product_view(user_id: int, product_id: int, session: AsyncSession, main_msg: MainMessageService):
+    product = await CurrencyService.get_product(session, product_id)
+    if product:
+        text, markup = _get_product_view(product)
+        # Note: update_by_message requires a Message object which we don't have here (we only have user input message).
+        # So we use update() which uses the stored main message ID.
+        await main_msg.update(user_id, text, markup, image_path=get_common_image())
+
+@router.callback_query(F.data.startswith(STORE_ADMIN_PRODUCT_PREFIX))
+async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
+    """商品详情与管理"""
+    try:
+        product_id = extract_id(callback.data)
+    except ValueError:
+        await callback.answer("⚠️ 参数错误")
+        return
+
+    product = await CurrencyService.get_product(session, product_id)
+    
+    if not product:
+        await callback.answer("⚠️ 商品不存在")
+        return
+
+    text, markup = _get_product_view(product)
+    
+    await main_msg.update_on_callback(callback, text, markup, image_path=get_common_image())
+
+@router.callback_query(F.data.startswith(STORE_ADMIN_TOGGLE_PREFIX))
+async def handle_toggle_active(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
+    """切换上下架状态"""
+    try:
+        product_id = extract_id(callback.data)
+    except ValueError:
+        await callback.answer("⚠️ 参数错误")
+        return
+
+    product = await CurrencyService.get_product(session, product_id)
+    
+    if product:
+        await CurrencyService.update_product(session, product_id, is_active=not product.is_active)
+        # 刷新详情页
+        product = await CurrencyService.get_product(session, product_id) # reload
+        text, markup = _get_product_view(product)
+        await main_msg.update_on_callback(callback, text, markup, image_path=get_common_image())
+    else:
+        await callback.answer("⚠️ 商品不存在")
 
 @router.callback_query(F.data.startswith(STORE_ADMIN_EDIT_PREFIX))
 async def handle_edit_start(callback: CallbackQuery, state: FSMContext):
@@ -73,7 +141,7 @@ async def handle_edit_start(callback: CallbackQuery, state: FSMContext):
 
 
 @router.message(StoreAdminState.waiting_for_price)
-async def process_price_update(message: Message, state: FSMContext, session: AsyncSession):
+async def process_price_update(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
     try:
         await message.delete()
     except Exception:
@@ -93,9 +161,11 @@ async def process_price_update(message: Message, state: FSMContext, session: Asy
     await CurrencyService.update_product(session, product_id, price=price)
     await send_toast(message, f"✅ 价格已更新为 {price} {CURRENCY_SYMBOL}")
     await state.clear()
+    
+    await _refresh_product_view(message.from_user.id, product_id, session, main_msg)
 
 @router.message(StoreAdminState.waiting_for_stock)
-async def process_stock_update(message: Message, state: FSMContext, session: AsyncSession):
+async def process_stock_update(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
     try:
         await message.delete()
     except Exception:
@@ -113,9 +183,11 @@ async def process_stock_update(message: Message, state: FSMContext, session: Asy
     await CurrencyService.update_product(session, product_id, stock=stock)
     await send_toast(message, f"✅ 库存已更新为 {stock}")
     await state.clear()
+    
+    await _refresh_product_view(message.from_user.id, product_id, session, main_msg)
 
 @router.message(StoreAdminState.waiting_for_description)
-async def process_desc_update(message: Message, state: FSMContext, session: AsyncSession):
+async def process_desc_update(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
     try:
         await message.delete()
     except Exception:
@@ -129,10 +201,5 @@ async def process_desc_update(message: Message, state: FSMContext, session: Asyn
     await CurrencyService.update_product(session, product_id, description=desc)
     await send_toast(message, "✅ 描述已更新")
     await state.clear()
-n, main_msg: MaiMessageServicear()
     
-    awit _refresh_poduct_viewmessage.from_user.id, product_id, session, main_msgn, main_msg: MaiMessageServicear()
-    
-    awit _refresh_poduct_viewmessage.from_user.id, product_id, session, main_msgn, main_msg: MaiMessageServicear()
-    
-    awit _refresh_poduct_viewmessage.from_user.id, product_id, session, main_msg
+    await _refresh_product_view(message.from_user.id, product_id, session, main_msg)
