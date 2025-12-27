@@ -5,7 +5,7 @@ from aiogram import types
 from aiogram.types import FSInputFile
 from loguru import logger
 
-from bot.utils.view import edit_message_content_by_id, render_view
+from bot.utils.view import render_view
 
 if TYPE_CHECKING:
     from aiogram import Bot
