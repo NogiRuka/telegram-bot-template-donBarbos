@@ -84,12 +84,19 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
         f"当前余额: {balance} {CURRENCY_SYMBOL}"
     )
     
-    await send_temp_message(message, text, delay=30, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+    msg = await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+    await state.update_data(prompt_message_id=msg.message_id)
 
 @router.callback_query(F.data == "admin:currency:modify")
 async def handle_modify_start(callback: CallbackQuery, state: FSMContext):
     """开始修改余额"""
-    await send_toast(callback.message, "请输入要变动的数值 (整数):\n➕ 正数增加 (例如 100)\n➖ 负数扣除 (例如 -50)")
+    text = (
+        "请输入要变动的数值 (整数):\n"
+        "➕ 正数增加 (例如 100)\n"
+        "➖ 负数扣除 (例如 -50)"
+    )
+    # 编辑当前消息
+    await callback.message.edit_text(text=text)
     await state.set_state(CurrencyAdminState.waiting_for_amount)
     await callback.answer()
 
@@ -120,7 +127,26 @@ async def process_amount(message: Message, state: FSMContext):
         
     await state.update_data(amount=amount)
     
-    await send_toast(message, "📝 请输入操作原因 (必填):")
+    # 获取 prompt_message_id 并编辑消息
+    data = await state.get_data()
+    prompt_message_id = data.get("prompt_message_id")
+    
+    text = "📝 请输入操作原因 (必填):"
+    
+    if prompt_message_id:
+        try:
+            await message.bot.edit_message_text(
+                text=text,
+                chat_id=message.chat.id,
+                message_id=prompt_message_id
+            )
+        except Exception:
+            msg = await message.answer(text)
+            await state.update_data(prompt_message_id=msg.message_id)
+    else:
+        msg = await message.answer(text)
+        await state.update_data(prompt_message_id=msg.message_id)
+
     await state.set_state(CurrencyAdminState.waiting_for_reason)
 
 @router.message(CurrencyAdminState.waiting_for_reason)
@@ -139,7 +165,8 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
     data = await state.get_data()
     user_id = data["target_user_id"]
     amount = data["amount"]
-    
+    prompt_message_id = data.get("prompt_message_id")
+
     try:
         new_balance = await CurrencyService.add_currency(
             session,
@@ -152,14 +179,31 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
         
         action = "增加" if amount > 0 else "扣除"
         text = (
-            f"✅ 操作成功！\n"
+            f"✅ *操作成功*\n\n"
             f"用户 ID: `{user_id}`\n"
             f"变动: {action} {abs(amount)} {CURRENCY_SYMBOL}\n"
-            f"原因: {reason}\n"
+            f"原因: {escape_markdown_v2(reason)}\n"
             f"最新余额: {new_balance} {CURRENCY_SYMBOL}"
         )
-        await send_temp_message(message, text, delay=30)
+        
+        kb = InlineKeyboardBuilder()
+        kb.add(BACK_TO_ADMIN_PANEL_BUTTON)
+        
+        if prompt_message_id:
+            try:
+                await message.bot.edit_message_text(
+                    text=text,
+                    chat_id=message.chat.id,
+                    message_id=prompt_message_id,
+                    reply_markup=kb.as_markup(),
+                    parse_mode="MarkdownV2"
+                )
+            except Exception:
+                 await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+        else:
+             await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+
     except Exception as e:
-        await send_toast(message, f"❌ 操作失败: {str(e)}")
+        await send_toast(message, f"❌ 操作失败: {escape_markdown_v2(str(e))}", parse_mode="MarkdownV2")
 
     await state.clear()
