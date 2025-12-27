@@ -24,7 +24,8 @@ router = Router(name="currency_admin")
 @router.callback_query(F.data == CURRENCY_ADMIN_CALLBACK_DATA)
 async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService):
     """精粹管理 - 开始"""
-    await callback.message.answer("💎 *精粹管理*\n\n请发送用户的 ID (或者回复用户的消息) 来查询/管理余额:")
+    msg = await callback.message.answer("💎 *精粹管理*\n\n请发送用户的 ID (或者回复用户的消息) 来查询/管理余额:")
+    await state.update_data(prompt_message_id=msg.message_id)
     await state.set_state(CurrencyAdminState.waiting_for_user)
     await callback.answer()
 
@@ -36,18 +37,23 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
     except Exception:
         pass
 
+    # 尝试删除之前的提示消息
+    data = await state.get_data()
+    prompt_message_id = data.get("prompt_message_id")
+    if prompt_message_id:
+        try:
+            await message.bot.delete_message(chat_id=message.chat.id, message_id=prompt_message_id)
+        except Exception:
+            pass
+
     user_id = None
     
-    # 尝试从回复中获取
-    if message.reply_to_message and message.reply_to_message.from_user:
-        user_id = message.reply_to_message.from_user.id
-    else:
-        # 尝试从文本中解析 ID
-        try:
-            user_id = int(message.text.strip())
-        except ValueError:
-            await message.answer("❌ 无效的用户 ID，请输入数字 ID。")
-            return
+    # 尝试从文本中解析 ID
+    try:
+        user_id = int(message.text.strip())
+    except ValueError:
+        await message.answer("❌ 无效的用户 ID，请输入数字 ID。")
+        return
             
     # 检查用户是否存在
     user_result = await session.execute(select(UserModel).where(UserModel.id == user_id))
@@ -97,7 +103,10 @@ async def handle_modify_start(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "admin:currency:cancel")
 async def handle_cancel(callback: CallbackQuery, state: FSMContext):
     await state.clear()
-    await callback.message.edit_text("已取消操作。")
+    try:
+        await callback.message.delete()
+    except Exception:
+        await callback.message.edit_text("已取消操作。")
 
 @router.message(CurrencyAdminState.waiting_for_amount)
 async def process_amount(message: Message, state: FSMContext):
