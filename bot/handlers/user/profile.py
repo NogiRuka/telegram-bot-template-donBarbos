@@ -67,14 +67,8 @@ async def user_profile(
 
     username = f"@{callback.from_user.username}" if callback.from_user and callback.from_user.username else "未设置"
 
-    created_at = getattr(user, "created_at", None)
-    created_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else "未知"
-
     is_premium = getattr(user, "is_premium", False)
     premium_str = "是" if is_premium else "否"
-
-    last_interaction = getattr(ext, "last_interaction_at", None)
-    last_interaction_str = last_interaction.strftime("%Y-%m-%d %H:%M:%S") if last_interaction else "未知"
 
     # 签到信息
     streak_days = getattr(ext, "streak_days", 0)

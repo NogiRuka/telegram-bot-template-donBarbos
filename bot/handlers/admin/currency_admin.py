@@ -1,22 +1,18 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, Message, InlineKeyboardButton
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import UserModel
-from bot.core.constants import CURRENCY_SYMBOL, CURRENCY_NAME
+from bot.core.constants import CURRENCY_SYMBOL
 from bot.keyboards.inline.constants import (
     CURRENCY_ADMIN_CALLBACK_DATA,
 )
-from bot.keyboards.inline.buttons import (
-    BACK_TO_ADMIN_PANEL_BUTTON,
-)
 from bot.services.currency import CurrencyService
-from bot.services.main_message import MainMessageService
 from bot.states.admin import CurrencyAdminState
-from bot.utils.message import send_temp_message, delete_message_after_delay, send_toast
+from bot.utils.message import send_temp_message, send_toast
 from bot.utils.text import escape_markdown_v2
 
 router = Router(name="currency_admin")
@@ -53,18 +49,14 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
     try:
         user_id = int(message.text.strip())
     except ValueError:
-        # 错误提示 3s 后删除
-        msg = await message.answer("❌ 无效的用户 ID，请输入数字 ID。")
-        delete_message_after_delay(msg, 3)
+        await send_toast(message, "❌ 无效的用户 ID，请输入数字 ID。")
         return
             
     # 检查用户是否存在
     user_result = await session.execute(select(UserModel).where(UserModel.id == user_id))
     user = user_result.scalar_one_or_none()
     if not user:
-        # 错误提示 3s 后删除
-        msg = await message.answer("❌ 找不到该用户。")
-        delete_message_after_delay(msg, 3)
+        await send_toast(message, "❌ 找不到该用户。")
         return
         
     # 获取余额
@@ -166,7 +158,7 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
             f"原因: {reason}\n"
             f"最新余额: {new_balance} {CURRENCY_SYMBOL}"
         )
-        await send_temp_message(message, text, delay=30, parse_mode="MarkdownV2")
+        await send_temp_message(message, text, delay=30)
     except Exception as e:
         await send_toast(message, f"❌ 操作失败: {str(e)}")
 
