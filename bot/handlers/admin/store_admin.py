@@ -53,7 +53,7 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
     product = await CurrencyService.get_product(session, product_id)
     
     if not product:
-        await send_toast(callback.message, "存在", show_alert=True)
+        callback.answer("⚠️ 商品不存在")
         return
 
     text = (
@@ -94,9 +94,9 @@ async def handle_toggle_active(callback: CallbackQuery, session: AsyncSession, m
     if product:
         await CurrencyService.update_product(session, product_id, is_active=not product.is_active)
         # 刷新详情页
-        await handle_product_detail(callback, session, main_msg)
+        await handle_product_detail(callback, session, main_msg, product_id=product_id)
     else:
-        await send_toast(callback.message, "⚠️ 商品不存在", show_alert=True)
+        callback.answer("⚠️ 商品不存在")
 
 
 
