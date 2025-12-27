@@ -20,6 +20,8 @@ KEY_USER_PASSWORD = "user.password"
 KEY_USER_PROFILE = "user.profile"
 KEY_USER_ACCOUNT = "user.account"
 KEY_USER_TAGS = "user.tags"
+KEY_USER_STORE = "user.store"
+KEY_USER_CHECKIN = "user.checkin"
 
 # 管理员功能配置
 KEY_ADMIN_FEATURES_ENABLED = "admin.features.enabled"

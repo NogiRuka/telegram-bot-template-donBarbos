@@ -12,7 +12,7 @@ from bot.keyboards.inline.admin import get_start_admin_keyboard
 from bot.keyboards.inline.owner import get_start_owner_keyboard
 from bot.keyboards.inline.user import get_start_user_keyboard
 from bot.services.analytics import analytics
-from bot.services.config_service import get_config, list_features
+from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
 from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
 from bot.utils.images import get_common_image

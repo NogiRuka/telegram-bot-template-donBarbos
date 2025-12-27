@@ -38,7 +38,7 @@ def get_start_admin_keyboard() -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
-def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
+def get_admin_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
     """管理员面板键盘
 
     功能说明:
@@ -51,14 +51,14 @@ def get_admin_panel_keyboard(perms: dict[str, bool]) -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 内联键盘
     """
     buttons: list[list[InlineKeyboardButton]] = []
-    master_enabled = perms.get(KEY_ADMIN_FEATURES_ENABLED, False)
+    master_enabled = features.get(KEY_ADMIN_FEATURES_ENABLED, False)
 
     for short_code in ADMIN_PANEL_VISIBLE_FEATURES:
         if short_code not in ADMIN_FEATURES_MAPPING:
             continue
 
         config_key, label = ADMIN_FEATURES_MAPPING[short_code]
-        if master_enabled and perms.get(config_key, False):
+        if master_enabled and features.get(config_key, False):
             buttons.append([InlineKeyboardButton(text=label, callback_data=f"admin:{short_code}")])
 
     buttons.append([BACK_TO_HOME_BUTTON])

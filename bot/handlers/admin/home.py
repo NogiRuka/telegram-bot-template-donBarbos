@@ -31,8 +31,8 @@ async def show_admin_panel(
     返回值:
     - None
     """
-    perms = await list_admin_features(session)
-    kb = get_admin_panel_keyboard(perms)
+    features = await list_admin_features(session)
+    kb = get_admin_panel_keyboard(features)
     user_id = callback.from_user.id if callback.from_user else None
     await _resolve_role(session, user_id)
     image = get_common_image()

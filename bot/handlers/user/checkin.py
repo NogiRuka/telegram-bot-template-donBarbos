@@ -3,7 +3,9 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config.constants import KEY_USER_CHECKIN
 from bot.keyboards.inline.constants import DAILY_CHECKIN_CALLBACK_DATA
+from bot.services.config_service import get_config
 from bot.services.currency import CurrencyService
 from bot.utils.message import send_temp_message
 
@@ -25,6 +27,10 @@ async def handle_daily_checkin(callback: CallbackQuery, session: AsyncSession):
     返回值:
     - None
     """
+    if not await get_config(session, KEY_USER_CHECKIN):
+        await callback.answer("🔴 该功能已关闭", show_alert=True)
+        return
+
     user_id = callback.from_user.id
     
     success, message = await CurrencyService.daily_checkin(session, user_id)

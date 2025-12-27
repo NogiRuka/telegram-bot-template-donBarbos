@@ -133,28 +133,6 @@ async def toggle_config(session: AsyncSession, key: str, operator_id: int | None
     return False
 
 
-async def list_features(session: AsyncSession) -> dict[str, bool]:
-    """列出功能开关
-
-    功能说明:
-    - 返回常见功能开关的布尔值集合
-
-    输入参数:
-    - session: 异步数据库会话
-
-    返回值:
-    - dict[str, bool]: 功能键到布尔值的映射
-    """
-    # 从映射中提取配置键, 确保列表与映射保持同步
-    keys = [cfg_key for cfg_key, _ in USER_FEATURES_MAPPING.values()]
-
-    out: dict[str, bool] = {}
-    for k in keys:
-        val = await get_config(session, k)
-        out[k] = bool(val) if val is not None else False
-    return out
-
-
 async def get_registration_window(session: AsyncSession) -> dict[str, Any] | None:
     """获取注册时间窗
 
@@ -314,6 +292,28 @@ async def list_admin_features(session: AsyncSession) -> dict[str, bool]:
     """
     # 从映射中提取配置键, 确保列表与映射保持同步
     keys = [cfg_key for cfg_key, _ in ADMIN_FEATURES_MAPPING.values()]
+
+    out: dict[str, bool] = {}
+    for k in keys:
+        val = await get_config(session, k)
+        out[k] = bool(val) if val is not None else False
+    return out
+
+
+async def list_user_features(session: AsyncSession) -> dict[str, bool]:
+    """列出用户功能开关
+
+    功能说明:
+    - 返回常见用户功能开关的布尔值集合
+
+    输入参数:
+    - session: 异步数据库会话
+
+    返回值:
+    - dict[str, bool]: 功能键到布尔值的映射
+    """
+    # 从映射中提取配置键, 确保列表与映射保持同步
+    keys = [cfg_key for cfg_key, _ in USER_FEATURES_MAPPING.values()]
 
     out: dict[str, bool] = {}
     for k in keys:

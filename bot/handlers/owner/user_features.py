@@ -8,7 +8,7 @@ from bot.keyboards.inline.constants import (
     USER_FEATURES_PANEL_LABEL,
 )
 from bot.keyboards.inline.owner import get_user_features_panel_keyboard
-from bot.services.config_service import list_features, toggle_config
+from bot.services.config_service import list_user_features, toggle_config
 from bot.services.main_message import MainMessageService
 from bot.utils.images import get_common_image
 from bot.utils.permissions import require_owner

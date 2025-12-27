@@ -89,11 +89,11 @@ def get_user_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboar
 
     # 1. 动态添加用户功能开关
     for short_code, (cfg_key, label) in USER_FEATURES_MAPPING.items():
-        is_enabled = features.get(cfg_key, False)
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=format_with_status(label, is_enabled), callback_data=f"owner:user_features:toggle:{short_code}"
+                    text=format_with_status(label, features.get(cfg_key, False)),
+                    callback_data=f"owner:user_features:toggle:{short_code}",
                 )
             ]
         )

@@ -21,6 +21,8 @@ from bot.keyboards.inline.constants import (
     STATS_LABEL,
     STORE_ADMIN_LABEL,
     CURRENCY_ADMIN_LABEL,
+    DAILY_CHECKIN_LABEL,
+    ESSENCE_STORE_LABEL,
     USER_DEVICES_LABEL,
     USER_FEATURES_SWITCH_LABEL,
     USER_INFO_LABEL,
@@ -42,6 +44,8 @@ DEFAULT_CONFIGS: dict[str, bool] = {
     KEY_USER_PROFILE: True,
     KEY_USER_ACCOUNT: True,
     KEY_USER_TAGS: True,
+    KEY_USER_STORE: True,
+    KEY_USER_CHECKIN: True,
     KEY_ADMIN_FEATURES_ENABLED: True,
     KEY_ADMIN_GROUPS: True,
     KEY_ADMIN_STATS: True,
@@ -66,6 +70,8 @@ USER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
     "password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
     "tags": (KEY_USER_TAGS, USER_TAGS_LABEL),
+    "store": (KEY_USER_STORE, ESSENCE_STORE_LABEL),
+    "checkin": (KEY_USER_CHECKIN, DAILY_CHECKIN_LABEL),
 }
 
 # 管理员功能映射 - 用于管理员权限控制
