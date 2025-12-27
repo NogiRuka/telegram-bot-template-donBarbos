@@ -99,7 +99,8 @@ def get_user_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboar
         )
 
     # 2. 添加返回开关
-    buttons.append([BACK_TO_OWNER_PANEL_BUTTON, BACK_TO_HOME_BUTTON])
+    buttons.append([BACK_TO_OWNER_PANEL_BUTTON])
+    buttons.append([BACK_TO_HOME_BUTTON])
 
     keyboard = InlineKeyboardBuilder(markup=buttons)
 
@@ -165,7 +166,8 @@ def get_admin_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboa
         )
 
     # 2. 添加返回开关
-    buttons.append([BACK_TO_OWNER_PANEL_BUTTON, BACK_TO_HOME_BUTTON])
+    buttons.append([BACK_TO_OWNER_PANEL_BUTTON])
+    buttons.append([BACK_TO_HOME_BUTTON])
 
     keyboard = InlineKeyboardBuilder(markup=buttons)
 

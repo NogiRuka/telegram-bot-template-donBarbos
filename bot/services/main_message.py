@@ -224,7 +224,6 @@ class MainMessageService:
             ok = await render_view(msg, image_path or "", caption, kb)
             await self.remember(msg)
             return ok
-        return False
 
     async def update_on_callback(
         self,

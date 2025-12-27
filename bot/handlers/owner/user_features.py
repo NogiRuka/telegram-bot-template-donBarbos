@@ -32,7 +32,7 @@ async def show_features_panel(callback: CallbackQuery, session: AsyncSession, ma
     返回值:
     - None
     """
-    features = await list_features(session)
+    features = await list_user_features(session)
     kb = get_user_features_panel_keyboard(features)
     image = get_common_image()
 
