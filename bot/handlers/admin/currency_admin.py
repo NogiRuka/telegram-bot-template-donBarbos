@@ -126,9 +126,9 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
 async def handle_modify_start(callback: CallbackQuery, state: FSMContext):
     """开始修改余额"""
     text = (
-        f"请输入要变动的数值 \(整数\):\n"
-        f"➕ 正数增加 \(例如 100\)\n"
-        f"➖ 负数扣除 \(例如 \-50\)"
+        f"请输入要变动的数值 \\(整数\\):\n"
+        f"➕ 正数增加 \\(例如 100\\)\n"
+        f"➖ 负数扣除 \\(例如 \\-50\\)"
     )
     await callback.message.edit_text(text=text, parse_mode="MarkdownV2")
     await state.set_state(CurrencyAdminState.waiting_for_amount)
@@ -187,7 +187,7 @@ async def process_amount(message: Message, state: FSMContext):
         
     await state.update_data(amount=amount)
     
-    text = "📝 请输入操作原因 \(必填\):"
+    text = "📝 请输入操作原因 \\(必填\\):"
     if prompt_message_id:
         try:
             await message.bot.edit_message_text(
