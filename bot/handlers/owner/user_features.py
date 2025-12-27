@@ -94,6 +94,6 @@ async def toggle_owner_features(callback: CallbackQuery, session: AsyncSession, 
         return
 
     await main_msg.update_on_callback(
-        callback, FEATURES_PANEL_LABEL, get_features_panel_keyboard(features), image_path=get_common_image()
+        callback, FEATURES_PANEL_LABEL, get_user_features_panel_keyboard(features), image_path=get_common_image()
     )
     await callback.answer(f"{'🟢' if new_val else '🔴'} {label}: {'启用' if new_val else '禁用'}")
