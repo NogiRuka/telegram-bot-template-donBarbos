@@ -38,7 +38,7 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
     
     kb.adjust(1)
     kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
-    text = ("🏪 *商店管理*\n\n请选择要管理的商品 (🟢上架中 / 🔴已下架):")
+    text = ("🏪 商店管理\n\n请选择要管理的商品 (🟢上架中 / 🔴已下架):")
     
     await main_msg.update_on_callback(
         callback,
@@ -47,67 +47,6 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
         image_path=get_common_image()
     )
 
-@router.callback_query(F.data.startswith(STORE_ADMIN_PRODUCT_PREFIX))
-async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
-    """商品详情与管理"""
-    try:
-        product_id = extract_id(callback.data)
-    except ValueError:
-        await callback.answer("⚠️ 参数错误")
-        return
-
-    product = await CurrencyService.get_product(session, product_id)
-    
-    if not product:
-        await callback.answer("⚠️ 商品不存在")
-        return
-
-    text = (
-        f"📦 *商品管理 \- {escape_markdown_v2(product.name)}*\n\n"
-        f"ID: `{product.id}`\n"
-        f"名称: {escape_markdown_v2(product.name)}\n"
-        f"价格: {product.price} {escape_markdown_v2(CURRENCY_SYMBOL)}\n"
-        f"库存: {'无限' if product.stock == -1 else product.stock}\n"
-        f"状态: {'🟢 上架中' if product.is_active else '🔴 已下架'}\n"
-        f"描述: {escape_markdown_v2(product.description or '无')}\n"
-        f"类型: {escape_markdown_v2(product.category)} / {escape_markdown_v2(product.action_type)}"
-    )
-    
-    kb = InlineKeyboardBuilder()
-    
-    # 状态切换按钮
-    toggle_text = "🚫 下架" if product.is_active else "✅ 上架"
-    kb.button(text=toggle_text, callback_data=f"{STORE_ADMIN_TOGGLE_PREFIX}{product.id}")
-    
-    # 修改按钮
-    kb.button(text="✏️ 价格", callback_data=f"{STORE_ADMIN_EDIT_PREFIX}price:{product.id}")
-    kb.button(text="✏️ 库存", callback_data=f"{STORE_ADMIN_EDIT_PREFIX}stock:{product.id}")
-    kb.button(text="✏️ 描述", callback_data=f"{STORE_ADMIN_EDIT_PREFIX}desc:{product.id}")
-    
-    kb.adjust(1, 3, 2)
-    
-    # 返回列表
-    kb.row(BACK_TO_STORE_ADMIN_BUTTON, BACK_TO_HOME_BUTTON)
-    
-    await main_msg.update_on_callback(callback, text, kb.as_markup(), image_path=get_common_image())
-
-@router.callback_query(F.data.startswith(STORE_ADMIN_TOGGLE_PREFIX))
-async def handle_toggle_active(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
-    """切换上下架状态"""
-    try:
-        product_id = extract_id(callback.data)
-    except ValueError:
-        await callback.answer("⚠️ 参数错误")
-        return
-
-    product = await CurrencyService.get_product(session, product_id)
-    
-    if product:
-        await CurrencyService.update_product(session, product_id, is_active=not product.is_active)
-        # 刷新详情页
-        await handle_product_detail(callback, session, main_msg)
-    else:
-        await callback.answer("⚠️ 商品不存在")
 
 
 @router.callback_query(F.data.startswith(STORE_ADMIN_EDIT_PREFIX))
@@ -119,8 +58,6 @@ async def handle_edit_start(callback: CallbackQuery, state: FSMContext):
     product_id = int(parts[-1])
     
     await state.update_data(product_id=product_id)
-
-    logger.info(f"开始修改商品 {product_id} 的 {action}")
     
     if action == "price":
         await send_toast(callback, "✏️ 请输入新的价格 (整数):")
@@ -192,3 +129,10 @@ async def process_desc_update(message: Message, state: FSMContext, session: Asyn
     await CurrencyService.update_product(session, product_id, description=desc)
     await send_toast(message, "✅ 描述已更新")
     await state.clear()
+n, main_msg: MaiMessageServicear()
+    
+    awit _refresh_poduct_viewmessage.from_user.id, product_id, session, main_msgn, main_msg: MaiMessageServicear()
+    
+    awit _refresh_poduct_viewmessage.from_user.id, product_id, session, main_msgn, main_msg: MaiMessageServicear()
+    
+    awit _refresh_poduct_viewmessage.from_user.id, product_id, session, main_msg
