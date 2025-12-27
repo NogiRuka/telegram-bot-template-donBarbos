@@ -254,15 +254,45 @@ class CurrencyService:
         return user_ext.currency_balance
 
     @staticmethod
-    async def get_products(session: AsyncSession, only_active: bool = True) -> list[CurrencyProductModel]:
-        """获取商品列表"""
+    async def get_products(session: AsyncSession, user_id: int | None = None, only_active: bool = True) -> list[CurrencyProductModel]:
+        """获取商品列表
+        
+        参数:
+        - session: 数据库会话
+        - user_id: 用户ID (可选, 用于可见性检查)
+        - only_active: 仅获取上架商品
+        """
         stmt = select(CurrencyProductModel)
         if only_active:
             stmt = stmt.where(CurrencyProductModel.is_active.is_(True))
         
         stmt = stmt.order_by(CurrencyProductModel.price)
         result = await session.execute(stmt)
-        return list(result.scalars().all())
+        products = list(result.scalars().all())
+        
+        if user_id is None:
+            return products
+            
+        # 可见性检查
+        visible_products = []
+        user_ext = await CurrencyService.get_user_extend(session, user_id)
+        
+        for product in products:
+            if not product.visible_conditions:
+                visible_products.append(product)
+                continue
+                
+            conditions = product.visible_conditions
+            
+            # 检查条件: min_max_streak (最小历史最高连签天数)
+            if "min_max_streak" in conditions:
+                min_streak = conditions["min_max_streak"]
+                if not user_ext or user_ext.max_streak_days < min_streak:
+                    continue
+                    
+            visible_products.append(product)
+            
+        return visible_products
 
     @staticmethod
     async def update_product(
@@ -311,6 +341,16 @@ class CurrencyService:
         if product.stock != -1 and product.stock <= 0:
             return False, "📦 商品库存不足"
             
+        # 1.5 检查购买条件
+        if product.purchase_conditions:
+            conditions = product.purchase_conditions
+            user_ext = await CurrencyService.get_user_extend(session, user_id)
+            
+            # 检查条件: has_emby (拥有 Emby 账号)
+            if conditions.get("has_emby"):
+                if not user_ext or not user_ext.emby_user_id:
+                    return False, "🚫 您未绑定 Emby 账号，无法购买此商品。"
+
         # 2. 扣除代币
         try:
             await CurrencyService.add_currency(
@@ -451,7 +491,7 @@ class CurrencyService:
                 "category": "tools",
                 "action_type": "retro_checkin",
                 "description": "用于补签过去未签到的日期（自动使用最近一天）。",
-                "stock": -1,
+                "stock": 20,
                 "is_active": True,
             },
             {
@@ -461,18 +501,30 @@ class CurrencyService:
                 "category": "emby",
                 "action_type": "emby_image",
                 "description": "修改 Emby 上的用户图像（购买后请联系频道）。",
-                "stock": -1,
+                "stock": 20,
                 "is_active": True,
+                "purchase_conditions": {"has_emby": True},
             },
             {
                 "id": 3,
-                "name": "自定义头衔",
+                "name": "自定义头衔（7天）",
                 "price": 100,
                 "category": "group",
                 "action_type": "custom_title",
-                "description": "在群组中显示自定义头衔（购买后请联系频道）。",
-                "stock": 20,
+                "description": "在群组中显示自定义头衔（7天体验）。",
+                "stock": 10,
                 "is_active": True,
+            },
+            {
+                "id": 4,
+                "name": "自定义头衔（永久）",
+                "price": 1000,
+                "category": "group",
+                "action_type": "custom_title",
+                "description": "在群组中显示自定义头衔（永久）。需要最高连续签到达到30天可见。",
+                "stock": 10,
+                "is_active": True,
+                "visible_conditions": {"min_max_streak": 30},
             },
         ]
         
@@ -485,13 +537,10 @@ class CurrencyService:
                 product = CurrencyProductModel(**p_data)
                 session.add(product)
             else:
-                # 更新关键信息
-                existing.name = p_data["name"]
-                existing.price = p_data["price"]
-                existing.category = p_data["category"]
-                existing.action_type = p_data["action_type"]
-                existing.description = p_data["description"]
-                existing.is_active = p_data["is_active"]
+                # 更新现有商品配置
+                for k, v in p_data.items():
+                    if hasattr(existing, k):
+                        setattr(existing, k, v)
                 session.add(existing)
-                
+        
         await session.commit()

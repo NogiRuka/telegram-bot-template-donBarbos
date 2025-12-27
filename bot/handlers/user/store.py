@@ -25,12 +25,12 @@ async def handle_store_list(callback: CallbackQuery, session: AsyncSession, main
     
     # 获取用户余额
     balance = await CurrencyService.get_user_balance(session, user_id)
-    # 获取商品列表
-    products = await CurrencyService.get_products(session)
+    # 获取商品列表 (传入 user_id 用于过滤可见性)
+    products = await CurrencyService.get_products(session, user_id=user_id)
         
     currency_name = CURRENCY_NAME
     text = (
-        f"🛍️ **精粹商店**\n\n"
+        f"🛍️ *精粹商店*\n\n" 
         f"当前{currency_name}: {balance} {CURRENCY_SYMBOL}\n\n"
         f"请选择要购买的商品:"
     )
@@ -55,7 +55,7 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
         return
         
     text = (
-        f"📦 **商品详情**\n\n"
+        f"📦 *商品详情*\n\n"
         f"名称：{product.name}\n"
         f"价格：{product.price} {CURRENCY_SYMBOL}\n"
         f"库存：{'无限' if product.stock == -1 else product.stock}\n\n"
@@ -87,7 +87,7 @@ async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession
         
         if product:
             text = (
-                f"📦 **商品详情**\n\n"
+                f"📦 *商品详情*\n\n"
                 f"名称: {product.name}\n"
                 f"价格: {product.price} {CURRENCY_SYMBOL}\n"
                 f"库存: {'无限' if product.stock == -1 else product.stock}\n\n"
