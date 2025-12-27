@@ -16,6 +16,8 @@ from bot.keyboards.inline.buttons import (
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.admin import CurrencyAdminState
+from bot.utils.message import send_temp_message
+from bot.utils.text import escape_markdown_v2
 
 router = Router(name="currency_admin")
 
@@ -27,7 +29,7 @@ async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext
     await callback.answer()
 
 @router.message(CurrencyAdminState.waiting_for_user)
-async def process_user_lookup(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
+async def process_user_lookup(message: Message, state: FSMContext, session: AsyncSession):
     # 尝试删除用户发送的消息
     try:
         await message.delete()
@@ -64,19 +66,22 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
     kb.button(text="❌ 取消", callback_data="admin:currency:cancel")
     kb.adjust(1)
 
-    first_name = getattr(user, "first_name", "")
+    first_name = getattr(user, "first_name", "") or ""
     last_name = getattr(user, "last_name", "") or ""
     full_name = f"{first_name} {last_name}".strip() or "未知"
-    
+
+    username = getattr(user, "username", None)
+    username_display = f"@{username}" if username else "未设置"
+
     text = (
         f"👤 *用户查询结果*\n\n"
         f"ID: `{user.id}`\n"
-        f"姓名: {full_name}\n"
+        f"昵称: {escape_markdown_v2(full_name)}\n"
+        f"用户名: {escape_markdown_v2(username_display)}\n"
         f"当前余额: {balance} {CURRENCY_SYMBOL}"
     )
     
-    await message.answer(text, reply_markup=kb.as_markup())
-    # 此时不清除 state，因为可能要进行 modify，但 modify 是 callback 触发，需要手动转换状态或保持 data
+    await send_temp_message(message, text, delay=30, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
 
 @router.callback_query(F.data == "admin:currency:modify")
 async def handle_modify_start(callback: CallbackQuery, state: FSMContext):
