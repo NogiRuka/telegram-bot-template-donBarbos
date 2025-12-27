@@ -16,6 +16,7 @@ from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
 from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
 from bot.utils.permissions import _resolve_role
+from bot.utils.images import get_common_image
 
 router = Router(name="start")
 
@@ -83,44 +84,34 @@ async def build_home_view(
 
 @router.message(CommandStart())
 @analytics.track_event("Sign Up")
-async def start_handler(message: types.Message, session: AsyncSession, main_msg: MainMessageService) -> None:
-    """欢迎消息处理器
+async def start_handler(
+    message: types.Message,
+    session: AsyncSession,
+    main_msg: MainMessageService,
+) -> None:
+    """/start 入口：按角色渲染首页"""
+    uid = message.from_user.id
 
-    功能说明:
-    - 根据数据库中记录的用户角色显示首页界面与按钮
-
-    输入参数:
-    - message: Telegram消息对象
-    - session: 异步数据库会话
-
-    返回值:
-    - None
-    """
-    uid = message.from_user.id if message.from_user else None
+    # 🧨 强制丢弃旧主消息
+    main_msg.reset(uid)
 
     # 构建首页文案与键盘
     caption, kb = await build_home_view(session, uid)
 
-    await main_msg.render(uid, caption, kb)
+    # 🚀 首次渲染必须带图片
+    await main_msg.render(
+        user_id=uid,
+        caption=caption,
+        kb=kb,
+        image_path=get_common_image(),
+    )
 
 
 @router.callback_query(F.data == "back:home")
 async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
-    """返回主面板
-
-    功能说明:
-    - 根据用户角色返回至对应的一级主页键盘
-
-    输入参数:
-    - callback: 回调对象
-    - session: 异步数据库会话
-
-    返回值:
-    - None
-    """
+    """返回首页：根据回调更新主消息内容"""
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)
 
     await main_msg.update_on_callback(callback, caption, kb)
-
     await callback.answer()

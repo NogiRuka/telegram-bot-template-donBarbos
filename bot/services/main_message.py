@@ -30,76 +30,21 @@ class MainMessageService:
 
     def __init__(self, bot: Bot) -> None:
         """构造函数
-
         功能说明:
         - 初始化服务, 持有 `Bot` 实例并创建内存映射表
-
-        输入参数:
-        - bot: Telegram Bot 实例
-
-        返回值:
-        - None
         """
         self.bot = bot
         self._messages: dict[int, tuple[int, int]] = {}
 
-    async def send_main(
-        self,
-        message: types.Message,
-        photo: str | None,
-        caption: str,
-        kb: types.InlineKeyboardMarkup,
-    ) -> None:
-        """首次发送主消息
-
-        功能说明:
-        - 在私聊中发送一条主消息(图片+caption+键盘或纯文本), 并记录该消息ID
-
-        输入参数:
-        - message: 用户触发 `/start` 的消息对象
-        - photo: 图片路径, 传入空字符串或 None 表示发送纯文本
-        - caption: 主消息的说明文本
-        - kb: 主消息的内联键盘
-
-        返回值:
-        - None
-        """
-        with logger.catch():
-            if photo:
-                file = FSInputFile(photo)
-                msg = await message.answer_photo(
-                    photo=file, caption=caption, reply_markup=kb, parse_mode="MarkdownV2"
-                )
-            else:
-                msg = await message.answer(caption, reply_markup=kb, parse_mode="MarkdownV2")
-            if message.from_user:
-                self._messages[message.from_user.id] = (msg.chat.id, msg.message_id)
-
-    def get_main_msg(self, user_id: int) -> tuple[int, int] | None:
-        """获取主消息标识
-
-        功能说明:
-        - 返回指定用户的主消息 `(chat_id, message_id)`, 若不存在返回 None
-
-        输入参数:
-        - user_id: Telegram 用户ID
-
-        返回值:
-        - tuple[int, int] | None: 主消息标识或 None
-        """
-        return self._messages.get(user_id)
-
     def get(self, user_id: int) -> tuple[int, int] | None:
         """获取已记录的主消息"""
-        logger.debug(f"🔍 self._messages: {self._messages}, user_id={user_id}")
+        # logger.debug(f"🔍 self._messages: {self._messages}, user_id={user_id}")
         return self._messages.get(user_id)
 
-    # async def remember(self, msg: types.Message, user_id: int | None = None) -> None:
-    #     """记录当前消息为主消息"""
-    #     with logger.catch():
-    #         uid = user_id or msg.chat.id
-    #         self._messages[uid] = (msg.chat.id, msg.message_id)
-    #         logger.debug(f"🔍 remember: uid={uid}, chat_id={msg.chat.id}, message_id={msg.message_id}")
+    def reset(self, user_id: int) -> None:
+        """清除用户当前主消息记录"""
+        if user_id in self._messages:
+            self._messages.pop(user_id)
 
     def remember(self, user_id: int, msg: types.Message) -> None:
         """记录主消息"""
@@ -184,7 +129,6 @@ class MainMessageService:
             pass
 
         return await self._send_new(user_id, caption, kb, image_path)
-
 
 
     async def update(
@@ -307,12 +251,19 @@ class MainMessageService:
         """
         回调场景下刷新主消息
 
-        设计约定：
-        - 主消息统一由 render 管理
-        - callback.message 不再单独处理
+        设计说明：
+        - 如果内存中没有主消息，但 callback.message 存在
+        则将该消息重新记录为主消息
+        - 然后统一交由 render 处理
         """
         uid = callback.from_user.id if callback.from_user else None
+        msg = callback.message if isinstance(callback.message, types.Message) else None
+
         if not uid:
             return False
 
-        return await self.render(uid, caption, kb, image_path=None)
+        # ⭐ 关键修复点：内存丢失，但用户点了旧主消息
+        if not self.get(uid) and msg is not None:
+            self.remember(uid, msg)
+
+        return await self.render(uid, caption, kb)
