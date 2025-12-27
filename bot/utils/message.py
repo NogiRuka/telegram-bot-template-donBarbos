@@ -33,17 +33,25 @@ async def delete_message(message: Any) -> bool:
         return False
 
 
-def delete_message_after_delay(message: Any, delay: int = 3) -> asyncio.Task:
+def delete_message_after_delay(
+    message: Any, 
+    delay: int = 3, 
+    chat_id: int | None = None, 
+    message_id: int | None = None
+) -> asyncio.Task:
     """延迟指定时间后删除消息，返回异步任务。
 
     功能说明:
     - 创建异步任务在指定时间后删除消息
     - 自动保存任务引用避免被垃圾回收
     - 适用于发送临时提示消息后自动清理的场景
+    - 支持传入 message 对象或 (bot, chat_id, message_id) 组合
 
     输入参数:
-    - message: 要删除的消息对象，需要有 delete() 方法
+    - message: 消息对象 (需有 delete 方法) 或 Bot 实例
     - delay: 延迟删除的秒数，默认3秒
+    - chat_id: 聊天ID (当 message 为 Bot 实例时必填)
+    - message_id: 消息ID (当 message 为 Bot 实例时必填)
 
     返回值:
     - asyncio.Task: 创建的异步任务
@@ -51,7 +59,12 @@ def delete_message_after_delay(message: Any, delay: int = 3) -> asyncio.Task:
     async def _delayed_delete() -> None:
         try:
             await asyncio.sleep(delay)
-            await delete_message(message)
+            if chat_id and message_id and hasattr(message, "delete_message"):
+                # 如果传入的是 Bot 实例和 ID
+                await message.delete_message(chat_id=chat_id, message_id=message_id)
+            elif hasattr(message, "delete"):
+                # 如果传入的是 Message 对象
+                await message.delete()
         except Exception:
             # 忽略删除过程中的任何错误
             pass

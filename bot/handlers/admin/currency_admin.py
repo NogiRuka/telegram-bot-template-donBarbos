@@ -186,24 +186,24 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
             f"最新余额: {new_balance} {CURRENCY_SYMBOL}"
         )
         
-        kb = InlineKeyboardBuilder()
-        kb.add(BACK_TO_ADMIN_PANEL_BUTTON)
-        
         if prompt_message_id:
             try:
                 await message.bot.edit_message_text(
                     text=text,
                     chat_id=message.chat.id,
                     message_id=prompt_message_id,
-                    reply_markup=kb.as_markup(),
                     parse_mode="MarkdownV2"
                 )
+                # 创建异步任务在 5 秒后删除该消息
+                delete_message_after_delay(message.bot, 5, chat_id=message.chat.id, message_id=prompt_message_id)
             except Exception:
-                 await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+                 msg = await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+                 delete_message_after_delay(msg, 5)
         else:
-             await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+             msg = await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+             delete_message_after_delay(msg, 5)
 
     except Exception as e:
-        await send_toast(message, f"❌ 操作失败: {escape_markdown_v2(str(e))}", parse_mode="MarkdownV2")
+        await send_toast(message, f"❌ 操作失败: {escape_markdown_v2(str(e))}", delay = 5)
 
     await state.clear()
