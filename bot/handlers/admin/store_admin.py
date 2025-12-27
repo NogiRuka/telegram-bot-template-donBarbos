@@ -38,7 +38,7 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
     
     kb.adjust(1)
     kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
-    text = escape_markdown_v2("🏪 *商店管理*\n\n请选择要管理的商品 (🟢上架中 / 🔴已下架):")
+    text = ("🏪 *商店管理*\n\n请选择要管理的商品 (🟢上架中 / 🔴已下架):")
     
     await main_msg.update_on_callback(
         callback,
@@ -62,15 +62,15 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
         await callback.answer("⚠️ 商品不存在")
         return
 
-    text = escape_markdown_v2(
-        f"📦 *商品管理 - {product.name}*\n\n"
+    text = (
+        f"📦 *商品管理 \- {escape_markdown_v2(product.name)}*\n\n"
         f"ID: `{product.id}`\n"
-        f"名称: {product.name}\n"
-        f"价格: {product.price} {CURRENCY_SYMBOL}\n"
+        f"名称: {escape_markdown_v2(product.name)}\n"
+        f"价格: {product.price} {escape_markdown_v2(CURRENCY_SYMBOL)}\n"
         f"库存: {'无限' if product.stock == -1 else product.stock}\n"
         f"状态: {'🟢 上架中' if product.is_active else '🔴 已下架'}\n"
-        f"描述: {product.description}\n"
-        f"类型: {product.category} / {product.action_type}"
+        f"描述: {escape_markdown_v2(product.description or '无')}\n"
+        f"类型: {escape_markdown_v2(product.category)} / {escape_markdown_v2(product.action_type)}"
     )
     
     kb = InlineKeyboardBuilder()
@@ -89,7 +89,7 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
     # 返回列表
     kb.row(BACK_TO_STORE_ADMIN_BUTTON, BACK_TO_HOME_BUTTON)
     
-    await main_msg.update_on_callback(callback, text, kb.as_markup())
+    await main_msg.update_on_callback(callback, text, kb.as_markup(), image_path=get_common_image())
 
 @router.callback_query(F.data.startswith(STORE_ADMIN_TOGGLE_PREFIX))
 async def handle_toggle_active(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
