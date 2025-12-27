@@ -210,6 +210,7 @@ class CurrencyService:
         event_type: str,
         description: str,
         meta: dict[str, Any] | None = None,
+        commit: bool = True,
     ) -> int:
         """增加/扣除代币
 
@@ -219,6 +220,7 @@ class CurrencyService:
         - event_type: 事件类型
         - description: 描述
         - meta: 扩展信息
+        - commit: 是否提交事务 (默认为 True)
 
         返回值:
         - int: 变动后的余额
@@ -245,7 +247,10 @@ class CurrencyService:
             meta=meta,
         )
         session.add(tx)
-        await session.commit()
+        
+        if commit:
+            await session.commit()
+            
         return user_ext.currency_balance
 
     @staticmethod
@@ -314,7 +319,8 @@ class CurrencyService:
                 -product.price, 
                 "purchase", 
                 f"购买 {product.name}", 
-                meta={"product_id": product.id, "product_name": product.name}
+                meta={"product_id": product.id, "product_name": product.name},
+                commit=False  # 不立即提交，等待后续逻辑确认
             )
         except ValueError:
             return False, f"💸 余额不足，需要 {product.price} {CURRENCY_SYMBOL}"
