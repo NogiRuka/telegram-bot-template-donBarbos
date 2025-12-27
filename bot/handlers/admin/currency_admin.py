@@ -24,7 +24,7 @@ router = Router(name="currency_admin")
 async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService):
     """精粹管理 - 开始"""
     msg = await callback.message.answer(
-        "💎 *精粹管理*\n\n请发送用户的 ID \(或者回复用户的消息\) 来查询/管理余额:",
+        "💎 *精粹管理*\n\n请发送用户的 ID \\(或者回复用户的消息\\) 来查询/管理余额:",
         parse_mode="MarkdownV2"
     )
     await state.update_data(prompt_message_id=msg.message_id)
