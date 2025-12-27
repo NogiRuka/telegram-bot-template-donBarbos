@@ -3,7 +3,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config.constants import KEY_ADMIN_HITOKOTO_CATEGORY
+from bot.config.constants import KEY_ADMIN_HITOKOTO_CATEGORIES
 from bot.database.models.config import ConfigType
 from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, BACK_TO_ADMIN_PANEL_BUTTON
 from bot.keyboards.inline.constants import HITOKOTO_LABEL
@@ -68,11 +68,11 @@ def _build_hitokoto_ui(categories: list[str]) -> tuple[str, InlineKeyboardMarkup
     # 构建文案
     current_names = [type_names.get(ch, ch) for ch in categories]
     caption = (
-        f"{HITOKOTO_LABEL}\n\n"
+        f"*{HITOKOTO_LABEL}*\n\n"
         "选择需要纳入的分类参数（多选）：\n"
-        "a 动画 | b 漫画 | c 游戏 | d 文学 | e 原创\n"
-        "f 来自网络 | g 其他 | h 影视 | i 诗词 | j 网易云\n"
-        "k 哲学 | l 抖机灵\n\n"
+        "a 动画 \\| b 漫画 \\| c 游戏 \\| d 文学 \\| e 原创\n"
+        "f 来自网络 \\| g 其他 \\| h 影视 \\| i 诗词 \\| j 网易云\n"
+        "k 哲学 \\| l 抖机灵\n\n"
         f"当前分类：{', '.join(current_names) if current_names else '未选择'}\n"
         "提示：可多次点击切换，选择会即时保存。"
     )
@@ -90,7 +90,7 @@ async def open_hitokoto_feature(callback: CallbackQuery, session: AsyncSession, 
     - 在管理员面板中展示一言分类选择面板, 使用中文分类名, 每行四个按钮, 底部提供返回与返回主面板
 
     """
-    categories = await get_config(session, KEY_ADMIN_HITOKOTO_CATEGORY) or []
+    categories = await get_config(session, KEY_ADMIN_HITOKOTO_CATEGORIES) or []
     caption, kb = _build_hitokoto_ui(categories)
     await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer()
@@ -109,7 +109,7 @@ async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession, 
     try:
         data = callback.data or ""
         ch = data.split(":")[-1]
-        categories = await get_config(session, KEY_ADMIN_HITOKOTO_CATEGORY) or []
+        categories = await get_config(session, KEY_ADMIN_HITOKOTO_CATEGORIES) or []
         if ch in categories:
             categories = [c for c in categories if c != ch]
         else:
@@ -118,7 +118,7 @@ async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession, 
         operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
         await set_config(
             session,
-            KEY_ADMIN_HITOKOTO_CATEGORY,
+            KEY_ADMIN_HITOKOTO_CATEGORIES,
             categories,
             ConfigType.LIST,
             operator_id=operator_id,
