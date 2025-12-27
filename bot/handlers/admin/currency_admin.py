@@ -16,7 +16,6 @@ from bot.keyboards.inline.buttons import (
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.admin import CurrencyAdminState
-from bot.utils.message import send_temp_message, delete_message_after_delay
 from bot.utils.text import escape_markdown_v2
 
 router = Router(name="currency_admin")
@@ -24,13 +23,13 @@ router = Router(name="currency_admin")
 @router.callback_query(F.data == CURRENCY_ADMIN_CALLBACK_DATA)
 async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService):
     """精粹管理 - 开始"""
-    msg = await callback.message.answer("💎 *精粹管理*\n\n请发送用户的 ID (或者回复用户的消息) 来查询/管理余额:")
+    msg = await callback.message.answer(
+        "💎 *精粹管理*\n\n请发送用户的 ID \(或者回复用户的消息\) 来查询/管理余额:",
+        parse_mode="MarkdownV2"
+    )
     await state.update_data(prompt_message_id=msg.message_id)
     await state.set_state(CurrencyAdminState.waiting_for_user)
     await callback.answer()
-
-    # 30秒无操作自动删除提示
-    delete_message_after_delay(msg, 30)
 
 @router.message(CurrencyAdminState.waiting_for_user)
 async def process_user_lookup(message: Message, state: FSMContext, session: AsyncSession):
@@ -40,14 +39,9 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
     except Exception:
         pass
 
-    # 尝试删除之前的提示消息
+    # 获取提示消息ID
     data = await state.get_data()
     prompt_message_id = data.get("prompt_message_id")
-    if prompt_message_id:
-        try:
-            await message.bot.delete_message(chat_id=message.chat.id, message_id=prompt_message_id)
-        except Exception:
-            pass
 
     user_id = None
     
@@ -55,14 +49,36 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
     try:
         user_id = int(message.text.strip())
     except ValueError:
-        await message.answer("❌ 无效的用户 ID，请输入数字 ID。")
+        error_text = "❌ 无效的用户 ID，请输入数字 ID。"
+        if prompt_message_id:
+            try:
+                await message.bot.edit_message_text(
+                    text=error_text,
+                    chat_id=message.chat.id,
+                    message_id=prompt_message_id
+                )
+            except Exception:
+                await message.answer(error_text)
+        else:
+            await message.answer(error_text)
         return
             
     # 检查用户是否存在
     user_result = await session.execute(select(UserModel).where(UserModel.id == user_id))
     user = user_result.scalar_one_or_none()
     if not user:
-        await message.answer("❌ 找不到该用户。")
+        error_text = "❌ 找不到该用户。"
+        if prompt_message_id:
+            try:
+                await message.bot.edit_message_text(
+                    text=error_text,
+                    chat_id=message.chat.id,
+                    message_id=prompt_message_id
+                )
+            except Exception:
+                await message.answer(error_text)
+        else:
+            await message.answer(error_text)
         return
         
     # 获取余额
@@ -90,16 +106,31 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
         f"当前余额: {balance} {CURRENCY_SYMBOL}"
     )
     
-    await send_temp_message(message, text, delay=30, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+    if prompt_message_id:
+        try:
+            await message.bot.edit_message_text(
+                text=text,
+                chat_id=message.chat.id,
+                message_id=prompt_message_id,
+                reply_markup=kb.as_markup(),
+                parse_mode="MarkdownV2"
+            )
+        except Exception:
+            msg = await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+            await state.update_data(prompt_message_id=msg.message_id)
+    else:
+        msg = await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+        await state.update_data(prompt_message_id=msg.message_id)
 
 @router.callback_query(F.data == "admin:currency:modify")
 async def handle_modify_start(callback: CallbackQuery, state: FSMContext):
     """开始修改余额"""
-    await callback.message.answer(
-        f"请输入要变动的数值 (整数):\n"
-        f"➕ 正数增加 (例如 100)\n"
-        f"➖ 负数扣除 (例如 -50)"
+    text = (
+        f"请输入要变动的数值 \(整数\):\n"
+        f"➕ 正数增加 \(例如 100\)\n"
+        f"➖ 负数扣除 \(例如 \-50\)"
     )
+    await callback.message.edit_text(text=text, parse_mode="MarkdownV2")
     await state.set_state(CurrencyAdminState.waiting_for_amount)
     await callback.answer()
 
@@ -119,28 +150,88 @@ async def process_amount(message: Message, state: FSMContext):
     except Exception:
         pass
 
+    # 获取提示消息ID
+    data = await state.get_data()
+    prompt_message_id = data.get("prompt_message_id")
+
     try:
         amount = int(message.text)
         if amount == 0:
-             await message.answer("❌ 变动值不能为 0")
+             error_text = "❌ 变动值不能为 0"
+             if prompt_message_id:
+                 try:
+                     await message.bot.edit_message_text(
+                         text=error_text,
+                         chat_id=message.chat.id,
+                         message_id=prompt_message_id
+                     )
+                 except:
+                     await message.answer(error_text)
+             else:
+                 await message.answer(error_text)
              return
     except ValueError:
-        await message.answer("❌ 请输入有效的整数。")
+        error_text = "❌ 请输入有效的整数。"
+        if prompt_message_id:
+             try:
+                 await message.bot.edit_message_text(
+                     text=error_text,
+                     chat_id=message.chat.id,
+                     message_id=prompt_message_id
+                 )
+             except:
+                 await message.answer(error_text)
+        else:
+             await message.answer(error_text)
         return
         
     await state.update_data(amount=amount)
     
-    await message.answer("📝 请输入操作原因 (必填):")
+    text = "📝 请输入操作原因 \(必填\):"
+    if prompt_message_id:
+        try:
+            await message.bot.edit_message_text(
+                text=text,
+                chat_id=message.chat.id,
+                message_id=prompt_message_id,
+                parse_mode="MarkdownV2"
+            )
+        except Exception:
+            await message.answer(text, parse_mode="MarkdownV2")
+    else:
+        await message.answer(text, parse_mode="MarkdownV2")
+
     await state.set_state(CurrencyAdminState.waiting_for_reason)
 
 @router.message(CurrencyAdminState.waiting_for_reason)
 async def process_reason(message: Message, state: FSMContext, session: AsyncSession):
+    # 尝试删除用户发送的消息
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
     reason = message.text.strip()
+    
+    # 获取提示消息ID
+    data = await state.get_data()
+    prompt_message_id = data.get("prompt_message_id")
+
     if not reason:
-        await message.answer("❌ 原因不能为空。")
+        error_text = "❌ 原因不能为空。"
+        if prompt_message_id:
+            try:
+                await message.bot.edit_message_text(
+                    text=error_text,
+                    chat_id=message.chat.id,
+                    message_id=prompt_message_id
+                )
+            except:
+                await message.answer(error_text)
+        else:
+            await message.answer(error_text)
         return
         
-    data = await state.get_data()
     user_id = data["target_user_id"]
     amount = data["amount"]
     
@@ -155,14 +246,43 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
         )
         
         action = "增加" if amount > 0 else "扣除"
-        await message.answer(
-            f"✅ 操作成功！\n"
+        text = (
+            f"✅ *操作成功*\n"
             f"用户 ID: `{user_id}`\n"
             f"变动: {action} {abs(amount)} {CURRENCY_SYMBOL}\n"
-            f"原因: {reason}\n"
+            f"原因: {escape_markdown_v2(reason)}\n"
             f"最新余额: {new_balance} {CURRENCY_SYMBOL}"
         )
+        
+        kb = InlineKeyboardBuilder()
+        kb.button(text="🔙 返回面板", callback_data=BACK_TO_ADMIN_PANEL_BUTTON.callback_data)
+        
+        if prompt_message_id:
+            try:
+                await message.bot.edit_message_text(
+                    text=text,
+                    chat_id=message.chat.id,
+                    message_id=prompt_message_id,
+                    reply_markup=kb.as_markup(),
+                    parse_mode="MarkdownV2"
+                )
+            except Exception:
+                await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+        else:
+            await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
+            
     except Exception as e:
-        await message.answer(f"❌ 操作失败: {str(e)}")
+        error_text = f"❌ 操作失败: {str(e)}"
+        if prompt_message_id:
+            try:
+                await message.bot.edit_message_text(
+                    text=error_text,
+                    chat_id=message.chat.id,
+                    message_id=prompt_message_id
+                )
+            except:
+                await message.answer(error_text)
+        else:
+            await message.answer(error_text)
         
     await state.clear()
