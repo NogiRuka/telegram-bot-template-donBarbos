@@ -194,14 +194,13 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
                     message_id=prompt_message_id,
                     parse_mode="MarkdownV2"
                 )
-                # 创建异步任务在 5 秒后删除该消息
-                delete_message_after_delay(message.bot, 5, chat_id=message.chat.id, message_id=prompt_message_id)
+                asyncio.create_task(delete_message_later(message.chat.id, prompt_message_id, message.bot))
             except Exception:
-                 msg = await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
-                 delete_message_after_delay(msg, 5)
+                msg = await message.answer(text, parse_mode="MarkdownV2")
+                asyncio.create_task(delete_message_later(message.chat.id, msg.message_id, message.bot))
         else:
-             msg = await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
-             delete_message_after_delay(msg, 5)
+            msg = await message.answer(text, parse_mode="MarkdownV2")
+            asyncio.create_task(delete_message_later(message.chat.id, msg.message_id, message.bot))
 
     except Exception as e:
         await send_toast(message, f"❌ 操作失败: {escape_markdown_v2(str(e))}", delay = 5)
