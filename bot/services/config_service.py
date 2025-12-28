@@ -147,8 +147,8 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
     """
     try:
         # 自由注册开关优先
-        free_open_val = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
-        if free_open_val:
+        free_open = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
+        if free_open:
             return True
 
         # 无自由开关则按时间窗判断

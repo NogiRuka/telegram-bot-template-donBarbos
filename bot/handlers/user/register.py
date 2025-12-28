@@ -62,8 +62,7 @@ async def user_register(
     try:
         # 首先检查注册是否开放，避免不必要的用户ID获取
         if not await is_registration_open(session):
-            window_val = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
-            window = window_val if isinstance(window_val, dict) else {}
+            window = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW) or {}
             
             hint = "🚫 暂未开放注册"
             start_time = window.get("start_time")

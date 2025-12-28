@@ -78,7 +78,7 @@ async def toggle_free_registration(
     - None
     """
     current = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
-    new_val = not bool(current) if current is not None else True
+    new_val = not current
     await set_config(
         session,
         KEY_REGISTRATION_FREE_OPEN,
@@ -233,11 +233,8 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
     - tuple[str, InlineKeyboardMarkup]: (caption文本, 内联键盘)
     """
     logger.debug("🔍 [_build_reg_kb] 开始读取配置...")
-    free_open_val = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
-    free_open = bool(free_open_val) if free_open_val is not None else False
-
-    window_val = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
-    window = window_val if isinstance(window_val, dict) else {}
+    free_open = await get_config(session, KEY_REGISTRATION_FREE_OPEN) or False
+    window = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW) or {}
 
     start_time = window.get("start_time")
     duration = window.get("duration_minutes")

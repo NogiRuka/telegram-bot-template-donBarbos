@@ -482,8 +482,7 @@ async def admin_open_registration_command(message: Message, command: CommandObje
             operator_id=message.from_user.id
         )
         # 获取最新窗口配置
-        window_val = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
-        window = window_val if isinstance(window_val, dict) else {}
+        window = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW) or {}
         start = window.get("start_time") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         dur = window.get("duration_minutes")
 
@@ -491,8 +490,7 @@ async def admin_open_registration_command(message: Message, command: CommandObje
         text = "🟢 已配置注册时间窗\n"
         text += f"开始时间: {start}\n"
         text += f"持续分钟: {dur if dur is not None else '不限'}\n"
-        free_open_val = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
-        free_open = bool(free_open_val) if free_open_val is not None else False
+        free_open = await get_config(session, KEY_REGISTRATION_FREE_OPEN) or False
         text += f"自由注册: {'🟢 开启' if free_open else '🔴 关闭'}"
         await message.answer(text)
 
@@ -556,11 +554,9 @@ async def admin_registration_status_command(message: Message, session: AsyncSess
     """
     try:
         open_flag = await is_registration_open(session)
-        free_open_val = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
-        free_open = bool(free_open_val) if free_open_val is not None else False
+        free_open = await get_config(session, KEY_REGISTRATION_FREE_OPEN) or False
         
-        window_val = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
-        window = window_val if isinstance(window_val, dict) else {}
+        window = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW) or {}
         
         start = window.get("start_time")
         dur = window.get("duration_minutes")
