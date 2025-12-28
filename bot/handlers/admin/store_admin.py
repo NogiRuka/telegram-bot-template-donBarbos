@@ -38,6 +38,7 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
         )
     
     kb.adjust(1)
+    kb.row(InlineKeyboardButton(text=STORE_ADMIN_ADD_PRODUCT_LABEL, callback_data=STORE_ADMIN_ADD_PRODUCT_CALLBACK_DATA))
     kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
     text = (f"*{STORE_ADMIN_LABEL}*\n\n请选择要管理的商品 （🟢上架中 / 🔴已下架）")
     
@@ -161,6 +162,135 @@ async def process_price_update(message: Message, state: FSMContext, session: Asy
     await state.clear()
     
     await _refresh_product_view(message.from_user.id, product_id, session, main_msg)
+
+
+# ===== 添加商品流程 =====
+
+@router.callback_query(F.data == STORE_ADMIN_ADD_PRODUCT_CALLBACK_DATA)
+async def handle_add_product_start(callback: CallbackQuery, state: FSMContext):
+    """开始添加商品"""
+    await callback.answer()
+    await send_toast(callback, "📦 请输入商品名称:")
+    await state.set_state(StoreAddProductState.waiting_for_name)
+
+
+@router.message(StoreAddProductState.waiting_for_name)
+async def process_add_name(message: Message, state: FSMContext):
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    name = message.text.strip()
+    if not name:
+        await send_toast(message, "❌ 名称不能为空")
+        return
+
+    await state.update_data(name=name)
+    await send_toast(message, "💰 请输入商品价格 (整数):")
+    await state.set_state(StoreAddProductState.waiting_for_price)
+
+
+@router.message(StoreAddProductState.waiting_for_price)
+async def process_add_price(message: Message, state: FSMContext):
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    try:
+        price = int(message.text)
+        if price < 0:
+            raise ValueError
+    except ValueError:
+        await send_toast(message, "❌ 请输入有效的非负整数")
+        return
+
+    await state.update_data(price=price)
+    await send_toast(message, "📦 请输入商品库存 (-1 为无限):")
+    await state.set_state(StoreAddProductState.waiting_for_stock)
+
+
+@router.message(StoreAddProductState.waiting_for_stock)
+async def process_add_stock(message: Message, state: FSMContext):
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    try:
+        stock = int(message.text)
+    except ValueError:
+        await send_toast(message, "❌ 请输入有效的整数")
+        return
+
+    await state.update_data(stock=stock)
+    await send_toast(message, "📝 请输入商品描述:")
+    await state.set_state(StoreAddProductState.waiting_for_description)
+
+
+@router.message(StoreAddProductState.waiting_for_description)
+async def process_add_desc(message: Message, state: FSMContext):
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    desc = message.text.strip()
+    await state.update_data(description=desc)
+    
+    # 这里为了简化，直接要求输入分类，也可以做成按钮选择
+    await send_toast(message, "📂 请输入商品分类 (如: 会员, 道具):")
+    await state.set_state(StoreAddProductState.waiting_for_category)
+
+
+@router.message(StoreAddProductState.waiting_for_category)
+async def process_add_category(message: Message, state: FSMContext):
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    category = message.text.strip()
+    if not category:
+        category = "其他"
+
+    await state.update_data(category=category)
+    await send_toast(message, "⚡ 请输入动作类型 (如: none, retro_checkin):")
+    await state.set_state(StoreAddProductState.waiting_for_action_type)
+
+
+@router.message(StoreAddProductState.waiting_for_action_type)
+async def process_add_action_type(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    action_type = message.text.strip()
+    if not action_type:
+        action_type = "none"
+
+    data = await state.get_data()
+    
+    # 创建商品
+    product = await CurrencyService.create_product(
+        session=session,
+        name=data["name"],
+        price=data["price"],
+        stock=data["stock"],
+        description=data["description"],
+        category=data["category"],
+        action_type=action_type,
+        is_active=False  # 默认下架
+    )
+
+    await send_toast(message, f"✅ 商品 '{product.name}' 创建成功！(默认已下架)")
+    await state.clear()
+    
+    # 刷新并显示新商品详情
+    await _refresh_product_view(message.from_user.id, product.id, session, main_msg)
+
 
 @router.message(StoreAdminState.waiting_for_stock)
 async def process_stock_update(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):

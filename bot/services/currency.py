@@ -254,6 +254,31 @@ class CurrencyService:
         return user_ext.currency_balance
 
     @staticmethod
+    async def create_product(
+        session: AsyncSession,
+        name: str,
+        price: int,
+        stock: int,
+        description: str,
+        category: str,
+        action_type: str,
+        is_active: bool = False,
+    ) -> CurrencyProductModel:
+        """创建新商品"""
+        product = CurrencyProductModel(
+            name=name,
+            price=price,
+            stock=stock,
+            description=description,
+            category=category,
+            action_type=action_type,
+            is_active=is_active,
+        )
+        session.add(product)
+        await session.commit()
+        return product
+
+    @staticmethod
     async def get_products(session: AsyncSession, user_id: int | None = None, only_active: bool = True) -> list[CurrencyProductModel]:
         """获取商品列表
         
