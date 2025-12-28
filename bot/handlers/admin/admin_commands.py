@@ -620,7 +620,10 @@ async def admin_set_lines_notice_command(message: Message, command: CommandObjec
                 parse_mode="Markdown"
             )
         else:
-            await message.reply("ℹ️ 当前未设置服务须知。使用 `/admin_set_lines_notice <内容>` 设置。")
+            await message.reply(
+                "ℹ️ 当前未设置服务须知。使用 `/admin_set_lines_notice <内容>` 设置。",
+                parse_mode="Markdown"
+            )
         return
 
     content = command.args.strip()
