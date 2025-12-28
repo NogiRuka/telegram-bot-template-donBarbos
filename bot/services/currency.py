@@ -349,6 +349,15 @@ class CurrencyService:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def get_purchase_history(session: AsyncSession, limit: int = 10, offset: int = 0) -> list[CurrencyTransactionModel]:
+        """获取购买记录"""
+        stmt = select(CurrencyTransactionModel).where(
+            CurrencyTransactionModel.event_type == "purchase"
+        ).order_by(CurrencyTransactionModel.created_at.desc()).limit(limit).offset(offset)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @staticmethod
     async def purchase_product(session: AsyncSession, user_id: int, product_id: int) -> tuple[bool, str]:
         """购买商品
         
@@ -537,7 +546,7 @@ class CurrencyService:
                 "category": "group",
                 "action_type": "custom_title",
                 "description": "在群组中显示自定义头衔（7天体验）。",
-                "stock": 10,
+                "stock": 20,
                 "is_active": True,
             },
             {
@@ -546,7 +555,7 @@ class CurrencyService:
                 "price": 1000,
                 "category": "group",
                 "action_type": "custom_title",
-                "description": "在群组中显示自定义头衔（永久）。需要最高连续签到达到30天可见。",
+                "description": "在群组中显示自定义头衔（永久）。\n🎉 恭喜您连续签到30天解锁此隐藏商品！",
                 "stock": 10,
                 "is_active": True,
                 "visible_conditions": {"min_max_streak": 30},

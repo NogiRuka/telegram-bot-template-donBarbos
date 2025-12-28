@@ -113,6 +113,10 @@ STORE_ADMIN_TOGGLE_PREFIX = "admin:store:toggle:"
 STORE_ADMIN_ADD_PRODUCT_LABEL = "➕ 添加商品"
 STORE_ADMIN_ADD_PRODUCT_CALLBACK_DATA = "admin:store:add"
 
+# 购买记录
+STORE_ADMIN_HISTORY_LABEL = "📜 购买记录"
+STORE_ADMIN_HISTORY_CALLBACK_DATA = "admin:store:history"
+
 # 精粹管理
 CURRENCY_ADMIN_LABEL = "💎 精粹管理"
 CURRENCY_ADMIN_CALLBACK_DATA = "admin:currency"
