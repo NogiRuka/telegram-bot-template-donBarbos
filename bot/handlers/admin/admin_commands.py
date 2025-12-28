@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import (
     KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
     KEY_REGISTRATION_FREE_OPEN,
+    KEY_USER_LINES_NOTICE,
 )
 from bot.core.config import settings
 from bot.database.models import GroupConfigModel, GroupType, MessageModel, MessageSaveMode
@@ -96,6 +97,7 @@ async def admin_help_command(message: Message) -> None:
 • `/admin_broadcast <消息>` - 向所有群组广播消息
 • `/admin_maintenance` - 进入维护模式
 • `/admin_status` - 查看系统状态
+• `/admin_set_lines_notice <内容>` - 设置线路服务须知(支持Markdown)
 • `/admin_open_registration [开始时间ISO] [持续分钟]` - 开启注册并可配置时间窗
 • `/admin_close_registration` - 关闭注册
 • `/admin_registration_status` - 查看注册开关与时间窗
@@ -589,6 +591,59 @@ async def admin_open_free_registration_command(message: Message, session: AsyncS
         await message.answer("🟢 已开启自由注册")
     except SQLAlchemyError:
         await message.answer("🔴 开启自由注册失败")
+
+
+@router.message(Command("admin_set_lines_notice"))
+@require_admin_priv
+async def admin_set_lines_notice_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
+    """设置线路服务须知
+
+    功能说明:
+    - 设置显示在用户线路面板底部的服务须知内容
+    - 支持 Markdown 格式
+    - 传入 "clear" 或 "none" 可清空内容
+
+    输入参数:
+    - message: 文本消息对象
+    - command: 命令对象(包含参数)
+    - session: 异步数据库会话
+
+    返回值:
+    - None
+    """
+    if not command.args:
+        # 如果没有参数，查询当前内容
+        current_notice = await get_config(session, KEY_USER_LINES_NOTICE)
+        if current_notice:
+            await message.reply(
+                f"📝 *当前服务须知内容*:\n\n{current_notice}\n\n使用 `/admin_set_lines_notice <内容>` 修改",
+                parse_mode="Markdown"
+            )
+        else:
+            await message.reply("ℹ️ 当前未设置服务须知。使用 `/admin_set_lines_notice <内容>` 设置。")
+        return
+
+    content = command.args.strip()
+    
+    # 清空逻辑
+    if content.lower() in ("clear", "none", "null"):
+        content = ""
+        msg = "🗑️ 服务须知已清空"
+    else:
+        msg = "✅ 服务须知已更新"
+
+    try:
+        await set_config(
+            session,
+            KEY_USER_LINES_NOTICE,
+            content,
+            ConfigType.STRING,
+            operator_id=message.from_user.id
+        )
+        await message.reply(msg)
+    except Exception as e:
+        logger.exception(f"设置服务须知失败: {e}")
+        await message.reply("❌ 设置失败，请稍后重试")
 
 
 @router.message(Command("admin_close_free_registration"))

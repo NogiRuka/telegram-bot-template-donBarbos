@@ -66,6 +66,7 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     KEY_ADMIN_HITOKOTO_CATEGORIES: (["d", "i"], ConfigType.LIST),
     # KEY_USER_LINES_INFO 的初始化逻辑比较特殊（依赖环境变量），保留在 config_service 中处理，或可在此定义空值
     KEY_USER_LINES_INFO: (None, ConfigType.JSON),
+    KEY_USER_LINES_NOTICE: ("", ConfigType.STRING),
 }
 
 # 用户功能开关映射 - 用于用户功能管理
