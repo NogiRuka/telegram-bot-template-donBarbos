@@ -65,13 +65,12 @@ async def user_info(
 
         lines.extend([
             f"🎬 Emby 账号：`{escape_markdown_v2(emby_user.name)}`",
-            f"🆔 用户 ID：`{escape_markdown_v2(emby_user.emby_user_id)}`",
             f"📡 账号状态：{status_str}",
             f"📱 设备上限：{emby_user.max_devices} 台",
             f"🗓 创建时间：{escape_markdown_v2(e_created)}",
             f"🔐 最近登录：{escape_markdown_v2(e_last_login)}",
             f"🎥 最近活动：{escape_markdown_v2(e_last_activity)}",
-            f"||部分信息隔天更新||",
+            f"||🕊 部分信息隔天更新||",
         ])
     elif ext and ext.emby_user_id:
         lines.append(f"⚠️ 已绑定 ID: `{escape_markdown_v2(ext.emby_user_id)}`")

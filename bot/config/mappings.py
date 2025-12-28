@@ -67,7 +67,7 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     # KEY_USER_LINES_INFO 的初始化逻辑比较特殊（依赖环境变量），保留在 config_service 中处理，或可在此定义空值
     KEY_USER_LINES_INFO: (None, ConfigType.JSON),
     KEY_USER_LINES_NOTICE: (
-        "关于Emby：[Emby百科](https://emby.wiki/)\n"
+        "关于Emby：[Emby百科](https://emby.wiki)\n"
         "任何问题请通过[频道](https://t.me/lustfulboy_channel?direct)私信\n"
         "注意事项：\n"
         "🚫 泄露服务器地址\n"
