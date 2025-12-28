@@ -161,7 +161,7 @@ def parse_formatted_datetime(s: str | None) -> datetime.datetime | None:
         return None
     try:
         # 解析为 naive datetime (无时区信息)
-        naive_dt = datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
+        naive_dt = datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
         # 添加应用时区信息
         app_tz = get_app_timezone()
         return naive_dt.replace(tzinfo=app_tz)
