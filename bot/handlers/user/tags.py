@@ -19,7 +19,7 @@ from bot.services.main_message import MainMessageService
 from bot.services.emby_service import update_user_blocked_tags
 from bot.utils.permissions import require_emby_account, require_user_feature
 from bot.utils.text import escape_markdown_v2
-from bot.utils.message import send_temp_message
+from bot.utils.message import send_toast
 
 router = Router(name="user_tags")
 
@@ -184,7 +184,7 @@ async def process_custom_tags(
     if success:
         # 刷新页面并提示成功
         await show_tags_menu(session, main_msg, uid)
-        await send_temp_message(message, "✅ 屏蔽标签设置成功", delay=5)
+        await send_toast(message, "✅ 屏蔽标签设置成功", delay=5)
     else:
         err_esc = escape_markdown_v2(str(err))
         await main_msg.render(uid, f"❌ 操作失败: {err_esc}", get_user_tags_keyboard())
