@@ -292,7 +292,7 @@ async def handle_register_input(
             caption = (
                 f"✅ *注册成功*\n\n"
                 f"📛 Emby 用户名：`{name_esc}`\n" 
-                f"🔑 Emby 密码：||`{pass_esc}`||\n\n"
+                f"🔑 Emby 密码：||{pass_esc}||\n\n"
                 f"请妥善保管您的账号信息"
             )
             await main_msg.render(uid, caption, get_account_center_keyboard(has_emby_account=True))
