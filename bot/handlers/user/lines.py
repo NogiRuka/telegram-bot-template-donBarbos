@@ -82,6 +82,12 @@ async def user_lines(
             "📝 *服务须知*",
             escape_markdown_v2(notice),
         ])
+    else:
+        lines_text.extend([
+            "",
+            "📝 *服务须知*",
+            f"{escape_markdown_v2('关于Emby：')}[{escape_markdown_v2('Emby百科')}](https://emby.wiki/)",
+        ])
     
     caption = "\n".join(lines_text)
     
