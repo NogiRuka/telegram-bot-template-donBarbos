@@ -75,7 +75,7 @@ async def user_register(
                     # 检查开始时间是否已经过去
                     if dt_start > current_time:
                         formatted_start = format_datetime(dt_start)
-                        hint += f"\n开始: {formatted_start}"
+                        hint += f"\n\n开始: {formatted_start}"
 
                         if dur:
                             end_dt = dt_start + timedelta(minutes=int(dur))
@@ -90,12 +90,12 @@ async def user_register(
                         hint += f" ({get_friendly_timezone_name(settings.TIMEZONE)})"
                 else:
                     # 无法解析时间，直接显示原始字符串
-                    hint += f"\n开始: {start_time}"
+                    hint += f"\n\n开始: {start_time}"
                     if dur:
                         hint += f"\n时长: {dur} 分钟"
             elif dur:
                 # 只有持续时间，没有开始时间
-                hint += f"\n时长: {dur} 分钟"
+                hint += f"\n\n时长: {dur} 分钟"
 
             return await callback.answer(safe_alert_text(hint), show_alert=True)
 
