@@ -57,6 +57,7 @@ async def user_register(
     返回值:
     - None
     """
+    uid = callback.from_user.id if callback.from_user else None
     try:
         # 首先检查注册是否开放，避免不必要的用户ID获取
         if not await is_registration_open(session):
@@ -98,7 +99,6 @@ async def user_register(
             return await callback.answer(safe_alert_text(hint), show_alert=True)
 
         # 注册开放，再获取用户ID进行后续检查
-        uid = callback.from_user.id if callback.from_user else None
         if not uid:
             return await callback.answer("🔴 无法获取用户ID", show_alert=True)
 
