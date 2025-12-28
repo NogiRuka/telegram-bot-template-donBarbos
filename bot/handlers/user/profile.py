@@ -77,7 +77,7 @@ async def user_profile(
         "",
         "*账户状态*",
         f"🌐　状态：{status_text}",
-        f"💎　Premium：{premium_str}",
+        f"💎　会员：{premium_str}",
         f"💰　{CURRENCY_NAME}：{balance} {CURRENCY_SYMBOL}",
         "",
         "*签到数据*",
