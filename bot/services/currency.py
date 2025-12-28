@@ -279,22 +279,17 @@ class CurrencyService:
         return product
 
     @staticmethod
-    async def get_products(session: AsyncSession, user_id: int | None = None, only_active: bool = True, exclude_system: bool = True) -> list[CurrencyProductModel]:
+    async def get_products(session: AsyncSession, user_id: int | None = None, only_active: bool = True) -> list[CurrencyProductModel]:
         """获取商品列表
         
         参数:
         - session: 数据库会话
         - user_id: 用户ID (可选, 用于可见性检查)
         - only_active: 仅获取上架商品
-        - exclude_system: 是否排除系统/功能型商品 (如修改头像)
         """
         stmt = select(CurrencyProductModel)
         if only_active:
             stmt = stmt.where(CurrencyProductModel.is_active.is_(True))
-            
-        if exclude_system:
-            # 排除需要在特定入口使用的功能型商品 (如修改头像，已集成到账号中心)
-            stmt = stmt.where(CurrencyProductModel.action_type != "emby_image")
         
         stmt = stmt.order_by(CurrencyProductModel.price)
         result = await session.execute(stmt)
