@@ -103,6 +103,8 @@ ADMIN_NEW_ITEM_NOTIFICATION_CALLBACK_DATA = "admin:notify"
 # 文案管理
 COPYWRITING_LABEL = "📝 文案管理"
 ADMIN_COPYWRITING_CALLBACK_DATA = "admin:copywriting"
+BACK_TO_COPYWRITING_LABEL = "🔙 返回文案列表"
+
 
 # 商店管理
 STORE_ADMIN_LABEL = "🏪 商店管理"

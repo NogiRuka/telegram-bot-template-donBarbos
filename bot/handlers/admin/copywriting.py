@@ -10,7 +10,7 @@ from bot.config.constants import (
     KEY_ADMIN_ANNOUNCEMENT_TEXT,
     KEY_USER_LINES_NOTICE
 )
-from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON
+from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON, BACK_TO_COPYWRITING_BUTTON
 from bot.keyboards.inline.constants import ADMIN_COPYWRITING_CALLBACK_DATA, COPYWRITING_LABEL
 from bot.services.config_service import get_config, set_config
 from bot.services.main_message import MainMessageService
@@ -30,12 +30,12 @@ COPYWRITING_TYPES = {
     "announcement": {
         "label": "📢 公告消息",
         "key": KEY_ADMIN_ANNOUNCEMENT_TEXT,
-        "description": "首页公告内容，支持 Markdown。"
+        "description": "首页公告内容，支持 MarkdownV2。"
     },
     "notice": {
         "label": "📝 服务须知",
         "key": KEY_USER_LINES_NOTICE,
-        "description": "线路信息面板底部的服务须知，支持 Markdown。"
+        "description": "线路信息面板底部的服务须知，支持 MarkdownV2。"
     }
 }
 
@@ -90,7 +90,7 @@ async def view_copywriting(callback: CallbackQuery, session: AsyncSession, main_
         InlineKeyboardButton(text="✏️ 编辑内容", callback_data=f"admin:copywriting:edit:{type_code}"),
         InlineKeyboardButton(text="🗑️ 清空内容", callback_data=f"admin:copywriting:clear:{type_code}"),
     )
-    kb.row(InlineKeyboardButton(text="🔙 返回文案列表", callback_data=ADMIN_COPYWRITING_CALLBACK_DATA))
+    kb.row(BACK_TO_COPYWRITING_BUTTON)
     kb.row(BACK_TO_HOME_BUTTON)
     
     await main_msg.update_on_callback(callback, caption, kb.as_markup())
@@ -189,7 +189,7 @@ async def handle_copywriting_text(
         InlineKeyboardButton(text="✏️ 编辑内容", callback_data=f"admin:copywriting:edit:{type_code}"),
         InlineKeyboardButton(text="🗑️ 清空内容", callback_data=f"admin:copywriting:clear:{type_code}"),
     )
-    kb.row(InlineKeyboardButton(text="🔙 返回文案列表", callback_data=ADMIN_COPYWRITING_CALLBACK_DATA))
+    kb.row(BACK_TO_COPYWRITING_BUTTON)
     kb.row(BACK_TO_HOME_BUTTON)
 
     if message.from_user:
