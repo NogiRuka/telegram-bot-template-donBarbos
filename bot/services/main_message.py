@@ -48,7 +48,7 @@ class MainMessageService:
 
     def remember(self, user_id: int, msg: types.Message) -> None:
         """记录主消息"""
-        logger.debug(f"🔍 remember: user_id={user_id}, chat_id={msg.chat.id}, message_id={msg.message_id}")
+        # logger.debug(f"🔍 remember: user_id={user_id}, chat_id={msg.chat.id}, message_id={msg.message_id}")
         self._messages[user_id] = (msg.chat.id, msg.message_id)
 
     async def _send_new(
@@ -131,75 +131,6 @@ class MainMessageService:
         return await self._send_new(user_id, caption, kb, image_path)
 
 
-    async def update(
-        self,
-        user_id: int,
-        caption: str,
-        kb: types.InlineKeyboardMarkup,
-        image_path: str | None = None,
-    ) -> bool:
-        """
-        主消息固定为：photo + caption (兼容文本)
-        """
-        ids = self.get_main_msg(user_id)
-        logger.debug(f"🔍 update: user_id={user_id}, ids={ids}")
-
-        async def _send_new():
-            try:
-                if image_path:
-                    file = FSInputFile(image_path)
-                    msg = await self.bot.send_photo(
-                        chat_id=user_id,
-                        photo=file,
-                        caption=caption,
-                        reply_markup=kb,
-                        parse_mode="MarkdownV2",
-                    )
-                else:
-                    msg = await self.bot.send_message(
-                        chat_id=user_id,
-                        text=caption,
-                        reply_markup=kb,
-                        parse_mode="MarkdownV2",
-                    )
-                self._messages[user_id] = (msg.chat.id, msg.message_id)
-                return True
-            except Exception as e:
-                logger.error(f"❌ update: 发送主消息失败: {e}")
-                return False
-
-        # ① 没有主消息 → 直接发
-        if not ids:
-            logger.warning("⚠️ update: 未找到主消息，直接发送")
-            return await _send_new()
-
-        chat_id, message_id = ids
-
-        # ② 优先 edit caption
-        try:
-            logger.debug("🔍 update: edit_message_caption")
-            await self.bot.edit_message_caption(
-                chat_id=chat_id,
-                message_id=message_id,
-                caption=caption,
-                reply_markup=kb,
-                parse_mode="MarkdownV2",
-            )
-            return True
-        except Exception as e:
-            logger.warning(f"⚠️ update: edit 失败，重发主消息: {e}")
-
-        # ③ edit 失败 → 删除旧的
-        try:
-            await self.bot.delete_message(chat_id, message_id)
-        except Exception:
-            pass
-
-        # ④ 重发
-        return await _send_new()
-
-
-
     async def delete_input(self, input_message: types.Message) -> None:
         """删除用户输入消息
 
@@ -263,7 +194,6 @@ class MainMessageService:
             return False
 
         # ⭐ 关键修复点：内存丢失，但用户点了旧主消息
-        if not self.get(uid) and msg is not None:
-            self.remember(uid, msg)
+        self.remember(uid, msg)
 
         return await self.render(uid, caption, kb)
