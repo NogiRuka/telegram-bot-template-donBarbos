@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
+from sqlalchemy.exc import IntegrityError
 from bot.database.models import (
     GroupConfigModel,
     GroupType,
@@ -27,6 +28,8 @@ async def get_or_create_group_config(
 
     功能说明：
     - 尝试获取指定群组的配置，若不存在则按默认值创建并持久化
+    - 如果存在已软删除的记录，则自动恢复
+    - 处理并发插入导致的唯一键冲突
 
     输入参数：
     - session: 异步数据库会话
@@ -39,16 +42,27 @@ async def get_or_create_group_config(
     返回值：
     - GroupConfigModel: 群组配置对象
     """
+    # 1. 尝试查询现有的（包括已删除的）
     result = await session.execute(
-        select(GroupConfigModel).where(
-            GroupConfigModel.chat_id == chat_id,
-            not GroupConfigModel.is_deleted,
-        )
+        select(GroupConfigModel).where(GroupConfigModel.chat_id == chat_id)
     )
     config = result.scalar_one_or_none()
+
     if config:
+        # 如果存在但已删除，则恢复
+        if config.is_deleted:
+            config.is_deleted = False
+            config.deleted_at = None
+            config.deleted_by = None
+            # 更新基础信息
+            config.chat_title = chat_title
+            config.chat_username = chat_username
+            config.group_type = group_type
+            config.updated_by = configured_by_user_id
+            await session.commit()
         return config
 
+    # 2. 不存在，创建新的
     config = GroupConfigModel.create_for_group(
         chat_id=chat_id,
         chat_title=chat_title,
@@ -57,7 +71,22 @@ async def get_or_create_group_config(
         configured_by_user_id=configured_by_user_id,
     )
     session.add(config)
-    await session.commit()
+    
+    try:
+        await session.commit()
+    except IntegrityError:
+        # 3. 处理并发插入冲突
+        await session.rollback()
+        # 再次查询，此时应该能查到
+        result = await session.execute(
+            select(GroupConfigModel).where(GroupConfigModel.chat_id == chat_id)
+        )
+        config = result.scalar_one_or_none()
+        if config:
+            return config
+        # 如果还是没有，说明发生了其他类型的完整性错误，抛出异常
+        raise
+
     return config
 
 
