@@ -131,12 +131,7 @@ async def handle_avatar_photo(
         emby_user_model = result.scalar_one_or_none()
 
         if emby_user_model:
-            # 更新 extra_data
-            extra_data = dict(emby_user_model.extra_data) if emby_user_model.extra_data else {}
-            extra_data["telegram_avatar_file_id"] = file_id
-            emby_user_model.extra_data = extra_data
-            
-            # 记录历史
+            # 记录历史 (保存修改前的快照)
             history = EmbyUserHistoryModel(
                 emby_user_id=emby_user_model.emby_user_id,
                 name=emby_user_model.name,
@@ -145,12 +140,26 @@ async def handle_avatar_photo(
                 last_login_date=emby_user_model.last_login_date,
                 last_activity_date=emby_user_model.last_activity_date,
                 user_dto=emby_user_model.user_dto,
-                extra_data=extra_data,
+                extra_data=emby_user_model.extra_data,  # 保存旧的 extra_data
                 action="update_avatar",
-                created_by=message.from_user.id,
-                updated_by=message.from_user.id,
+                created_at=emby_user_model.created_at,
+                updated_at=emby_user_model.updated_at,
+                created_by=emby_user_model.created_by,
+                updated_by=emby_user_model.updated_by,
+                is_deleted=emby_user_model.is_deleted,
+                deleted_at=emby_user_model.deleted_at,
+                deleted_by=emby_user_model.deleted_by,
+                remark=emby_user_model.remark,
             )
             session.add(history)
+
+            # 更新 extra_data 和 remark
+            extra_data = dict(emby_user_model.extra_data) if emby_user_model.extra_data else {}
+            extra_data["telegram_avatar_file_id"] = file_id
+            emby_user_model.extra_data = extra_data
+            emby_user_model.remark = "用户修改头像"
+            emby_user_model.updated_by = message.from_user.id
+            
             session.add(emby_user_model)
             await session.commit()
 
