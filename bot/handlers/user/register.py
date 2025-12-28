@@ -275,7 +275,7 @@ async def handle_register_input(
             return
 
         # 更新界面提示正在处理中
-        await main_msg.render(uid, "⏳ 正在创建账号，请稍候...", get_register_input_keyboard())
+        await main_msg.render(uid, "⏳ 正在创建账号，请稍候\\.\\.\\.", get_register_input_keyboard())
 
         # 创建用户
         ok, details, err = await create_and_bind_emby_user(session, uid, name, password)
@@ -315,7 +315,11 @@ async def handle_register_input(
             else:
                 # 其他错误，保持状态清除
                 await state.clear()
-                caption = f"❌ 注册失败\n\n{err_msg}"
+                from bot.utils.text import escape_markdown_v2, safe_message_text
+                # 限制错误信息长度，防止超出 caption 限制 (1024)
+                safe_err = safe_message_text(err_msg, max_len=900)
+                err_esc = escape_markdown_v2(safe_err)
+                caption = f"❌ 注册失败\n\n{err_esc}"
                 await main_msg.render(uid, caption, get_account_center_keyboard(has_emby_account=False))
 
     except Exception as e:
