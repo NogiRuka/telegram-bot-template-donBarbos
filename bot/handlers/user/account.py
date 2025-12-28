@@ -40,4 +40,4 @@ async def show_account_center(
         user_has_emby = False
 
     kb = get_account_center_keyboard(user_has_emby)
-    await main_msg.update_on_callback(callback, ACCOUNT_CENTER_LABEL, kb)
+    await main_msg.update_on_callback(callback, f"*{ACCOUNT_CENTER_LABEL}*", kb)
