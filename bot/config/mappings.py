@@ -11,29 +11,7 @@ from typing import Any
 
 from .constants import *
 from bot.database.models.config import ConfigType
-from bot.keyboards.inline.constants import (
-    ACCOUNT_CENTER_LABEL,
-    ADMIN_FEATURES_SWITCH_LABEL,
-    ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
-    COPYWRITING_LABEL,
-    GROUPS_LABEL,
-    HITOKOTO_LABEL,
-    OPEN_REGISTRATION_LABEL,
-    PROFILE_LABEL,
-    ROBOT_SWITCH_LABEL,
-    STATS_LABEL,
-    STORE_ADMIN_LABEL,
-    CURRENCY_ADMIN_LABEL,
-    DAILY_CHECKIN_LABEL,
-    ESSENCE_STORE_LABEL,
-    USER_DEVICES_LABEL,
-    USER_FEATURES_SWITCH_LABEL,
-    USER_INFO_LABEL,
-    USER_LINES_LABEL,
-    USER_PASSWORD_LABEL,
-    USER_REGISTER_LABEL,
-    USER_TAGS_LABEL,
-)
+from bot.keyboards.inline.constants import *
 
 # 默认配置值定义
 # 格式: Key -> (Value, ConfigType)
@@ -41,14 +19,15 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     # 基础开关配置 (布尔值)
     KEY_BOT_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
     KEY_USER_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
+    KEY_USER_PROFILE: (True, ConfigType.BOOLEAN),
+    KEY_USER_ACCOUNT: (True, ConfigType.BOOLEAN),
     KEY_USER_REGISTER: (True, ConfigType.BOOLEAN),
-    KEY_USER_PASSWORD: (True, ConfigType.BOOLEAN),
     KEY_USER_INFO: (True, ConfigType.BOOLEAN),
     KEY_USER_LINES: (True, ConfigType.BOOLEAN),
     KEY_USER_DEVICES: (True, ConfigType.BOOLEAN),
-    KEY_USER_PROFILE: (True, ConfigType.BOOLEAN),
-    KEY_USER_ACCOUNT: (True, ConfigType.BOOLEAN),
     KEY_USER_TAGS: (True, ConfigType.BOOLEAN),
+    KEY_USER_AVATAR: (True, ConfigType.BOOLEAN),
+    KEY_USER_PASSWORD: (True, ConfigType.BOOLEAN),
     KEY_USER_STORE: (True, ConfigType.BOOLEAN),
     KEY_USER_CHECKIN: (True, ConfigType.BOOLEAN),
     KEY_ADMIN_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
@@ -90,8 +69,9 @@ USER_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "info": (KEY_USER_INFO, USER_INFO_LABEL),
     "lines": (KEY_USER_LINES, USER_LINES_LABEL),
     "devices": (KEY_USER_DEVICES, USER_DEVICES_LABEL),
-    "password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
     "tags": (KEY_USER_TAGS, USER_TAGS_LABEL),
+    "avatar": (KEY_USER_AVATAR, USER_AVATAR_LABEL),
+    "password": (KEY_USER_PASSWORD, USER_PASSWORD_LABEL),
     "store": (KEY_USER_STORE, ESSENCE_STORE_LABEL),
     "checkin": (KEY_USER_CHECKIN, DAILY_CHECKIN_LABEL),
 }

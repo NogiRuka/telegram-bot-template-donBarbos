@@ -39,14 +39,6 @@ USER_LINES_CALLBACK_DATA = "user:lines"
 USER_DEVICES_LABEL = "📱 设备管理"
 USER_DEVICES_CALLBACK_DATA = "user:devices"
 
-# 修改密码
-USER_PASSWORD_LABEL = "🔐 修改密码"
-USER_PASSWORD_CALLBACK_DATA = "user:password"
-
-# 修改头像
-USER_AVATAR_LABEL = "🖼️ 修改头像"
-USER_AVATAR_CALLBACK_DATA = "user:avatar"
-
 # 标签屏蔽
 USER_TAGS_LABEL = "🚫 标签屏蔽"
 USER_TAGS_CALLBACK_DATA = "user:tags"
@@ -57,13 +49,19 @@ TAGS_CLEAR_CALLBACK_DATA = "user:tags:clear"
 TAGS_CANCEL_EDIT_LABEL = "❌ 取消编辑"
 TAGS_CANCEL_EDIT_CALLBACK_DATA = "user:tags:cancel_edit"
 
+# 修改头像
+USER_AVATAR_LABEL = "🖼️ 修改头像"
+USER_AVATAR_CALLBACK_DATA = "user:avatar"
+
+# 修改密码
+USER_PASSWORD_LABEL = "🔐 修改密码"
+USER_PASSWORD_CALLBACK_DATA = "user:password"
+CANCEL_PASSWORD_CHANGE_LABEL = "❌ 取消修改"
+CANCEL_PASSWORD_CHANGE_CALLBACK_DATA = "user:cancel_password"
+
 # 返回账号中心
 BACK_TO_ACCOUNT_LABEL = "↩️ 返回账号中心"
 BACK_TO_ACCOUNT_CALLBACK_DATA = "user:account"
-
-# 取消修改密码
-CANCEL_PASSWORD_CHANGE_LABEL = "❌ 取消修改"
-CANCEL_PASSWORD_CHANGE_CALLBACK_DATA = "user:cancel_password"
 
 # 签到与商店
 DAILY_CHECKIN_LABEL = f"{CURRENCY_SYMBOL} 每日签到"

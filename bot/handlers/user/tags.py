@@ -58,12 +58,12 @@ async def show_tags_menu(
     blocked_tags = policy.get("BlockedTags", [])
     
     if not blocked_tags:
-        tags_display = "\\(无\\)"
+        tags_display = "（无）"
     else:
         tags_display = ", ".join(escape_markdown_v2(t) for t in blocked_tags)
 
     text = (
-        f"*{escape_markdown_v2(USER_TAGS_LABEL)}*\n\n"
+        f"*{USER_TAGS_LABEL}*\n\n"
         "您可以通过设置屏蔽标签来隐藏不想看到的内容。\n"
         "例如屏蔽 'AV' 标签可以隐藏相关成人内容。\n\n"
         f"📋 *当前屏蔽标签:*\n{tags_display}"
