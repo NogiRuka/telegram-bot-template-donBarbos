@@ -349,6 +349,16 @@ class CurrencyService:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def get_product_by_action(session: AsyncSession, action_type: str) -> CurrencyProductModel | None:
+        """根据行为类型获取商品"""
+        stmt = select(CurrencyProductModel).where(
+            CurrencyProductModel.action_type == action_type,
+            CurrencyProductModel.is_active.is_(True)
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def get_purchase_history(session: AsyncSession, limit: int = 10, offset: int = 0) -> list[CurrencyTransactionModel]:
         """获取购买记录"""
         stmt = select(CurrencyTransactionModel).where(
@@ -427,7 +437,7 @@ class CurrencyService:
                 return await CurrencyService._try_retro_checkin(session, user_id)
                 
             elif product.action_type == "emby_image":
-                return True, "ℹ️ 请联系频道管理员并提供您的图片以修改 Emby 头像。"
+                return False, "ℹ️ 请前往 [账号中心] -> [🖼️ 修改头像] 使用此功能。"
                 
             elif product.action_type == "custom_title":
                 return True, "ℹ️ 请联系频道管理员设置您的自定义群组头衔。"

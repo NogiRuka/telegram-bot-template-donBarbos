@@ -9,9 +9,11 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.constants import CURRENCY_SYMBOL
 from bot.keyboards.inline.buttons import BACK_TO_ACCOUNT_BUTTON
 from bot.keyboards.inline.constants import USER_AVATAR_CALLBACK_DATA, ACCOUNT_CENTER_LABEL
 from bot.keyboards.inline.user import get_account_center_keyboard
+from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend, has_emby_account
 from bot.utils.emby import get_emby_client
@@ -42,8 +44,24 @@ async def user_avatar(
         
     _user, ext = await get_user_and_extend(session, uid)
     
+    # 获取商品价格
+    product = await CurrencyService.get_product_by_action(session, "emby_image")
+    price = product.price if product else 0
+    
+    # 检查余额
+    balance = await CurrencyService.get_user_balance(session, uid)
+    if price > 0 and balance < price:
+        await callback.answer(
+            f"🔴 余额不足，修改头像需要 {price} {CURRENCY_SYMBOL}\n"
+            f"当前余额: {balance} {CURRENCY_SYMBOL}", 
+            show_alert=True
+        )
+        return
+    
     caption = (
         "🖼️ *修改 Emby 头像*\n\n"
+        f"本次修改将消耗 *{price} {CURRENCY_SYMBOL}*\n"
+        f"当前余额: {balance} {CURRENCY_SYMBOL}\n\n"
         "请直接发送一张图片作为新的头像。\n"
         "提示：建议使用正方形图片，支持 JPG/PNG 格式。"
     )
@@ -83,6 +101,17 @@ async def handle_avatar_photo(
     file_id = photo.file_id
     
     try:
+        # 获取商品价格并再次检查余额
+        product = await CurrencyService.get_product_by_action(session, "emby_image")
+        price = product.price if product else 0
+        
+        balance = await CurrencyService.get_user_balance(session, message.from_user.id)
+        if price > 0 and balance < price:
+            await message.answer(f"🔴 余额不足，无法完成修改")
+            await state.clear()
+            await main_msg.delete_input(message)
+            return
+
         # 下载图片
         file_io = io.BytesIO()
         await bot.download(file_id, destination=file_io)
@@ -99,8 +128,19 @@ async def handle_avatar_photo(
             
         await client.upload_user_image(emby_user_id, b64_data)
         
+        # 扣除费用
+        if price > 0:
+            await CurrencyService.add_currency(
+                session,
+                message.from_user.id,
+                -price,
+                "emby_image",
+                "修改 Emby 头像",
+                meta={"product_id": product.id if product else None}
+            )
+        
         # 成功提示
-        success_msg = await message.answer("✅ 头像修改成功！")
+        success_msg = await message.answer(f"✅ 头像修改成功！\n已扣除 {price} {CURRENCY_SYMBOL}")
         delete_message_after_delay(success_msg, 5)
         
         # 清理状态
