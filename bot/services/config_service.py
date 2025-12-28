@@ -345,6 +345,24 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
     if current_categories is None:
         await set_config(session, KEY_ADMIN_HITOKOTO_CATEGORIES, None, ConfigType.LIST, default_value=["d", "i"])
 
+    # 初始化线路信息 (从环境变量迁移)
+    from bot.config import KEY_LINES_INFO
+    from bot.core.config import settings
+    
+    current_lines = await get_config(session, KEY_LINES_INFO)
+    if current_lines is None and settings.EMBY_BASE_URL:
+        # 如果数据库没有线路信息，但环境变量有 EMBY_BASE_URL，则将其初始化到数据库
+        # 注意：这里我们仅使用 BASE_URL，端口解析逻辑已经在 handler 中处理
+        # 或者为了更明确，我们可以构建一个字典存入
+        # 暂时简单存入 URL 字符串
+        await set_config(
+            session, 
+            KEY_LINES_INFO, 
+            settings.EMBY_BASE_URL, 
+            ConfigType.STRING, 
+            default_value=settings.EMBY_BASE_URL
+        )
+
 
 def _serialize_value(ctype: ConfigType, value: Any) -> str | None:
     """序列化配置值
