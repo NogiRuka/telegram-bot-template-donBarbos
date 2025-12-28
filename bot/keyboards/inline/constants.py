@@ -100,9 +100,9 @@ HITOKOTO_CALLBACK_DATA = "admin:hitokoto"
 ADMIN_NEW_ITEM_NOTIFICATION_LABEL = "🎬 新片通知"
 ADMIN_NEW_ITEM_NOTIFICATION_CALLBACK_DATA = "admin:notify"
 
-# 公告管理
-ANNOUNCEMENT_LABEL = "📝 文案管理"
-ADMIN_ANNOUNCEMENT_CALLBACK_DATA = "admin:announcement"
+# 文案管理
+COPYWRITING_LABEL = "📝 文案管理"
+ADMIN_COPYWRITING_CALLBACK_DATA = "admin:copywriting"
 
 # 商店管理
 STORE_ADMIN_LABEL = "🏪 商店管理"

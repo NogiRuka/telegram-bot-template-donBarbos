@@ -15,7 +15,7 @@ from bot.keyboards.inline.constants import (
     ACCOUNT_CENTER_LABEL,
     ADMIN_FEATURES_SWITCH_LABEL,
     ADMIN_NEW_ITEM_NOTIFICATION_LABEL,
-    ANNOUNCEMENT_LABEL,
+    COPYWRITING_LABEL,
     GROUPS_LABEL,
     HITOKOTO_LABEL,
     OPEN_REGISTRATION_LABEL,
@@ -104,7 +104,7 @@ ADMIN_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "hitokoto": (KEY_ADMIN_HITOKOTO, HITOKOTO_LABEL),
     "open_registration": (KEY_ADMIN_OPEN_REGISTRATION, OPEN_REGISTRATION_LABEL),
     "new_item_notification": (KEY_ADMIN_NEW_ITEM_NOTIFICATION, ADMIN_NEW_ITEM_NOTIFICATION_LABEL),
-    "announcement": (KEY_ADMIN_ANNOUNCEMENT, ANNOUNCEMENT_LABEL),
+    "copywriting": (KEY_ADMIN_ANNOUNCEMENT, COPYWRITING_LABEL),
     "store": (KEY_ADMIN_STORE, STORE_ADMIN_LABEL),
     "currency": (KEY_ADMIN_CURRENCY, CURRENCY_ADMIN_LABEL),
 }
@@ -116,7 +116,7 @@ ADMIN_PANEL_VISIBLE_FEATURES: list[str] = [
     "hitokoto",
     "open_registration",
     "new_item_notification",
-    "announcement",
+    "copywriting",
     "store",
     "currency",
 ]
