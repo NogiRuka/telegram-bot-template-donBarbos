@@ -35,7 +35,7 @@ router = Router(name="store_admin")
 @router.callback_query(F.data == STORE_ADMIN_CALLBACK_DATA)
 async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """商店管理 - 商品列表"""
-    products = await CurrencyService.get_products(session, only_active=False)
+    products = await CurrencyService.get_products(session, only_active=False, exclude_system=False)
     
     kb = InlineKeyboardBuilder()
     for product in products:
