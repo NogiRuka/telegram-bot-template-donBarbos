@@ -20,7 +20,6 @@ class CurrencyProductModel(Base, BasicAuditMixin):
     - price: 价格
     - category: 分类 (tools, emby, group)
     - action_type: 行为类型 (retro_checkin, emby_image, custom_title)
-    - reward_value: 实际效果参数 (JSON)
     - stock: 库存 (-1表示无限)
     - visible_conditions: 可见条件 (JSON)
     - purchase_conditions: 购买条件 (JSON)
@@ -42,8 +41,6 @@ class CurrencyProductModel(Base, BasicAuditMixin):
     category: Mapped[str] = mapped_column(String(32), index=True, nullable=False, comment="分类")
     
     action_type: Mapped[str] = mapped_column(String(32), index=True, nullable=False, comment="行为类型")
-    
-    reward_value: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True, comment="实际效果参数")
     
     stock: Mapped[int] = mapped_column(Integer, default=-1, server_default=text("-1"), comment="库存")
     
