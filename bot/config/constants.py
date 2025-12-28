@@ -39,5 +39,8 @@ KEY_REGISTRATION_FREE_OPEN = "registration.free_open"
 KEY_ADMIN_OPEN_REGISTRATION_WINDOW = "admin.open_registration.window"
 KEY_ADMIN_HITOKOTO_CATEGORIES = "admin.hitokoto.categories"
 
+# 线路信息
+KEY_LINES_INFO = "lines.info"
+
 # 公告内容
 KEY_ANNOUNCEMENT_TEXT = "announcement.text"
