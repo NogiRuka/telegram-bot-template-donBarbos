@@ -1,7 +1,7 @@
 from aiogram import Router
 
 from .admin_commands import router as admin_commands_router
-from .announcement import router as admin_announcement_router
+from .copywriting import router as admin_copywriting_router
 from .groups import router as admin_groups_router
 from .hitokoto import router as admin_hitokoto_router
 from .home import router as admin_home_router
@@ -32,7 +32,7 @@ def get_admin_router() -> Router:
     router.include_router(admin_stats_router)
     router.include_router(admin_registration_router)
     router.include_router(admin_hitokoto_router)
-    router.include_router(admin_announcement_router)
+    router.include_router(admin_copywriting_router)
     router.include_router(admin_notification_router)
     router.include_router(admin_store_router)
     router.include_router(admin_currency_router)
