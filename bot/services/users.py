@@ -509,6 +509,7 @@ async def create_and_bind_emby_user(
                 emby_user_id=emby_id,
                 name=created_name,
                 user_dto=user_dto,
+                extra_data=None,
                 password_hash=pwd_hash,
                 action="create",
             )

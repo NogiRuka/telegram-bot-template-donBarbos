@@ -216,6 +216,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
                 emby_user_id=emby_user_id,
                 name=emby_user.name,
                 user_dto=emby_user.user_dto,
+                extra_data=emby_user.extra_data,
                 password_hash=emby_user.password_hash,  # 保存旧的密码哈希
                 date_created=emby_user.date_created,
                 last_login_date=emby_user.last_login_date,

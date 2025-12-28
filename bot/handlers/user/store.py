@@ -33,7 +33,7 @@ async def handle_store_list(callback: CallbackQuery, session: AsyncSession, main
     currency_name = CURRENCY_NAME
     text = (
         f"{ESSENCE_STORE_LABEL}\n\n" 
-        f"当前{currency_name}: {balance} {CURRENCY_SYMBOL}\n\n"
+        f"当前{escape_markdown_v2(currency_name)}: {escape_markdown_v2(str(balance))} {escape_markdown_v2(CURRENCY_SYMBOL)}\n\n"
         f"请选择要购买的商品:"
     )
     
@@ -59,8 +59,8 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
     text = (
         f"📦 *商品详情*\n\n"
         f"名称：{escape_markdown_v2(product.name)}\n"
-        f"价格：{product.price} {escape_markdown_v2(CURRENCY_SYMBOL)}\n"
-        f"库存：{'无限' if product.stock == -1 else product.stock}\n\n"
+        f"价格：{escape_markdown_v2(str(product.price))} {escape_markdown_v2(CURRENCY_SYMBOL)}\n"
+        f"库存：{escape_markdown_v2('无限' if product.stock == -1 else str(product.stock))}\n\n"
         f"描述：{escape_markdown_v2(product.description or '暂无描述')}"
     )
     
@@ -91,10 +91,10 @@ async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession
             text = (
                 f"📦 *商品详情*\n\n"
                 f"名称: {escape_markdown_v2(product.name)}\n"
-                f"价格: {product.price} {escape_markdown_v2(CURRENCY_SYMBOL)}\n"
-                f"库存: {'无限' if product.stock == -1 else product.stock}\n\n"
+                f"价格: {escape_markdown_v2(str(product.price))} {escape_markdown_v2(CURRENCY_SYMBOL)}\n"
+                f"库存: {escape_markdown_v2('无限' if product.stock == -1 else str(product.stock))}\n\n"
                 f"描述: {escape_markdown_v2(product.description or '暂无描述')}\n\n"
-                f"当前余额: {balance} {escape_markdown_v2(CURRENCY_SYMBOL)}\n\n"
+                f"当前余额: {escape_markdown_v2(str(balance))} {escape_markdown_v2(CURRENCY_SYMBOL)}\n\n"
                 f"{escape_markdown_v2(message)}"
             )
             await main_msg.update_on_callback(
