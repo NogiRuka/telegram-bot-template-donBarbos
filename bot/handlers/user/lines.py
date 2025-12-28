@@ -4,9 +4,9 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config import KEY_LINES_INFO
+from bot.config import KEY_USER_LINES_INFO
 from bot.core.config import settings
-from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, ACCOUNT_CENTER_BUTTON
+from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, BACK_TO_ACCOUNT_BUTTON
 from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_user_feature
@@ -38,7 +38,7 @@ async def user_lines(
     """
     # 尝试从数据库获取自定义线路信息
     # 预期存储格式为 JSON 字典或 URL 字符串
-    db_lines_info = await get_config(session, KEY_LINES_INFO)
+    db_lines_info = await get_config(session, KEY_USER_LINES_INFO)
     
     host = "未设置"
     port = "未设置"
@@ -78,7 +78,7 @@ async def user_lines(
     caption = "\n".join(lines_text)
     
     # 构建键盘
-    kb = InlineKeyboardMarkup(inline_keyboard=[[ACCOUNT_CENTER_BUTTON,BACK_TO_HOME_BUTTON]])
+    kb = InlineKeyboardMarkup(inline_keyboard=[[BACK_TO_ACCOUNT_BUTTON,BACK_TO_HOME_BUTTON]])
     
     await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer()

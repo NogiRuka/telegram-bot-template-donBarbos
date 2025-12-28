@@ -15,6 +15,7 @@ KEY_USER_FEATURES_ENABLED = "user.features.enabled"
 KEY_USER_REGISTER = "user.register"
 KEY_USER_INFO = "user.info"
 KEY_USER_LINES = "user.lines"
+KEY_USER_LINES_INFO = "user.lines.info"
 KEY_USER_DEVICES = "user.devices"
 KEY_USER_PASSWORD = "user.password"
 KEY_USER_PROFILE = "user.profile"
@@ -38,9 +39,6 @@ KEY_ADMIN_CURRENCY = "admin.currency"
 KEY_REGISTRATION_FREE_OPEN = "registration.free_open"
 KEY_ADMIN_OPEN_REGISTRATION_WINDOW = "admin.open_registration.window"
 KEY_ADMIN_HITOKOTO_CATEGORIES = "admin.hitokoto.categories"
-
-# 线路信息
-KEY_LINES_INFO = "lines.info"
 
 # 公告内容
 KEY_ANNOUNCEMENT_TEXT = "announcement.text"

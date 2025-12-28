@@ -7,12 +7,14 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 
+from bot.core.config import settings
 from bot.config import (
+    USER_FEATURES_MAPPING,
     ADMIN_FEATURES_MAPPING,
     DEFAULT_CONFIGS,
     KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
     KEY_REGISTRATION_FREE_OPEN,
-    USER_FEATURES_MAPPING,
+    KEY_USER_LINES_INFO,
 )
 from bot.database.models.config import ConfigModel, ConfigType
 from bot.utils.datetime import now as get_now
@@ -224,7 +226,6 @@ async def list_user_features(session: AsyncSession) -> dict[str, bool]:
     return out
 
 
-
 async def ensure_config_defaults(session: AsyncSession) -> None:
     """初始化配置默认键值
 
@@ -239,7 +240,7 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
     """
     for key, (default_val, ctype) in DEFAULT_CONFIGS.items():
         # 跳过需要在下面特殊处理的 key
-        if key in (KEY_LINES_INFO,):
+        if key in (KEY_USER_LINES_INFO,):
             continue
 
         current = await get_config(session, key)
@@ -247,10 +248,7 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
             await set_config(session, key, None, ctype, default_value=default_val)
 
     # 初始化线路信息 (从环境变量迁移)
-    from bot.config import KEY_LINES_INFO
-    from bot.core.config import settings
-    
-    current_lines = await get_config(session, KEY_LINES_INFO)
+    current_lines = await get_config(session, KEY_USER_LINES_INFO)
     if current_lines is None:
         if settings.EMBY_BASE_URL:
             # 如果数据库没有线路信息，但环境变量有 EMBY_BASE_URL，则将其初始化到数据库
@@ -261,14 +259,14 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
             }
             await set_config(
                 session, 
-                KEY_LINES_INFO, 
+                KEY_USER_LINES_INFO, 
                 lines_info, 
                 ConfigType.JSON, 
                 default_value=lines_info
             )
         else:
             # 环境变量也没有，初始化为空 JSON 字典
-            await set_config(session, KEY_LINES_INFO, None, ConfigType.JSON, default_value={})
+            await set_config(session, KEY_USER_LINES_INFO, None, ConfigType.JSON, default_value={})
 
 
 def _serialize_value(ctype: ConfigType, value: Any) -> str | None:
