@@ -231,22 +231,46 @@ class CurrencyService:
                 "action_type": "retro_checkin",
             },
             {
-                "name": "自定义头衔",
+                "name": "自定义头衔（7天）",
                 "price": 100,
-                "stock": 10,
-                "description": "自定义群组 Title (如 '🌸 樱之主') (限时7天)",
+                "stock": 20,
+                "description": "在群组中显示自定义头衔（7天体验）。",
                 "category": "tools",
                 "action_type": "custom_title",
+            },
+            {
+                "name": "自定义头衔（永久）",
+                "price": 1000,
+                "stock": 10,
+                "description": "在群组中显示自定义头衔（永久）。\n🎉 恭喜您连续签到30天解锁此隐藏商品！",
+                "category": "tools",
+                "action_type": "custom_title",
+                "visible_conditions": {"min_max_streak": 30},
             }
         ]
 
         for p in defaults:
-            # 检查是否存在 (无论上下架)
+            # 特殊处理：如果存在旧名为 "自定义头衔" 的商品，且当前要处理的是 "自定义头衔（7天）"，则更新它
+            if p["name"] == "自定义头衔（7天）":
+                stmt = select(CurrencyProductModel).where(CurrencyProductModel.name == "自定义头衔").limit(1)
+                result = await session.execute(stmt)
+                old_prod = result.scalar_one_or_none()
+                if old_prod:
+                    old_prod.name = p["name"]
+                    old_prod.price = p["price"]
+                    old_prod.stock = p["stock"]
+                    old_prod.description = p["description"]
+                    session.add(old_prod)
+                    continue
+
+            # 常规检查：按名称查找
             stmt = select(CurrencyProductModel).where(
-                CurrencyProductModel.action_type == p["action_type"]
+                CurrencyProductModel.name == p["name"]
             ).limit(1)
             result = await session.execute(stmt)
-            if not result.scalar_one_or_none():
+            existing = result.scalar_one_or_none()
+            
+            if not existing:
                 await CurrencyService.create_product(
                     session,
                     name=p["name"],
@@ -255,8 +279,15 @@ class CurrencyService:
                     description=p["description"],
                     category=p["category"],
                     action_type=p["action_type"],
+                    visible_conditions=p.get("visible_conditions"),
                     is_active=True
                 )
+            # 如果是自定义头衔系列，强制更新价格和库存以修复之前误操作
+            elif p["action_type"] == "custom_title":
+                existing.stock = p["stock"]
+                existing.price = p["price"]
+                existing.visible_conditions = p.get("visible_conditions")
+                session.add(existing)
 
     @staticmethod
     async def add_currency(
@@ -321,6 +352,7 @@ class CurrencyService:
         description: str,
         category: str,
         action_type: str,
+        visible_conditions: dict[str, Any] | None = None,
         is_active: bool = False,
     ) -> CurrencyProductModel:
         """创建新商品"""
@@ -331,6 +363,7 @@ class CurrencyService:
             description=description,
             category=category,
             action_type=action_type,
+            visible_conditions=visible_conditions,
             is_active=is_active,
         )
         session.add(product)
