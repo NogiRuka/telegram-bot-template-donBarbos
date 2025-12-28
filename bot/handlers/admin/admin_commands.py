@@ -13,15 +13,18 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config import (
+    KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
+    KEY_REGISTRATION_FREE_OPEN,
+)
 from bot.core.config import settings
 from bot.database.models import GroupConfigModel, GroupType, MessageModel, MessageSaveMode
+from bot.database.models.config import ConfigType
 from bot.keyboards.inline.group_config import get_confirm_keyboard
 from bot.services.config_service import (
-    get_free_registration_status,
-    get_registration_window,
+    get_config,
     is_registration_open,
-    set_free_registration_status,
-    set_registration_window,
+    set_config,
 )
 from bot.services.message_export import MessageExportService
 from bot.utils.permissions import require_admin_feature, require_admin_priv, require_owner
@@ -465,9 +468,22 @@ async def admin_open_registration_command(message: Message, command: CommandObje
                 return
 
         # 设置注册窗口
-        await set_registration_window(session, start_time, duration_minutes, operator_id=message.from_user.id)
+        payload = {}
+        if start_time:
+            payload["start_time"] = start_time
+        if duration_minutes is not None:
+            payload["duration_minutes"] = int(duration_minutes)
+            
+        await set_config(
+            session,
+            KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
+            payload or None,
+            ConfigType.JSON,
+            operator_id=message.from_user.id
+        )
         # 获取最新窗口配置
-        window = await get_registration_window(session) or {}
+        window_val = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
+        window = window_val if isinstance(window_val, dict) else {}
         start = window.get("start_time") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         dur = window.get("duration_minutes")
 
@@ -475,7 +491,9 @@ async def admin_open_registration_command(message: Message, command: CommandObje
         text = "🟢 已配置注册时间窗\n"
         text += f"开始时间: {start}\n"
         text += f"持续分钟: {dur if dur is not None else '不限'}\n"
-        text += f"自由注册: {'🟢 开启' if await get_free_registration_status(session) else '🔴 关闭'}"
+        free_open_val = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
+        free_open = bool(free_open_val) if free_open_val is not None else False
+        text += f"自由注册: {'🟢 开启' if free_open else '🔴 关闭'}"
         await message.answer(text)
 
     except SQLAlchemyError:
@@ -500,8 +518,21 @@ async def admin_close_registration_command(message: Message, session: AsyncSessi
     - None
     """
     try:
-        await set_free_registration_status(session, False, operator_id=message.from_user.id)
-        await set_registration_window(session, None, None, operator_id=message.from_user.id)
+        await set_config(
+            session,
+            KEY_REGISTRATION_FREE_OPEN,
+            False,
+            ConfigType.BOOLEAN,
+            default_value=False,
+            operator_id=message.from_user.id
+        )
+        await set_config(
+            session,
+            KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
+            None,
+            ConfigType.JSON,
+            operator_id=message.from_user.id
+        )
         await message.answer("🔴 已关闭自由注册并清除时间窗")
     except SQLAlchemyError:
         await message.answer("🔴 关闭注册失败")
@@ -525,8 +556,12 @@ async def admin_registration_status_command(message: Message, session: AsyncSess
     """
     try:
         open_flag = await is_registration_open(session)
-        free_open = await get_free_registration_status(session)
-        window = await get_registration_window(session) or {}
+        free_open_val = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
+        free_open = bool(free_open_val) if free_open_val is not None else False
+        
+        window_val = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
+        window = window_val if isinstance(window_val, dict) else {}
+        
         start = window.get("start_time")
         dur = window.get("duration_minutes")
         text = "📋 注册状态\n"

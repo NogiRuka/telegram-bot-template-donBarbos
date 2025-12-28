@@ -11,7 +11,6 @@ from bot.config import (
     ADMIN_FEATURES_MAPPING,
     # 功能映射
     DEFAULT_CONFIGS,
-    KEY_ADMIN_HITOKOTO_CATEGORIES,
     KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
     KEY_REGISTRATION_FREE_OPEN,
     USER_FEATURES_MAPPING,
@@ -42,8 +41,7 @@ async def get_config(session: AsyncSession, key: str) -> Any:
         model: ConfigModel | None = result.scalar_one_or_none()
         if model:
             typed_value = model.get_typed_value()
-            # 若value为空则取default_value
-            return typed_value if typed_value is not None else model.get_typed_default_value()
+            return typed_value
     return None
 
 
@@ -133,101 +131,6 @@ async def toggle_config(session: AsyncSession, key: str, operator_id: int | None
     return False
 
 
-async def get_registration_window(session: AsyncSession) -> dict[str, Any] | None:
-    """获取注册时间窗
-
-    功能说明:
-    - 从 `config` 表读取管理员设置的注册时间窗 JSON
-    - 返回结构: {"start_time": str, "duration_minutes": int}
-
-    输入参数:
-    - session: 异步数据库会话
-
-    返回值:
-    - dict | None: 时间窗配置, 若未设置返回 None
-    """
-    try:
-        val = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
-        if isinstance(val, dict):
-            return val
-        return None
-    except SQLAlchemyError:
-        return None
-
-
-async def get_free_registration_status(session: AsyncSession) -> bool:
-    """获取自由注册开关状态
-
-    功能说明:
-    - 读取配置 `registration.free_open` 表示是否处于自由注册状态
-
-    输入参数:
-    - session: 异步数据库会话
-
-    返回值:
-    - bool: True 表示自由注册开启
-    """
-    try:
-        val = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
-        return bool(val) if val is not None else False
-    except SQLAlchemyError:
-        return False
-
-
-async def set_free_registration_status(session: AsyncSession, enabled: bool, operator_id: int | None = None) -> bool:
-    """设置自由注册开关状态
-
-    功能说明:
-    - 将配置 `registration.free_open` 写入布尔值, 默认值为 False
-
-    输入参数:
-    - session: 异步数据库会话
-    - enabled: 是否开启自由注册
-    - operator_id: 操作者用户ID
-
-    返回值:
-    - bool: True 表示写入成功
-    """
-    return await set_config(
-        session,
-        KEY_REGISTRATION_FREE_OPEN,
-        bool(enabled),
-        ConfigType.BOOLEAN,
-        default_value=False,
-        operator_id=operator_id,
-    )
-
-
-async def set_registration_window(
-    session: AsyncSession,
-    start_time: str | None,
-    duration_minutes: int | None,
-    operator_id: int | None = None,
-) -> bool:
-    """设置注册时间窗
-
-    功能说明:
-    - 将注册开始时间与持续分钟写入 JSON 配置 `admin.open_registration.window`
-
-    输入参数:
-    - session: 异步数据库会话
-    - start_time: 格式化开始时间字符串 (YYYY-MM-DD HH:MM:SS), 为空表示立即生效
-    - duration_minutes: 持续分钟数, 为空表示不限时
-    - operator_id: 操作者用户ID
-
-    返回值:
-    - bool: True 表示写入成功
-    """
-    payload: dict[str, Any] = {}
-    if start_time:
-        payload["start_time"] = start_time
-    if duration_minutes is not None:
-        payload["duration_minutes"] = int(duration_minutes)
-    return await set_config(
-        session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW, payload or None, ConfigType.JSON, operator_id=operator_id
-    )
-
-
 async def is_registration_open(session: AsyncSession, now_ts: float | None = None) -> bool:
     """判断注册是否开启且在时间窗内
 
@@ -244,13 +147,13 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
     """
     try:
         # 自由注册开关优先
-        free_open = await get_free_registration_status(session)
-        if free_open:
+        free_open_val = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
+        if free_open_val:
             return True
 
         # 无自由开关则按时间窗判断
-        window = await get_registration_window(session)
-        if not window:
+        window = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
+        if not isinstance(window, dict):
             return False
 
         # 使用统一的工具函数处理时间

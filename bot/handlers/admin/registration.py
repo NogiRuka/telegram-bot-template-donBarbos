@@ -5,17 +5,20 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config import (
+    KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
+    KEY_REGISTRATION_FREE_OPEN,
+)
 from bot.core.config import settings
+from bot.database.models.config import ConfigType
 from bot.keyboards.inline.buttons import (
     BACK_TO_ADMIN_PANEL_BUTTON,
     BACK_TO_HOME_BUTTON,
 )
 from bot.keyboards.inline.constants import OPEN_REGISTRATION_LABEL
 from bot.services.config_service import (
-    get_free_registration_status,
-    get_registration_window,
-    set_free_registration_status,
-    set_registration_window,
+    get_config,
+    set_config,
 )
 from bot.services.main_message import MainMessageService
 from bot.utils.datetime import format_datetime, get_friendly_timezone_name, now, parse_formatted_datetime
@@ -74,9 +77,16 @@ async def toggle_free_registration(
     返回值:
     - None
     """
-    current = await get_free_registration_status(session)
-    new_val = not current
-    await set_free_registration_status(session, new_val, operator_id=callback.from_user.id)
+    current = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
+    new_val = not bool(current) if current is not None else True
+    await set_config(
+        session,
+        KEY_REGISTRATION_FREE_OPEN,
+        new_val,
+        ConfigType.BOOLEAN,
+        default_value=False,
+        operator_id=callback.from_user.id
+    )
     caption, kb = await _build_reg_kb(session)
     await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer(f"{'🟢' if new_val else '🔴'} 自由注册已{'开启' if new_val else '关闭'}")
@@ -108,7 +118,15 @@ async def set_registration_preset(callback: CallbackQuery, session: AsyncSession
     # 使用工具函数获取当前时间并使用统一格式存储
     start_dt = now()
     formatted_start = start_dt.strftime("%Y-%m-%d %H:%M:%S")
-    await set_registration_window(session, formatted_start, duration, operator_id=callback.from_user.id)
+    
+    payload = {"start_time": formatted_start, "duration_minutes": duration}
+    await set_config(
+        session,
+        KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
+        payload,
+        ConfigType.JSON,
+        operator_id=callback.from_user.id
+    )
     caption, kb = await _build_reg_kb(session)
     await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer(f"🟢 已设置时间窗: {duration} 分钟")
@@ -136,7 +154,13 @@ async def clear_registration_window(
     返回值:
     - None
     """
-    await set_registration_window(session, None, None, operator_id=callback.from_user.id)
+    await set_config(
+        session,
+        KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
+        None,
+        ConfigType.JSON,
+        operator_id=callback.from_user.id
+    )
     caption, kb = await _build_reg_kb(session)
     await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer("🟢 已清除时间窗设置")
@@ -175,7 +199,15 @@ async def input_registration_window(message: Message, session: AsyncSession, mai
     # 输入时间已经是配置时区的时间，直接使用统一格式存储
     start_dt = datetime(year, month, day, hour, minute)
     formatted_start = start_dt.strftime("%Y-%m-%d %H:%M:%S")
-    await set_registration_window(session, formatted_start, duration, operator_id=message.from_user.id)
+    
+    payload = {"start_time": formatted_start, "duration_minutes": duration}
+    await set_config(
+        session,
+        KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
+        payload,
+        ConfigType.JSON,
+        operator_id=message.from_user.id
+    )
     with logger.catch():
         await main_msg.delete_input(message)
 
@@ -201,9 +233,11 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
     - tuple[str, InlineKeyboardMarkup]: (caption文本, 内联键盘)
     """
     logger.debug("🔍 [_build_reg_kb] 开始读取配置...")
-    free_open = await get_free_registration_status(session)
+    free_open_val = await get_config(session, KEY_REGISTRATION_FREE_OPEN)
+    free_open = bool(free_open_val) if free_open_val is not None else False
 
-    window = await get_registration_window(session) or {}
+    window_val = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
+    window = window_val if isinstance(window_val, dict) else {}
 
     start_time = window.get("start_time")
     duration = window.get("duration_minutes")

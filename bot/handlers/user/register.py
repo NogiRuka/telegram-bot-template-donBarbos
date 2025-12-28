@@ -10,13 +10,14 @@ from aiogram.types import CallbackQuery, Message
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config import KEY_ADMIN_OPEN_REGISTRATION_WINDOW
 from bot.core.config import settings
 from bot.keyboards.inline.user import (
     get_account_center_keyboard,
     get_register_input_keyboard,
 )
 from bot.keyboards.inline.constants import ACCOUNT_CENTER_LABEL
-from bot.services.config_service import get_registration_window, is_registration_open
+from bot.services.config_service import get_config, is_registration_open
 from bot.services.main_message import MainMessageService
 from bot.services.users import create_and_bind_emby_user, has_emby_account
 from bot.utils.datetime import format_datetime, get_friendly_timezone_name, now, parse_formatted_datetime
@@ -61,7 +62,9 @@ async def user_register(
     try:
         # 首先检查注册是否开放，避免不必要的用户ID获取
         if not await is_registration_open(session):
-            window = await get_registration_window(session) or {}
+            window_val = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
+            window = window_val if isinstance(window_val, dict) else {}
+            
             hint = "🚫 暂未开放注册"
             start_time = window.get("start_time")
             dur = window.get("duration_minutes")
