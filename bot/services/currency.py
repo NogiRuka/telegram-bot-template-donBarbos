@@ -208,24 +208,25 @@ class CurrencyService:
         defaults = [
             {
                 "name": "修改头像",
-                "price": 30,
-                "stock": -1,
+                "price": 60,
+                "stock": 20,
                 "description": "修改 Emby 账号头像 (一次性)",
                 "category": "emby",
                 "action_type": "emby_image",
+                "purchase_conditions": {"has_emby": True},
             },
             {
                 "name": "修改密码",
                 "price": 60,
-                "stock": -1,
+                "stock": 20,
                 "description": "修改 Emby 账号密码 (一次性)",
                 "category": "emby",
                 "action_type": "emby_password",
             },
             {
                 "name": "补签卡",
-                "price": 80,
-                "stock": -1,
+                "price": 60,
+                "stock": 20,
                 "description": "补签昨天的签到记录",
                 "category": "tools",
                 "action_type": "retro_checkin",
@@ -250,27 +251,12 @@ class CurrencyService:
         ]
 
         for p in defaults:
-            # 特殊处理：如果存在旧名为 "自定义头衔" 的商品，且当前要处理的是 "自定义头衔（7天）"，则更新它
-            if p["name"] == "自定义头衔（7天）":
-                stmt = select(CurrencyProductModel).where(CurrencyProductModel.name == "自定义头衔").limit(1)
-                result = await session.execute(stmt)
-                old_prod = result.scalar_one_or_none()
-                if old_prod:
-                    old_prod.name = p["name"]
-                    old_prod.price = p["price"]
-                    old_prod.stock = p["stock"]
-                    old_prod.description = p["description"]
-                    session.add(old_prod)
-                    continue
-
-            # 常规检查：按名称查找
+            # 检查是否存在 (无论上下架)
             stmt = select(CurrencyProductModel).where(
                 CurrencyProductModel.name == p["name"]
             ).limit(1)
             result = await session.execute(stmt)
-            existing = result.scalar_one_or_none()
-            
-            if not existing:
+            if not result.scalar_one_or_none():
                 await CurrencyService.create_product(
                     session,
                     name=p["name"],
@@ -282,12 +268,6 @@ class CurrencyService:
                     visible_conditions=p.get("visible_conditions"),
                     is_active=True
                 )
-            # 如果是自定义头衔系列，强制更新价格和库存以修复之前误操作
-            elif p["action_type"] == "custom_title":
-                existing.stock = p["stock"]
-                existing.price = p["price"]
-                existing.visible_conditions = p.get("visible_conditions")
-                session.add(existing)
 
     @staticmethod
     async def add_currency(
