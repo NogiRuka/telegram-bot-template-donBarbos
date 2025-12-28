@@ -250,32 +250,21 @@ class CurrencyService:
             }
         ]
 
-        for p in defaults:
-            # 检查是否存在 (无论上下架)
-            stmt = select(CurrencyProductModel).where(
-                CurrencyProductModel.name == p["name"]
-            ).limit(1)
-            result = await session.execute(stmt)
-            if not result.scalar_one_or_none():
-                # 构建创建参数，仅包含 defaults 中存在的键
-                create_kwargs = {
-                    "session": session,
-                    "name": p["name"],
-                    "price": p["price"],
-                    "stock": p["stock"],
-                    "description": p["description"],
-                    "category": p["category"],
-                    "action_type": p["action_type"],
-                    "is_active": True
-                }
-                
-                # 可选字段：如果 defaults 中有才添加
-                if "purchase_conditions" in p:
-                    create_kwargs["purchase_conditions"] = p["purchase_conditions"]
-                if "visible_conditions" in p:
-                    create_kwargs["visible_conditions"] = p["visible_conditions"]
-                    
-                await CurrencyService.create_product(**create_kwargs)
+        for product in defaults:
+            exists = await session.scalar(
+                select(CurrencyProductModel.id)
+                .where(CurrencyProductModel.name == product["name"])
+                .limit(1)
+            )
+            if exists:
+                continue
+
+            data = product.copy()
+            await CurrencyService.create_product(
+                session=session,
+                is_active=True,
+                **data
+            )
 
     @staticmethod
     async def add_currency(

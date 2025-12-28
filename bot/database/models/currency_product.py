@@ -32,7 +32,7 @@ class CurrencyProductModel(Base, BasicAuditMixin):
     
     id: Mapped[auto_int_pk]
     
-    name: Mapped[str] = mapped_column(String(128), nullable=False, comment="商品名称")
+    name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, comment="商品名称")
     
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="商品描述")
     
