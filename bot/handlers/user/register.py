@@ -239,7 +239,7 @@ async def handle_register_input(
         parts = text.split(maxsplit=1)
 
         if len(parts) != 2:
-            caption = "❌ 格式错误\n\n请输入用户名和密码，以空格分隔：\n用户名 密码\n\桜色男孩 123456"
+            caption = "❌ 格式错误\n\n请输入用户名和密码，以空格分隔：\n用户名 密码"
             await main_msg.render(uid, caption, get_register_input_keyboard())
             # 恢复状态并重启超时
             await state.set_state(RegisterStates.waiting_for_credentials)
@@ -291,8 +291,8 @@ async def handle_register_input(
             
             caption = (
                 f"✅ *注册成功*\n\n"
-                f"📛 Emby 用户名: `{name_esc}`\n"
-                f"🔑 Emby 密码: ||{pass_esc}||\n\n"
+                f"📛 Emby 用户名：`{name_esc}`\n" 
+                f"🔑 Emby 密码：||`{pass_esc}`||\n\n"
                 f"请妥善保管您的账号信息"
             )
             await main_msg.render(uid, caption, get_account_center_keyboard(has_emby_account=True))
