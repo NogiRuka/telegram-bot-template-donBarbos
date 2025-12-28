@@ -157,7 +157,7 @@ async def _register_timeout(
     if current_state == RegisterStates.waiting_for_credentials.state:
         await state.clear()
         caption = "⏰ 注册超时，请重新开始"
-        await main_msg.update(user_id, caption, get_account_center_keyboard(has_emby_account=False))
+        await main_msg.render(user_id, caption, get_account_center_keyboard(has_emby_account=False))
         logger.info("⏰ 注册超时，已自动取消: user_id={}", user_id)
 
 
@@ -231,7 +231,7 @@ async def handle_register_input(
     # 1. 检查注册是否开放
     if not await is_registration_open(session):
         await state.clear()
-        await main_msg.update(uid, "🚫 注册已关闭", get_account_center_keyboard(False))
+        await main_msg.render(uid, "🚫 注册已关闭", get_account_center_keyboard(False))
         return
 
     try:
@@ -239,8 +239,8 @@ async def handle_register_input(
         parts = text.split(maxsplit=1)
 
         if len(parts) != 2:
-            caption = "❌ 格式错误\n\n请输入用户名和密码，以空格分隔：\n用户名 密码\n\n示例：myuser mypassword123"
-            await main_msg.update(uid, caption, get_register_input_keyboard())
+            caption = "❌ 格式错误\n\n请输入用户名和密码，以空格分隔：\n用户名 密码\n\桜色男孩 123456"
+            await main_msg.render(uid, caption, get_register_input_keyboard())
             # 恢复状态并重启超时
             await state.set_state(RegisterStates.waiting_for_credentials)
             asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
@@ -251,7 +251,7 @@ async def handle_register_input(
         # 验证用户名和密码
         if len(name) < 2:
             caption = "❌ 用户名至少需要 2 个字符\n\n请重新输入用户名和密码，以空格分隔：\n用户名 密码"
-            await main_msg.update(uid, caption, get_register_input_keyboard())
+            await main_msg.render(uid, caption, get_register_input_keyboard())
             # 恢复状态并重启超时
             await state.set_state(RegisterStates.waiting_for_credentials)
             asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
@@ -260,7 +260,7 @@ async def handle_register_input(
         # 校验非法字符
         if not re.match(r'^[^/\\:<>?|*"]+$', name):
             caption = "❌ 用户名包含非法字符\n\n请重新输入用户名和密码，以空格分隔：\n用户名 密码"
-            await main_msg.update(uid, caption, get_register_input_keyboard())
+            await main_msg.render(uid, caption, get_register_input_keyboard())
             # 恢复状态并重启超时
             await state.set_state(RegisterStates.waiting_for_credentials)
             asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
@@ -268,14 +268,14 @@ async def handle_register_input(
 
         if len(password) < 6:
             caption = "❌ 密码至少需要 6 个字符\n\n请重新输入用户名和密码，以空格分隔：\n用户名 密码"
-            await main_msg.update(uid, caption, get_register_input_keyboard())
+            await main_msg.render(uid, caption, get_register_input_keyboard())
             # 恢复状态并重启超时
             await state.set_state(RegisterStates.waiting_for_credentials)
             asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
             return
 
         # 更新界面提示正在处理中
-        await main_msg.update(uid, "⏳ 正在创建账号，请稍候...", get_register_input_keyboard())
+        await main_msg.render(uid, "⏳ 正在创建账号，请稍候...", get_register_input_keyboard())
 
         # 创建用户
         ok, details, err = await create_and_bind_emby_user(session, uid, name, password)
@@ -283,23 +283,32 @@ async def handle_register_input(
         if ok and details:
             # 注册成功，状态清除
             await state.clear()
+            
+            from bot.utils.text import escape_markdown_v2
+            
+            name_esc = escape_markdown_v2(details.get('name', ''))
+            pass_esc = escape_markdown_v2(details.get('password', ''))
+            
             caption = (
-                f"✅ 注册成功\n\n"
-                f"📛 Emby 用户名: {details.get('name', '')}\n"
-                f"🔑 Emby 密码: {details.get('password', '')}\n\n"
+                f"✅ *注册成功*\n\n"
+                f"📛 Emby 用户名: `{name_esc}`\n"
+                f"🔑 Emby 密码: ||{pass_esc}||\n\n"
                 f"请妥善保管您的账号信息"
             )
-            await main_msg.update(uid, caption, get_account_center_keyboard(has_emby_account=True))
+            await main_msg.render(uid, caption, get_account_center_keyboard(has_emby_account=True))
         else:
             err_msg = err or "未知错误"
             if "already exists" in err_msg or "already exist" in err_msg:
                 # 允许用户重新输入
+                from bot.utils.text import escape_markdown_v2
+                name_esc = escape_markdown_v2(name)
+                
                 caption = (
-                    f"❌ 用户名 '{name}' 已存在\n\n"
+                    f"❌ 用户名 `{name_esc}` 已存在\n\n"
                     f"请更换一个用户名重试：\n"
                     f"新用户名 密码"
                 )
-                await main_msg.update(uid, caption, get_register_input_keyboard())
+                await main_msg.render(uid, caption, get_register_input_keyboard())
                 # 恢复状态并重启超时
                 await state.set_state(RegisterStates.waiting_for_credentials)
                 asyncio.create_task(_register_timeout(state, uid, main_msg, REGISTER_TIMEOUT_SECONDS))
@@ -307,7 +316,7 @@ async def handle_register_input(
                 # 其他错误，保持状态清除
                 await state.clear()
                 caption = f"❌ 注册失败\n\n{err_msg}"
-                await main_msg.update(uid, caption, get_account_center_keyboard(has_emby_account=False))
+                await main_msg.render(uid, caption, get_account_center_keyboard(has_emby_account=False))
 
     except Exception as e:
         logger.exception(f"❌ 处理注册输入异常: user_id={uid} err={e!r}")
