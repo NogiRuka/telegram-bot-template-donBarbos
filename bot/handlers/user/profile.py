@@ -47,25 +47,7 @@ async def user_profile(
     # 获取货币余额
     balance = await CurrencyService.get_user_balance(session, uid)
 
-    # 角色与状态
-    role_map = {
-        "user": "普通用户",
-        "admin": "管理员",
-        "owner": "所有者"
-    }
-    
-    role_key = "user"
-    if ext:
-        raw_role = getattr(ext, "role", None)
-        # 如果是枚举，取 value
-        if hasattr(raw_role, "value"):
-            role_key = raw_role.value
-        # 如果是字符串或其他，直接转字符串
-        elif raw_role is not None:
-            role_key = str(raw_role)
-            
-    role_display = role_map.get(role_key, role_key)
-    
+    # 状态
     status_text = "正常" if (user and not getattr(user, "is_deleted", False)) else "已删除"
 
     # 字段整理
@@ -94,8 +76,7 @@ async def user_profile(
         f"🔗 用户名: {escape_markdown_v2(username)}",
         "",
         "*账户状态*",
-        f"🛡 角色: {role_display}",
-        f"📡 状态: {status_text}",
+        f" 状态: {status_text}",
         f"💎 Premium: {premium_str}",
         f"💰 {CURRENCY_NAME}: {balance} {CURRENCY_SYMBOL}",
         "",
