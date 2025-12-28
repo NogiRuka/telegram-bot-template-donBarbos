@@ -1,13 +1,9 @@
 from aiogram import Router, F
-from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config.constants import KEY_USER_STORE
 from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL
-from bot.handlers.user.avatar import AvatarStates
-from bot.keyboards.inline.buttons import BACK_TO_ACCOUNT_BUTTON
 from bot.keyboards.inline.constants import (
     ESSENCE_STORE_CALLBACK_DATA,
     STORE_PRODUCT_PREFIX,
@@ -17,7 +13,6 @@ from bot.keyboards.inline.constants import (
 from bot.keyboards.inline.store import get_store_keyboard, get_product_detail_keyboard
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
-from bot.services.users import get_user_and_extend
 from bot.utils.permissions import require_user_feature
 
 router = Router(name="user_store")
@@ -77,7 +72,7 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
 
 @router.callback_query(F.data.startswith(STORE_BUY_PREFIX))
 @require_user_feature(KEY_USER_STORE)
-async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService):
+async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """处理购买请求"""
     product_id = int(callback.data.replace(STORE_BUY_PREFIX, ""))
     user_id = callback.from_user.id
@@ -86,39 +81,6 @@ async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession
     product = await CurrencyService.get_product(session, product_id)
     if not product:
         await callback.answer("商品不存在", show_alert=True)
-        return
-
-    # 特殊处理：Emby头像修改
-    if product.action_type == "emby_image":
-        # 1. 检查 Emby 账号
-        _user, ext = await get_user_and_extend(session, user_id)
-        if not ext or not ext.emby_user_id:
-            await callback.answer("🔴 请先绑定 Emby 账号", show_alert=True)
-            return
-            
-        # 2. 检查余额 (这里只是预检，实际扣费在上传成功后)
-        balance = await CurrencyService.get_user_balance(session, user_id)
-        if balance < product.price:
-            await callback.answer(f"🔴 余额不足，需要 {product.price} {CURRENCY_SYMBOL}", show_alert=True)
-            return
-
-        # 3. 直接进入头像上传流程 (复用 avatar.py 的逻辑)
-        caption = (
-            "🖼️ *修改 Emby 头像*\n\n"
-            f"本次修改将消耗 *{product.price} {CURRENCY_SYMBOL}*\n"
-            f"当前余额: {balance} {CURRENCY_SYMBOL}\n\n"
-            "请直接发送一张图片作为新的头像。\n"
-            "提示：建议使用正方形图片，支持 JPG/PNG 格式。"
-        )
-        
-        kb = InlineKeyboardBuilder()
-        kb.row(BACK_TO_ACCOUNT_BUTTON)
-        
-        await main_msg.update_on_callback(callback, caption, kb.as_markup())
-        
-        await state.set_state(AvatarStates.waiting_for_photo)
-        await state.update_data(emby_user_id=ext.emby_user_id)
-        await callback.answer()
         return
 
     # 普通商品购买逻辑

@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import (
@@ -203,6 +203,54 @@ class CurrencyService:
         await session.commit()
 
     @staticmethod
+    async def ensure_products(session: AsyncSession) -> None:
+        """初始化默认商品"""
+        defaults = [
+            {
+                "name": "修改头像",
+                "price": 30,
+                "stock": -1,
+                "description": "修改 Emby 账号头像 (一次性)",
+                "category": "emby",
+                "action_type": "emby_image",
+            },
+            {
+                "name": "修改密码",
+                "price": 60,
+                "stock": -1,
+                "description": "修改 Emby 账号密码 (一次性)",
+                "category": "emby",
+                "action_type": "emby_password",
+            },
+            {
+                "name": "补签卡",
+                "price": 80,
+                "stock": -1,
+                "description": "补签昨天的签到记录",
+                "category": "tools",
+                "action_type": "retro_checkin",
+            }
+        ]
+
+        for p in defaults:
+            # 检查是否存在 (无论上下架)
+            stmt = select(CurrencyProductModel).where(
+                CurrencyProductModel.action_type == p["action_type"]
+            ).limit(1)
+            result = await session.execute(stmt)
+            if not result.scalar_one_or_none():
+                await CurrencyService.create_product(
+                    session,
+                    name=p["name"],
+                    price=p["price"],
+                    stock=p["stock"],
+                    description=p["description"],
+                    category=p["category"],
+                    action_type=p["action_type"],
+                    is_active=True
+                )
+
+    @staticmethod
     async def add_currency(
         session: AsyncSession,
         user_id: int,
@@ -210,6 +258,7 @@ class CurrencyService:
         event_type: str,
         description: str,
         meta: dict[str, Any] | None = None,
+        is_consumed: bool = True,
         commit: bool = True,
     ) -> int:
         """增加/扣除代币
@@ -220,6 +269,7 @@ class CurrencyService:
         - event_type: 事件类型
         - description: 描述
         - meta: 扩展信息
+        - is_consumed: 是否已消耗 (False 表示购买了资格但未使用)
         - commit: 是否提交事务 (默认为 True)
 
         返回值:
@@ -245,6 +295,7 @@ class CurrencyService:
             event_type=event_type,
             description=description,
             meta=meta,
+            is_consumed=is_consumed,
         )
         session.add(tx)
         
@@ -395,6 +446,9 @@ class CurrencyService:
                 if not user_ext or not user_ext.emby_user_id:
                     return False, "🚫 您未绑定 Emby 账号，无法购买此商品。"
 
+        # 判断是否为功能性商品（购买资格券）
+        is_ticket = product.action_type in ["emby_image", "emby_password"]
+        
         # 2. 扣除代币
         try:
             await CurrencyService.add_currency(
@@ -403,7 +457,8 @@ class CurrencyService:
                 -product.price, 
                 "purchase", 
                 f"购买 {product.name}", 
-                meta={"product_id": product.id, "product_name": product.name},
+                meta={"product_id": product.id, "product_name": product.name, "action_type": product.action_type},
+                is_consumed=not is_ticket,  # 如果是票据，标记为未消耗
                 commit=False  # 不立即提交，等待后续逻辑确认
             )
         except ValueError:
@@ -436,8 +491,9 @@ class CurrencyService:
                 # 尝试补签逻辑
                 return await CurrencyService._try_retro_checkin(session, user_id)
                 
-            elif product.action_type == "emby_image":
-                return False, "ℹ️ 请前往 [账号中心] -> [🖼️ 修改头像] 使用此功能。"
+            elif product.action_type in ["emby_image", "emby_password"]:
+                # 功能性商品，购买后获得资格
+                return True, "✅ 您已获得使用资格，请前往 [账号中心] 使用对应功能。"
                 
             elif product.action_type == "custom_title":
                 return True, "ℹ️ 请联系频道管理员设置您的自定义群组头衔。"
@@ -499,92 +555,47 @@ class CurrencyService:
             last_tx_date = last_tx.created_at.date()
             gap_tx = (today - last_tx_date).days
             
-            # 如果上一条是前天 (Today-2)，说明只漏了昨天 (Today-1)
-            if gap_tx == 2:
-                # 恢复连签
-                # 获取旧的 streak
-                old_streak = last_tx.meta.get('streak_days', 0) if last_tx.meta else 0
-                
-                # 新 streak = 旧 + 1(补昨天) + 1(今天)
-                new_streak = old_streak + 2
-                
-                user_ext.streak_days = new_streak
-                if new_streak > user_ext.max_streak_days:
-                    user_ext.max_streak_days = new_streak
-                
-                session.add(user_ext)
-                return True, f"✅ 成功补救昨天的断签！\n连签天数已恢复为 {new_streak} 天。"
-            else:
-                return False, f"❌ 断签时间过长 (上次签到 {last_tx_date})，补签卡仅能恢复最近一天的断签。"
-                
-        # 其他情况
-        elif gap == 1:
-            return False, "📅 昨天已签到，无需补签。"
-        else:
-            return False, f"❌ 断签时间过长 (上次签到 {last_date})，补签卡仅能恢复最近一天的断签。"
+            if gap_tx == 1:
+                 return False, "📅 你的连签状态正常，无需补签。"
+            
+            # TODO: 这种情况比较复杂，需要修改历史记录才能接上，暂时不支持
+            return False, "⚠️ 补签功能暂时只支持在断签的第二天使用。"
 
+        else:
+            return False, "⚠️ 只能补签昨天的签到。"
 
     @staticmethod
-    async def ensure_products(session: AsyncSession) -> None:
-        """初始化商品数据"""
-        products = [
-            {
-                "id": 1,
-                "name": "补签卡",
-                "price": 50,
-                "category": "tools",
-                "action_type": "retro_checkin",
-                "description": "用于补签过去未签到的日期（自动使用最近一天）。",
-                "stock": 20,
-                "is_active": True,
-            },
-            {
-                "id": 2,
-                "name": "图像修改",
-                "price": 100,
-                "category": "emby",
-                "action_type": "emby_image",
-                "description": "修改 Emby 上的用户图像（购买后请联系频道）。",
-                "stock": 20,
-                "is_active": True,
-                "purchase_conditions": {"has_emby": True},
-            },
-            {
-                "id": 3,
-                "name": "自定义头衔（7天）",
-                "price": 100,
-                "category": "group",
-                "action_type": "custom_title",
-                "description": "在群组中显示自定义头衔（7天体验）。",
-                "stock": 20,
-                "is_active": True,
-            },
-            {
-                "id": 4,
-                "name": "自定义头衔（永久）",
-                "price": 1000,
-                "category": "group",
-                "action_type": "custom_title",
-                "description": "在群组中显示自定义头衔（永久）。\n🎉 恭喜您连续签到30天解锁此隐藏商品！",
-                "stock": 10,
-                "is_active": True,
-                "visible_conditions": {"min_max_streak": 30},
-            },
-        ]
+    async def has_unused_ticket(session: AsyncSession, user_id: int, action_type: str) -> bool:
+        """检查是否有未使用的功能券"""
+        stmt = select(CurrencyTransactionModel).where(
+            CurrencyTransactionModel.user_id == user_id,
+            CurrencyTransactionModel.event_type == "purchase",
+            CurrencyTransactionModel.is_consumed.is_(False),
+            # 使用 JSON 字段中的 action_type 进行过滤
+            func.json_extract(CurrencyTransactionModel.meta, '$.action_type') == action_type
+        ).limit(1)
         
-        for p_data in products:
-            stmt = select(CurrencyProductModel).where(CurrencyProductModel.id == p_data["id"])
-            result = await session.execute(stmt)
-            existing = result.scalar_one_or_none()
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
+    @staticmethod
+    async def consume_ticket(session: AsyncSession, user_id: int, action_type: str) -> bool:
+        """消耗一张功能券 (将最早的一张未消耗记录标记为已消耗)"""
+        # 查找最早的一张未消耗券
+        stmt = select(CurrencyTransactionModel).where(
+            CurrencyTransactionModel.user_id == user_id,
+            CurrencyTransactionModel.event_type == "purchase",
+            CurrencyTransactionModel.is_consumed.is_(False),
+            func.json_extract(CurrencyTransactionModel.meta, '$.action_type') == action_type
+        ).order_by(CurrencyTransactionModel.created_at.asc()).limit(1)
+        
+        result = await session.execute(stmt)
+        ticket = result.scalar_one_or_none()
+        
+        if ticket:
+            ticket.is_consumed = True
+            session.add(ticket)
+            await session.commit()
+            return True
             
-            if not existing:
-                product = CurrencyProductModel(**p_data)
-                session.add(product)
-            else:
-                # 更新现有商品配置
-                for k, v in p_data.items():
-                    if hasattr(existing, k):
-                        setattr(existing, k, v)
-                session.add(existing)
-        
-        await session.commit()
+        return False

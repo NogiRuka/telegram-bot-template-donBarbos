@@ -44,24 +44,22 @@ async def user_avatar(
         
     _user, ext = await get_user_and_extend(session, uid)
     
-    # 获取商品价格
-    product = await CurrencyService.get_product_by_action(session, "emby_image")
-    price = product.price if product else 0
-    
-    # 检查余额
-    balance = await CurrencyService.get_user_balance(session, uid)
-    if price > 0 and balance < price:
+    # 检查是否有未使用的购买资格
+    has_ticket = await CurrencyService.has_unused_ticket(session, uid, "emby_image")
+    if not has_ticket:
         await callback.answer(
-            f"🔴 余额不足，修改头像需要 {price} {CURRENCY_SYMBOL}\n"
-            f"当前余额: {balance} {CURRENCY_SYMBOL}", 
+            f"🔴 您尚未购买【修改头像】资格，请前往精粹商店购买。", 
             show_alert=True
         )
         return
     
+    # 获取商品信息用于展示（可选）
+    product = await CurrencyService.get_product_by_action(session, "emby_image")
+    price_str = f"{product.price} {CURRENCY_SYMBOL}" if product else "已购买"
+    
     caption = (
         "🖼️ *修改 Emby 头像*\n\n"
-        f"本次修改将消耗 *{price} {CURRENCY_SYMBOL}*\n"
-        f"当前余额: {balance} {CURRENCY_SYMBOL}\n\n"
+        f"✅ 您已拥有修改资格\n\n"
         "请直接发送一张图片作为新的头像。\n"
         "提示：建议使用正方形图片，支持 JPG/PNG 格式。"
     )
@@ -101,16 +99,13 @@ async def handle_avatar_photo(
     file_id = photo.file_id
     
     try:
-        # 获取商品价格并再次检查余额
-        product = await CurrencyService.get_product_by_action(session, "emby_image")
-        price = product.price if product else 0
-        
-        balance = await CurrencyService.get_user_balance(session, message.from_user.id)
-        if price > 0 and balance < price:
-            await message.answer(f"🔴 余额不足，无法完成修改")
-            await state.clear()
-            await main_msg.delete_input(message)
-            return
+        # 再次检查资格（防止并发问题）
+        has_ticket = await CurrencyService.has_unused_ticket(session, message.from_user.id, "emby_image")
+        if not has_ticket:
+             await message.answer(f"🔴 您没有修改头像的资格，请先购买")
+             await state.clear()
+             await main_msg.delete_input(message)
+             return
 
         # 下载图片
         file_io = io.BytesIO()
@@ -128,19 +123,14 @@ async def handle_avatar_photo(
             
         await client.upload_user_image(emby_user_id, b64_data)
         
-        # 扣除费用
-        if price > 0:
-            await CurrencyService.add_currency(
-                session,
-                message.from_user.id,
-                -price,
-                "emby_image",
-                "修改 Emby 头像",
-                meta={"product_id": product.id if product else None}
-            )
+        # 消耗资格券
+        consumed = await CurrencyService.consume_ticket(session, message.from_user.id, "emby_image")
+        if not consumed:
+             # 理论上不会发生，因为前面检查过了
+             logger.warning(f"用户 {message.from_user.id} 修改头像成功但扣减资格失败")
         
         # 成功提示
-        success_msg = await message.answer(f"✅ 头像修改成功！\n已扣除 {price} {CURRENCY_SYMBOL}")
+        success_msg = await message.answer(f"✅ 头像修改成功！\n已消耗一次修改资格")
         delete_message_after_delay(success_msg, 5)
         
         # 清理状态

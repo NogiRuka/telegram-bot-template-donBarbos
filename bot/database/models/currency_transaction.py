@@ -35,6 +35,8 @@ class CurrencyTransactionModel(Base, BasicAuditMixin):
     event_type: Mapped[str] = mapped_column(String(32), index=True, nullable=False, comment="事件类型")
     
     description: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="流水描述")
+
+    is_consumed: Mapped[bool] = mapped_column(default=True, comment="是否已消耗(用于功能购买凭证)")
     
     meta: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True, comment="扩展信息")
     

@@ -179,22 +179,13 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
         # 删除用户消息
         await message.delete()
 
-        # 1. 预扣除代币 (不立即提交，等待 Emby 操作成功)
-        try:
-            await CurrencyService.add_currency(
-                session,
-                uid,
-                -PASSWORD_CHANGE_COST,
-                "password_change",
-                "修改 Emby 密码",
-                commit=False
-            )
-        except ValueError:
-            # 余额不足 (理论上入口处已拦截，但防止并发或状态变化)
+        # 1. 消耗资格券
+        consumed = await CurrencyService.consume_ticket(session, uid, "emby_password")
+        if not consumed:
             await state.clear()
             return await main_msg.render(
                 uid,
-                f"🔴 余额不足，修改密码需要 {PASSWORD_CHANGE_COST} {CURRENCY_SYMBOL}",
+                "🔴 资格校验失败，请确认您拥有修改密码的资格。",
                 get_account_center_keyboard(uid)
             )
 
