@@ -9,6 +9,8 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.user import get_account_center_keyboard, get_password_input_keyboard
+from bot.core.constants import CURRENCY_SYMBOL
+from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
 from bot.utils.permissions import require_emby_account, require_user_feature
@@ -18,6 +20,8 @@ router = Router(name="user_password")
 
 # 修改密码超时时间（秒）
 PASSWORD_TIMEOUT_SECONDS = 120
+# 修改密码消耗精粹
+PASSWORD_CHANGE_COST = 60
 
 
 class PasswordStates(StatesGroup):
@@ -55,11 +59,22 @@ async def user_password(callback: CallbackQuery, session: AsyncSession, state: F
         # 获取用户扩展信息 (require_emby_account 已保证存在)
         _user, user_extend = await get_user_and_extend(session, uid)
         
+        # 检查余额
+        balance = await CurrencyService.get_user_balance(session, uid)
+        if balance < PASSWORD_CHANGE_COST:
+            return await callback.answer(
+                f"🔴 余额不足，修改密码需要 {PASSWORD_CHANGE_COST} {CURRENCY_SYMBOL}\n"
+                f"当前余额: {balance} {CURRENCY_SYMBOL}", 
+                show_alert=True
+            )
+
         logger.info("用户开始修改密码: user_id={} emby_user_id={}", uid, user_extend.emby_user_id)
 
         # 更新主消息提示输入新密码
         caption = (
-            "🔐 修改 Emby 密码\n\n"
+            "🔐 *修改 Emby 密码*\n\n"
+            f"本次修改将消耗 *{PASSWORD_CHANGE_COST} {CURRENCY_SYMBOL}*\n"
+            f"当前余额: {balance} {CURRENCY_SYMBOL}\n\n"
             "请输入新的密码：\n"
             "密码长度至少需要 6 个字符\n\n"
             f"⏰ 请在 {PASSWORD_TIMEOUT_SECONDS // 60} 分钟内完成输入"
@@ -164,7 +179,26 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
         # 删除用户消息
         await message.delete()
 
-        # 更新 Emby 用户密码
+        # 1. 预扣除代币 (不立即提交，等待 Emby 操作成功)
+        try:
+            await CurrencyService.add_currency(
+                session,
+                uid,
+                -PASSWORD_CHANGE_COST,
+                "password_change",
+                "修改 Emby 密码",
+                commit=False
+            )
+        except ValueError:
+            # 余额不足 (理论上入口处已拦截，但防止并发或状态变化)
+            await state.clear()
+            return await main_msg.update(
+                uid,
+                f"🔴 余额不足，修改密码需要 {PASSWORD_CHANGE_COST} {CURRENCY_SYMBOL}",
+                get_account_center_keyboard(uid)
+            )
+
+        # 2. 更新 Emby 用户密码
         from bot.utils.emby import get_emby_client
 
         client = get_emby_client()
@@ -175,9 +209,11 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
                 "🔴 Emby 服务配置异常，请联系管理员",
                 get_account_center_keyboard(uid)
             )
+        
+        # 调用 Emby API
         await client.update_user_password(emby_user_id, new_password)
 
-        # 更新数据库中的密码哈希
+        # 3. 更新数据库中的密码哈希
         new_password_hash = hash_password(new_password)
         from sqlalchemy import select
 
@@ -213,9 +249,12 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
             emby_user.password_hash = new_password_hash
             emby_user.updated_by = uid  # 更新操作者
             emby_user.remark = "用户修改密码"  # 更新备注
-            await session.commit()
+            session.add(emby_user)
         else:
-            logger.warning(f"⚠️ 未在数据库中找到用户 {emby_user_id}，仅更新了 Emby 端密码，跳过本地更新")
+            logger.warning(f"⚠️ 未在数据库中找到用户 {emby_user_id}，仅更新了 Emby 端密码")
+
+        # 4. 提交事务 (包含扣款和数据库更新)
+        await session.commit()
 
         # 清理 FSM 状态
         await state.clear()
