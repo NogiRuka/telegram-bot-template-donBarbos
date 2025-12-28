@@ -19,6 +19,7 @@ from bot.services.main_message import MainMessageService
 from bot.services.emby_service import update_user_blocked_tags
 from bot.utils.permissions import require_emby_account, require_user_feature
 from bot.utils.text import escape_markdown_v2
+from bot.utils.message import send_temp_message
 
 router = Router(name="user_tags")
 
@@ -119,7 +120,6 @@ async def clear_tags(
 @require_emby_account
 async def start_custom_tags(
     callback: CallbackQuery,
-    session: AsyncSession,
     state: FSMContext,
     main_msg: MainMessageService,
 ) -> None:
@@ -182,8 +182,9 @@ async def process_custom_tags(
     await state.clear()
     
     if success:
-        # 刷新页面并提示
+        # 刷新页面并提示成功
         await show_tags_menu(session, main_msg, uid)
+        await send_temp_message(message, "✅ 屏蔽标签设置成功", delay=5)
     else:
         err_esc = escape_markdown_v2(str(err))
         await main_msg.render(uid, f"❌ 操作失败: {err_esc}", get_user_tags_keyboard())
