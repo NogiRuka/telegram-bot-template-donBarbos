@@ -184,7 +184,7 @@ async def process_custom_tags(
     if success:
         # 刷新页面并提示成功
         await show_tags_menu(session, main_msg, uid)
-        await send_toast(message, "✅ 屏蔽标签设置成功", delay=5)
+        await send_toast(message, "✅ 屏蔽标签设置成功")
     else:
         err_esc = escape_markdown_v2(str(err))
         await main_msg.render(uid, f"❌ 操作失败: {err_esc}", get_user_tags_keyboard())
