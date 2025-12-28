@@ -11,9 +11,11 @@
 
 import json
 import logging
+from contextlib import suppress
 
 from aiogram import F, Router, types
 from aiogram.enums import ChatType
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy import select
@@ -46,32 +48,21 @@ class GroupConfigStates(StatesGroup):
     waiting_for_limits = State()
 
 
-@router.message(Command("group_config"), F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP]), AdminFilter())
-async def cmd_group_config(message: types.Message, session: AsyncSession) -> None:
+async def _get_group_config_content(session: AsyncSession, config: GroupConfigModel) -> tuple[str, types.InlineKeyboardMarkup]:
     """
-    群组配置命令
-
-    显示当前群组的消息保存配置。
+    获取群组配置显示内容（文本和键盘）
 
     Args:
-        message: Telegram消息对象
         session: 数据库会话
+        config: 群组配置对象
+
+    Returns:
+        tuple[str, InlineKeyboardMarkup]: (配置文本, 配置键盘)
     """
-    try:
-        group_type = GroupType.SUPERGROUP if message.chat.type == "supergroup" else GroupType.GROUP
-        config = await get_or_create_group_config(
-            session=session,
-            chat_id=message.chat.id,
-            chat_title=message.chat.title,
-            chat_username=message.chat.username,
-            group_type=group_type,
-            configured_by_user_id=message.from_user.id,
-        )
+    total_messages = await get_group_message_stats(session, config.chat_id)
 
-        total_messages = await get_group_message_stats(session, message.chat.id)
-
-        # 构建配置信息文本
-        config_text = f"""
+    # 构建配置信息文本
+    config_text = f"""
 🔧 *群组消息保存配置*
 
 📊 *基本信息*
@@ -105,9 +96,35 @@ async def cmd_group_config(message: types.Message, session: AsyncSession) -> Non
 • 排除关键词: {len(json.loads(config.exclude_keywords)) if config.exclude_keywords else 0} 个
 
 📝 *备注*: {config.notes or "无"}
-        """
+    """
+    
+    return config_text, get_group_config_keyboard(config)
 
-        await message.reply(config_text, reply_markup=get_group_config_keyboard(config.id), parse_mode="Markdown")
+
+@router.message(Command("group_config"), F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP]), AdminFilter())
+async def cmd_group_config(message: types.Message, session: AsyncSession) -> None:
+    """
+    群组配置命令
+
+    显示当前群组的消息保存配置。
+
+    Args:
+        message: Telegram消息对象
+        session: 数据库会话
+    """
+    try:
+        group_type = GroupType.SUPERGROUP if message.chat.type == "supergroup" else GroupType.GROUP
+        config = await get_or_create_group_config(
+            session=session,
+            chat_id=message.chat.id,
+            chat_title=message.chat.title,
+            chat_username=message.chat.username,
+            group_type=group_type,
+            configured_by_user_id=message.from_user.id,
+        )
+
+        text, markup = await _get_group_config_content(session, config)
+        await message.reply(text, reply_markup=markup, parse_mode="Markdown")
 
     except Exception as e:
         logger.exception(f"❌ 显示群组配置失败: {e}")
@@ -142,8 +159,10 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             status = "启用" if config.is_message_save_enabled else "禁用"
             await callback.answer(f"✅ 已{status}消息保存")
 
-            # 更新键盘
-            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
+            # 更新界面
+            text, markup = await _get_group_config_content(session, config)
+            with suppress(TelegramBadRequest):
+                await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
 
         elif action == "change_mode":
             # 显示保存模式选择
@@ -162,31 +181,46 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             config.save_text_messages = not config.save_text_messages
             await session.commit()
             await callback.answer(f"✅ 文本消息保存已{'启用' if config.save_text_messages else '禁用'}")
-            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
+            
+            text, markup = await _get_group_config_content(session, config)
+            with suppress(TelegramBadRequest):
+                await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
 
         elif action == "toggle_media":
             config.save_media_messages = not config.save_media_messages
             await session.commit()
             await callback.answer(f"✅ 媒体消息保存已{'启用' if config.save_media_messages else '禁用'}")
-            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
+            
+            text, markup = await _get_group_config_content(session, config)
+            with suppress(TelegramBadRequest):
+                await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
 
         elif action == "toggle_forwarded":
             config.save_forwarded_messages = not config.save_forwarded_messages
             await session.commit()
             await callback.answer(f"✅ 转发消息保存已{'启用' if config.save_forwarded_messages else '禁用'}")
-            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
+            
+            text, markup = await _get_group_config_content(session, config)
+            with suppress(TelegramBadRequest):
+                await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
 
         elif action == "toggle_reply":
             config.save_reply_messages = not config.save_reply_messages
             await session.commit()
             await callback.answer(f"✅ 回复消息保存已{'启用' if config.save_reply_messages else '禁用'}")
-            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
+            
+            text, markup = await _get_group_config_content(session, config)
+            with suppress(TelegramBadRequest):
+                await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
 
         elif action == "toggle_bot":
             config.save_bot_messages = not config.save_bot_messages
             await session.commit()
             await callback.answer(f"✅ 机器人消息保存已{'启用' if config.save_bot_messages else '禁用'}")
-            await callback.message.edit_reply_markup(reply_markup=get_group_config_keyboard(config.id))
+            
+            text, markup = await _get_group_config_content(session, config)
+            with suppress(TelegramBadRequest):
+                await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
 
         elif action == "clear_messages":
             # 显示确认对话框
@@ -200,7 +234,9 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
 
         elif action == "refresh":
             # 刷新配置显示
-            await cmd_group_config(callback.message, session)
+            text, markup = await _get_group_config_content(session, config)
+            with suppress(TelegramBadRequest):
+                await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
             await callback.answer("🔄 配置已刷新")
 
     except Exception as e:
@@ -251,7 +287,9 @@ async def handle_save_mode_callback(callback: types.CallbackQuery, session: Asyn
         await callback.answer(f"✅ 保存模式已设置为: {mode_names[mode]}")
 
         # 返回配置页面
-        await cmd_group_config(callback.message, session)
+        text, markup = await _get_group_config_content(session, config)
+        with suppress(TelegramBadRequest):
+            await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
 
     except Exception as e:
         logger.exception(f"❌ 处理保存模式回调失败: {e}")
@@ -290,7 +328,9 @@ async def handle_confirm_clear_callback(callback: types.CallbackQuery, session: 
         await callback.answer(f"✅ 已清空 {deleted_count} 条消息")
 
         # 返回配置页面
-        await cmd_group_config(callback.message, session)
+        text, markup = await _get_group_config_content(session, config)
+        with suppress(TelegramBadRequest):
+            await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
 
     except Exception as e:
         logger.exception(f"❌ 清空消息失败: {e}")
@@ -307,8 +347,20 @@ async def handle_group_config_back_callback(callback: types.CallbackQuery, sessi
         session: 数据库会话
     """
     try:
+        config_id = int(callback.data.split(":")[1])
+
+        # 获取配置
+        result = await session.execute(select(GroupConfigModel).where(GroupConfigModel.id == config_id))
+        config = result.scalar_one_or_none()
+
+        if not config:
+            await callback.answer("❌ 配置不存在")
+            return
+
         # 返回配置页面
-        await cmd_group_config(callback.message, session)
+        text, markup = await _get_group_config_content(session, config)
+        with suppress(TelegramBadRequest):
+            await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
 
     except Exception as e:
         logger.exception(f"❌ 返回群组配置失败: {e}")

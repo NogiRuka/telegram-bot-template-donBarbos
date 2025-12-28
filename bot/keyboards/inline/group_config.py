@@ -12,44 +12,52 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from bot.database.models import GroupConfigModel
 from bot.keyboards.inline.constants import (
     GROUP_BACK_TO_HOME_CALLBACK_DATA,
     GROUP_BACK_TO_HOME_LABEL,
 )
 
 
-def get_group_config_keyboard(config_id: int) -> InlineKeyboardMarkup:
+def get_group_config_keyboard(config: GroupConfigModel) -> InlineKeyboardMarkup:
     """
     获取群组配置主键盘
 
     Args:
-        config_id: 群组配置ID
+        config: 群组配置对象
 
     Returns:
         InlineKeyboardMarkup: 群组配置键盘
     """
     builder = InlineKeyboardBuilder()
+    config_id = config.id
 
     # 第一行: 启用/禁用 和 保存模式
+    enable_text = "✅ 状态: 启用" if config.is_message_save_enabled else "❌ 状态: 禁用"
     builder.row(
-        InlineKeyboardButton(text="🔄 切换启用状态", callback_data=f"group_config:toggle_enable:{config_id}"),
+        InlineKeyboardButton(text=enable_text, callback_data=f"group_config:toggle_enable:{config_id}"),
         InlineKeyboardButton(text="⚙️ 保存模式", callback_data=f"group_config:change_mode:{config_id}"),
     )
 
     # 第二行: 消息类型过滤
+    text_msg_text = "✅ 文本消息" if config.save_text_messages else "❌ 文本消息"
+    media_msg_text = "✅ 媒体消息" if config.save_media_messages else "❌ 媒体消息"
     builder.row(
-        InlineKeyboardButton(text="📝 文本消息", callback_data=f"group_config:toggle_text:{config_id}"),
-        InlineKeyboardButton(text="🖼️ 媒体消息", callback_data=f"group_config:toggle_media:{config_id}"),
+        InlineKeyboardButton(text=text_msg_text, callback_data=f"group_config:toggle_text:{config_id}"),
+        InlineKeyboardButton(text=media_msg_text, callback_data=f"group_config:toggle_media:{config_id}"),
     )
 
     # 第三行: 特殊消息过滤
+    forward_msg_text = "✅ 转发消息" if config.save_forwarded_messages else "❌ 转发消息"
+    reply_msg_text = "✅ 回复消息" if config.save_reply_messages else "❌ 回复消息"
     builder.row(
-        InlineKeyboardButton(text="↩️ 转发消息", callback_data=f"group_config:toggle_forwarded:{config_id}"),
-        InlineKeyboardButton(text="💬 回复消息", callback_data=f"group_config:toggle_reply:{config_id}"),
+        InlineKeyboardButton(text=forward_msg_text, callback_data=f"group_config:toggle_forwarded:{config_id}"),
+        InlineKeyboardButton(text=reply_msg_text, callback_data=f"group_config:toggle_reply:{config_id}"),
     )
 
     # 第四行: 机器人消息
-    builder.row(InlineKeyboardButton(text="🤖 机器人消息", callback_data=f"group_config:toggle_bot:{config_id}"))
+    bot_msg_text = "✅ 机器人消息" if config.save_bot_messages else "❌ 机器人消息"
+    builder.row(InlineKeyboardButton(text=bot_msg_text, callback_data=f"group_config:toggle_bot:{config_id}"))
 
     # 第五行: 管理操作
     builder.row(
