@@ -77,13 +77,6 @@ async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession
     product_id = int(callback.data.replace(STORE_BUY_PREFIX, ""))
     user_id = callback.from_user.id
     
-    # 预先获取商品信息
-    product = await CurrencyService.get_product(session, product_id)
-    if not product:
-        await callback.answer("商品不存在", show_alert=True)
-        return
-
-    # 普通商品购买逻辑
     success, message = await CurrencyService.purchase_product(session, user_id, product_id)
     
     # 如果购买成功，刷新页面显示最新余额

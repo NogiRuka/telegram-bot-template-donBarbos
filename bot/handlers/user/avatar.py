@@ -55,7 +55,6 @@ async def user_avatar(
     
     # 获取商品信息用于展示（可选）
     product = await CurrencyService.get_product_by_action(session, "emby_image")
-    price_str = f"{product.price} {CURRENCY_SYMBOL}" if product else "已购买"
     
     caption = (
         "🖼️ *修改 Emby 头像*\n\n"
