@@ -270,27 +270,9 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
             return False
 
         if duration is None:
-            # 确保时区信息一致
-            if _now.tzinfo is None and start.tzinfo is not None:
-                start = start.replace(tzinfo=None)
-            elif _now.tzinfo is not None and start.tzinfo is None:
-                start = start.replace(tzinfo=_now.tzinfo)
             return _now >= start
 
         end = start + timedelta(minutes=int(duration))
-        
-        # 确保时区信息一致
-        if _now.tzinfo is None:
-             if start.tzinfo is not None:
-                 start = start.replace(tzinfo=None)
-             if end.tzinfo is not None:
-                 end = end.replace(tzinfo=None)
-        elif _now.tzinfo is not None:
-             if start.tzinfo is None:
-                 start = start.replace(tzinfo=_now.tzinfo)
-             if end.tzinfo is None:
-                 end = end.replace(tzinfo=_now.tzinfo)
-                 
         return start <= _now <= end
     except SQLAlchemyError:
         return False

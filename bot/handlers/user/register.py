@@ -72,12 +72,6 @@ async def user_register(
             if start_time:
                 dt_start = parse_formatted_datetime(start_time)
                 if dt_start:
-                    # 确保时区信息一致
-                    if current_time.tzinfo is None and dt_start.tzinfo is not None:
-                        dt_start = dt_start.replace(tzinfo=None)
-                    elif current_time.tzinfo is not None and dt_start.tzinfo is None:
-                        dt_start = dt_start.replace(tzinfo=current_time.tzinfo)
-                        
                     # 检查开始时间是否已经过去
                     if dt_start > current_time:
                         formatted_start = format_datetime(dt_start)
@@ -86,12 +80,6 @@ async def user_register(
                         if dur:
                             end_dt = dt_start + timedelta(minutes=int(dur))
                             
-                            # 确保时区信息一致 (虽然上面已经处理过 dt_start，但 end_dt 是新生成的，保险起见再检查一次)
-                            if current_time.tzinfo is None and end_dt.tzinfo is not None:
-                                end_dt = end_dt.replace(tzinfo=None)
-                            elif current_time.tzinfo is not None and end_dt.tzinfo is None:
-                                end_dt = end_dt.replace(tzinfo=current_time.tzinfo)
-                                
                             # 检查结束时间是否已经过去
                             if end_dt > current_time:
                                 formatted_end = format_datetime(end_dt)
