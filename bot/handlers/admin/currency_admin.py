@@ -9,6 +9,7 @@ from bot.database.models import UserModel
 from bot.core.constants import CURRENCY_SYMBOL
 from bot.keyboards.inline.constants import (
     CURRENCY_ADMIN_CALLBACK_DATA,
+    CURRENCY_ADMIN_LABEL
 )
 from bot.services.currency import CurrencyService
 from bot.states.admin import CurrencyAdminState
@@ -21,7 +22,14 @@ router = Router(name="currency_admin")
 @router.callback_query(F.data == CURRENCY_ADMIN_CALLBACK_DATA)
 async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext):
     """精粹管理 - 开始"""
-    msg = await callback.message.answer("💎 精粹管理\n\n请发送用户的 ID (或者回复用户的消息) 来查询/管理余额:")
+    kb = InlineKeyboardBuilder()
+    kb.button(text="❌ 取消", callback_data="admin:currency:cancel")
+
+    msg = await callback.message.answer(
+        f"*{CURRENCY_ADMIN_LABEL}*\n\n请发送用户的 ID（或者回复用户的消息）来查询／管理余额：",
+        parse_mode="MarkdownV2",
+        reply_markup=kb.as_markup()
+    )
     await state.update_data(prompt_message_id=msg.message_id)
     await state.set_state(CurrencyAdminState.waiting_for_user)
     await callback.answer()
