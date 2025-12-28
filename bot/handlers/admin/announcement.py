@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config.constants import KEY_ADMIN_ANNOUNCEMENT, KEY_ANNOUNCEMENT_TEXT
+from bot.config.constants import KEY_ADMIN_ANNOUNCEMENT, KEY_ADMIN_ANNOUNCEMENT_TEXT
 from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import ANNOUNCEMENT_LABEL
 from bot.services.config_service import get_config, set_config
@@ -78,7 +78,7 @@ async def open_announcement_panel(callback: CallbackQuery, session: AsyncSession
     返回值:
     - None
     """
-    current_text = await get_config(session, KEY_ANNOUNCEMENT_TEXT)
+    current_text = await get_config(session, KEY_ADMIN_ANNOUNCEMENT_TEXT)
     current_text = (str(current_text).strip() if current_text is not None else "")
     
     caption, kb = _build_panel_ui(current_text)
@@ -132,7 +132,7 @@ async def clear_announcement(callback: CallbackQuery, session: AsyncSession, mai
     返回值:
     - None
     """
-    await set_config(session, KEY_ANNOUNCEMENT_TEXT, None)
+    await set_config(session, KEY_ADMIN_ANNOUNCEMENT_TEXT, None)
 
     # 直接更新界面，避免重新查库
     caption, kb = _build_panel_ui(None)
@@ -172,7 +172,7 @@ async def handle_announcement_text(
         # 简单起见，如果为空，直接返回到面板
         pass
     else:
-        ok = await set_config(session, KEY_ANNOUNCEMENT_TEXT, text)
+        ok = await set_config(session, KEY_ADMIN_ANNOUNCEMENT_TEXT, text)
         if not ok:
             # 更新失败，发送临时提示
             temp_msg = await message.answer("🔴 更新失败，请稍后重试")
@@ -185,7 +185,7 @@ async def handle_announcement_text(
 
     # 无论成功与否（只要非空或空），都尝试刷新主面板显示最新状态
     # 重新查询以确保显示的是数据库中的最新值
-    current_text = await get_config(session, KEY_ANNOUNCEMENT_TEXT)
+    current_text = await get_config(session, KEY_ADMIN_ANNOUNCEMENT_TEXT)
     current_text = (str(current_text).strip() if current_text is not None else "")
     
     caption, kb = _build_panel_ui(current_text)

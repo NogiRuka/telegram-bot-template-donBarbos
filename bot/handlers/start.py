@@ -5,7 +5,7 @@ from aiogram.filters import CommandStart
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config.constants import KEY_ANNOUNCEMENT_TEXT
+from bot.config.constants import KEY_ADMIN_ANNOUNCEMENT_TEXT
 from bot.core.config import settings
 from bot.database.models import UserModel
 from bot.keyboards.inline.admin import get_start_admin_keyboard
@@ -61,7 +61,7 @@ async def build_home_view(
     announcement = None
     if session is not None:
         with contextlib.suppress(Exception):
-            announcement = await get_config(session, KEY_ANNOUNCEMENT_TEXT)
+            announcement = await get_config(session, KEY_ADMIN_ANNOUNCEMENT_TEXT)
             if isinstance(announcement, (dict, list, bool, int, float)):
                 announcement = str(announcement)
             if announcement is not None:

@@ -33,6 +33,8 @@ KEY_ADMIN_HITOKOTO = "admin.hitokoto"
 KEY_ADMIN_OPEN_REGISTRATION = "admin.open_registration"
 KEY_ADMIN_NEW_ITEM_NOTIFICATION = "admin.new_item_notification"
 KEY_ADMIN_ANNOUNCEMENT = "admin.announcement"
+# 公告内容
+KEY_ADMIN_ANNOUNCEMENT_TEXT = "admin.announcement.text"
 KEY_ADMIN_STORE = "admin.store"
 KEY_ADMIN_CURRENCY = "admin.currency"
 
@@ -41,5 +43,4 @@ KEY_REGISTRATION_FREE_OPEN = "registration.free_open"
 KEY_ADMIN_OPEN_REGISTRATION_WINDOW = "admin.open_registration.window"
 KEY_ADMIN_HITOKOTO_CATEGORIES = "admin.hitokoto.categories"
 
-# 公告内容
-KEY_ANNOUNCEMENT_TEXT = "announcement.text"
+

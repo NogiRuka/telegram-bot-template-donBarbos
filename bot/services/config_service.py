@@ -243,19 +243,9 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
         if key in (KEY_USER_LINES_INFO,):
             continue
 
-        stmt = select(ConfigModel).where(ConfigModel.key == key)
-        result = await session.execute(stmt)
-        model: ConfigModel | None = result.scalar_one_or_none()
-
-        if model is None:
+        current = await get_config(session, key)
+        if current is None:
             await set_config(session, key, None, ctype, default_value=default_val)
-        else:
-            # 确保默认值与代码配置一致
-            # 注意: 这里只更新 default_value, 不覆盖用户已修改的 value
-            serialized_default = _serialize_value(ctype, default_val)
-            if model.default_value != serialized_default:
-                model.default_value = serialized_default
-                session.add(model)
 
     # 初始化线路信息 (从环境变量迁移)
     current_lines = await get_config(session, KEY_USER_LINES_INFO)

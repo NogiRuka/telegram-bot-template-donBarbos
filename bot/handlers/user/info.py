@@ -71,6 +71,7 @@ async def user_info(
             f"🗓 创建时间：{escape_markdown_v2(e_created)}",
             f"🔐 最近登录：{escape_markdown_v2(e_last_login)}",
             f"🎥 最近活动：{escape_markdown_v2(e_last_activity)}",
+            f"||部分信息隔天更新||",
         ])
     elif ext and ext.emby_user_id:
         lines.append(f"⚠️ 已绑定 ID: `{escape_markdown_v2(ext.emby_user_id)}`")

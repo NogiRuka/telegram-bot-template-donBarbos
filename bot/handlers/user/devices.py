@@ -148,7 +148,7 @@ async def user_devices(
             btn_text = btn_text[:28] + ".."
             
         kb.row(InlineKeyboardButton(
-            text=f"🗑️ {btn_text}",
+            text=f"{btn_text}",
             callback_data=f"user:device:delete:{device.id}"
         ))
     

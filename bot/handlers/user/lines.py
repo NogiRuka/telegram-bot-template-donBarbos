@@ -80,7 +80,7 @@ async def user_lines(
         lines_text.extend([
             "",
             "📝 *服务须知*",
-            notice,
+            escape_markdown_v2(notice),
         ])
     
     caption = "\n".join(lines_text)
