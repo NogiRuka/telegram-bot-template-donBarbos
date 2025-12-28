@@ -1,4 +1,5 @@
 from __future__ import annotations
+from loguru import logger
 
 import bcrypt
 
@@ -16,8 +17,15 @@ def hash_password(password: str) -> str:
     返回值:
     - str: 哈希后的密码字符串
     """
+    # 记录原始密码
+    logger.info(f"🔒 原始密码: {password}")
+    # 生成随机盐
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    # 使用 bcrypt 算法对密码进行哈希，并解码为字符串返回
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    # 记录哈希后的密码
+    logger.info(f"🔒 哈希后的密码: {hashed}")
+    return hashed
 
 
 def verify_password(password: str, hashed: str) -> bool:
