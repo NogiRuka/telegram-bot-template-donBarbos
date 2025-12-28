@@ -90,8 +90,7 @@ async def view_copywriting(callback: CallbackQuery, session: AsyncSession, main_
         InlineKeyboardButton(text="✏️ 编辑内容", callback_data=f"admin:copywriting:edit:{type_code}"),
         InlineKeyboardButton(text="🗑️ 清空内容", callback_data=f"admin:copywriting:clear:{type_code}"),
     )
-    kb.row(BACK_TO_COPYWRITING_BUTTON)
-    kb.row(BACK_TO_HOME_BUTTON)
+    kb.row(BACK_TO_COPYWRITING_BUTTON, BACK_TO_HOME_BUTTON)
     
     await main_msg.update_on_callback(callback, caption, kb.as_markup())
 
@@ -189,8 +188,7 @@ async def handle_copywriting_text(
         InlineKeyboardButton(text="✏️ 编辑内容", callback_data=f"admin:copywriting:edit:{type_code}"),
         InlineKeyboardButton(text="🗑️ 清空内容", callback_data=f"admin:copywriting:clear:{type_code}"),
     )
-    kb.row(BACK_TO_COPYWRITING_BUTTON)
-    kb.row(BACK_TO_HOME_BUTTON)
+    kb.row(BACK_TO_COPYWRITING_BUTTON, BACK_TO_HOME_BUTTON)
 
     if message.from_user:
         await main_msg.render(message.from_user.id, caption, kb.as_markup())
