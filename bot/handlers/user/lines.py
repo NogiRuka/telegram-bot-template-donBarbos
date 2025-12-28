@@ -82,19 +82,6 @@ async def user_lines(
             "📝 *服务须知*",
             escape_markdown_v2(notice),
         ])
-    else:
-        lines_text.extend([
-            "",
-            "📝 *服务须知*",
-            f"{escape_markdown_v2('关于Emby：')}[{escape_markdown_v2('Emby百科')}](https://emby.wiki/)",
-            f"{escape_markdown_v2('任何问题请通过')}[{escape_markdown_v2('频道')}](https://t.me/lustfulboy_channel?direct){escape_markdown_v2('私信')}",
-            escape_markdown_v2("注意事项："),
-            escape_markdown_v2("🚫 泄露服务器地址"),
-            escape_markdown_v2("🚫 网页端播放"),
-            escape_markdown_v2("🚫 网易爆米花"),
-            escape_markdown_v2("🚫 创建播放列表"),
-            escape_markdown_v2("🚫 Infuse媒体库模式"),
-        ])
     
     caption = "\n".join(lines_text)
     
