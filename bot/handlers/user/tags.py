@@ -50,7 +50,7 @@ async def show_tags_menu(
         if callback:
             await callback.answer(msg)
         else:
-            await main_msg.update(uid, msg)
+            await main_msg.render(uid, msg)
         return
 
     policy = (emby_user.user_dto or {}).get("Policy", {})
@@ -74,7 +74,7 @@ async def show_tags_menu(
         await main_msg.update_on_callback(callback, text, kb)
         await callback.answer()
     else:
-        await main_msg.update(uid, text, kb)
+        await main_msg.render(uid, text, kb)
 
 
 @router.callback_query(F.data == USER_TAGS_CALLBACK_DATA)
@@ -170,7 +170,7 @@ async def process_custom_tags(
     emby_user = await get_emby_user_model(session, uid)
     if not emby_user:
         await state.clear()
-        await main_msg.update(uid, "❌ 数据异常: 未找到 Emby 用户信息")
+        await main_msg.render(uid, "❌ 数据异常: 未找到 Emby 用户信息")
         return
 
     # 解析标签：支持中英文逗号、换行分隔，保留标签内的空格
@@ -184,4 +184,4 @@ async def process_custom_tags(
         # 刷新页面并提示
         await show_tags_menu(session, main_msg, uid)
     else:
-        await main_msg.update(uid, f"❌ 操作失败: {err}", get_user_tags_keyboard())
+        await main_msg.render(uid, f"❌ 操作失败: {err}", get_user_tags_keyboard())

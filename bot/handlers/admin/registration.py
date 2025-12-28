@@ -155,7 +155,7 @@ async def input_registration_window(message: Message, session: AsyncSession, mai
     if uid is None:
         return
     caption, kb = await _build_reg_kb(session)
-    await main_msg.update(uid, caption, kb)
+    await main_msg.render(uid, caption, kb)
 
 
 async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarkup]:

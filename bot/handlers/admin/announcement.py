@@ -191,4 +191,4 @@ async def handle_announcement_text(
     caption, kb = _build_panel_ui(current_text)
 
     if message.from_user:
-        await main_msg.update(message.from_user.id, caption, kb.as_markup())
+        await main_msg.render(message.from_user.id, caption, kb.as_markup())

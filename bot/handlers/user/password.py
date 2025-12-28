@@ -118,7 +118,7 @@ async def _password_timeout(state: FSMContext, uid: int, main_msg: MainMessageSe
     if current_state == PasswordStates.waiting_for_new_password:
         logger.info("用户修改密码超时: user_id={}", uid)
         await state.clear()
-        await main_msg.update(
+        await main_msg.render(
             uid,
             "⏰ 修改密码超时，已自动返回账号中心",
             get_account_center_keyboard(uid)
@@ -155,7 +155,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
         # 验证密码长度
         if len(new_password) < 6:
             await message.delete()
-            return await main_msg.update(
+            return await main_msg.render(
                 uid,
                 "🔴 密码长度至少需要 6 个字符，请重新输入：",
                 get_password_input_keyboard()
@@ -168,7 +168,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
 
         if not emby_user_id:
             await state.clear()
-            return await main_msg.update(
+            return await main_msg.render(
                 uid,
                 "🔴 状态异常，请重新尝试",
                 get_account_center_keyboard(uid)
@@ -192,7 +192,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
         except ValueError:
             # 余额不足 (理论上入口处已拦截，但防止并发或状态变化)
             await state.clear()
-            return await main_msg.update(
+            return await main_msg.render(
                 uid,
                 f"🔴 余额不足，修改密码需要 {PASSWORD_CHANGE_COST} {CURRENCY_SYMBOL}",
                 get_account_center_keyboard(uid)
@@ -204,7 +204,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
         client = get_emby_client()
         if not client:
             await state.clear()
-            return await main_msg.update(
+            return await main_msg.render(
                 uid,
                 "🔴 Emby 服务配置异常，请联系管理员",
                 get_account_center_keyboard(uid)
@@ -260,7 +260,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
         await state.clear()
 
         # 返回账号中心
-        await main_msg.update(
+        await main_msg.render(
             uid,
             "✅ 密码修改成功！已返回账号中心",
             get_account_center_keyboard(uid)
@@ -271,7 +271,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
     except TelegramAPIError as e:
         logger.exception(f"❌ 处理密码输入 TelegramAPIError: user_id={uid} err={e!r}")
         await state.clear()
-        await main_msg.update(
+        await main_msg.render(
             uid,
             "🔴 系统异常, 请稍后再试",
             get_account_center_keyboard(uid)
@@ -319,12 +319,4 @@ async def cancel_password_change(callback: CallbackQuery, state: FSMContext, mai
     except Exception as e:
         logger.exception(f"❌ 取消修改密码未知异常: user_id={uid} err={e!r}")
         await callback.answer("🔴 系统异常, 请稍后再试", show_alert=True)
-    except Exception as e:
-        logger.exception(f"❌ 处理密码输入未知异常: user_id={uid} err={e!r}")
-        await state.clear()
-        await main_msg.update(
-            uid,
-            "🔴 系统异常, 请稍后再试",
-            get_account_center_keyboard(uid)
-        )
 
