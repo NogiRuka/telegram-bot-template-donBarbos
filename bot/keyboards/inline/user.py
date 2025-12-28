@@ -41,7 +41,7 @@ def get_account_center_keyboard(has_emby_account: bool) -> InlineKeyboardMarkup:
     # 有 Emby 账号的情况
     if has_emby_account:
         keyboard = InlineKeyboardBuilder(markup=USER_PANEL_BUTTONS)
-        keyboard.adjust(2, 2, 1, 1)
+        keyboard.adjust(2, 2, 2, 1)
         return keyboard.as_markup()
 
     # 无 Emby 账号的情况

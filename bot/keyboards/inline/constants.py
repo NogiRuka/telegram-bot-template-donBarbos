@@ -43,6 +43,10 @@ USER_DEVICES_CALLBACK_DATA = "user:devices"
 USER_PASSWORD_LABEL = "🔐 修改密码"
 USER_PASSWORD_CALLBACK_DATA = "user:password"
 
+# 修改头像
+USER_AVATAR_LABEL = "🖼️ 修改头像"
+USER_AVATAR_CALLBACK_DATA = "user:avatar"
+
 # 标签屏蔽
 USER_TAGS_LABEL = "🚫 标签屏蔽"
 USER_TAGS_CALLBACK_DATA = "user:tags"

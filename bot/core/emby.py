@@ -128,6 +128,34 @@ class EmbyClient:
             payload["UserCopyOptions"] = list(user_copy_options)
         return cast("dict[str, Any]", await self.http.request("POST", "/Users/New", json=payload))
 
+    async def upload_user_image(
+        self,
+        user_id: str,
+        image_data: str,
+        image_type: str = "Primary",
+    ) -> Any:
+        """上传用户图片
+
+        功能说明:
+        - 调用 `POST /Users/{Id}/Images/{Type}` 上传图片
+        - 图片必须是 Base64 编码的字符串
+
+        输入参数:
+        - user_id: 用户ID
+        - image_data: Base64 编码的图片数据
+        - image_type: 图片类型 (Primary, Backdrop, Avatar 等), 默认为 Primary
+
+        返回值:
+        - Any: 响应结果(通常为空)
+        """
+        headers = {"Content-Type": "image/jpeg"}
+        return await self.http.request(
+            "POST",
+            f"/Users/{user_id}/Images/{image_type}",
+            data=image_data,
+            headers=headers,
+        )
+
     async def delete_user(self, user_id: str) -> Any:
         """删除用户
 
