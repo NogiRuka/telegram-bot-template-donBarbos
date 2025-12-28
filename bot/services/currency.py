@@ -229,6 +229,14 @@ class CurrencyService:
                 "description": "补签昨天的签到记录",
                 "category": "tools",
                 "action_type": "retro_checkin",
+            },
+            {
+                "name": "自定义头衔",
+                "price": 100,
+                "stock": 10,
+                "description": "自定义群组 Title (如 '🌸 樱之主') (限时7天)",
+                "category": "tools",
+                "action_type": "custom_title",
             }
         ]
 

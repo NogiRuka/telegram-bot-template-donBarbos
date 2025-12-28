@@ -20,8 +20,6 @@ router = Router(name="user_password")
 
 # 修改密码超时时间（秒）
 PASSWORD_TIMEOUT_SECONDS = 120
-# 修改密码消耗精粹
-PASSWORD_CHANGE_COST = 60
 
 
 class PasswordStates(StatesGroup):
@@ -59,22 +57,21 @@ async def user_password(callback: CallbackQuery, session: AsyncSession, state: F
         # 获取用户扩展信息 (require_emby_account 已保证存在)
         _user, user_extend = await get_user_and_extend(session, uid)
         
-        # 检查余额
-        balance = await CurrencyService.get_user_balance(session, uid)
-        if balance < PASSWORD_CHANGE_COST:
-            return await callback.answer(
-                f"🔴 余额不足，修改密码需要 {PASSWORD_CHANGE_COST} {CURRENCY_SYMBOL}\n"
-                f"当前余额: {balance} {CURRENCY_SYMBOL}", 
+        # 检查是否有未使用的购买资格
+        has_ticket = await CurrencyService.has_unused_ticket(session, uid, "emby_password")
+        if not has_ticket:
+            await callback.answer(
+                f"🔴 您尚未购买【修改密码】资格，请前往精粹商店购买。", 
                 show_alert=True
             )
+            return
 
         logger.info("用户开始修改密码: user_id={} emby_user_id={}", uid, user_extend.emby_user_id)
 
         # 更新主消息提示输入新密码
         caption = (
             "🔐 *修改 Emby 密码*\n\n"
-            f"本次修改将消耗 *{PASSWORD_CHANGE_COST} {CURRENCY_SYMBOL}*\n"
-            f"当前余额: {balance} {CURRENCY_SYMBOL}\n\n"
+            "本次修改将消耗 *1 张修改密码资格券*\n"
             "请输入新的密码：\n"
             "密码长度至少需要 6 个字符\n\n"
             f"⏰ 请在 {PASSWORD_TIMEOUT_SECONDS // 60} 分钟内完成输入"
