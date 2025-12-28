@@ -114,6 +114,34 @@ async def set_registration_preset(callback: CallbackQuery, session: AsyncSession
     await callback.answer(f"🟢 已设置时间窗: {duration} 分钟")
 
 
+@router.callback_query(F.data == "admin:open_registration:clear")
+@require_admin_priv
+@require_admin_feature("admin.open_registration")
+async def clear_registration_window(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService,
+) -> None:
+    """清除注册时间窗
+
+    功能说明:
+    - 清除已设置的注册时间窗配置
+    - 刷新面板
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+    - main_msg: 主消息服务
+
+    返回值:
+    - None
+    """
+    await set_registration_window(session, None, None, operator_id=callback.from_user.id)
+    caption, kb = await _build_reg_kb(session)
+    await main_msg.update_on_callback(callback, caption, kb)
+    await callback.answer("🟢 已清除时间窗设置")
+
+
 @router.message(F.text.regexp(r"^\d{8}\.\d{4}\.\d{1,4}$"))
 @require_admin_priv
 @require_admin_feature("admin.open_registration")
@@ -220,11 +248,17 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
         )
     ])
     rows.append([
-        InlineKeyboardButton(text="1分钟", callback_data="admin:open_registration:set:1"),
+        InlineKeyboardButton(text="5分钟", callback_data="admin:open_registration:set:5"),
         InlineKeyboardButton(text="10分钟", callback_data="admin:open_registration:set:10"),
         InlineKeyboardButton(text="30分钟", callback_data="admin:open_registration:set:30"),
         InlineKeyboardButton(text="60分钟", callback_data="admin:open_registration:set:60"),
     ])
+
+    if start_time or duration is not None:
+        rows.append([
+            InlineKeyboardButton(text="❌ 清除时间窗设置", callback_data="admin:open_registration:clear")
+        ])
+
     rows.append([BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON])
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
     logger.debug("✅ [_build_reg_kb] 键盘构建完成")
