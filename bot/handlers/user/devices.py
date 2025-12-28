@@ -130,7 +130,7 @@ async def user_devices(
     
     # 4. 构建界面
     device_count = len(devices)
-    status_icon = "🟢" if device_count < max_devices else "🔴"
+    status_icon = "🟢" if device_count <= max_devices else "🔴"
     
     text = (
         f"*{USER_DEVICES_LABEL}*\n\n"
@@ -199,8 +199,8 @@ async def handle_device_delete_confirm(
     app_esc = escape_markdown_v2(device.app_name or 'App')
     last_active_esc = escape_markdown_v2(last_active)
     
-    device_info = f"{name_esc} \\({app_esc}\\)\n最后活跃: {last_active_esc}"
-    text = f"⚠️ *确认删除设备?*\n\n设备: {device_info}\n\n删除后该设备将无法连接服务器。"
+    device_info = f"{name_esc} \\({app_esc}\\)\n最后活跃：{last_active_esc}"
+    text = f"⚠️ *确认删除设备?*\n\n设备：{device_info}\n\n删除后该设备将无法连接服务器。"
     
     kb = InlineKeyboardBuilder()
     kb.row(
