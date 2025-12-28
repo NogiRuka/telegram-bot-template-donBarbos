@@ -113,7 +113,7 @@ async def start_edit_copywriting(callback: CallbackQuery, state: FSMContext, mai
     caption = (
         f"✏️ 正在编辑：*{info['label']}*\n\n"
         "请输入新的文案内容：\n"
-        "提示：支持 Markdown 格式，发送文本后立即生效。"
+        "提示：支持 MarkdownV2 格式，发送文本后立即生效。"
     )
     
     kb = InlineKeyboardBuilder()
