@@ -18,6 +18,7 @@ from bot.keyboards.inline.constants import (
 from bot.services.main_message import MainMessageService
 from bot.services.emby_service import update_user_blocked_tags
 from bot.utils.permissions import require_emby_account, require_user_feature
+from bot.utils.text import escape_markdown_v2
 
 router = Router(name="user_tags")
 
@@ -57,15 +58,15 @@ async def show_tags_menu(
     blocked_tags = policy.get("BlockedTags", [])
     
     if not blocked_tags:
-        tags_display = "(无)"
+        tags_display = "\\(无\\)"
     else:
-        tags_display = ", ".join(blocked_tags)
+        tags_display = ", ".join(escape_markdown_v2(t) for t in blocked_tags)
 
     text = (
-        f"{USER_TAGS_LABEL}\n\n"
+        f"*{escape_markdown_v2(USER_TAGS_LABEL)}*\n\n"
         "您可以通过设置屏蔽标签来隐藏不想看到的内容。\n"
         "例如屏蔽 'AV' 标签可以隐藏相关成人内容。\n\n"
-        f"📋 <b>当前屏蔽标签:</b>\n{tags_display}"
+        f"📋 *当前屏蔽标签:*\n{tags_display}"
     )
 
     kb = get_user_tags_keyboard()
@@ -124,10 +125,10 @@ async def start_custom_tags(
 ) -> None:
     """开始自定义屏蔽标签"""
     text = (
-        "✏️ <b>输入屏蔽标签</b>\n\n"
-        "请输入您想要屏蔽的标签，多个标签请用<b>逗号</b>或<b>换行</b>分隔。\n"
-        "例如: <code>AV, 恐怖, 惊悚</code>\n\n"
-        "⚠️ 注意: 这将<b>覆盖</b>当前的屏蔽设置。"
+        "✏️ *输入屏蔽标签*\n\n"
+        "请输入您想要屏蔽的标签，多个标签请用*逗号*或*换行*分隔。\n"
+        "例如: `AV, 恐怖, 惊悚`\n\n"
+        "⚠️ 注意: 这将*覆盖*当前的屏蔽设置。"
     )
     kb = get_tags_edit_keyboard()
     
@@ -184,4 +185,5 @@ async def process_custom_tags(
         # 刷新页面并提示
         await show_tags_menu(session, main_msg, uid)
     else:
-        await main_msg.render(uid, f"❌ 操作失败: {err}", get_user_tags_keyboard())
+        err_esc = escape_markdown_v2(str(err))
+        await main_msg.render(uid, f"❌ 操作失败: {err_esc}", get_user_tags_keyboard())
