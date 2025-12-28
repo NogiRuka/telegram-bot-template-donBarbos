@@ -9,7 +9,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from bot.config import (
     ADMIN_FEATURES_MAPPING,
-    # 功能映射
     DEFAULT_CONFIGS,
     KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
     KEY_REGISTRATION_FREE_OPEN,
