@@ -335,35 +335,38 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
     返回值:
     - None
     """
-    for key, default in DEFAULT_CONFIGS.items():
+    for key, (default_val, ctype) in DEFAULT_CONFIGS.items():
+        # 跳过需要在下面特殊处理的 key
+        if key in (KEY_LINES_INFO,):
+            continue
+
         current = await get_config(session, key)
         if current is None:
-            await set_config(session, key, None, ConfigType.BOOLEAN, default_value=default)
-
-    # 初始化 Hitokoto 分类默认值
-    current_categories = await get_config(session, KEY_ADMIN_HITOKOTO_CATEGORIES)
-    if current_categories is None:
-        await set_config(session, KEY_ADMIN_HITOKOTO_CATEGORIES, None, ConfigType.LIST, default_value=["d", "i"])
+            await set_config(session, key, None, ctype, default_value=default_val)
 
     # 初始化线路信息 (从环境变量迁移)
     from bot.config import KEY_LINES_INFO
     from bot.core.config import settings
     
     current_lines = await get_config(session, KEY_LINES_INFO)
-    if current_lines is None and settings.EMBY_BASE_URL:
-        # 如果数据库没有线路信息，但环境变量有 EMBY_BASE_URL，则将其初始化到数据库
-        # 存储为 JSON 字典格式，包含 host 和 port
-        lines_info = {
-            "host": settings.EMBY_BASE_URL,
-            "port": str(settings.EMBY_PORT)
-        }
-        await set_config(
-            session, 
-            KEY_LINES_INFO, 
-            lines_info, 
-            ConfigType.JSON, 
-            default_value=lines_info
-        )
+    if current_lines is None:
+        if settings.EMBY_BASE_URL:
+            # 如果数据库没有线路信息，但环境变量有 EMBY_BASE_URL，则将其初始化到数据库
+            # 存储为 JSON 字典格式，包含 host 和 port
+            lines_info = {
+                "host": settings.EMBY_BASE_URL,
+                "port": str(settings.EMBY_PORT)
+            }
+            await set_config(
+                session, 
+                KEY_LINES_INFO, 
+                lines_info, 
+                ConfigType.JSON, 
+                default_value=lines_info
+            )
+        else:
+            # 环境变量也没有，初始化为空 JSON 字典
+            await set_config(session, KEY_LINES_INFO, None, ConfigType.JSON, default_value={})
 
 
 def _serialize_value(ctype: ConfigType, value: Any) -> str | None:

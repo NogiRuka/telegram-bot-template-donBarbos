@@ -7,7 +7,10 @@
 - 格式: 短代码 -> (配置键, 显示标签)
 """
 
+from typing import Any
+
 from .constants import *
+from bot.database.models.config import ConfigType
 from bot.keyboards.inline.constants import (
     ACCOUNT_CENTER_LABEL,
     ADMIN_FEATURES_SWITCH_LABEL,
@@ -32,30 +35,37 @@ from bot.keyboards.inline.constants import (
     USER_TAGS_LABEL,
 )
 
-# 默认配置值
-DEFAULT_CONFIGS: dict[str, bool] = {
-    KEY_BOT_FEATURES_ENABLED: True,
-    KEY_USER_FEATURES_ENABLED: True,
-    KEY_USER_REGISTER: True,
-    KEY_USER_PASSWORD: True,
-    KEY_USER_INFO: True,
-    KEY_USER_LINES: True,
-    KEY_USER_DEVICES: True,
-    KEY_USER_PROFILE: True,
-    KEY_USER_ACCOUNT: True,
-    KEY_USER_TAGS: True,
-    KEY_USER_STORE: True,
-    KEY_USER_CHECKIN: True,
-    KEY_ADMIN_FEATURES_ENABLED: True,
-    KEY_ADMIN_GROUPS: True,
-    KEY_ADMIN_STATS: True,
-    KEY_ADMIN_OPEN_REGISTRATION: True,
-    KEY_REGISTRATION_FREE_OPEN: False,
-    KEY_ADMIN_HITOKOTO: True,
-    KEY_ADMIN_NEW_ITEM_NOTIFICATION: True,
-    KEY_ADMIN_ANNOUNCEMENT: True,
-    KEY_ADMIN_STORE: True,
-    KEY_ADMIN_CURRENCY: True,
+# 默认配置值定义
+# 格式: Key -> (Value, ConfigType)
+DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
+    # 基础开关配置 (布尔值)
+    KEY_BOT_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
+    KEY_USER_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
+    KEY_USER_REGISTER: (True, ConfigType.BOOLEAN),
+    KEY_USER_PASSWORD: (True, ConfigType.BOOLEAN),
+    KEY_USER_INFO: (True, ConfigType.BOOLEAN),
+    KEY_USER_LINES: (True, ConfigType.BOOLEAN),
+    KEY_USER_DEVICES: (True, ConfigType.BOOLEAN),
+    KEY_USER_PROFILE: (True, ConfigType.BOOLEAN),
+    KEY_USER_ACCOUNT: (True, ConfigType.BOOLEAN),
+    KEY_USER_TAGS: (True, ConfigType.BOOLEAN),
+    KEY_USER_STORE: (True, ConfigType.BOOLEAN),
+    KEY_USER_CHECKIN: (True, ConfigType.BOOLEAN),
+    KEY_ADMIN_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
+    KEY_ADMIN_GROUPS: (True, ConfigType.BOOLEAN),
+    KEY_ADMIN_STATS: (True, ConfigType.BOOLEAN),
+    KEY_ADMIN_OPEN_REGISTRATION: (True, ConfigType.BOOLEAN),
+    KEY_REGISTRATION_FREE_OPEN: (False, ConfigType.BOOLEAN),
+    KEY_ADMIN_HITOKOTO: (True, ConfigType.BOOLEAN),
+    KEY_ADMIN_NEW_ITEM_NOTIFICATION: (True, ConfigType.BOOLEAN),
+    KEY_ADMIN_ANNOUNCEMENT: (True, ConfigType.BOOLEAN),
+    KEY_ADMIN_STORE: (True, ConfigType.BOOLEAN),
+    KEY_ADMIN_CURRENCY: (True, ConfigType.BOOLEAN),
+    
+    # 复杂类型配置
+    KEY_ADMIN_HITOKOTO_CATEGORIES: (["d", "i"], ConfigType.LIST),
+    # KEY_LINES_INFO 的初始化逻辑比较特殊（依赖环境变量），保留在 config_service 中处理，或可在此定义空值
+    KEY_LINES_INFO: (None, ConfigType.JSON),
 }
 
 # 用户功能开关映射 - 用于用户功能管理
