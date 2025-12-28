@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.keyboards.inline.user import get_account_center_keyboard, get_password_input_keyboard
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
-from bot.utils.permissions import require_user_feature
+from bot.utils.permissions import require_emby_account, require_user_feature
 from bot.utils.security import hash_password
 
 router = Router(name="user_password")
@@ -28,6 +28,7 @@ class PasswordStates(StatesGroup):
 
 @router.callback_query(F.data == "user:password")
 @require_user_feature("user.password")
+@require_emby_account
 async def user_password(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
     """修改密码
 
@@ -51,11 +52,9 @@ async def user_password(callback: CallbackQuery, session: AsyncSession, state: F
         return await callback.answer("🔴 无法获取用户ID", show_alert=True)
 
     try:
-        # 检查用户是否已绑定 Emby 账号
+        # 获取用户扩展信息 (require_emby_account 已保证存在)
         _user, user_extend = await get_user_and_extend(session, uid)
-        if not user_extend or not user_extend.emby_user_id:
-            return await callback.answer("🔴 您还未绑定 Emby 账号", show_alert=True)
-
+        
         logger.info("用户开始修改密码: user_id={} emby_user_id={}", uid, user_extend.emby_user_id)
 
         # 更新主消息提示输入新密码

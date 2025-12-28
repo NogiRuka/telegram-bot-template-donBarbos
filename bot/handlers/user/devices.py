@@ -15,7 +15,7 @@ from bot.keyboards.inline.buttons import BACK_TO_ACCOUNT_BUTTON, BACK_TO_HOME_BU
 from bot.keyboards.inline.constants import USER_DEVICES_LABEL
 from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
-from bot.utils.permissions import require_user_feature
+from bot.utils.permissions import require_emby_account, require_user_feature
 
 router = Router(name="user_devices")
 
@@ -85,6 +85,7 @@ async def _update_emby_policy(session: AsyncSession, emby_user_id: str, max_devi
 
 @router.callback_query(F.data == "user:devices")
 @require_user_feature("user.devices")
+@require_emby_account
 async def user_devices(
     callback: CallbackQuery, 
     session: AsyncSession,
@@ -99,23 +100,17 @@ async def user_devices(
     """
     user_id = callback.from_user.id
     
-    # 1. 获取关联的 Emby 用户
-    stmt = select(UserExtendModel).where(UserExtendModel.user_id == user_id)
+    # 1. 获取关联的 Emby 用户 ID
+    stmt = select(UserExtendModel.emby_user_id).where(UserExtendModel.user_id == user_id)
     res = await session.execute(stmt)
-    user_extend = res.scalar_one_or_none()
+    emby_user_id = res.scalar_one_or_none()
     
-    if not user_extend or not user_extend.emby_user_id:
-        await callback.answer("❌ 未绑定 Emby 账号", show_alert=True)
-        return
-
     # 同步最新设备状态
     try:
         await save_all_emby_devices(session)
         await cleanup_devices_by_policy(session)
     except Exception as e:
         logger.warning(f"⚠️ 进入设备管理页面时同步失败: {e}")
-
-    emby_user_id = user_extend.emby_user_id
     
     # 2. 获取 Emby 用户信息 (最大设备数)
     stmt_user = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
@@ -138,9 +133,9 @@ async def user_devices(
     status_icon = "🟢" if device_count < max_devices else "🔴"
     
     text = (
-        f"{USER_DEVICES_LABEL}\n\n"
+        f"*{USER_DEVICES_LABEL}*\n\n"
         f"当前设备数: {device_count} / {max_devices} {status_icon}\n"
-        f"规则: 小于 {max_devices} 个设备时自动允许新设备，否则仅允许列表中的设备。\n\n"
+        f"规则: 仅小于 {max_devices} 个设备时允许新设备。\n\n"
         "点击设备按钮可将其移除👇"
     )
     
@@ -164,6 +159,7 @@ async def user_devices(
 
 
 @router.callback_query(F.data.startswith("user:device:delete:"))
+@require_emby_account
 async def handle_device_delete_confirm(
     callback: CallbackQuery,
     session: AsyncSession,
@@ -179,15 +175,9 @@ async def handle_device_delete_confirm(
     user_id = callback.from_user.id
 
     # 1. 验证权限
-    stmt = select(UserExtendModel).where(UserExtendModel.user_id == user_id)
+    stmt = select(UserExtendModel.emby_user_id).where(UserExtendModel.user_id == user_id)
     res = await session.execute(stmt)
-    user_extend = res.scalar_one_or_none()
-    
-    if not user_extend or not user_extend.emby_user_id:
-        await callback.answer("❌ 未绑定 Emby 账号", show_alert=True)
-        return
-        
-    emby_user_id = user_extend.emby_user_id
+    emby_user_id = res.scalar_one_or_none()
     
     stmt_device = select(EmbyDeviceModel).where(
         EmbyDeviceModel.id == device_pk,
@@ -211,7 +201,7 @@ async def handle_device_delete_confirm(
         InlineKeyboardButton(text="❌ 取消", callback_data="user:devices")
     )
     
-    await main_msg.update(user_id, text, kb.as_markup())
+    await main_msg.update_on_callback(callback, text, kb.as_markup())
 
 
 @router.callback_query(F.data.startswith("user:device:confirm_del:"))

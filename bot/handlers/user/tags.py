@@ -17,7 +17,7 @@ from bot.keyboards.inline.constants import (
 )
 from bot.services.main_message import MainMessageService
 from bot.services.emby_service import update_user_blocked_tags
-from bot.utils.permissions import require_user_feature
+from bot.utils.permissions import require_emby_account, require_user_feature
 
 router = Router(name="user_tags")
 
@@ -79,6 +79,7 @@ async def show_tags_menu(
 
 @router.callback_query(F.data == USER_TAGS_CALLBACK_DATA)
 @require_user_feature("user.tags")
+@require_emby_account
 async def user_tags(
     callback: CallbackQuery,
     session: AsyncSession,
@@ -89,6 +90,7 @@ async def user_tags(
 
 
 @router.callback_query(F.data == TAGS_CLEAR_CALLBACK_DATA)
+@require_emby_account
 async def clear_tags(
     callback: CallbackQuery,
     session: AsyncSession,
@@ -97,8 +99,10 @@ async def clear_tags(
     """清除所有屏蔽标签"""
     uid = callback.from_user.id
     emby_user = await get_emby_user_model(session, uid)
+    # 理论上 require_emby_account 已保证有 UserExtendModel.emby_user_id
+    # 但 get_emby_user_model 查的是 EmbyUserModel
     if not emby_user:
-        await callback.answer("❌ 未找到绑定的 Emby 账号", show_alert=True)
+        await callback.answer("❌ 数据异常: 未找到 Emby 用户信息", show_alert=True)
         return
 
     success, err = await update_user_blocked_tags(session, emby_user.emby_user_id, [])
@@ -111,8 +115,10 @@ async def clear_tags(
 
 
 @router.callback_query(F.data == TAGS_CUSTOM_CALLBACK_DATA)
+@require_emby_account
 async def start_custom_tags(
     callback: CallbackQuery,
+    session: AsyncSession,
     state: FSMContext,
     main_msg: MainMessageService,
 ) -> None:
@@ -131,6 +137,7 @@ async def start_custom_tags(
 
 
 @router.callback_query(F.data == TAGS_CANCEL_EDIT_CALLBACK_DATA)
+@require_emby_account
 async def cancel_edit_tags(
     callback: CallbackQuery,
     session: AsyncSession,
@@ -143,6 +150,7 @@ async def cancel_edit_tags(
 
 
 @router.message(TagsStates.waiting_for_tags)
+@require_emby_account
 async def process_custom_tags(
     message: Message,
     session: AsyncSession,
@@ -162,7 +170,7 @@ async def process_custom_tags(
     emby_user = await get_emby_user_model(session, uid)
     if not emby_user:
         await state.clear()
-        await main_msg.update(uid, "❌ 未找到绑定的 Emby 账号")
+        await main_msg.update(uid, "❌ 数据异常: 未找到 Emby 用户信息")
         return
 
     # 解析标签：支持中英文逗号、换行分隔，保留标签内的空格

@@ -197,13 +197,53 @@ def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[
             if enabled_all and enabled_feature:
                 return await func(*args, **kwargs)
             if isinstance(first, CallbackQuery):
-                await first.answer("🔴 该功能当前不可用", show_alert=True)
+                await first.answer("🔴 功能已关闭", show_alert=True)
                 return None
             if isinstance(first, Message):
-                await first.answer("🔴 该功能当前不可用")
+                await first.answer("🔴 功能已关闭")
                 return None
             return None
 
         return wrapper
 
     return decorator
+
+
+def require_emby_account(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+    """要求用户绑定 Emby 账号装饰器
+
+    功能说明:
+    - 检查用户是否已绑定 Emby 账号
+    - 未绑定则提示错误
+
+    输入参数:
+    - func: 需要保护的异步处理器函数
+
+    返回值:
+    - Callable[..., Awaitable[Any]]: 包装后的处理器函数
+    """
+
+    @functools.wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        session: AsyncSession | None = kwargs.get("session")
+        first = args[0] if args else None
+        user_id = _extract_user_id(first)
+
+        if session and user_id:
+            # 检查 UserExtendModel 是否有 emby_user_id
+            stmt = select(UserExtendModel.emby_user_id).where(UserExtendModel.user_id == user_id)
+            result = await session.execute(stmt)
+            emby_user_id = result.scalar_one_or_none()
+
+            if not emby_user_id:
+                if isinstance(first, CallbackQuery):
+                    await first.answer("❌ 未绑定 Emby 账号", show_alert=True)
+                    return None
+                if isinstance(first, Message):
+                    await first.answer("❌ 未绑定 Emby 账号")
+                    return None
+                return None
+
+        return await func(*args, **kwargs)
+
+    return wrapper
