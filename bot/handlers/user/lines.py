@@ -5,7 +5,6 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import KEY_USER_LINES_INFO, KEY_USER_LINES_NOTICE
-from bot.core.config import settings
 from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, BACK_TO_ACCOUNT_BUTTON
 from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
@@ -26,7 +25,7 @@ async def user_lines(
 
     功能说明:
     - 展示服务器线路信息(地址与端口)
-    - 优先从数据库配置读取，若无则回退至环境变量配置
+    - 仅从数据库配置读取
 
     输入参数:
     - callback: 回调对象
@@ -63,10 +62,6 @@ async def user_lines(
             except Exception:
                 host = target_url
                 port = "未知"
-    else:
-        # 数据库无配置，使用环境变量 (虽然初始化逻辑会写入数据库，但防守编程)
-        host = settings.EMBY_BASE_URL or "未设置"
-        port = str(settings.EMBY_PORT)
 
     # 构建显示内容
     lines_text = [
