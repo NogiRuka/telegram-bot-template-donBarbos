@@ -134,11 +134,10 @@ async def user_devices(
     
     text = (
         f"*{USER_DEVICES_LABEL}*\n\n"
-        f"当前设备数: {device_count} / {max_devices} {status_icon}\n"
-        f"规则: 仅小于 {max_devices} 个设备时允许新设备。\n\n"
+        f"当前设备数：{device_count} / {max_devices} {status_icon}\n"
+        f"规则：仅小于 {max_devices} 个设备时允许新设备。\n\n"
         "点击设备按钮可将其移除👇"
     )
-    
     kb = InlineKeyboardBuilder()
     
     for device in devices:
@@ -157,6 +156,8 @@ async def user_devices(
     
     await main_msg.update_on_callback(callback, text, kb.as_markup())
 
+
+from bot.utils.text import escape_markdown_v2
 
 @router.callback_query(F.data.startswith("user:device:delete:"))
 @require_emby_account
@@ -192,8 +193,14 @@ async def handle_device_delete_confirm(
         
     # 2. 弹出确认框
     last_active = device.date_last_activity.strftime("%Y-%m-%d %H:%M") if device.date_last_activity else "未知"
-    device_name = f"{device.name or 'Unknown'} ({device.app_name or 'App'})\n最后活跃: {last_active}"
-    text = f"⚠️ 确认删除设备?\n\n设备: {device_name}\n\n删除后该设备将无法连接服务器。"
+    
+    # 转义设备名称和 App 名称
+    name_esc = escape_markdown_v2(device.name or 'Unknown')
+    app_esc = escape_markdown_v2(device.app_name or 'App')
+    last_active_esc = escape_markdown_v2(last_active)
+    
+    device_info = f"{name_esc} \\({app_esc}\\)\n最后活跃: {last_active_esc}"
+    text = f"⚠️ *确认删除设备?*\n\n设备: {device_info}\n\n删除后该设备将无法连接服务器。"
     
     kb = InlineKeyboardBuilder()
     kb.row(
