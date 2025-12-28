@@ -13,7 +13,13 @@ from bot.keyboards.inline.constants import (
     STORE_ADMIN_HISTORY_LABEL,
     STORE_ADMIN_HISTORY_CALLBACK_DATA,
 )
-from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON, BACK_TO_STORE_ADMIN_BUTTON, STORE_ADMIN_ADD_PRODUCT_BUTTON
+from bot.keyboards.inline.buttons import (
+    BACK_TO_ADMIN_PANEL_BUTTON,
+    BACK_TO_HOME_BUTTON,
+    BACK_TO_STORE_ADMIN_BUTTON,
+    STORE_ADMIN_ADD_PRODUCT_BUTTON,
+    STORE_ADMIN_HISTORY_BUTTON,
+)
 from bot.keyboards.inline.constants import STORE_ADMIN_LABEL, STORE_ADMIN_ADD_PRODUCT_CALLBACK_DATA
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
@@ -40,7 +46,7 @@ async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession
         )
     
     kb.adjust(1)
-    kb.row(STORE_ADMIN_ADD_PRODUCT_BUTTON, InlineKeyboardButton(text=STORE_ADMIN_HISTORY_LABEL, callback_data=STORE_ADMIN_HISTORY_CALLBACK_DATA))
+    kb.row(STORE_ADMIN_ADD_PRODUCT_BUTTON, STORE_ADMIN_HISTORY_BUTTON)
     kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
     text = (f"*{STORE_ADMIN_LABEL}*\n\n请选择要管理的商品 （🟢上架中 / 🔴已下架）")
     
@@ -179,7 +185,7 @@ async def handle_purchase_history(callback: CallbackQuery, session: AsyncSession
             user_link = f"[{tx.user_id}](tg://user?id={tx.user_id})"
             date_str = tx.created_at.strftime("%Y-%m-%d %H:%M")
             product_name = tx.meta.get("product_name", "未知商品") if tx.meta else "未知商品"
-            lines.append(f"• `{date_str}` {user_link} 购买了 *{escape_markdown_v2(product_name)}* \({tx.amount} {escape_markdown_v2(CURRENCY_SYMBOL)}\)")
+            lines.append(f"• `{date_str}` {user_link} 购买了 *{escape_markdown_v2(product_name)}* \({escape_markdown_v2(str(tx.amount))} {escape_markdown_v2(CURRENCY_SYMBOL)}\)")
         
         text = f"*{STORE_ADMIN_HISTORY_LABEL}* \(最近20条\)\n\n" + "\n".join(lines)
     
