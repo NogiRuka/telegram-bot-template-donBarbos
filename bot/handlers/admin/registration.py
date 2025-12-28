@@ -195,12 +195,12 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
             logger.warning(f"❌ [_build_reg_kb] 无法解析时间: {start_time}")
     status_line = f"注册状态：{'🟢 开启' if free_open else '🔴 关闭'}\n"
     caption = (
-        f"{OPEN_REGISTRATION_LABEL}\n\n"
+        f"*{OPEN_REGISTRATION_LABEL}*\n\n"
         + status_line
         + f"开始时间：{formatted_start}\n"
         + f"结束时间：{end_str}\n"
         + f"持续分钟：{duration if duration is not None else '不限'}\n\n"
-        + f"输入格式示例：<code>{now().strftime('%Y%m%d.%H%M')}.10</code>\n"
+        + f"输入格式示例：`{now().strftime('%Y%m%d\. %H%M').replace(' ', '')}\.10`\n"
         + f"时区：{get_friendly_timezone_name(settings.TIMEZONE)}"
     )
     logger.debug("✅ [_build_reg_kb] 生成 caption 成功")

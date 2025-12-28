@@ -190,7 +190,7 @@ async def handle_purchase_history(callback: CallbackQuery, session: AsyncSession
         text = f"*{STORE_ADMIN_HISTORY_LABEL}* \(最近20条\)\n\n" + "\n".join(lines)
     
     kb = InlineKeyboardBuilder()
-    kb.row(BACK_TO_STORE_ADMIN_BUTTON)
+    kb.row(BACK_TO_STORE_ADMIN_BUTTON, BACK_TO_HOME_BUTTON)
     
     await main_msg.update_on_callback(callback, text, kb.as_markup())
 
