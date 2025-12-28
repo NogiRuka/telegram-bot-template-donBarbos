@@ -5,11 +5,11 @@
 """
 
 import random
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import select, update, func, and_
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import (
@@ -207,6 +207,14 @@ class CurrencyService:
         """初始化默认商品"""
         defaults = [
             {
+                "name": "补签卡",
+                "price": 60,
+                "stock": 20,
+                "description": "补签昨天的签到记录",
+                "category": "tools",
+                "action_type": "retro_checkin",
+            },
+            {
                 "name": "修改头像",
                 "price": 60,
                 "stock": 20,
@@ -222,14 +230,6 @@ class CurrencyService:
                 "description": "修改 Emby 账号密码 (一次性)",
                 "category": "emby",
                 "action_type": "emby_password",
-            },
-            {
-                "name": "补签卡",
-                "price": 60,
-                "stock": 20,
-                "description": "补签昨天的签到记录",
-                "category": "tools",
-                "action_type": "retro_checkin",
             },
             {
                 "name": "自定义头衔（7天）",
@@ -257,17 +257,25 @@ class CurrencyService:
             ).limit(1)
             result = await session.execute(stmt)
             if not result.scalar_one_or_none():
-                await CurrencyService.create_product(
-                    session,
-                    name=p["name"],
-                    price=p["price"],
-                    stock=p["stock"],
-                    description=p["description"],
-                    category=p["category"],
-                    action_type=p["action_type"],
-                    visible_conditions=p.get("visible_conditions"),
-                    is_active=True
-                )
+                # 构建创建参数，仅包含 defaults 中存在的键
+                create_kwargs = {
+                    "session": session,
+                    "name": p["name"],
+                    "price": p["price"],
+                    "stock": p["stock"],
+                    "description": p["description"],
+                    "category": p["category"],
+                    "action_type": p["action_type"],
+                    "is_active": True
+                }
+                
+                # 可选字段：如果 defaults 中有才添加
+                if "purchase_conditions" in p:
+                    create_kwargs["purchase_conditions"] = p["purchase_conditions"]
+                if "visible_conditions" in p:
+                    create_kwargs["visible_conditions"] = p["visible_conditions"]
+                    
+                await CurrencyService.create_product(**create_kwargs)
 
     @staticmethod
     async def add_currency(
@@ -332,6 +340,7 @@ class CurrencyService:
         description: str,
         category: str,
         action_type: str,
+        purchase_conditions: dict[str, Any] | None = None,
         visible_conditions: dict[str, Any] | None = None,
         is_active: bool = False,
     ) -> CurrencyProductModel:
@@ -343,6 +352,7 @@ class CurrencyService:
             description=description,
             category=category,
             action_type=action_type,
+            purchase_conditions=purchase_conditions,
             visible_conditions=visible_conditions,
             is_active=is_active,
         )
