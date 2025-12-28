@@ -41,7 +41,7 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
     query = [("encode", "json")] + ([("c", c) for c in categories] if categories else [])
     params = "&".join([f"{k}={v}" for k, v in query])
     url = f"https://v1.hitokoto.cn/?{params}"
-    logger.info(f"🔎 [Hitokoto] 请求 URL={url} | 分类={categories}")
+    # logger.info(f"🔎 [Hitokoto] 请求 URL={url} | 分类={categories}")
     try:
         start_time = time.perf_counter()
         async with (
@@ -56,8 +56,8 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
             duration_ms = int((time.perf_counter() - start_time) * 1000)
             snippet = str(payload.get("hitokoto") or "")
             snippet = (snippet[:SNIPPET_MAX_LEN] + "…") if len(snippet) > SNIPPET_MAX_LEN else snippet
-            logger.info(f"🟢 [Hitokoto] 响应 status={resp.status} | 耗时={duration_ms}ms")
-            logger.info(f"📦 [Hitokoto] 数据 uuid={u} | type={t} | length={ln} | 片段='{snippet}'")
+            # logger.info(f"🟢 [Hitokoto] 响应 status={resp.status} | 耗时={duration_ms}ms")
+            # logger.info(f"📦 [Hitokoto] 数据 uuid={u} | type={t} | length={ln} | 片段='{snippet}'")
             try:
                 uuid = str(payload.get("uuid") or "")
                 if uuid:
@@ -84,7 +84,7 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
                             )
                             target_session.add(model)
                             await target_session.commit()
-                            logger.info(f"🧾 [Hitokoto] 入库成功 id={model.id} uuid={uuid}")
+                            # logger.info(f"🧾 [Hitokoto] 入库成功 id={model.id} uuid={uuid}")
                     else:
                         model = HitokotoModel(
                             uuid=uuid,
@@ -104,7 +104,7 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
                         )
                         target_session.add(model)
                         await target_session.commit()
-                        logger.info(f"🧾 [Hitokoto] 入库成功 id={model.id} uuid={uuid}")
+                        # logger.info(f"🧾 [Hitokoto] 入库成功 id={model.id} uuid={uuid}")
             except SQLAlchemyError as err:
                 logger.exception(f"🔴 [Hitokoto] 入库失败: {err}")
             return payload
