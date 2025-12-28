@@ -95,7 +95,7 @@ async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession
                 f"库存: {'无限' if product.stock == -1 else product.stock}\n\n"
                 f"描述: {escape_markdown_v2(product.description or '暂无描述')}\n\n"
                 f"当前余额: {balance} {escape_markdown_v2(CURRENCY_SYMBOL)}\n\n"
-                f"✅ {escape_markdown_v2(message)}"
+                f"{escape_markdown_v2(message)}"
             )
             await main_msg.update_on_callback(
                 callback,

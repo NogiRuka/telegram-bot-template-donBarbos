@@ -7,9 +7,12 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.constants import CURRENCY_SYMBOL
+from bot.database.models.emby_user import EmbyUserModel
+from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.keyboards.inline.buttons import BACK_TO_ACCOUNT_BUTTON
 from bot.keyboards.inline.constants import USER_AVATAR_CALLBACK_DATA, ACCOUNT_CENTER_LABEL
 from bot.keyboards.inline.user import get_account_center_keyboard
@@ -122,6 +125,35 @@ async def handle_avatar_photo(
             
         await client.upload_user_image(emby_user_id, b64_data)
         
+        # 更新数据库中的头像 file_id
+        stmt = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
+        result = await session.execute(stmt)
+        emby_user_model = result.scalar_one_or_none()
+
+        if emby_user_model:
+            # 更新 extra_data
+            extra_data = dict(emby_user_model.extra_data) if emby_user_model.extra_data else {}
+            extra_data["telegram_avatar_file_id"] = file_id
+            emby_user_model.extra_data = extra_data
+            
+            # 记录历史
+            history = EmbyUserHistoryModel(
+                emby_user_id=emby_user_model.emby_user_id,
+                name=emby_user_model.name,
+                password_hash=emby_user_model.password_hash,
+                date_created=emby_user_model.date_created,
+                last_login_date=emby_user_model.last_login_date,
+                last_activity_date=emby_user_model.last_activity_date,
+                user_dto=emby_user_model.user_dto,
+                extra_data=extra_data,
+                action="update_avatar",
+                created_by=message.from_user.id,
+                updated_by=message.from_user.id,
+            )
+            session.add(history)
+            session.add(emby_user_model)
+            await session.commit()
+
         # 消耗资格券
         consumed = await CurrencyService.consume_ticket(session, message.from_user.id, "emby_image")
         if not consumed:

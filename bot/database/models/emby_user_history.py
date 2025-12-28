@@ -47,6 +47,8 @@ class EmbyUserHistoryModel(Base, BasicAuditMixin):
 
     user_dto: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True, comment="UserDto JSON 快照")
 
+    extra_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True, comment="额外数据快照 (JSON)")
+
     action: Mapped[str] = mapped_column(String(32), nullable=False, comment="动作类型(create/update/delete)")
 
     __table_args__ = (Index("idx_emby_user_history_user_action", "emby_user_id", "action"),)

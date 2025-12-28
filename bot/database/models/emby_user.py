@@ -49,6 +49,10 @@ class EmbyUserModel(Base, BasicAuditMixin):
         JSON, nullable=True, comment="Emby 返回的 UserDto JSON 对象"
     )
 
+    extra_data: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True, comment="额外数据 (JSON)"
+    )
+
     max_devices: Mapped[int] = mapped_column(
         default=3, server_default=text("3"), nullable=False, comment="最大允许设备数"
     )
