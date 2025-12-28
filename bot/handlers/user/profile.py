@@ -53,9 +53,18 @@ async def user_profile(
         "admin": "管理员",
         "owner": "所有者"
     }
-    role_val = getattr(ext, "role", "user")
-    role_str = role_val.value if hasattr(role_val, "value") else str(role_val)
-    role_display = role_map.get(role_str, role_str)
+    
+    role_key = "user"
+    if ext:
+        raw_role = getattr(ext, "role", None)
+        # 如果是枚举，取 value
+        if hasattr(raw_role, "value"):
+            role_key = raw_role.value
+        # 如果是字符串或其他，直接转字符串
+        elif raw_role is not None:
+            role_key = str(raw_role)
+            
+    role_display = role_map.get(role_key, role_key)
     
     status_text = "正常" if (user and not getattr(user, "is_deleted", False)) else "已删除"
 
