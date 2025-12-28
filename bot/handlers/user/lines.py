@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import KEY_LINES_INFO
 from bot.core.config import settings
-from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON
+from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, ACCOUNT_CENTER_BUTTON
 from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_user_feature
@@ -37,41 +37,35 @@ async def user_lines(
     - None
     """
     # 尝试从数据库获取自定义线路信息
-    # 预期存储格式为 URL 字符串或 JSON 字典
+    # 预期存储格式为 JSON 字典或 URL 字符串
     db_lines_info = await get_config(session, KEY_LINES_INFO)
     
     host = "未设置"
     port = "未设置"
 
-    target_url = None
-    
     if db_lines_info:
-        if isinstance(db_lines_info, str):
-            target_url = db_lines_info
-        elif isinstance(db_lines_info, dict):
+        if isinstance(db_lines_info, dict):
+            # 优先处理字典格式
             host = db_lines_info.get("host", "未设置")
             port = str(db_lines_info.get("port", "未设置"))
-            # 如果是字典直接使用了，不再解析 URL
-            target_url = None
-    elif settings.EMBY_BASE_URL:
-        target_url = settings.EMBY_BASE_URL
-
-    if target_url:
-        # 简单的 URL 解析补全
-        if not target_url.startswith(("http://", "https://")):
-            target_url = f"http://{target_url}"
-            
-        try:
-            parsed = urlparse(target_url)
-            host = parsed.hostname or target_url
-            
-            if parsed.port:
-                port = str(parsed.port)
-            else:
-                port = "443" if parsed.scheme == "https" else "80"
-        except Exception:
-            host = target_url
-            port = "未知"
+        elif isinstance(db_lines_info, str):
+            # 兼容旧的字符串格式 (自动回退逻辑会存入字典，这里是防守)
+            target_url = db_lines_info
+            # 简单的 URL 解析补全
+            if not target_url.startswith(("http://", "https://")):
+                target_url = f"http://{target_url}"
+                
+            try:
+                parsed = urlparse(target_url)
+                host = parsed.hostname or target_url
+                port = str(parsed.port) if parsed.port else ("443" if parsed.scheme == "https" else "80")
+            except Exception:
+                host = target_url
+                port = "未知"
+    else:
+        # 数据库无配置，使用环境变量 (虽然初始化逻辑会写入数据库，但防守编程)
+        host = settings.EMBY_BASE_URL or "未设置"
+        port = str(settings.EMBY_PORT)
 
     # 构建显示内容
     lines_text = [
@@ -84,7 +78,7 @@ async def user_lines(
     caption = "\n".join(lines_text)
     
     # 构建键盘
-    kb = InlineKeyboardMarkup(inline_keyboard=[[BACK_TO_HOME_BUTTON]])
+    kb = InlineKeyboardMarkup(inline_keyboard=[[ACCOUNT_CENTER_BUTTON,BACK_TO_HOME_BUTTON]])
     
     await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer()

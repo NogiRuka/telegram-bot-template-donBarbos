@@ -48,6 +48,7 @@ class BotSettings(EnvBaseSettings):
     SUPER_ADMIN_IDS: str = Field(default="", description="兼容旧字段：超级管理员ID列表（逗号分隔）")
     PROJECT_NAME: str = Field(default="", description="项目名称，用于日志与Banner")
     EMBY_BASE_URL: str | None = Field(default=None, description="Emby 服务地址, 例如 https://your-emby.com")
+    EMBY_PORT: int = Field(default=443, description="Emby 端口，默认 443（https）或 80（http）")
     EMBY_API_KEY: str | None = Field(default=None, description="Emby API Key, 通过 X-Emby-Token 传递")
     EMBY_TEMPLATE_USER_ID: str | None = Field(default=None, description="Emby 模板用户ID，用于创建用户时复制配置")
     EMBY_API_PREFIX: str | None = Field(default="/emby", description="Emby API 路径前缀, 例如 /emby; 可为空")

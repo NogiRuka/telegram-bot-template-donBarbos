@@ -352,15 +352,17 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
     current_lines = await get_config(session, KEY_LINES_INFO)
     if current_lines is None and settings.EMBY_BASE_URL:
         # 如果数据库没有线路信息，但环境变量有 EMBY_BASE_URL，则将其初始化到数据库
-        # 注意：这里我们仅使用 BASE_URL，端口解析逻辑已经在 handler 中处理
-        # 或者为了更明确，我们可以构建一个字典存入
-        # 暂时简单存入 URL 字符串
+        # 存储为 JSON 字典格式，包含 host 和 port
+        lines_info = {
+            "host": settings.EMBY_BASE_URL,
+            "port": str(settings.EMBY_PORT)
+        }
         await set_config(
             session, 
             KEY_LINES_INFO, 
-            settings.EMBY_BASE_URL, 
-            ConfigType.STRING, 
-            default_value=settings.EMBY_BASE_URL
+            lines_info, 
+            ConfigType.JSON, 
+            default_value=lines_info
         )
 
 
