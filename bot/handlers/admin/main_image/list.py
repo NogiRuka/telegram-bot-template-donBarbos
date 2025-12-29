@@ -18,8 +18,8 @@ from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_admin_feature
 from bot.utils.message import send_toast, safe_delete_message
 from bot.utils.text import escape_markdown_v2
+from bot.handlers.start import build_home_view
 from .router import router
-from .menu import show_main_image_panel
 
 
 async def _clear_image_list(state: FSMContext, bot: Bot, chat_id: int) -> None:
@@ -48,16 +48,20 @@ async def list_images_entry(callback: CallbackQuery, main_msg: MainMessageServic
     await callback.answer()
 
 
-@router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_menu")
+@router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_home")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def back_to_main_image_menu(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
-    """返回主图管理面板"""
+async def back_to_home_from_list(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
+    """返回主面板"""
     # 清理图片
     if callback.message:
         await _clear_image_list(state, callback.bot, callback.message.chat.id)
 
-    # 显示主图管理面板
-    await show_main_image_panel(callback, session, state, main_msg)
+    # 构建首页视图
+    uid = callback.from_user.id if callback.from_user else None
+    caption, kb = await build_home_view(session, uid)
+    
+    await main_msg.update_on_callback(callback, caption, kb)
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith(MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:"))
@@ -171,7 +175,7 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
         action = parts[3]
         
         if action == "close":
-            await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
+            await callback.message.delete()
             return
 
         item_id = int(parts[4])
@@ -182,7 +186,7 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
     item = await session.get(MainImageModel, item_id)
     if not item:
         await callback.answer("❌ 图片不存在", show_alert=True)
-        await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
+        await callback.message.delete()
         return
 
     if action == "toggle":
@@ -214,5 +218,5 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
         # Soft delete
         item.is_deleted = True
         await session.commit()
-        await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
+        await callback.message.delete()
         await callback.answer("已删除")
