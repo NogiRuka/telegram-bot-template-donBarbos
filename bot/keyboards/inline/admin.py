@@ -13,6 +13,8 @@ from bot.keyboards.inline.buttons import (
     NOTIFY_SEND_BUTTON,
     MAIN_IMAGE_BACK_BUTTON,
     MAIN_IMAGE_CANCEL_BUTTON,
+    MAIN_IMAGE_UPLOAD_SFW_BUTTON,
+    MAIN_IMAGE_UPLOAD_NSFW_BUTTON,
 )
 from bot.keyboards.inline.constants import (
     NOTIFY_COMPLETE_CALLBACK_DATA,
@@ -27,6 +29,8 @@ from bot.keyboards.inline.constants import (
     MAIN_IMAGE_TOGGLE_NSFW_LABEL,
     MAIN_IMAGE_SCHEDULE_LIST_LABEL,
     MAIN_IMAGE_SCHEDULE_DELETE_LABEL,
+    MAIN_IMAGE_CONTINUE_UPLOAD_LABEL,
+    MAIN_IMAGE_UPLOAD_CALLBACK_DATA
 )
 
 
@@ -153,7 +157,7 @@ def get_main_image_upload_success_keyboard(is_nsfw: bool) -> InlineKeyboardMarku
     
     buttons = [
         [continue_button],
-        [MAIN_IMAGE_BACK_BUTTON, BACK_TO_HOME_BUTTON],
+        [MAIN_IMAGE_BACK_TO_UPLOAD_BUTTON, BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
