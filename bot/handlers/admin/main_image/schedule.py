@@ -40,18 +40,23 @@ async def _clear_schedule_list(state: FSMContext, bot: Bot, chat_id: int) -> Non
     await state.update_data(main_image_schedule_list_ids=[])
 
 
-def _parse_schedule_input(text: str) -> tuple[list[int], dt, dt] | None:
+def _parse_schedule_input(text: str) -> tuple[list[int], dt, dt, str | None] | None:
     """解析投放输入
     格式支持:
-    - 1.202512010021.202512012359 (ID.Start.End)
-    - 1-2-3.20251201 (IDs.StartDay)
-    - 1.202512010021 (ID.Start, End=StartDayEnd or NextDay00:00)
-    - 1.20251201 (ID.StartDay, End=NextDay00:00)
-    - 1.20251201.20251205 (ID.StartDay.EndDay)
-    - 1.20251201-05 (ID.StartDay-EndDaySuffix)
+    - 1.202512010021.202512012359 [Label] (ID.Start.End [Label])
+    - 1-2-3.20251201 [Label] (IDs.StartDay [Label])
+    - 1.202512010021 [Label] (ID.Start, End=StartDayEnd or NextDay00:00 [Label])
+    - 1.20251201 [Label] (ID.StartDay, End=NextDay00:00 [Label])
+    - 1.20251201.20251205 [Label] (ID.StartDay.EndDay [Label])
+    - 1.20251201-05 [Label] (ID.StartDay-EndDaySuffix [Label])
     """
     try:
-        parts = text.strip().split('.', 1)
+        # 分离标签 (空格分隔)
+        parts_with_label = text.strip().split(maxsplit=1)
+        schedule_text = parts_with_label[0]
+        label = parts_with_label[1] if len(parts_with_label) > 1 else None
+
+        parts = schedule_text.split('.', 1)
         if len(parts) != 2:
             return None
         
@@ -80,8 +85,6 @@ def _parse_schedule_input(text: str) -> tuple[list[int], dt, dt] | None:
                 return None
             start_dt = dt.strptime(start_str, "%Y%m%d")
             # 结束日期为 start_dt 的年月 + end_suffix
-            # 注意: 如果跨月需要额外处理，但简单实现假设是同月，或者用户输入完整日期
-            # 用户示例: 1.20251201-05 表示 1号到5号
             end_day = int(end_suffix)
             # 构造结束日期: 年月取自 start_dt, 日取自 end_suffix
             # 结束时间应该是那一天的结束，或者下一天的0点。通常 1-5号 包含5号，所以是 6号0点
@@ -112,17 +115,14 @@ def _parse_schedule_input(text: str) -> tuple[list[int], dt, dt] | None:
             if len(date_part) == 12:
                 start_dt = dt.strptime(date_part, "%Y%m%d%H%M")
                 # 默认为当天结束 (下一天0点)
-                # 计算 start_dt 所在日期的下一天 0点
                 end_dt = (start_dt + td(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-                # 如果计算出的 end_dt 比 start_dt 还小(不可能)或者相等，则强制至少一分钟? 
-                # 逻辑: 202512012359 -> Next day 00:00 (1 min duration)
             elif len(date_part) == 8:
                 start_dt = dt.strptime(date_part, "%Y%m%d")
                 end_dt = start_dt + td(days=1)
             else:
                 return None
                 
-        return image_ids, start_dt, end_dt
+        return image_ids, start_dt, end_dt, label
     except Exception:
         return None
 
@@ -168,11 +168,11 @@ async def start_schedule_creation(callback: CallbackQuery, state: FSMContext, ma
     text = (
         "➕ *创建节日投放*\n\n"
         "请按以下格式输入（支持多种格式）：\n"
-        "`ID.开始时间[.结束时间]`\n\n"
+        "`ID.开始时间[.结束时间] [标签]`\n\n"
         "📝 *示例*：\n"
-        f"1\\. 精确时间段：`1.{day_str}0021.{day_str}2359`\n"
+        f"1\\. 精确时间段：`1.{day_str}0021.{day_str}2359 元旦活动`\n"
         f"2\\. 当天剩余时间：`1.{day_str}0021`\n"
-        f"3\\. 全天：`1.{day_str}`\n"
+        f"3\\. 全天：`1.{day_str} 周末`\n"
         f"4\\. 日期范围：`1.{day_str}.{range_end_str}`\n"
         f"5\\. 简写范围：`1.{example_day_str}-{example_suffix}`"
     )
@@ -194,7 +194,7 @@ async def process_schedule_input(message: Message, session: AsyncSession, state:
         await message.answer("❌ 格式错误，请检查输入格式。")
         return
         
-    image_ids, start_time, end_time = result
+    image_ids, start_time, end_time, label = result
     
     # 验证图片是否存在
     valid_ids = []
@@ -220,6 +220,7 @@ async def process_schedule_input(message: Message, session: AsyncSession, state:
             priority=0, # 默认优先级
             only_sfw=False,
             allow_nsfw=True,
+            label=label
         )
         session.add(model)
         
@@ -228,11 +229,13 @@ async def process_schedule_input(message: Message, session: AsyncSession, state:
     await state.clear()
     
     valid_ids_str = ", ".join(map(str, valid_ids))
+    label_info = f"\n🏷️ 标签: `{escape_markdown_v2(label)}`" if label else ""
     info = (
         f"✅ *投放创建成功*\n"
         f"🆔 图片: `{valid_ids_str}`\n"
         f"📅 开始: `{start_time.strftime('%Y-%m-%d %H:%M')}`\n"
         f"📅 结束: `{end_time.strftime('%Y-%m-%d %H:%M')}`"
+        f"{label_info}"
     )
     
     if invalid_ids:
@@ -297,11 +300,13 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
     for item in items:
         start_str = escape_markdown_v2(item.start_time.strftime('%Y-%m-%d %H:%M'))
         end_str = escape_markdown_v2(item.end_time.strftime('%Y-%m-%d %H:%M'))
+        label_line = f"🏷️ 标签: `{escape_markdown_v2(item.label)}`\n" if item.label else ""
         
         caption = (
             f"🆔 投放ID: `{item.id}`\n"
             f"🖼️ 图片ID: `{item.image_id}`\n"
             f"📅 时间: {start_str} \\~ {end_str}\n"
+            f"{label_line}"
             f"⚡ 优先级: {item.priority}"
         )
         
