@@ -102,6 +102,9 @@ async def start_handler(
     # 🚀 首次渲染必须带图片
     img = await MainImageService.select_main_image(session, uid)
     if img:
+        # 记录展示历史
+        await MainImageService.record_display(session, uid, img.id)
+        
         await main_msg.render(
             user_id=uid,
             caption=caption,

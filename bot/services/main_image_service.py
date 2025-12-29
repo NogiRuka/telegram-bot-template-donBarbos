@@ -43,12 +43,39 @@ class MainImageService:
         }
 
     @staticmethod
+    async def record_display(session: AsyncSession, user_id: int, image_id: int) -> None:
+        """记录主图展示历史
+        
+        功能说明:
+        - 更新用户的 last_image_id
+        - 记录展示时间到 extra_data (可选)
+        
+        输入参数:
+        - session: 异步数据库会话
+        - user_id: 用户ID
+        - image_id: 展示的主图ID
+        """
+        stmt = select(UserExtendModel).where(UserExtendModel.user_id == user_id)
+        result = await session.execute(stmt)
+        ext = result.scalar_one_or_none()
+        if ext:
+            ext.last_image_id = image_id
+            
+            # 更新 extra_data (保留原有数据)
+            data = dict(ext.extra_data) if ext.extra_data else {}
+            data["last_display_at"] = now().isoformat()
+            ext.extra_data = data
+            
+            await session.commit()
+
+    @staticmethod
     async def select_main_image(session: AsyncSession, user_id: int) -> MainImageModel | None:
         """选择主图条目
         
         功能说明:
         - 优先选择当前时间窗口内的节日主图（按 priority 最小）
         - 否则根据用户展示模式与全局 NSFW 开关，从 SFW/NSFW 池中随机选择首个可用条目
+        - **支持去重**: 尽量避免连续展示同一张图片 (依赖 last_image_id)
         
         输入参数:
         - session: 异步数据库会话
@@ -59,6 +86,7 @@ class MainImageService:
         """
         current_time = now()
         prefs = await MainImageService.get_user_prefs(session, user_id)
+        last_id = prefs.get("last_image_id")
         nsfw_enabled = bool(await get_config(session, KEY_ADMIN_MAIN_IMAGE_NSFW_ENABLED) or False)
 
         # 1. 节日主图优先
@@ -93,6 +121,10 @@ class MainImageService:
                 valid_candidates.append(img)
             
             if valid_candidates:
+                # 尝试去重
+                filtered = [img for img in valid_candidates if img.id != last_id]
+                if filtered:
+                    return random.choice(filtered)
                 return random.choice(valid_candidates)
 
         # 2. 根据用户模式选择池
@@ -116,8 +148,23 @@ class MainImageService:
             if not allow_nsfw:
                 cond_stmt = cond_stmt.where(MainImageModel.is_nsfw.is_(False))
         
+        # 尝试去重逻辑
+        final_stmt = cond_stmt
+        if last_id is not None:
+            final_stmt = final_stmt.where(MainImageModel.id != last_id)
+        
         # 随机选择
-        cond_stmt = cond_stmt.order_by(func.random()).limit(1)
-
-        cond_res = await session.execute(cond_stmt)
-        return cond_res.scalar_one_or_none()
+        final_stmt = final_stmt.order_by(func.random()).limit(1)
+        cond_res = await session.execute(final_stmt)
+        result = cond_res.scalar_one_or_none()
+        
+        if result:
+            return result
+            
+        # 如果去重后没结果（可能只有一张图），则允许重复
+        if last_id is not None:
+            fallback_stmt = cond_stmt.order_by(func.random()).limit(1)
+            fallback_res = await session.execute(fallback_stmt)
+            return fallback_res.scalar_one_or_none()
+            
+        return None

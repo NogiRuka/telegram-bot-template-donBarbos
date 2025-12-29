@@ -110,9 +110,9 @@ async def main_image_settings(
     text = (
         "🖼️ *主图设置*\n\n"
         "请选择您偏好的主图显示模式：\n\n"
-        "• *SFW \\(安全\\)*: 仅显示全年龄向内容\n"
-        "• *NSFW \\(限制级\\)*: 仅显示限制级内容 \\(需解锁\\)\n"
-        "• *随机 \\(混合\\)*: 混合显示所有内容 \\(需解锁\\)\n"
+        "• *SFW（安全）*：仅显示全年龄向内容\n"
+        "• *NSFW（限制级）*：仅显示限制级内容（需解锁）\n"
+        "• *随机（混合）*：混合显示所有内容（需解锁）\n"
     )
     
     kb = get_main_image_settings_keyboard(current_mode, nsfw_unlocked)
