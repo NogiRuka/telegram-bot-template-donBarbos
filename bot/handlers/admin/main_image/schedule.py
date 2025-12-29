@@ -143,16 +143,37 @@ async def schedule_menu(callback: CallbackQuery, state: FSMContext, main_msg: Ma
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
 async def start_schedule_creation(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
     """开始创建投放"""
+    now_dt = now()
+    day_str = now_dt.strftime('%Y%m%d')
+    next_day_str = (now_dt + td(days=1)).strftime('%Y%m%d')
+    range_end_str = (now_dt + td(days=4)).strftime('%Y%m%d')
+    # 对于简写范围，如果跨月可能显示不直观，这里简单处理，如果+4天还在同一个月，就显示 DD，否则显示下个月的 DD
+    # 但逻辑上 1.20251201-05 是同一个月。
+    # 为了演示方便，我们假设用户会在当月操作。如果今天是月底，例子可能看起来像 1.20251230-03 (这是无效的逻辑吗？_parse_schedule_input 里 replace(day=3) 会变成当月3号，即过去时间)
+    # 所以为了避免混淆，简写范围例子最好固定或者确保有效。
+    # 既然用户要求 "根据now来"，我们尽量动态生成。如果 now_dt.day > 25，我们就在例子中用下个月1号开始。
+    
+    example_base_dt = now_dt
+    if example_base_dt.day > 25:
+        # 下个月1号
+        if example_base_dt.month == 12:
+            example_base_dt = example_base_dt.replace(year=example_base_dt.year + 1, month=1, day=1)
+        else:
+            example_base_dt = example_base_dt.replace(month=example_base_dt.month + 1, day=1)
+    
+    example_day_str = example_base_dt.strftime('%Y%m%d')
+    example_suffix = (example_base_dt + td(days=4)).strftime('%d')
+    
     text = (
         "➕ *创建节日投放*\n\n"
         "请按以下格式输入（支持多种格式）：\n"
         "`ID.开始时间[.结束时间]`\n\n"
         "📝 *示例*：\n"
-        "1\\. 精确时间段：`1.202512010021.202512012359`\n"
-        "2\\. 当天剩余时间：`1.202512010021`\n"
-        "3\\. 全天：`1.20251201`\n"
-        "4\\. 日期范围：`1.20251201.20251205`\n"
-        "5\\. 简写范围：`1.20251201-05`"
+        f"1\\. 精确时间段：`1.{day_str}0021.{day_str}2359`\n"
+        f"2\\. 当天剩余时间：`1.{day_str}0021`\n"
+        f"3\\. 全天：`1.{day_str}`\n"
+        f"4\\. 日期范围：`1.{day_str}.{range_end_str}`\n"
+        f"5\\. 简写范围：`1.{example_day_str}-{example_suffix}`"
     )
     await main_msg.update_on_callback(callback, text, get_main_image_cancel_keyboard())
     await state.set_state(AdminMainImageState.waiting_for_schedule_input)
