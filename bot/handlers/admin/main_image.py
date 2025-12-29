@@ -255,6 +255,7 @@ async def start_schedule(callback: CallbackQuery, state: FSMContext, main_msg: M
     输入参数:
     - callback: 回调对象
     - state: FSM 上下文
+    - main_msg: 主消息服务
     
     返回值:
     - None
@@ -262,9 +263,16 @@ async def start_schedule(callback: CallbackQuery, state: FSMContext, main_msg: M
     # 展示现有投放
     try:
         # 读取数据库需要 session，但本函数没有注入；改由提示用户使用列表按钮查看
+        text = (
+            "请输入要投放的图片 ID:\n"
+            "格式依次为：\n"
+            r"1\) 图片ID" + "\n"
+            r"2\) 开始时间 \(YYYY\-MM\-DD HH:MM\)" + "\n"
+            r"3\) 结束时间 \(YYYY\-MM\-DD HH:MM\)"
+        )
         await main_msg.update_on_callback(
             callback,
-            "请输入要投放的图片 ID:\n格式依次为：\n1) 图片ID\n2) 开始时间 (YYYY-MM-DD HH:MM)\n3) 结束时间 (YYYY-MM-DD HH:MM)",
+            text,
             get_main_image_admin_keyboard()
         )
     except Exception:
