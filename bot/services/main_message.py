@@ -5,8 +5,6 @@ from aiogram import types
 from aiogram.types import FSInputFile
 from loguru import logger
 
-from bot.utils.view import render_view
-
 if TYPE_CHECKING:
     from aiogram import Bot
 
@@ -144,45 +142,18 @@ class MainMessageService:
 
     async def delete_input(self, input_message: types.Message) -> None:
         """删除用户输入消息
-
+        
         功能说明:
         - 删除用户刚刚发送的输入消息, 保持对话整洁
-
+        
         输入参数:
         - input_message: 用户输入的消息对象
-
+        
         返回值:
         - None
         """
         with logger.catch():
             await input_message.delete()
-
-    async def update_by_message(
-        self,
-        msg: types.Message,
-        caption: str,
-        kb: types.InlineKeyboardMarkup,
-        image_path: str | None = None,
-    ) -> bool:
-        """按消息对象更新主消息
-
-        功能说明:
-        - 直接编辑传入的消息对象, 优先保持媒体不变, 仅编辑 caption 与键盘; 如有 `image_path` 则尝试替换为图片
-
-        输入参数:
-        - msg: Telegram 消息对象
-        - caption: 文本说明内容
-        - kb: 内联键盘
-        - image_path: 图片路径, 可选
-
-        返回值:
-        - bool: 是否更新成功
-        """
-        with logger.catch():
-            ok = await render_view(msg, caption, kb, image_path=image_path)
-            if msg.from_user:
-                self.remember(msg.from_user.id, msg)
-            return ok
 
     async def update_on_callback(
         self,

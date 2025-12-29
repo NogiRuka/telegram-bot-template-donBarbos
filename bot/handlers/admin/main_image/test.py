@@ -74,7 +74,7 @@ async def process_test_input(message: Message, state: FSMContext, main_msg: Main
         await message.bot.send_photo(chat_id=message.chat.id, photo=file_id, caption=safe_caption, parse_mode="MarkdownV2")
         # 测试成功后，更新主消息提示已完成，或保持等待状态?
         # 原逻辑清除状态。这里改为显示返回键盘。
-        await main_msg.update_by_message(message, "✅ 测试消息已发送。", get_main_image_back_keyboard())
+        await main_msg.render(message.from_user.id, "✅ 测试消息已发送。", get_main_image_back_keyboard())
     except Exception as e:
         await message.answer(f"❌ 发送失败，请确认 file_id 有效或重试。\n错误: {e}")
     

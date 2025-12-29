@@ -144,7 +144,7 @@ async def process_schedule_end(message: Message, session: AsyncSession, state: F
     session.add(model)
     await session.commit()
     await state.clear()
-    await main_msg.update_by_message(message, "✅ 已创建节日投放。", get_main_image_back_keyboard())
+    await main_msg.render(message.from_user.id, "✅ 已创建节日投放。", get_main_image_back_keyboard())
 
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule_delete")
@@ -182,7 +182,7 @@ async def process_schedule_delete_id(message: Message, session: AsyncSession, st
     try:
         await session.execute(delete(MainImageScheduleModel).where(MainImageScheduleModel.id == schedule_id))
         await session.commit()
-        await main_msg.update_by_message(message, "✅ 已删除投放。", get_main_image_back_keyboard())
+        await main_msg.render(message.from_user.id, "✅ 已删除投放。", get_main_image_back_keyboard())
     except Exception:
         await message.answer("❌ 删除失败，请稍后重试。")
     await state.clear()

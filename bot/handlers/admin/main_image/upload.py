@@ -120,4 +120,4 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
     )
     # 上传成功后清除状态，显示返回键盘
     await state.clear()
-    await main_msg.update_by_message(message, text, get_main_image_back_keyboard())
+    await main_msg.render(message.from_user.id, text, get_main_image_back_keyboard())
