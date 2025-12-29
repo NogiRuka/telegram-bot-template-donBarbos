@@ -21,6 +21,7 @@ from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminMainImageState
 from bot.utils.permissions import require_admin_feature
 from bot.utils.message import send_toast, safe_delete_message
+from bot.utils.text import escape_markdown_v2
 from bot.utils.datetime import now
 from bot.handlers.start import build_home_view
 from .router import router
@@ -294,8 +295,8 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
         
     new_msg_ids = []
     for item in items:
-        start_str = item.start_time.strftime('%Y-%m-%d %H:%M')
-        end_str = item.end_time.strftime('%Y-%m-%d %H:%M')
+        start_str = escape_markdown_v2(item.start_time.strftime('%Y-%m-%d %H:%M'))
+        end_str = escape_markdown_v2(item.end_time.strftime('%Y-%m-%d %H:%M'))
         
         caption = (
             f"🆔 投放ID: `{item.id}`\n"
