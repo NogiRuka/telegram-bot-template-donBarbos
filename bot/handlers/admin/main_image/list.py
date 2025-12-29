@@ -17,7 +17,7 @@ from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_admin_feature
 from bot.utils.message import send_toast, safe_delete_message
-from bot.utils.text import escape_markdown_v2
+from bot.utils.text import escape_markdown_v2, format_size
 from bot.utils.datetime import now
 from bot.handlers.start import build_home_view
 from .router import router
