@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
 from bot.database.models import MainImageScheduleModel, MainImageModel
 from bot.keyboards.inline.admin import (
-    get_main_image_cancel_keyboard,
     get_main_image_schedule_menu_keyboard,
     get_main_image_schedule_list_pagination_keyboard,
     get_main_image_schedule_item_keyboard,

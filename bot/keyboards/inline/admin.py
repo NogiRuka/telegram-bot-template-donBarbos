@@ -28,8 +28,7 @@ from bot.keyboards.inline.constants import (
     MAIN_IMAGE_SCHEDULE_LABEL,
     MAIN_IMAGE_TEST_LABEL,
     MAIN_IMAGE_TOGGLE_NSFW_LABEL,
-    MAIN_IMAGE_SCHEDULE_LIST_LABEL,
-    MAIN_IMAGE_SCHEDULE_DELETE_LABEL,
+    MAIN_IMAGE_CANCEL_LABEL,
     MAIN_IMAGE_CONTINUE_UPLOAD_LABEL,
     MAIN_IMAGE_UPLOAD_CALLBACK_DATA,
     BACK_TO_HOME_LABEL
@@ -194,7 +193,7 @@ def get_main_image_cancel_keyboard() -> InlineKeyboardMarkup:
 
 def get_main_image_schedule_cancel_keyboard() -> InlineKeyboardMarkup:
     """节日投放取消键盘 (返回投放菜单)"""
-    buttons = [[InlineKeyboardButton(text="🚫 取消", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule")]]
+    buttons = [[InlineKeyboardButton(text=MAIN_IMAGE_CANCEL_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule")]]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
 
