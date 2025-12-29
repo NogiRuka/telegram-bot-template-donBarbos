@@ -2,12 +2,13 @@ from aiogram import F
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
 from bot.database.models import MainImageModel
 from bot.keyboards.inline.admin import (
     get_main_image_cancel_keyboard, 
-    get_main_image_back_keyboard,
     get_main_image_upload_type_keyboard,
     get_main_image_upload_success_keyboard
 )
@@ -16,6 +17,7 @@ from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminMainImageState
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2
+from bot.utils.message import send_toast
 from .router import router
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":upload")
@@ -114,6 +116,18 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
         await message.answer("❌ 未检测到图片，请发送 Photo 或 图片 Document。")
         return
 
+    # 重复检测: 相同 file_id 不允许重复上传
+    try:
+        exists_stmt = select(MainImageModel.id).where(MainImageModel.file_id == file_id)
+        exists = await session.execute(exists_stmt)
+        if exists.scalar_one_or_none() is not None:
+            await send_toast(message, "❌ 图片重复了，请重新上传", delay=5)
+            await state.clear()
+            return
+    except Exception:
+        # 忽略检测失败，后续还有唯一约束保护
+        pass
+
     # 获取当前上传类型
     data = await state.get_data()
     is_nsfw = data.get("is_nsfw", False)
@@ -129,7 +143,13 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
         is_nsfw=is_nsfw,  # 使用状态中的设置
     )
     session.add(model)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        await send_toast(message, "❌ 图片重复了，请重新上传", delay=5)
+        await state.clear()
+        return
 
     safe_caption = escape_markdown_v2(caption)
     size_mb = file_size / (1024 * 1024)
