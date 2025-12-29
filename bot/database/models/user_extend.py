@@ -14,6 +14,7 @@ from sqlalchemy import JSON, Index, String, Integer, BigInteger, Date, text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
+from bot.core.constants import DISPLAY_MODE_SFW
 from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
 
 
@@ -73,7 +74,7 @@ class UserExtendModel(Base, BasicAuditMixin):
 
     # 主图偏好
     display_mode: Mapped[str] = mapped_column(
-        String(16), default="sfw", nullable=False, comment="主图展示模式: sfw/nsfw/random"
+        String(16), default=DISPLAY_MODE_SFW, nullable=False, comment="主图展示模式: sfw/nsfw/random"
     )
     nsfw_unlocked: Mapped[bool] = mapped_column(
         default=False, nullable=False, comment="是否已解锁 NSFW 展示权限"

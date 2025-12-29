@@ -10,6 +10,7 @@ from .registration import router as admin_registration_router
 from .stats import router as admin_stats_router
 from .store_admin import router as admin_store_router
 from .currency_admin import router as admin_currency_router
+from .main_image import router as admin_main_image_router
 
 
 def get_admin_router() -> Router:
@@ -36,4 +37,5 @@ def get_admin_router() -> Router:
     router.include_router(admin_notification_router)
     router.include_router(admin_store_router)
     router.include_router(admin_currency_router)
+    router.include_router(admin_main_image_router)
     return router

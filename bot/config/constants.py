@@ -38,6 +38,8 @@ KEY_ADMIN_ANNOUNCEMENT = "admin.announcement"
 KEY_ADMIN_ANNOUNCEMENT_TEXT = "admin.announcement.text"
 KEY_ADMIN_STORE = "admin.store"
 KEY_ADMIN_CURRENCY = "admin.currency"
+KEY_ADMIN_MAIN_IMAGE = "admin.main_image"
+KEY_ADMIN_MAIN_IMAGE_NSFW_ENABLED = "admin.main_image.nsfw_enabled"
 
 # 注册相关配置
 KEY_REGISTRATION_FREE_OPEN = "registration.free_open"

@@ -18,7 +18,15 @@ from bot.database.models import (
     CurrencyTransactionModel,
     UserExtendModel,
 )
-from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL
+from bot.core.constants import (
+    CURRENCY_NAME, 
+    CURRENCY_SYMBOL,
+    PRODUCT_ACTION_RETRO_CHECKIN,
+    PRODUCT_ACTION_EMBY_IMAGE,
+    PRODUCT_ACTION_EMBY_PASSWORD,
+    PRODUCT_ACTION_CUSTOM_TITLE,
+    PRODUCT_ACTION_MAIN_IMAGE_UNLOCK_NSFW
+)
 from bot.utils.datetime import now
 
 # CURRENCY_NAME = "精粹"
@@ -212,7 +220,7 @@ class CurrencyService:
                 "stock": 20,
                 "description": "补签昨天的签到记录",
                 "category": "tools",
-                "action_type": "retro_checkin",
+                "action_type": PRODUCT_ACTION_RETRO_CHECKIN,
             },
             {
                 "name": "修改头像",
@@ -220,7 +228,7 @@ class CurrencyService:
                 "stock": 20,
                 "description": "修改 Emby 账号头像 (一次性)",
                 "category": "emby",
-                "action_type": "emby_image",
+                "action_type": PRODUCT_ACTION_EMBY_IMAGE,
                 "purchase_conditions": {"has_emby": True},
             },
             {
@@ -229,7 +237,7 @@ class CurrencyService:
                 "stock": 20,
                 "description": "修改 Emby 账号密码 (一次性)",
                 "category": "emby",
-                "action_type": "emby_password",
+                "action_type": PRODUCT_ACTION_EMBY_PASSWORD,
                 "purchase_conditions": {"has_emby": True},
             },
             {
@@ -238,7 +246,7 @@ class CurrencyService:
                 "stock": 20,
                 "description": "在群组中显示自定义头衔（7天体验）。",
                 "category": "tools",
-                "action_type": "custom_title",
+                "action_type": PRODUCT_ACTION_CUSTOM_TITLE,
             },
             {
                 "name": "自定义头衔（永久）",
@@ -246,7 +254,7 @@ class CurrencyService:
                 "stock": 10,
                 "description": "在群组中显示自定义头衔（永久）。\n🎉 恭喜您连续签到30天解锁此隐藏商品！",
                 "category": "tools",
-                "action_type": "custom_title",
+                "action_type": PRODUCT_ACTION_CUSTOM_TITLE,
                 "visible_conditions": {"min_max_streak": 30},
             },
             {
@@ -255,7 +263,7 @@ class CurrencyService:
                 "stock": 20,
                 "description": "解锁主图的 NSFW/随机展示模式设置权限",
                 "category": "tools",
-                "action_type": "main_image_unlock_nsfw",
+                "action_type": PRODUCT_ACTION_MAIN_IMAGE_UNLOCK_NSFW,
             },
         ]
 
@@ -476,7 +484,7 @@ class CurrencyService:
                     return False, "🚫 您未绑定 Emby 账号，无法购买此商品。"
 
         # 判断是否为功能性商品（购买资格券）
-        is_ticket = product.action_type in ["emby_image", "emby_password"]
+        is_ticket = product.action_type in [PRODUCT_ACTION_EMBY_IMAGE, PRODUCT_ACTION_EMBY_PASSWORD]
         
         # 2. 扣除代币
         try:
@@ -516,15 +524,15 @@ class CurrencyService:
         返回: (是否成功, 提示信息)
         """
         try:
-            if product.action_type == "retro_checkin":
+            if product.action_type == PRODUCT_ACTION_RETRO_CHECKIN:
                 # 尝试补签逻辑
                 return await CurrencyService._try_retro_checkin(session, user_id)
                 
-            elif product.action_type in ["emby_image", "emby_password"]:
+            elif product.action_type in [PRODUCT_ACTION_EMBY_IMAGE, PRODUCT_ACTION_EMBY_PASSWORD]:
                 # 功能性商品，购买后获得资格
                 return True, "✅ 您已获得使用资格，请前往 [账号中心] 使用对应功能。"
             
-            elif product.action_type == "main_image_unlock_nsfw":
+            elif product.action_type == PRODUCT_ACTION_MAIN_IMAGE_UNLOCK_NSFW:
                 # 解锁主图 NSFW/随机设置权限（幂等）
                 ext = await CurrencyService.get_user_extend(session, user_id)
                 if not ext:
@@ -533,7 +541,7 @@ class CurrencyService:
                 session.add(ext)
                 return True, "✅ 已解锁主图 NSFW/随机模式设置。"
                 
-            elif product.action_type == "custom_title":
+            elif product.action_type == PRODUCT_ACTION_CUSTOM_TITLE:
                 return True, "ℹ️ 请联系频道管理员设置您的自定义群组头衔。"
                 
             # 默认回复

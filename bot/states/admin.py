@@ -21,3 +21,13 @@ class CurrencyAdminState(StatesGroup):
     waiting_for_user = State()  # 如果需要先输入用户
     waiting_for_amount = State()
     waiting_for_reason = State()
+
+
+class AdminMainImageState(StatesGroup):
+    """主图管理状态"""
+    waiting_for_image = State()
+    waiting_for_test_input = State()
+    waiting_for_schedule_image_id = State()
+    waiting_for_schedule_start = State()
+    waiting_for_schedule_end = State()
+    waiting_for_schedule_delete_id = State()

@@ -17,6 +17,14 @@ from bot.keyboards.inline.constants import (
     NOTIFY_COMPLETE_LABEL,
     NOTIFY_PREVIEW_CALLBACK_DATA,
     NOTIFY_PREVIEW_LABEL,
+    MAIN_IMAGE_ADMIN_CALLBACK_DATA,
+    MAIN_IMAGE_UPLOAD_LABEL,
+    MAIN_IMAGE_LIST_LABEL,
+    MAIN_IMAGE_SCHEDULE_LABEL,
+    MAIN_IMAGE_TEST_LABEL,
+    MAIN_IMAGE_TOGGLE_NSFW_LABEL,
+    MAIN_IMAGE_SCHEDULE_LIST_LABEL,
+    MAIN_IMAGE_SCHEDULE_DELETE_LABEL,
 )
 
 
@@ -102,6 +110,40 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
             ),
         ],
         [NOTIFY_SEND_BUTTON],
+        [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_main_image_admin_keyboard() -> InlineKeyboardMarkup:
+    """主图管理面板键盘
+
+    功能说明:
+    - 提供上传、列表、节日投放、测试、NSFW 开关五个入口
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 键盘对象
+    """
+    buttons = [
+        [
+            InlineKeyboardButton(text=MAIN_IMAGE_UPLOAD_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":upload"),
+            InlineKeyboardButton(text=MAIN_IMAGE_LIST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list"),
+        ],
+        [
+            InlineKeyboardButton(text=MAIN_IMAGE_SCHEDULE_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule"),
+            InlineKeyboardButton(text=MAIN_IMAGE_TEST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":test"),
+        ],
+        [
+            InlineKeyboardButton(text=MAIN_IMAGE_SCHEDULE_LIST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule_list"),
+            InlineKeyboardButton(text=MAIN_IMAGE_SCHEDULE_DELETE_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule_delete"),
+        ],
+        [
+            InlineKeyboardButton(text=MAIN_IMAGE_TOGGLE_NSFW_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":toggle_nsfw"),
+        ],
         [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
