@@ -31,7 +31,8 @@ from bot.keyboards.inline.constants import (
     MAIN_IMAGE_SCHEDULE_LIST_LABEL,
     MAIN_IMAGE_SCHEDULE_DELETE_LABEL,
     MAIN_IMAGE_CONTINUE_UPLOAD_LABEL,
-    MAIN_IMAGE_UPLOAD_CALLBACK_DATA
+    MAIN_IMAGE_UPLOAD_CALLBACK_DATA,
+    BACK_TO_HOME_LABEL
 )
 
 
@@ -127,7 +128,7 @@ def get_main_image_list_pagination_keyboard(type_key: str, page: int, total_page
         ],
         [
             InlineKeyboardButton(text="🔙 返回分类选择", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list"),
-            InlineKeyboardButton(text="↩️ 返回主面板", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_home")
+            InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_home")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
