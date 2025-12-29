@@ -114,7 +114,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
     # 更新控制消息
     type_name = "NSFW" if is_nsfw else "SFW"
     text = (
-        f"*🗂 图片列表 ({type_name})*\n"
+        f"*🗂 图片列表 \\({type_name}\\)*\n"
         f"共 {total_count} 张，当前第 {page}/{total_pages} 页"
     )
     await main_msg.update_on_callback(
