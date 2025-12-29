@@ -273,13 +273,14 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
     
     # 查询数据
     stmt = (
-        select(MainImageScheduleModel)
+        select(MainImageScheduleModel, MainImageModel)
+        .join(MainImageModel, MainImageScheduleModel.image_id == MainImageModel.id)
         .where(MainImageScheduleModel.is_deleted.is_(False))
         .order_by(MainImageScheduleModel.start_time.desc())
         .offset((page - 1) * limit)
         .limit(limit)
     )
-    items = (await session.execute(stmt)).scalars().all()
+    rows = (await session.execute(stmt)).all()
     
     # 更新主控消息
     text = (
@@ -292,43 +293,39 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
         get_main_image_schedule_list_pagination_keyboard(page, total_pages, limit)
     )
     
-    if not items:
+    if not rows:
         await send_toast(callback, "暂无数据")
         return
         
     new_msg_ids = []
-    for item in items:
-        now_time = now()
-        if item.start_time > now_time:
-            status_emoji = "🕒"
-            status_text = "未开始"
-        elif item.end_time < now_time:
-            status_emoji = "⛔"
-            status_text = "已结束"
-        else:
-            status_emoji = "🟢"
-            status_text = "投放中"
-
+    for item, image in rows:
         start_str = escape_markdown_v2(item.start_time.strftime('%Y-%m-%d %H:%M'))
         end_str = escape_markdown_v2(item.end_time.strftime('%Y-%m-%d %H:%M'))
-        label_line = f"🏷️ `{escape_markdown_v2(item.label)}`\n" if item.label else ""
+        label_line = f"🏷️ 标签: `{escape_markdown_v2(item.label)}`\n" if item.label else ""
         
         caption = (
-            f"{status_emoji} *节日投放 · {status_text}*\n\n"
-            f"🆔 *投放ID*：`{item.id}`\n"
-            f"🖼️ *图片ID*：`{item.image_id}`\n"
-            f"⏰ *投放时间*\n"
-            f"　{start_str} \\~ {end_str}\n"
+            f"🆔 投放ID: `{item.id}`\n"
+            f"🖼️ 图片ID: `{item.image_id}`\n"
+            f"📅 时间: {start_str} \\~ {end_str}\n"
             f"{label_line}"
+            f"⚡ 优先级: {item.priority}"
         )
         
         try:
-            msg = await callback.message.answer(
-                text=caption,
-                reply_markup=get_main_image_schedule_item_keyboard(item.id),
-                parse_mode="MarkdownV2"
-            )
-            new_msg_ids.append(msg.message_id)
+            kwargs = {
+                "caption": caption,
+                "reply_markup": get_main_image_schedule_item_keyboard(item.id),
+                "parse_mode": "MarkdownV2"
+            }
+            
+            msg = None
+            if image.source_type == "document":
+                msg = await callback.message.answer_document(document=image.file_id, **kwargs)
+            else:
+                msg = await callback.message.answer_photo(photo=image.file_id, **kwargs)
+                
+            if msg:
+                new_msg_ids.append(msg.message_id)
         except Exception as e:
             await callback.message.answer(f"❌ 投放 ID `{item.id}` 加载失败: {e}")
             
