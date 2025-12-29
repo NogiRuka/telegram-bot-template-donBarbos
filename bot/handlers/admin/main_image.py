@@ -80,14 +80,21 @@ async def start_upload(callback: CallbackQuery, state: FSMContext, main_msg: Mai
     输入参数:
     - callback: 回调对象
     - state: FSM 上下文
+    - main_msg: 主消息服务
     
     返回值:
     - None
     """
     await state.set_state(AdminMainImageState.waiting_for_image)
+    text = (
+        "请发送图片:\n"
+        r"\- 支持 Photo\(推荐, 自动记录宽高\)" + "\n"
+        r"\- 支持 Document\(图片文件\)" + "\n\n"
+        "可附带说明作为 caption。"
+    )
     await main_msg.update_on_callback(
         callback,
-        "请发送图片:\n- 支持 Photo(推荐, 自动记录宽高)\n- 支持 Document(图片文件)\n\n可附带说明作为 caption。",
+        text,
         get_main_image_admin_keyboard()
     )
     await callback.answer()
