@@ -87,8 +87,9 @@ def delete_message_after_delay(
             elif hasattr(message, "delete"):
                 # 如果传入的是 Message 对象
                 await message.delete()
-        except Exception:
+        except Exception as e:
             # 忽略删除过程中的任何错误
+            logger.debug(f"延迟删除消息失败: {e}")
             pass
 
     task = asyncio.create_task(_delayed_delete())
@@ -151,7 +152,8 @@ async def send_temp_message(
             )
             
         return delete_message_after_delay(sent_msg, delay)
-    except Exception:
+    except Exception as e:
+        logger.error(f"发送临时消息失败: {e}")
         return None
 
 async def send_toast(

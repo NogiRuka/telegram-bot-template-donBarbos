@@ -311,15 +311,13 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
             status_text = "投放中"
         start_str = escape_markdown_v2(item.start_time.strftime('%Y-%m-%d %H:%M'))
         end_str = escape_markdown_v2(item.end_time.strftime('%Y-%m-%d %H:%M'))
-        label_line = f"🏷️ `{escape_markdown_v2(item.label)}`\n" if item.label else ""
+        label_suffix = f" · 🏷️ {escape_markdown_v2(item.label)}" if item.label else ""
         
         caption = (
-            f"{status_emoji} *节日投放 · {status_text}*\n\n"
-            f"🆔 *投放ID*：`{item.id}`\n"
+            f"{status_emoji} *节日投放 · {status_text}{label_suffix}*\n\n"
             f"🖼️ *图片ID*：`{item.image_id}`\n"
-            f"⏰ *投放时间*\n"
+            f"⏰ *投放时间*：\n"
             f"　{start_str} \\~ {end_str}\n"
-            f"{label_line}"
         )
         
         try:
@@ -350,13 +348,13 @@ async def schedule_item_action(callback: CallbackQuery, session: AsyncSession) -
     """投放条目操作"""
     try:
         parts = callback.data.split(":")
-        action = parts[3]
+        action = parts[4]
         
         if action == "close":
             await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
             return
             
-        schedule_id = int(parts[4])
+        schedule_id = int(parts[5])
     except (IndexError, ValueError):
         await callback.answer("❌ 参数错误", show_alert=True)
         return

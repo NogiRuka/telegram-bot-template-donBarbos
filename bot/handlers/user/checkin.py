@@ -8,6 +8,7 @@ from bot.keyboards.inline.constants import DAILY_CHECKIN_CALLBACK_DATA
 from bot.services.currency import CurrencyService
 from bot.utils.message import send_temp_message
 from bot.utils.permissions import require_user_feature
+from bot.utils.text import escape_markdown_v2
 
 router = Router(name="user_checkin")
 
@@ -33,6 +34,6 @@ async def handle_daily_checkin(callback: CallbackQuery, session: AsyncSession):
     success, message = await CurrencyService.daily_checkin(session, user_id)
         
     # 发送签到结果消息并设置10秒后删除
-    await send_temp_message(callback, message, 10)
+    await send_temp_message(callback, escape_markdown_v2(message), 10)
         
     await callback.answer()
