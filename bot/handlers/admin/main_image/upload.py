@@ -48,10 +48,11 @@ async def start_upload_process(callback: CallbackQuery, state: FSMContext, main_
     
     type_text = "NSFW" if is_nsfw else "SFW"
     text = (
-        f"请发送 {type_text} 图片:\n"
-        r"\- 支持 Photo\(推荐, 自动记录宽高\)" + "\n"
-        r"\- 支持 Document\(图片文件\)" + "\n\n"
-        "可附带说明作为 caption。"
+        f"📤 请发送 *{escape_markdown_v2(type_text)}* 类型图片：\n\n"
+        "📸 支持格式：\n"
+        r"• Photo \(推荐，自动记录宽高\)" + "\n"
+        r"• Document \(图片文件\)" + "\n\n"
+        "💬 可附带说明作为 caption。"
     )
     
     await main_msg.update_on_callback(
@@ -131,13 +132,16 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
     await session.commit()
 
     safe_caption = escape_markdown_v2(caption)
-    type_text = "NSFW" if is_nsfw else "SFW"
+    size_mb = file_size / (1024 * 1024)
     text = (
-        f"✅ {type_text} 图片上传成功\!" + "\n"
-        f"ID: `{model.id}`" + "\n"
-        f"Type: `{source_type}`" + "\n"
-        f"Size: `{width}x{height}`" + "\n"
-        f"Caption: {safe_caption}"
+        "🎉 上传成功\n\n"
+        f"🆔 ID：`{model.id}`\n"
+        f"🗂 类型：{source_type}\n"
+        f"📐 尺寸：{width}×{height}\n"
+        f"💾 大小：{escape_markdown_v2(f'{size_mb:.2f}')} MB\n"
+        f"🔞 NSFW：{'是' if model.is_nsfw else '否'}\n"
+        f"⚙️ 启用：{'是' if model.is_enabled else '否'}\n"
+        f"📝 说明：{safe_caption}"
     )
     # 上传成功后清除状态，显示成功键盘(含继续上传)
     await state.clear()
