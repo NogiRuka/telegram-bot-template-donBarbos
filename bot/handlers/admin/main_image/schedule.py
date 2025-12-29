@@ -255,7 +255,7 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
         caption = (
             f"🆔 投放ID: `{item.id}`\n"
             f"🖼️ 图片ID: `{item.image_id}`\n"
-            f"📅 时间: {start_str} \~ {end_str}\n"
+            f"📅 时间: {start_str} \\~ {end_str}\n"
             f"⚡ 优先级: {item.priority}"
         )
         
