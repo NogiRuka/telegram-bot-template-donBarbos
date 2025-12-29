@@ -15,6 +15,7 @@ from bot.keyboards.inline.buttons import (
     MAIN_IMAGE_CANCEL_BUTTON,
     MAIN_IMAGE_UPLOAD_SFW_BUTTON,
     MAIN_IMAGE_UPLOAD_NSFW_BUTTON,
+    MAIN_IMAGE_BACK_TO_UPLOAD_BUTTON,
 )
 from bot.keyboards.inline.constants import (
     NOTIFY_COMPLETE_CALLBACK_DATA,
