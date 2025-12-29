@@ -4,6 +4,7 @@ from bot.keyboards.inline.constants import *
 
 # ===== 用户功能 =====
 PROFILE_BUTTON = InlineKeyboardButton(text=PROFILE_LABEL, callback_data=PROFILE_CALLBACK_DATA)
+PROFILE_MAIN_IMAGE_BUTTON = InlineKeyboardButton(text=PROFILE_MAIN_IMAGE_LABEL, callback_data=PROFILE_MAIN_IMAGE_CALLBACK_DATA)
 ACCOUNT_CENTER_BUTTON = InlineKeyboardButton(text=ACCOUNT_CENTER_LABEL, callback_data=ACCOUNT_CENTER_CALLBACK_DATA)
 START_REGISTER_BUTTON = InlineKeyboardButton(text=START_REGISTER_LABEL, callback_data=START_REGISTER_CALLBACK_DATA)
 CANCEL_REGISTER_BUTTON = InlineKeyboardButton(text=CANCEL_REGISTER_LABEL, callback_data=CANCEL_REGISTER_CALLBACK_DATA)

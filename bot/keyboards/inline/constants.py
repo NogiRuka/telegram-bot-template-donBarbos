@@ -13,9 +13,11 @@
 from bot.core.constants import CURRENCY_SYMBOL
 
 # ===== 用户功能 =====
-# 个人信息
-PROFILE_LABEL = "👤 个人信息"
+# 个人中心
+PROFILE_LABEL = "👤 个人中心"
 PROFILE_CALLBACK_DATA = "user:profile"
+PROFILE_MAIN_IMAGE_LABEL = "🖼️ 主图设置"
+PROFILE_MAIN_IMAGE_CALLBACK_DATA = "user:profile:main_image"
 
 # 账号中心
 ACCOUNT_CENTER_LABEL = "🎬 账号中心"
