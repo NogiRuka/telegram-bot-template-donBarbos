@@ -2,11 +2,36 @@
 
 功能说明:
 - 提供通用图片路径获取等工具函数
+- 图片尺寸读取
 
 依赖安装:
-- 无额外依赖
+- pip install Pillow
 """
+from io import BytesIO
 from pathlib import Path
+from typing import IO
+
+from PIL import Image
+
+
+def get_image_dimensions(file: IO[bytes]) -> tuple[int, int] | None:
+    """获取图片尺寸
+
+    功能说明:
+    - 从文件流中读取图片尺寸 (宽, 高)
+    - 支持各类图片格式
+
+    输入参数:
+    - file: 二进制文件流 (BytesIO 或 打开的文件对象)
+
+    返回值:
+    - tuple[int, int] | None: (宽, 高) 或 None (若无法读取)
+    """
+    try:
+        with Image.open(file) as img:
+            return img.size
+    except Exception:
+        return None
 
 
 def get_common_image() -> str:

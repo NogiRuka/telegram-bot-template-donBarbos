@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
 from bot.database.models import MainImageModel
 from bot.keyboards.inline.admin import (
     get_main_image_cancel_keyboard, 
@@ -18,6 +17,7 @@ from bot.states.admin import AdminMainImageState
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2, format_size
 from bot.utils.message import send_toast
+from bot.utils.images import get_image_dimensions
 from .router import router
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":upload")
@@ -109,6 +109,17 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
             mime_type = doc.mime_type
             file_size = doc.file_size
             source_type = "document"
+            
+            # 尝试下载图片并读取尺寸
+            try:
+                io_obj = BytesIO()
+                await message.bot.download(doc, destination=io_obj)
+                dims = get_image_dimensions(io_obj)
+                if dims:
+                    width, height = dims
+            except Exception:
+                # 忽略读取尺寸失败，允许 width/height 为 None
+                pass
         else:
             await message.answer("❌ 仅支持图片文档，请重试。")
             return
