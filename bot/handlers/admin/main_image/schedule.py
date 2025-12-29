@@ -39,10 +39,11 @@ async def _clear_schedule_list(state: FSMContext, bot: Bot, chat_id: int) -> Non
     await state.update_data(main_image_schedule_list_ids=[])
 
 
-def _parse_schedule_input(text: str) -> tuple[int, dt, dt] | None:
+def _parse_schedule_input(text: str) -> tuple[list[int], dt, dt] | None:
     """解析投放输入
     格式支持:
     - 1.202512010021.202512012359 (ID.Start.End)
+    - 1-2-3.20251201 (IDs.StartDay)
     - 1.202512010021 (ID.Start, End=StartDayEnd or NextDay00:00)
     - 1.20251201 (ID.StartDay, End=NextDay00:00)
     - 1.20251201.20251205 (ID.StartDay.EndDay)
@@ -53,7 +54,19 @@ def _parse_schedule_input(text: str) -> tuple[int, dt, dt] | None:
         if len(parts) != 2:
             return None
         
-        image_id = int(parts[0])
+        # 解析 ID 部分 (支持单个或连字符分隔)
+        id_part = parts[0]
+        image_ids = []
+        try:
+            for x in id_part.split('-'):
+                if x.strip():
+                    image_ids.append(int(x.strip()))
+        except ValueError:
+            return None
+            
+        if not image_ids:
+            return None
+
         date_part = parts[1]
         
         start_dt = None
@@ -108,7 +121,7 @@ def _parse_schedule_input(text: str) -> tuple[int, dt, dt] | None:
             else:
                 return None
                 
-        return image_id, start_dt, end_dt
+        return image_ids, start_dt, end_dt
     except Exception:
         return None
 
@@ -159,33 +172,50 @@ async def process_schedule_input(message: Message, session: AsyncSession, state:
         await message.answer("❌ 格式错误，请检查输入格式。")
         return
         
-    image_id, start_time, end_time = result
+    image_ids, start_time, end_time = result
     
     # 验证图片是否存在
-    image = await session.get(MainImageModel, image_id)
-    if not image:
-        await message.answer(f"❌ 图片 ID `{image_id}` 不存在。")
+    valid_ids = []
+    invalid_ids = []
+    
+    for image_id in image_ids:
+        image = await session.get(MainImageModel, image_id)
+        if image:
+            valid_ids.append(image_id)
+        else:
+            invalid_ids.append(image_id)
+            
+    if not valid_ids:
+        await message.answer(f"❌ 所有图片 ID 均不存在。")
         return
+
+    # 创建投放记录
+    for image_id in valid_ids:
+        model = MainImageScheduleModel(
+            image_id=image_id,
+            start_time=start_time,
+            end_time=end_time,
+            priority=0, # 默认优先级
+            only_sfw=False,
+            allow_nsfw=True,
+        )
+        session.add(model)
         
-    model = MainImageScheduleModel(
-        image_id=image_id,
-        start_time=start_time,
-        end_time=end_time,
-        priority=0, # 默认优先级
-        only_sfw=False,
-        allow_nsfw=True,
-    )
-    session.add(model)
     await session.commit()
     
     await state.clear()
     
+    valid_ids_str = ", ".join(map(str, valid_ids))
     info = (
         f"✅ *投放创建成功*\n"
-        f"🆔 图片: `{image_id}`\n"
+        f"🆔 图片: `{valid_ids_str}`\n"
         f"📅 开始: `{start_time.strftime('%Y-%m-%d %H:%M')}`\n"
         f"📅 结束: `{end_time.strftime('%Y-%m-%d %H:%M')}`"
     )
+    
+    if invalid_ids:
+        invalid_ids_str = ", ".join(map(str, invalid_ids))
+        info += f"\n⚠️ 未找到ID: `{invalid_ids_str}`"
     
     await main_msg.render(message.from_user.id, info, get_main_image_schedule_menu_keyboard())
 

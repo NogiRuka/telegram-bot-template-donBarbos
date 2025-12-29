@@ -2,6 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+import random
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,15 +62,27 @@ class MainImageService:
         nsfw_enabled = bool(await get_config(session, KEY_ADMIN_MAIN_IMAGE_NSFW_ENABLED) or False)
 
         # 1. 节日主图优先
+        # 获取当前时间段内的所有有效投放（过滤软删除），按优先级排序
         sched_stmt = (
             select(MainImageScheduleModel)
-            .where(MainImageScheduleModel.start_time <= current_time, MainImageScheduleModel.end_time >= current_time)
+            .where(
+                MainImageScheduleModel.start_time <= current_time, 
+                MainImageScheduleModel.end_time >= current_time,
+                MainImageScheduleModel.is_deleted.is_(False)
+            )
             .order_by(MainImageScheduleModel.priority.asc())
-            .limit(1)
         )
         sched_res = await session.execute(sched_stmt)
-        schedule = sched_res.scalar_one_or_none()
-        if schedule:
+        schedules = sched_res.scalars().all()
+        
+        if schedules:
+            # 获取最高优先级（数值最小）
+            best_priority = schedules[0].priority
+            # 筛选出最高优先级的投放（可能存在多个）
+            candidates = [s for s in schedules if s.priority == best_priority]
+            # 从中随机选择一个
+            schedule = random.choice(candidates)
+            
             img_stmt = select(MainImageModel).where(
                 MainImageModel.id == schedule.image_id, MainImageModel.is_enabled.is_(True)
             )
