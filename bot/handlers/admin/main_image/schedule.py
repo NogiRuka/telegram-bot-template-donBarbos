@@ -365,10 +365,19 @@ async def schedule_item_action(callback: CallbackQuery, session: AsyncSession) -
             item.is_deleted = True
             item.deleted_at = now()
             item.deleted_by = callback.from_user.id
+            item.remark = f"由 {callback.from_user.full_name}（ID：{callback.from_user.id}）手动删除"
+
+            # 级联禁用关联的图片
+            image = await session.get(MainImageModel, item.image_id)
+            if image:
+                image.is_enabled = False
+                image.updated_by = callback.from_user.id
+                image.remark = f"随投放计划 {item.id} 删除而被禁用"
+
             await session.commit()
             await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
             await callback.answer("✅ 已删除")
-        else:
+        else: 
             await callback.answer("❌ 记录不存在", show_alert=True)
 
 
