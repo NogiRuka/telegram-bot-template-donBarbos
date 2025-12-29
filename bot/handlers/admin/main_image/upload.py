@@ -168,7 +168,7 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
         f"🆔 ID：`{model.id}`\n"
         f"🗂 类型：{source_type}\n"
         f"📐 尺寸：{width}×{height}\n"
-        f"💾 大小：{escape_markdown_v2(format_size(file_size))}\n"
+        f"💾 大小：{format_size(file_size)}\n"
         f"🔞 NSFW：{'是' if model.is_nsfw else '否'}\n"
         f"⚙️ 启用：{'是' if model.is_enabled else '否'}\n"
         f"📝 说明：{safe_caption}"

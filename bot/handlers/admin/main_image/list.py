@@ -131,16 +131,9 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
 
     new_msg_ids = []
     for item in items:
-        # 构造说明文案
-        width = item.width if item.width is not None else "?"
-        height = item.height if item.height is not None else "?"
-        
-        caption = (
-            f"🆔 ID: `{item.id}`\n"
-            f"📝 说明: {escape_markdown_v2(item.caption or '无')}\n"
-            f"📐 尺寸: {width}x{height}\n"
-            f"⚙️ 状态: {'🟢 启用' if item.is_enabled else '🔴 禁用'}"
-        )
+
+        file_size_str = format_size(item.file_size)
+        caption = f"🆔 `{item.id}` ｜ 📝 {escape_markdown_v2(item.caption or '无')} ｜ 📦 {file_size_str} ｜ {'🟢 启用' if item.is_enabled else '🔴 禁用'}"
         
         try:
             # 统一使用 MarkdownV2
@@ -194,16 +187,9 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
         item.is_enabled = not item.is_enabled
         await session.commit()
         
-        # 更新说明文案以反映状态
-        width = item.width if item.width is not None else "?"
-        height = item.height if item.height is not None else "?"
-        
-        caption = (
-            f"🆔 ID: `{item.id}`\n"
-            f"📝 说明: {escape_markdown_v2(item.caption or '无')}\n"
-            f"📐 尺寸: {width}x{height}\n"
-            f"⚙️ 状态: {'🟢 启用' if item.is_enabled else '🔴 禁用'}"
-        )
+        file_size_str = format_size(item.file_size)
+        caption = f"🆔 `{item.id}` ｜ 📝 {escape_markdown_v2(item.caption or '无')} ｜ 📦 {file_size_str} ｜ {'🟢 启用' if item.is_enabled else '🔴 禁用'}"
+      
         try:
              await callback.message.edit_caption(
                 caption=caption,
@@ -218,12 +204,13 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
             f"✅ 操作成功！\n"
             f"图片 ID `{item.id}` 已{status_text}"
         )
-
     elif action == "delete":
         # 软删除
         item.is_deleted = True
+        item.is_enabled = False
         item.deleted_at = now()
         item.deleted_by = callback.from_user.id
+        item.remark = f"删除用户 {callback.from_user.full_name} (ID: {callback.from_user.id})"
         await session.commit()
         await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
         await callback.answer("✅ 操作成功！\n图片已删除")
