@@ -5,7 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
 from bot.database.models import MainImageModel
-from bot.keyboards.inline.admin import get_main_image_cancel_keyboard, get_main_image_back_keyboard
+from bot.keyboards.inline.admin import (
+    get_main_image_cancel_keyboard, 
+    get_main_image_back_keyboard,
+    get_main_image_upload_type_keyboard,
+    get_main_image_upload_success_keyboard
+)
 from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminMainImageState
@@ -15,27 +20,40 @@ from .router import router
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":upload")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def start_upload(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
-    """开始上传流程
+async def start_upload_selection(callback: CallbackQuery, main_msg: MainMessageService) -> None:
+    """开始上传流程 - 选择类型
     
     功能说明:
-    - 进入等待图片或文件消息的状态, 指引管理员发送照片或图片文档
-    
-    输入参数:
-    - callback: 回调对象
-    - state: FSM 上下文
-    - main_msg: 主消息服务
-    
-    返回值:
-    - None
+    - 显示 SFW/NSFW 选择键盘
     """
+    text = "请选择上传图片的类型:"
+    await main_msg.update_on_callback(
+        callback,
+        text,
+        get_main_image_upload_type_keyboard()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.in_([
+    MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":upload:sfw",
+    MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":upload:nsfw"
+]))
+@require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
+async def start_upload_process(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
+    """进入具体类型的上传状态"""
+    is_nsfw = callback.data.endswith(":nsfw")
     await state.set_state(AdminMainImageState.waiting_for_image)
+    await state.update_data(is_nsfw=is_nsfw)
+    
+    type_text = "NSFW" if is_nsfw else "SFW"
     text = (
-        "请发送图片:\n"
+        f"请发送 {type_text} 图片:\n"
         r"\- 支持 Photo\(推荐, 自动记录宽高\)" + "\n"
         r"\- 支持 Document\(图片文件\)" + "\n\n"
         "可附带说明作为 caption。"
     )
+    
     await main_msg.update_on_callback(
         callback,
         text,
@@ -95,6 +113,10 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
         await message.answer("❌ 未检测到图片，请发送 Photo 或 图片 Document。")
         return
 
+    # 获取当前上传类型
+    data = await state.get_data()
+    is_nsfw = data.get("is_nsfw", False)
+
     model = MainImageModel(
         file_id=file_id,
         source_type=source_type,
@@ -102,22 +124,21 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
         width=width,
         height=height,
         file_size=file_size,
-        is_nsfw=False,
-        is_enabled=True,
-        caption=caption or None,
+        caption=caption,
+        is_nsfw=is_nsfw,  # 使用状态中的设置
     )
     session.add(model)
     await session.commit()
 
+    safe_caption = escape_markdown_v2(caption)
+    type_text = "NSFW" if is_nsfw else "SFW"
     text = (
-        f"✅ 上传成功\n\n"
-        f"ID: {model.id}\n"
-        f"类型: {escape_markdown_v2(source_type)}\n"
-        f"尺寸: {width or '-'} x {height or '-'}\n"
-        f"大小: {escape_markdown_v2(str(file_size or 0))}B\n"
-        f"NSFW: {'是' if model.is_nsfw else '否'}\n"
-        f"启用: {'是' if model.is_enabled else '否'}\n"
+        f"✅ {type_text} 图片上传成功\!" + "\n"
+        f"ID: `{model.id}`" + "\n"
+        f"Type: `{source_type}`" + "\n"
+        f"Size: `{width}x{height}`" + "\n"
+        f"Caption: {safe_caption}"
     )
-    # 上传成功后清除状态，显示返回键盘
+    # 上传成功后清除状态，显示成功键盘(含继续上传)
     await state.clear()
-    await main_msg.render(message.from_user.id, text, get_main_image_back_keyboard())
+    await main_msg.render(message.from_user.id, text, get_main_image_upload_success_keyboard(is_nsfw))

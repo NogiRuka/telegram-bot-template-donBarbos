@@ -120,7 +120,7 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
 
 def get_main_image_back_keyboard() -> InlineKeyboardMarkup:
     """主图管理返回键盘 (用于列表/查看等非输入状态)"""
-    buttons = [[MAIN_IMAGE_BACK_BUTTON]]
+    buttons = [[MAIN_IMAGE_BACK_BUTTON, BACK_TO_HOME_BUTTON]]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
 
@@ -128,6 +128,33 @@ def get_main_image_back_keyboard() -> InlineKeyboardMarkup:
 def get_main_image_cancel_keyboard() -> InlineKeyboardMarkup:
     """主图管理取消键盘 (用于输入状态)"""
     buttons = [[MAIN_IMAGE_CANCEL_BUTTON]]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_main_image_upload_type_keyboard() -> InlineKeyboardMarkup:
+    """主图上传类型选择键盘"""
+    buttons = [
+        [MAIN_IMAGE_UPLOAD_SFW_BUTTON, MAIN_IMAGE_UPLOAD_NSFW_BUTTON],
+        [MAIN_IMAGE_BACK_BUTTON, BACK_TO_HOME_BUTTON],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_main_image_upload_success_keyboard(is_nsfw: bool) -> InlineKeyboardMarkup:
+    """主图上传成功键盘 (包含继续上传)"""
+    # 根据 is_nsfw 决定继续上传的类型
+    upload_type = "nsfw" if is_nsfw else "sfw"
+    continue_button = InlineKeyboardButton(
+        text=MAIN_IMAGE_CONTINUE_UPLOAD_LABEL,
+        callback_data=f"{MAIN_IMAGE_UPLOAD_CALLBACK_DATA}:{upload_type}"
+    )
+    
+    buttons = [
+        [continue_button],
+        [MAIN_IMAGE_BACK_BUTTON, BACK_TO_HOME_BUTTON],
+    ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
 
