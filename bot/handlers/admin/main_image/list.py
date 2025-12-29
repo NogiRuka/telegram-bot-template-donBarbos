@@ -1,7 +1,8 @@
 from math import ceil
 
-from aiogram import F
+from aiogram import F, Bot
 from aiogram.types import CallbackQuery
+from aiogram.fsm.context import FSMContext
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,28 +11,68 @@ from bot.database.models import MainImageModel
 from bot.keyboards.inline.admin import (
     get_main_image_list_type_keyboard,
     get_main_image_list_pagination_keyboard,
-    get_main_image_item_keyboard
+    get_main_image_item_keyboard,
+    get_admin_panel_keyboard
 )
-from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
+from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA, ADMIN_PANEL_LABEL
 from bot.services.main_message import MainMessageService
-from bot.utils.permissions import require_admin_feature
+from bot.services.config_service import list_admin_features
+from bot.utils.permissions import require_admin_feature, _resolve_role
 from bot.utils.message import send_toast
 from bot.utils.text import escape_markdown_v2
 from .router import router
 
 
+async def _clear_image_list(state: FSMContext, bot: Bot, chat_id: int) -> None:
+    """清理已发送的图片列表消息"""
+    data = await state.get_data()
+    msg_ids = data.get("main_image_list_ids", [])
+    if not msg_ids:
+        return
+
+    for msg_id in msg_ids:
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=msg_id)
+        except Exception:
+            pass
+    
+    await state.update_data(main_image_list_ids=[])
+
+
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def list_images_entry(callback: CallbackQuery, main_msg: MainMessageService) -> None:
+async def list_images_entry(callback: CallbackQuery, main_msg: MainMessageService, state: FSMContext) -> None:
     """进入图片列表 - 选择类型"""
+    # 清理之前可能存在的图片
+    if callback.message:
+        await _clear_image_list(state, callback.bot, callback.message.chat.id)
+
     text = "请选择要查看的图片类型:"
     await main_msg.update_on_callback(callback, text, get_main_image_list_type_keyboard())
     await callback.answer()
 
 
+@router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_panel")
+@require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
+async def list_images_back_panel(callback: CallbackQuery, main_msg: MainMessageService, state: FSMContext, session: AsyncSession) -> None:
+    """返回管理员面板"""
+    # 清理图片
+    if callback.message:
+        await _clear_image_list(state, callback.bot, callback.message.chat.id)
+
+    # 逻辑参考 bot/handlers/admin/home.py
+    features = await list_admin_features(session)
+    kb = get_admin_panel_keyboard(features)
+    user_id = callback.from_user.id if callback.from_user else None
+    await _resolve_role(session, user_id)
+
+    await main_msg.update_on_callback(callback, f"*{ADMIN_PANEL_LABEL}*", kb)
+    await callback.answer()
+
+
 @router.callback_query(F.data.startswith(MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:"))
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
+async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
     """显示图片列表（分页）"""
     # Parse: admin:main_image:list:view:sfw:1:5
     try:
@@ -42,6 +83,10 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
     except (IndexError, ValueError):
         await callback.answer("❌ 参数错误", show_alert=True)
         return
+
+    # 先清理旧图片
+    if callback.message:
+        await _clear_image_list(state, callback.bot, callback.message.chat.id)
 
     is_nsfw = (type_key == "nsfw")
     
@@ -89,6 +134,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
         await send_toast(callback, "暂无数据")
         return
 
+    new_msg_ids = []
     for item in items:
         # Construct caption
         width = item.width if item.width is not None else "?"
@@ -109,13 +155,20 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
                 "parse_mode": "MarkdownV2"
             }
             
+            msg = None
             if item.source_type == "document":
-                await callback.message.answer_document(document=item.file_id, **kwargs)
+                msg = await callback.message.answer_document(document=item.file_id, **kwargs)
             else:
-                await callback.message.answer_photo(photo=item.file_id, **kwargs)
+                msg = await callback.message.answer_photo(photo=item.file_id, **kwargs)
+            
+            if msg:
+                new_msg_ids.append(msg.message_id)
+
         except Exception as e:
              await callback.message.answer(f"❌ 图片 ID `{item.id}` 加载失败: {e}")
 
+    # 记录新发送的消息ID
+    await state.update_data(main_image_list_ids=new_msg_ids)
     await callback.answer()
 
 
@@ -147,10 +200,13 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
         await session.commit()
         
         # Update caption to reflect status
+        width = item.width if item.width is not None else "?"
+        height = item.height if item.height is not None else "?"
+        
         caption = (
             f"🆔 ID: `{item.id}`\n"
             f"📝 说明: {escape_markdown_v2(item.caption or '无')}\n"
-            f"📐 尺寸: {item.width}x{item.height}\n"
+            f"📐 尺寸: {width}x{height}\n"
             f"⚙️ 状态: {'🟢 启用' if item.is_enabled else '🔴 禁用'}"
         )
         try:

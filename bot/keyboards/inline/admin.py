@@ -95,8 +95,8 @@ def get_main_image_list_type_keyboard() -> InlineKeyboardMarkup:
     """获取主图列表分类选择键盘"""
     buttons = [
         [
-            InlineKeyboardButton(text="SFW", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:sfw:1:5"),
-            InlineKeyboardButton(text="NSFW", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:nsfw:1:5"),
+            InlineKeyboardButton(text="🟢 SFW", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:sfw:1:5"),
+            InlineKeyboardButton(text="🔞 NSFW", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:nsfw:1:5"),
         ],
         [MAIN_IMAGE_BACK_BUTTON]
     ]
@@ -125,7 +125,10 @@ def get_main_image_list_pagination_keyboard(type_key: str, page: int, total_page
             InlineKeyboardButton(text=f"{page}/{total_pages} (每页{limit}条)", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:list:view:{type_key}:1:{next_limit}"),
             InlineKeyboardButton(text="➡️", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:list:view:{type_key}:{next_page}:{limit}"),
         ],
-        [InlineKeyboardButton(text="🔙 返回分类选择", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list")]
+        [
+            InlineKeyboardButton(text="🔙 返回分类选择", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list"),
+            InlineKeyboardButton(text="↩️ 返回管理员面板", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_panel")
+        ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
