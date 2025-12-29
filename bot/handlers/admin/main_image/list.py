@@ -18,6 +18,7 @@ from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_admin_feature
 from bot.utils.message import send_toast, safe_delete_message
 from bot.utils.text import escape_markdown_v2
+from bot.utils.datetime import now
 from bot.handlers.start import build_home_view
 from .router import router
 
@@ -212,11 +213,17 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
         except Exception:
             pass 
             
-        await callback.answer(f"已{'启用' if item.is_enabled else '禁用'}")
+        status_text = "🟢 启用" if item.is_enabled else "🔴 禁用"
+        await callback.answer(
+            f"✅ 操作成功！\n"
+            f"图片 ID `{item.id}` 已{status_text}"
+        )
 
     elif action == "delete":
         # 软删除
         item.is_deleted = True
+        item.deleted_at = now()
+        item.deleted_by = callback.from_user.id
         await session.commit()
         await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
-        await callback.answer("已删除")
+        await callback.answer("✅ 操作成功！\n图片已删除")
