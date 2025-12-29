@@ -6,11 +6,33 @@
 
 from __future__ import annotations
 import asyncio
-from typing import Union
+from typing import Union, Any
 from loguru import logger
 
 from aiogram.types import Message, CallbackQuery
 
+
+
+async def safe_delete_message(bot: Any, chat_id: int, message_id: int) -> bool:
+    """安全地删除消息，失败时不会抛出异常。
+
+    功能说明:
+    - 使用 try-except 捕获所有异常，避免删除失败影响主流程
+    - 适用于需要删除消息但不希望删除失败影响主要功能的场景
+
+    输入参数:
+    - bot: Bot 实例
+    - chat_id: 聊天 ID
+    - message_id: 消息 ID
+
+    返回值:
+    - bool: 删除是否成功
+    """
+    try:
+        await bot.delete_message(chat_id=chat_id, message_id=message_id)
+        return True
+    except Exception:
+        return False
 
 
 async def delete_message(message: Any) -> bool:
@@ -100,77 +122,33 @@ async def send_temp_message(
     - parse_mode: 消息解析模式，默认 "MarkdownV2"
     
     返回值:
-    - asyncio.Task | None: 删除任务，如果发送失败则返回 None
+    - asyncio.Task: 删除任务，若发送失败则返回 None
     """
     try:
-        messager = None
-        if hasattr(messageable, "message") and messageable.message:
-            # 处理回调查询 (CallbackQuery)
-            messager = messageable.message
-        elif hasattr(messageable, "answer"):
-            # 处理普通消息 (Message)
-            messager = messageable
-            
-        if not messager:
-            return None
-
-        if photo:
-            sent_msg = await messager.answer_photo(
-                photo=photo,
-                caption=text,
-                reply_markup=reply_markup,
-                parse_mode=parse_mode
-            )
-        else:
-            sent_msg = await messager.answer(
-                text=text,
-                reply_markup=reply_markup,
-                parse_mode=parse_mode
-            )
-            
-        return delete_message_after_delay(sent_msg, delay)
-    except Exception:
-        return None
-
-async def send_toast(
-    messageable: Union[Message, CallbackQuery],
-    text: str,
-    delay: int = 3,
-    reply_markup: Any = None,
-    photo: Union[str, Any] = None,
-    parse_mode: str | None = None
-) -> asyncio.Task | None:
-    try:
-        # ✅ 明确区分类型，别他妈猜
+        sent_msg = None
         if isinstance(messageable, CallbackQuery):
-            messager = messageable.message
-        elif isinstance(messageable, Message):
-            messager = messageable
+            msg_obj = messageable.message
         else:
+            msg_obj = messageable
+            
+        if not msg_obj:
             return None
-
-        if not messager:
-            return None
-
+            
         if photo:
-            sent_msg = await messager.answer_photo(
+            sent_msg = await msg_obj.answer_photo(
                 photo=photo,
                 caption=text,
                 reply_markup=reply_markup,
                 parse_mode=parse_mode
             )
         else:
-            sent_msg = await messager.answer(
+            sent_msg = await msg_obj.answer(
                 text=text,
                 reply_markup=reply_markup,
                 parse_mode=parse_mode
             )
-
-        # ✅ 延迟删除
+            
         return delete_message_after_delay(sent_msg, delay)
     except Exception as e:
-        logger.error(e)
-
-
-def extract_id(callback_data: str) -> int:
-    return int(callback_data.rsplit(":", 1)[-1])
+        logger.warning(f"Failed to send temp message: {e}")
+        return None

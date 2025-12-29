@@ -60,7 +60,7 @@ def get_admin_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
     - 二级入口: 管理功能集合, 底部包含返回主面板
 
     输入参数:
-    - perms: 管理员功能开关映射
+    - features: 管理员功能开关映射
 
     返回值:
     - InlineKeyboardMarkup: 内联键盘
@@ -127,8 +127,27 @@ def get_main_image_list_pagination_keyboard(type_key: str, page: int, total_page
         ],
         [
             InlineKeyboardButton(text="🔙 返回分类选择", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list"),
-            InlineKeyboardButton(text="↩️ 返回管理员面板", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_panel")
+            InlineKeyboardButton(text="↩️ 返回主图管理", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_menu")
         ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_main_image_admin_keyboard() -> InlineKeyboardMarkup:
+    """主图管理面板键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text=MAIN_IMAGE_UPLOAD_LABEL, callback_data=MAIN_IMAGE_UPLOAD_CALLBACK_DATA),
+            InlineKeyboardButton(text=MAIN_IMAGE_LIST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list"),
+        ],
+        [
+            InlineKeyboardButton(text=MAIN_IMAGE_SCHEDULE_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule"),
+            InlineKeyboardButton(text=MAIN_IMAGE_TEST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":test"),
+        ],
+        [
+            InlineKeyboardButton(text=MAIN_IMAGE_TOGGLE_NSFW_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":toggle_nsfw"),
+        ],
+        [BACK_TO_ADMIN_PANEL_BUTTON]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -196,57 +215,6 @@ def get_main_image_upload_type_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [MAIN_IMAGE_UPLOAD_SFW_BUTTON, MAIN_IMAGE_UPLOAD_NSFW_BUTTON],
         [MAIN_IMAGE_BACK_BUTTON, BACK_TO_HOME_BUTTON],
-    ]
-    keyboard = InlineKeyboardBuilder(markup=buttons)
-    return keyboard.as_markup()
-
-
-def get_main_image_upload_success_keyboard(is_nsfw: bool) -> InlineKeyboardMarkup:
-    """主图上传成功键盘 (包含继续上传)"""
-    # 根据 is_nsfw 决定继续上传的类型
-    upload_type = "nsfw" if is_nsfw else "sfw"
-    continue_button = InlineKeyboardButton(
-        text=MAIN_IMAGE_CONTINUE_UPLOAD_LABEL,
-        callback_data=f"{MAIN_IMAGE_UPLOAD_CALLBACK_DATA}:{upload_type}"
-    )
-    
-    buttons = [
-        [continue_button],
-        [MAIN_IMAGE_BACK_TO_UPLOAD_BUTTON, BACK_TO_HOME_BUTTON],
-    ]
-    keyboard = InlineKeyboardBuilder(markup=buttons)
-    return keyboard.as_markup()
-
-
-def get_main_image_admin_keyboard() -> InlineKeyboardMarkup:
-    """主图管理面板键盘
-
-    功能说明:
-    - 提供上传、列表、节日投放、测试、NSFW 开关五个入口
-
-    输入参数:
-    - 无
-
-    返回值:
-    - InlineKeyboardMarkup: 键盘对象
-    """
-    buttons = [
-        [
-            InlineKeyboardButton(text=MAIN_IMAGE_UPLOAD_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":upload"),
-            InlineKeyboardButton(text=MAIN_IMAGE_LIST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list"),
-        ],
-        [
-            InlineKeyboardButton(text=MAIN_IMAGE_SCHEDULE_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule"),
-            InlineKeyboardButton(text=MAIN_IMAGE_TEST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":test"),
-        ],
-        [
-            InlineKeyboardButton(text=MAIN_IMAGE_SCHEDULE_LIST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule_list"),
-            InlineKeyboardButton(text=MAIN_IMAGE_SCHEDULE_DELETE_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule_delete"),
-        ],
-        [
-            InlineKeyboardButton(text=MAIN_IMAGE_TOGGLE_NSFW_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":toggle_nsfw"),
-        ],
-        [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
