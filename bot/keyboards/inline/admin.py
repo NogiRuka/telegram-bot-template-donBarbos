@@ -192,6 +192,13 @@ def get_main_image_cancel_keyboard() -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
+def get_main_image_schedule_cancel_keyboard() -> InlineKeyboardMarkup:
+    """节日投放取消键盘 (返回投放菜单)"""
+    buttons = [[InlineKeyboardButton(text="🚫 取消", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule")]]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
 def get_main_image_upload_type_keyboard() -> InlineKeyboardMarkup:
     """主图上传类型选择键盘"""
     buttons = [
@@ -253,8 +260,8 @@ def get_main_image_schedule_menu_keyboard() -> InlineKeyboardMarkup:
     """获取节日投放菜单键盘"""
     buttons = [
         [
-            InlineKeyboardButton(text="➕ 创建投放", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule:create"),
-            InlineKeyboardButton(text="📋 查看投放", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule:list:1:5"),
+            InlineKeyboardButton(text="🎉 创建投放", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule:create"),
+            InlineKeyboardButton(text="📑 查看投放", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule:list:1:5"),
         ],
         [MAIN_IMAGE_BACK_BUTTON, BACK_TO_HOME_BUTTON]
     ]

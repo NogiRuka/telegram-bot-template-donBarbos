@@ -15,6 +15,7 @@ from bot.keyboards.inline.admin import (
     get_main_image_schedule_menu_keyboard,
     get_main_image_schedule_list_pagination_keyboard,
     get_main_image_schedule_item_keyboard,
+    get_main_image_schedule_cancel_keyboard,
 )
 from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
@@ -175,7 +176,7 @@ async def start_schedule_creation(callback: CallbackQuery, state: FSMContext, ma
         f"4\\. 日期范围：`1.{day_str}.{range_end_str}`\n"
         f"5\\. 简写范围：`1.{example_day_str}-{example_suffix}`"
     )
-    await main_msg.update_on_callback(callback, text, get_main_image_cancel_keyboard())
+    await main_msg.update_on_callback(callback, text, get_main_image_schedule_cancel_keyboard())
     await state.set_state(AdminMainImageState.waiting_for_schedule_input)
     await callback.answer()
 
