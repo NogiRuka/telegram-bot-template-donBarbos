@@ -50,3 +50,31 @@ def escape_markdown_v2(text: str) -> str:
     specials = r"_()*[]~`>#+-=|{}.!"
     return "".join(f"\\{ch}" if ch in specials else ch for ch in (text or ""))
 
+
+def format_size(size_bytes: int | None) -> str:
+    """格式化文件大小为人类可读字符串
+
+    功能说明:
+    - 使用1024-based转换计算文件大小
+    - 自动适配B/KB/MB/GB单位
+    - 保留两位小数
+
+    输入参数:
+    - size_bytes: 文件大小(字节)
+
+    返回值:
+    - str: 格式化后的文件大小字符串
+    """
+    if size_bytes is None:
+        return "未知"
+    
+    size = float(size_bytes)
+    units = ["B", "KB", "MB", "GB", "TB"]
+    unit_index = 0
+    
+    while size >= 1024 and unit_index < len(units) - 1:
+        size /= 1024
+        unit_index += 1
+        
+    return f"{size:.2f} {units[unit_index]}"
+

@@ -16,7 +16,7 @@ from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminMainImageState
 from bot.utils.permissions import require_admin_feature
-from bot.utils.text import escape_markdown_v2
+from bot.utils.text import escape_markdown_v2, format_size
 from bot.utils.message import send_toast
 from .router import router
 
@@ -121,8 +121,7 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
         exists_stmt = select(MainImageModel.id).where(MainImageModel.file_id == file_id)
         exists = await session.execute(exists_stmt)
         if exists.scalar_one_or_none() is not None:
-            await send_toast(message, "❌ 图片重复了，请重新上传", delay=5)
-            await state.clear()
+            await send_toast(message, "❌ 图片重复了，请重新上传")
             return
     except Exception:
         # 忽略检测失败，后续还有唯一约束保护
@@ -147,18 +146,16 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        await send_toast(message, "❌ 图片重复了，请重新上传", delay=5)
-        await state.clear()
+        await send_toast(message, "❌ 图片重复了，请重新上传")
         return
 
     safe_caption = escape_markdown_v2(caption)
-    size_mb = file_size / (1024 * 1024)
     text = (
         "🎉 上传成功\n\n"
         f"🆔 ID：`{model.id}`\n"
         f"🗂 类型：{source_type}\n"
         f"📐 尺寸：{width}×{height}\n"
-        f"💾 大小：{escape_markdown_v2(f'{size_mb:.2f}')} MB\n"
+        f"💾 大小：{escape_markdown_v2(format_size(file_size))}\n"
         f"🔞 NSFW：{'是' if model.is_nsfw else '否'}\n"
         f"⚙️ 启用：{'是' if model.is_enabled else '否'}\n"
         f"📝 说明：{safe_caption}"
