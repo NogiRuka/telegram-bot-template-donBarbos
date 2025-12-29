@@ -375,8 +375,8 @@ async def schedule_item_action(callback: CallbackQuery, session: AsyncSession) -
                 image.remark = f"随投放计划 {item.id} 删除而被禁用"
 
             await session.commit()
+            await send_toast(callback, "✅ 投放已删除")
             await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
-            await callback.answer("✅ 已删除")
         else: 
             await callback.answer("❌ 记录不存在", show_alert=True)
 
