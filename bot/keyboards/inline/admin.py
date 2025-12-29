@@ -91,6 +91,57 @@ def get_admin_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
+def get_main_image_list_type_keyboard() -> InlineKeyboardMarkup:
+    """获取主图列表分类选择键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text="SFW", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:sfw:1:5"),
+            InlineKeyboardButton(text="NSFW", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:nsfw:1:5"),
+        ],
+        [MAIN_IMAGE_BACK_BUTTON]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_main_image_list_pagination_keyboard(type_key: str, page: int, total_pages: int, limit: int) -> InlineKeyboardMarkup:
+    """获取主图列表分页键盘
+    
+    输入参数:
+    - type_key: sfw / nsfw
+    - page: 当前页码
+    - total_pages: 总页数
+    - limit: 每页条数
+    """
+    # 翻页逻辑: 确保页码不越界
+    prev_page = max(1, page - 1)
+    next_page = min(total_pages, page + 1)
+    
+    # 切换每页条数: 5 -> 10 -> 20 -> 5
+    next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
+    
+    buttons = [
+        [
+            InlineKeyboardButton(text="⬅️", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:list:view:{type_key}:{prev_page}:{limit}"),
+            InlineKeyboardButton(text=f"{page}/{total_pages} (每页{limit}条)", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:list:view:{type_key}:1:{next_limit}"),
+            InlineKeyboardButton(text="➡️", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:list:view:{type_key}:{next_page}:{limit}"),
+        ],
+        [InlineKeyboardButton(text="🔙 返回分类选择", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list")]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_main_image_item_keyboard(image_id: int, is_enabled: bool) -> InlineKeyboardMarkup:
+    """获取单张主图的操作键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text="🔴 禁用" if is_enabled else "🟢 启用", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:item:toggle:{image_id}"),
+            InlineKeyboardButton(text="🗑️ 删除", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:item:delete:{image_id}"),
+            InlineKeyboardButton(text="❌ 关闭", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:item:close"),
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 def get_notification_panel_keyboard(pending_completion: int, pending_review: int) -> InlineKeyboardMarkup:
     """获取上新通知管理面板键盘
 
