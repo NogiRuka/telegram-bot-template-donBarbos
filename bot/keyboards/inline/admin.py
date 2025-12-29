@@ -10,7 +10,9 @@ from bot.keyboards.inline.buttons import (
     MAIN_ADMIN_BUTTONS,
     BACK_TO_ADMIN_PANEL_BUTTON,
     BACK_TO_HOME_BUTTON,
-    NOTIFY_SEND_BUTTON
+    NOTIFY_SEND_BUTTON,
+    MAIN_IMAGE_BACK_BUTTON,
+    MAIN_IMAGE_CANCEL_BUTTON,
 )
 from bot.keyboards.inline.constants import (
     NOTIFY_COMPLETE_CALLBACK_DATA,
@@ -118,14 +120,14 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
 
 def get_main_image_back_keyboard() -> InlineKeyboardMarkup:
     """主图管理返回键盘 (用于列表/查看等非输入状态)"""
-    buttons = [[InlineKeyboardButton(text="↩️ 返回主图管理", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA)]]
+    buttons = [[MAIN_IMAGE_BACK_BUTTON]]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
 
 
 def get_main_image_cancel_keyboard() -> InlineKeyboardMarkup:
     """主图管理取消键盘 (用于输入状态)"""
-    buttons = [[InlineKeyboardButton(text="❌ 取消", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA)]]
+    buttons = [[MAIN_IMAGE_CANCEL_BUTTON]]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
 

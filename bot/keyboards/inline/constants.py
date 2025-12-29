@@ -142,6 +142,8 @@ MAIN_IMAGE_TEST_LABEL = "🧪 图片测试"
 MAIN_IMAGE_TEST_CALLBACK_DATA = "admin:main_image:test"
 MAIN_IMAGE_TOGGLE_NSFW_LABEL = "🔞 NSFW 开关"
 MAIN_IMAGE_TOGGLE_NSFW_CALLBACK_DATA = "admin:main_image:toggle_nsfw"
+MAIN_IMAGE_BACK_LABEL = "↩️ 返回主图管理"
+MAIN_IMAGE_CANCEL_LABEL = "❌ 取消"
 
 # 上新补全
 NOTIFY_COMPLETE_LABEL = "🔄 上新补全"
