@@ -248,18 +248,12 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
     # 解析参数: admin:main_image:schedule:list:1:5
     try:
         parts = callback.data.split(":")
-        # parts: ['admin', 'main_image', 'schedule', 'list', 'page', 'limit']
-        # 如果是直接点击 "查看投放" 按钮，可能没有 page/limit，需处理默认值
-        # 但我们在 keyboard 中定义了 :schedule:list:1:5
-        if len(parts) >= 6:
-            page = int(parts[4])
-            limit = int(parts[5])
-        else:
-            page = 1
-            limit = 5
+        page = int(parts[4])
+        limit = int(parts[5])
     except (IndexError, ValueError):
-        await callback.answer("❌ 参数错误", show_alert=True)
-        return
+        # 容错处理
+        page = 1
+        limit = 5
 
     # 清理旧消息
     if callback.message:
