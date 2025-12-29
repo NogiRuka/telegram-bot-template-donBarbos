@@ -71,7 +71,7 @@ async def toggle_nsfw(callback: CallbackQuery, session: AsyncSession, main_msg: 
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":upload")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def start_upload(callback: CallbackQuery, state: FSMContext) -> None:
+async def start_upload(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
     """开始上传流程
     
     功能说明:
@@ -85,9 +85,10 @@ async def start_upload(callback: CallbackQuery, state: FSMContext) -> None:
     - None
     """
     await state.set_state(AdminMainImageState.waiting_for_image)
-    await callback.message.edit_text(
+    await main_msg.update_on_callback(
+        callback,
         "请发送图片:\n- 支持 Photo(推荐, 自动记录宽高)\n- 支持 Document(图片文件)\n\n可附带说明作为 caption。",
-        parse_mode="Markdown"
+        get_main_image_admin_keyboard()
     )
     await callback.answer()
 
@@ -223,8 +224,7 @@ async def list_images(callback: CallbackQuery, session: AsyncSession, main_msg: 
     )
     items = list(result.scalars().all())
     if not items:
-        await main_msg.update_on_callback(callback, "暂无图片，请先上传。", get_main_image_admin_keyboard())
-        await callback.answer()
+        await callback.answer("🈚️ 暂无图片，请先上传。")
         return
     lines = ["*🗂 图片列表*"]
     for it in items:
@@ -238,7 +238,7 @@ async def list_images(callback: CallbackQuery, session: AsyncSession, main_msg: 
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def start_schedule(callback: CallbackQuery, state: FSMContext) -> None:
+async def start_schedule(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
     """开始节日投放创建
     
     功能说明:
@@ -255,9 +255,10 @@ async def start_schedule(callback: CallbackQuery, state: FSMContext) -> None:
     # 展示现有投放
     try:
         # 读取数据库需要 session，但本函数没有注入；改由提示用户使用列表按钮查看
-        await callback.message.edit_text(
+        await main_msg.update_on_callback(
+            callback,
             "请输入要投放的图片 ID:\n格式依次为：\n1) 图片ID\n2) 开始时间 (YYYY-MM-DD HH:MM)\n3) 结束时间 (YYYY-MM-DD HH:MM)",
-            parse_mode="Markdown"
+            get_main_image_admin_keyboard()
         )
     except Exception:
         pass
@@ -330,7 +331,7 @@ async def process_schedule_end(message: Message, session: AsyncSession, state: F
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule_delete")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def start_schedule_delete(callback: CallbackQuery, state: FSMContext) -> None:
+async def start_schedule_delete(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
     """开始删除投放
     
     功能说明:
@@ -344,7 +345,7 @@ async def start_schedule_delete(callback: CallbackQuery, state: FSMContext) -> N
     - None
     """
     await state.set_state(AdminMainImageState.waiting_for_schedule_delete_id)
-    await callback.message.edit_text("请输入要删除的投放 ID:", parse_mode="Markdown")
+    await main_msg.update_on_callback(callback, "请输入要删除的投放 ID:", get_main_image_admin_keyboard())
     await callback.answer()
 
 
@@ -371,7 +372,7 @@ async def process_schedule_delete_id(message: Message, session: AsyncSession, st
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":test")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def start_test(callback: CallbackQuery, state: FSMContext) -> None:
+async def start_test(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
     """开始图片测试工具
     
     功能说明:
@@ -385,7 +386,7 @@ async def start_test(callback: CallbackQuery, state: FSMContext) -> None:
     - None
     """
     await state.set_state(AdminMainImageState.waiting_for_test_input)
-    await callback.message.edit_text("请发送图片或直接输入 Telegram file_id：")
+    await main_msg.update_on_callback(callback, "请发送图片或直接输入 Telegram file_id：", get_main_image_admin_keyboard())
     await callback.answer()
 
 
