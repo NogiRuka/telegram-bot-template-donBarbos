@@ -68,7 +68,7 @@ async def back_to_home_from_list(callback: CallbackQuery, session: AsyncSession,
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
 async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
     """显示图片列表（分页）"""
-    # Parse: admin:main_image:list:view:sfw:1:5
+    # 解析参数: admin:main_image:list:view:sfw:1:5
     try:
         parts = callback.data.split(":")
         type_key = parts[4]  # sfw / nsfw
@@ -84,7 +84,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
 
     is_nsfw = (type_key == "nsfw")
     
-    # Count total
+    # 计算总数
     count_stmt = select(func.count()).where(
         MainImageModel.is_deleted.is_(False),
         MainImageModel.is_nsfw == is_nsfw
@@ -92,13 +92,13 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
     total_count = (await session.execute(count_stmt)).scalar_one()
     total_pages = ceil(total_count / limit) if total_count > 0 else 1
     
-    # Adjust page if out of bounds
+    # 如果页码超出范围则调整
     if page > total_pages:
         page = total_pages
     if page < 1:
         page = 1
 
-    # Query items
+    # 查询数据
     stmt = (
         select(MainImageModel)
         .where(
@@ -111,7 +111,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
     )
     items = (await session.execute(stmt)).scalars().all()
 
-    # Update Control Message
+    # 更新控制消息
     type_name = "NSFW" if is_nsfw else "SFW"
     text = (
         f"*🗂 图片列表 ({type_name})*\n"
@@ -123,14 +123,14 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
         get_main_image_list_pagination_keyboard(type_key, page, total_pages, limit)
     )
     
-    # Send Images
+    # 发送图片
     if not items:
         await send_toast(callback, "暂无数据")
         return
 
     new_msg_ids = []
     for item in items:
-        # Construct caption
+        # 构造说明文案
         width = item.width if item.width is not None else "?"
         height = item.height if item.height is not None else "?"
         
@@ -169,13 +169,13 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
 @router.callback_query(F.data.startswith(MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":item:"))
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
 async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
-    # Parse: admin:main_image:item:toggle:123
+    # 解析参数: admin:main_image:item:toggle:123
     try:
         parts = callback.data.split(":")
         action = parts[3]
         
         if action == "close":
-            await callback.message.delete()
+            await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
             return
 
         item_id = int(parts[4])
@@ -186,14 +186,14 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
     item = await session.get(MainImageModel, item_id)
     if not item:
         await callback.answer("❌ 图片不存在", show_alert=True)
-        await callback.message.delete()
+        await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
         return
 
     if action == "toggle":
         item.is_enabled = not item.is_enabled
         await session.commit()
         
-        # Update caption to reflect status
+        # 更新说明文案以反映状态
         width = item.width if item.width is not None else "?"
         height = item.height if item.height is not None else "?"
         
@@ -215,8 +215,8 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
         await callback.answer(f"已{'启用' if item.is_enabled else '禁用'}")
 
     elif action == "delete":
-        # Soft delete
+        # 软删除
         item.is_deleted = True
         await session.commit()
-        await callback.message.delete()
+        await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
         await callback.answer("已删除")
