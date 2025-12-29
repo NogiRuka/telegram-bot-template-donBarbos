@@ -298,16 +298,28 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
         
     new_msg_ids = []
     for item in items:
+        now_time = now()
+        if item.start_time > now_time:
+            status_emoji = "🕒"
+            status_text = "未开始"
+        elif item.end_time < now_time:
+            status_emoji = "⛔"
+            status_text = "已结束"
+        else:
+            status_emoji = "🟢"
+            status_text = "投放中"
+
         start_str = escape_markdown_v2(item.start_time.strftime('%Y-%m-%d %H:%M'))
         end_str = escape_markdown_v2(item.end_time.strftime('%Y-%m-%d %H:%M'))
-        label_line = f"🏷️ 标签: `{escape_markdown_v2(item.label)}`\n" if item.label else ""
+        label_line = f"🏷️ `{escape_markdown_v2(item.label)}`\n" if item.label else ""
         
         caption = (
-            f"🆔 投放ID: `{item.id}`\n"
-            f"🖼️ 图片ID: `{item.image_id}`\n"
-            f"📅 时间: {start_str} \\~ {end_str}\n"
+            f"{status_emoji} *节日投放 · {status_text}*\n\n"
+            f"🆔 *投放ID*：`{item.id}`\n"
+            f"🖼️ *图片ID*：`{item.image_id}`\n"
+            f"⏰ *投放时间*\n"
+            f"　{start_str} \\~ {end_str}\n"
             f"{label_line}"
-            f"⚡ 优先级: {item.priority}"
         )
         
         try:
