@@ -7,7 +7,6 @@
 依赖安装:
 - pip install Pillow
 """
-from io import BytesIO
 from pathlib import Path
 from typing import IO
 
