@@ -241,13 +241,55 @@ def get_main_image_admin_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=MAIN_IMAGE_TEST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":test"),
         ],
         [
-            InlineKeyboardButton(text=MAIN_IMAGE_SCHEDULE_LIST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule_list"),
-            InlineKeyboardButton(text=MAIN_IMAGE_SCHEDULE_DELETE_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule_delete"),
-        ],
-        [
             InlineKeyboardButton(text=MAIN_IMAGE_TOGGLE_NSFW_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":toggle_nsfw"),
         ],
         [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
+
+
+def get_main_image_schedule_menu_keyboard() -> InlineKeyboardMarkup:
+    """获取节日投放菜单键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text="➕ 创建投放", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule:create"),
+            InlineKeyboardButton(text="📋 查看投放", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule:list:1:5"),
+        ],
+        [MAIN_IMAGE_BACK_BUTTON, BACK_TO_HOME_BUTTON]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_main_image_schedule_list_pagination_keyboard(page: int, total_pages: int, limit: int) -> InlineKeyboardMarkup:
+    """获取节日投放列表分页键盘"""
+    # 翻页逻辑
+    prev_page = max(1, page - 1)
+    next_page = min(total_pages, page + 1)
+    
+    # 切换每页条数
+    next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
+    
+    buttons = [
+        [
+            InlineKeyboardButton(text="⬅️", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:list:{prev_page}:{limit}"),
+            InlineKeyboardButton(text=f"{page}/{total_pages} (每页{limit:02d}条)", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:list:1:{next_limit}"),
+            InlineKeyboardButton(text="➡️", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:list:{next_page}:{limit}"),
+        ],
+        [
+            InlineKeyboardButton(text="🔙 返回投放菜单", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule"),
+            InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule:back_home")
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_main_image_schedule_item_keyboard(schedule_id: int) -> InlineKeyboardMarkup:
+    """获取单条投放记录的操作键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text="🗑️ 删除", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:item:delete:{schedule_id}"),
+            InlineKeyboardButton(text="❌ 关闭", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:item:close"),
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
