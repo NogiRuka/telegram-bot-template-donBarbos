@@ -236,7 +236,7 @@ async def list_images(callback: CallbackQuery, session: AsyncSession, main_msg: 
     lines = ["*🗂 图片列表*"]
     for it in items:
         lines.append(
-            f"- ID `{it.id}` | {'NSFW' if it.is_nsfw else 'SFW'} | {'启用' if it.is_enabled else '禁用'}"
+            fr"\- ID `{it.id}` \| {'NSFW' if it.is_nsfw else 'SFW'} \| {'启用' if it.is_enabled else '禁用'}"
         )
     lines.append("\n使用 /start 可在用户端验证展示效果。")
     await main_msg.update_on_callback(callback, "\n".join(lines), get_main_image_admin_keyboard())
