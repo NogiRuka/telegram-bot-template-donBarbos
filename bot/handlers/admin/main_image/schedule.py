@@ -312,7 +312,7 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
             )
             new_msg_ids.append(msg.message_id)
         except Exception as e:
-            pass
+            await callback.message.answer(f"❌ 投放 ID `{item.id}` 加载失败: {e}")
             
     await state.update_data(main_image_schedule_list_ids=new_msg_ids)
     await callback.answer()
