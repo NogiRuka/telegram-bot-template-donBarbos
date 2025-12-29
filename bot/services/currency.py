@@ -230,6 +230,7 @@ class CurrencyService:
                 "description": "修改 Emby 账号密码 (一次性)",
                 "category": "emby",
                 "action_type": "emby_password",
+                "purchase_conditions": {"has_emby": True},
             },
             {
                 "name": "自定义头衔（7天）",
