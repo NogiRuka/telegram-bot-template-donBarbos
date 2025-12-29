@@ -128,7 +128,7 @@ CURRENCY_ADMIN_CALLBACK_DATA = "admin:currency"
 # 主图管理
 MAIN_IMAGE_ADMIN_LABEL = "🖼 主图管理"
 MAIN_IMAGE_ADMIN_CALLBACK_DATA = "admin:main_image"
-MAIN_IMAGE_UPLOAD_LABEL = "⬆️ 上传图片"
+MAIN_IMAGE_UPLOAD_LABEL = "📤 上传图片"
 MAIN_IMAGE_UPLOAD_CALLBACK_DATA = "admin:main_image:upload"
 MAIN_IMAGE_LIST_LABEL = "🗂 图片列表"
 MAIN_IMAGE_LIST_CALLBACK_DATA = "admin:main_image:list"
