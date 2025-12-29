@@ -132,7 +132,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
     new_msg_ids = []
     for item in items:
 
-        file_size_str = format_size(item.file_size)
+        file_size_str = escape_markdown_v2(format_size(item.file_size))
         caption = f"🆔 `{item.id}` ｜ 📝 {escape_markdown_v2(item.caption or '无')} ｜ 📦 {file_size_str} ｜ {'🟢 启用' if item.is_enabled else '🔴 禁用'}"
         
         try:
@@ -187,7 +187,7 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
         item.is_enabled = not item.is_enabled
         await session.commit()
         
-        file_size_str = format_size(item.file_size)
+        file_size_str = escape_markdown_v2(format_size(item.file_size))
         caption = f"🆔 `{item.id}` ｜ 📝 {escape_markdown_v2(item.caption or '无')} ｜ 📦 {file_size_str} ｜ {'🟢 启用' if item.is_enabled else '🔴 禁用'}"
       
         try:
