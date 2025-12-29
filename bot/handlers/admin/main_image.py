@@ -370,7 +370,7 @@ async def process_schedule_delete_id(message: Message, session: AsyncSession, st
 
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":test")
-@require_admin_feature("admin.main_image")
+@require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
 async def start_test(callback: CallbackQuery, state: FSMContext) -> None:
     """开始图片测试工具
     
@@ -385,7 +385,7 @@ async def start_test(callback: CallbackQuery, state: FSMContext) -> None:
     - None
     """
     await state.set_state(AdminMainImageState.waiting_for_test_input)
-    await callback.message.edit_text("请发送图片或直接输入 Telegram file_id：", parse_mode="Markdown")
+    await callback.message.edit_text("请发送图片或直接输入 Telegram file_id：")
     await callback.answer()
 
 
