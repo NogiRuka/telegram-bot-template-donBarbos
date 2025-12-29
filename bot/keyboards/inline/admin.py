@@ -99,7 +99,7 @@ def get_main_image_list_type_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🟢 SFW", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:sfw:1:5"),
             InlineKeyboardButton(text="🔞 NSFW", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:nsfw:1:5"),
         ],
-        [MAIN_IMAGE_BACK_BUTTON]
+        [MAIN_IMAGE_BACK_BUTTON, BACK_TO_HOME_BUTTON]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 

@@ -164,14 +164,14 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
 
     safe_caption = escape_markdown_v2(caption)
     text = (
-        "🎉 上传成功\n\n"
-        f"🆔 ID：`{model.id}`\n"
-        f"🗂 类型：{source_type}\n"
-        f"📐 尺寸：{width}×{height}\n"
+        "🎉 上传成功啦～\n\n"
+        f"🆔 `{model.id}`\n"
+        f"🗂 类型：{escape_markdown_v2(source_type)}\n"
+        f"📐 尺寸：{escape_markdown_v2(f'{width}×{height}')}\n"
         f"💾 大小：{escape_markdown_v2(format_size(file_size))}\n"
-        f"🔞 NSFW：{'是' if model.is_nsfw else '否'}\n"
-        f"⚙️ 启用：{'是' if model.is_enabled else '否'}\n"
-        f"📝 说明：{safe_caption}"
+        f"🔞 NSFW：{'是' if model.is_nsfw else '否'} ｜ "
+        f"⚙️ {'🟢 启用' if model.is_enabled else '🔴 禁用'}\n\n"
+        f"📝 {safe_caption}"
     )
     # 上传成功后清除状态，显示成功键盘(含继续上传)
     await state.clear()
