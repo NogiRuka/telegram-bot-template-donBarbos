@@ -17,6 +17,7 @@ from .user import UserModel
 from .user_extend import UserExtendModel, UserRole
 from .user_history import UserHistoryModel
 from .user_state import UserStateModel
+from .main_image import MainImageModel, MainImageScheduleModel
 
 __all__ = [
     "ActionType",
@@ -45,4 +46,6 @@ __all__ = [
     "UserModel",
     "UserRole",
     "UserStateModel",
+    "MainImageModel",
+    "MainImageScheduleModel",
 ]

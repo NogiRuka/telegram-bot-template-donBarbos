@@ -56,18 +56,28 @@ class MainMessageService:
         user_id: int,
         caption: str,
         kb: types.InlineKeyboardMarkup,
-        image_path: str,
+        image_path: str | None = None,
+        image_file_id: str | None = None,
     ) -> bool:
         """发送新的图片主消息并记录"""
         try:
-            file = FSInputFile(image_path)
-            msg = await self.bot.send_photo(
-                chat_id=user_id,
-                photo=file,
-                caption=caption,
-                reply_markup=kb,
-                parse_mode="MarkdownV2",
-            )
+            if image_file_id:
+                msg = await self.bot.send_photo(
+                    chat_id=user_id,
+                    photo=image_file_id,
+                    caption=caption,
+                    reply_markup=kb,
+                    parse_mode="MarkdownV2",
+                )
+            else:
+                file = FSInputFile(image_path or "")
+                msg = await self.bot.send_photo(
+                    chat_id=user_id,
+                    photo=file,
+                    caption=caption,
+                    reply_markup=kb,
+                    parse_mode="MarkdownV2",
+                )
             self.remember(user_id, msg)
             return True
         except Exception as e:
@@ -81,6 +91,7 @@ class MainMessageService:
         caption: str,
         kb: types.InlineKeyboardMarkup,
         image_path: str | None = None,
+        image_file_id: str | None = None,
     ) -> bool:
         """
         渲染主消息（唯一对外入口）
@@ -94,17 +105,17 @@ class MainMessageService:
 
         # ① 尚未有主消息
         if not ids:
-            if not image_path:
+            if not image_path and not image_file_id:
                 # 业务错误：首次渲染却没有图片
                 print("❌ 尚未存在主消息，必须提供 image_path")
                 return False
 
-            return await self._send_new(user_id, caption, kb, image_path)
+            return await self._send_new(user_id, caption, kb, image_path=image_path, image_file_id=image_file_id)
 
         chat_id, message_id = ids
 
         # ② 不更换图片，仅更新 caption
-        if image_path is None:
+        if image_path is None and image_file_id is None:
             try:
                 await self.bot.edit_message_caption(
                     chat_id=chat_id,
@@ -128,7 +139,7 @@ class MainMessageService:
         except Exception:
             pass
 
-        return await self._send_new(user_id, caption, kb, image_path)
+        return await self._send_new(user_id, caption, kb, image_path=image_path, image_file_id=image_file_id)
 
 
     async def delete_input(self, input_message: types.Message) -> None:

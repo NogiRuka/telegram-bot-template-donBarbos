@@ -17,6 +17,7 @@ from bot.services.main_message import MainMessageService
 from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
 from bot.utils.permissions import _resolve_role
 from bot.utils.images import get_common_image
+from bot.services.main_image_service import MainImageService
 
 router = Router(name="start")
 
@@ -99,12 +100,21 @@ async def start_handler(
     caption, kb = await build_home_view(session, uid)
 
     # 🚀 首次渲染必须带图片
-    await main_msg.render(
-        user_id=uid,
-        caption=caption,
-        kb=kb,
-        image_path=get_common_image(),
-    )
+    img = await MainImageService.select_main_image(session, uid)
+    if img:
+        await main_msg.render(
+            user_id=uid,
+            caption=caption,
+            kb=kb,
+            image_file_id=img.file_id,
+        )
+    else:
+        await main_msg.render(
+            user_id=uid,
+            caption=caption,
+            kb=kb,
+            image_path=get_common_image(),
+        )
 
 
 @router.callback_query(F.data == "back:home")

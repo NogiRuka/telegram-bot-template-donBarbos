@@ -248,7 +248,15 @@ class CurrencyService:
                 "category": "tools",
                 "action_type": "custom_title",
                 "visible_conditions": {"min_max_streak": 30},
-            }
+            },
+            {
+                "name": "解锁🔞主图",
+                "price": 60,
+                "stock": 20,
+                "description": "解锁主图的 NSFW/随机展示模式设置权限",
+                "category": "tools",
+                "action_type": "main_image_unlock_nsfw",
+            },
         ]
 
         for product in defaults:
@@ -515,6 +523,15 @@ class CurrencyService:
             elif product.action_type in ["emby_image", "emby_password"]:
                 # 功能性商品，购买后获得资格
                 return True, "✅ 您已获得使用资格，请前往 [账号中心] 使用对应功能。"
+            
+            elif product.action_type == "main_image_unlock_nsfw":
+                # 解锁主图 NSFW/随机设置权限（幂等）
+                ext = await CurrencyService.get_user_extend(session, user_id)
+                if not ext:
+                    return False, "⚠️ 用户数据不存在。"
+                ext.nsfw_unlocked = True
+                session.add(ext)
+                return True, "✅ 已解锁主图 NSFW/随机模式设置。"
                 
             elif product.action_type == "custom_title":
                 return True, "ℹ️ 请联系频道管理员设置您的自定义群组头衔。"

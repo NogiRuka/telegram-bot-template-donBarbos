@@ -71,6 +71,20 @@ class UserExtendModel(Base, BasicAuditMixin):
     max_streak_days: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"), comment="历史最高连续签到天数")
     last_checkin_date: Mapped[date | None] = mapped_column(Date, nullable=True, comment="上次签到日期")
 
+    # 主图偏好
+    display_mode: Mapped[str] = mapped_column(
+        String(16), default="sfw", nullable=False, comment="主图展示模式: sfw/nsfw/random"
+    )
+    nsfw_unlocked: Mapped[bool] = mapped_column(
+        default=False, nullable=False, comment="是否已解锁 NSFW 展示权限"
+    )
+    last_image_id: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, comment="最近一次展示的主图ID"
+    )
+    extra_data: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True, comment="扩展信息(JSON)"
+    )
+
     # IP 列表与最后交互时间
     ip_list: Mapped[dict[str, Any] | list[Any] | None] = mapped_column(JSON, nullable=True, comment="访问过的IP数组")
     last_interaction_at: Mapped[dt | None] = mapped_column(
@@ -81,4 +95,5 @@ class UserExtendModel(Base, BasicAuditMixin):
     __table_args__ = (
         Index("idx_user_extend_role", "role"),
         Index("idx_user_extend_last_interaction", "last_interaction_at"),
+        Index("idx_user_extend_main_image_nsfw", "nsfw_unlocked"),
     )
