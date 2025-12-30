@@ -1,0 +1,41 @@
+from aiogram import F
+from aiogram.types import CallbackQuery
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from bot.services.quiz_config_service import QuizConfigService
+from bot.services.quiz_service import QuizService
+from bot.utils.permissions import require_admin_feature
+from bot.config.constants import KEY_ADMIN_QUIZ
+from bot.keyboards.inline.constants import QUIZ_ADMIN_TEST_TRIGGER_CALLBACK_DATA
+from .router import router
+
+@router.callback_query(F.data == QUIZ_ADMIN_TEST_TRIGGER_CALLBACK_DATA)
+@require_admin_feature(KEY_ADMIN_QUIZ)
+async def test_trigger(callback: CallbackQuery, session: AsyncSession):
+    """测试触发题目"""
+    user_id = callback.from_user.id
+    # 强制给管理员私聊发送
+    target_chat_id = user_id
+    
+    await callback.answer("正在生成测试题目...")
+    
+    try:
+        # 强制触发，不检查条件
+        quiz_data = await QuizService.create_quiz_session(session, user_id, target_chat_id)
+        if quiz_data:
+            question, image, markup, session_id = quiz_data
+            timeout_sec = await QuizConfigService.get_session_timeout(session)
+            caption = f"🧪 <b>测试题目</b>\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
+            
+            bot = callback.bot
+            if image:
+                sent = await bot.send_photo(target_chat_id, image.file_id, caption=caption, reply_markup=markup)
+            else:
+                sent = await bot.send_message(target_chat_id, caption, reply_markup=markup)
+                
+            await QuizService.update_session_message_id(session, session_id, sent.message_id)
+        else:
+            await callback.message.answer("⚠️ 题库为空或生成失败。")
+            
+    except Exception as e:
+        await callback.message.answer(f"❌ 测试失败: {e}")

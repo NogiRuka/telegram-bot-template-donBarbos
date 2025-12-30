@@ -147,6 +147,38 @@ MAIN_IMAGE_TOGGLE_NSFW_CALLBACK_DATA = "admin:main_image:toggle_nsfw"
 MAIN_IMAGE_BACK_LABEL = "↩️ 返回主图管理"
 MAIN_IMAGE_CANCEL_LABEL = "❌ 取消"
 MAIN_IMAGE_UPLOAD_SFW_LABEL = "🟢 上传 SFW"
+
+# ===== 问答管理 =====
+QUIZ_ADMIN_LABEL = "🎲 问答管理"
+QUIZ_ADMIN_CALLBACK_DATA = "admin:quiz"
+QUIZ_ADMIN_BACK_LABEL = "↩️ 返回问答管理"
+
+QUIZ_ADMIN_ADD_QUICK_LABEL = "➕ 添加题目 (快捷)"
+QUIZ_ADMIN_ADD_QUICK_CALLBACK_DATA = "admin:quiz:add_quick"
+
+QUIZ_ADMIN_SETTINGS_LABEL = "⚙️ 触发设置"
+QUIZ_ADMIN_SETTINGS_CALLBACK_DATA = "admin:quiz:settings"
+
+QUIZ_ADMIN_LIST_QUESTIONS_LABEL = "📋 题目列表"
+QUIZ_ADMIN_LIST_QUESTIONS_CALLBACK_DATA = "admin:quiz:list_questions"
+
+QUIZ_ADMIN_LIST_IMAGES_LABEL = "🖼️ 题图列表"
+QUIZ_ADMIN_LIST_IMAGES_CALLBACK_DATA = "admin:quiz:list_images"
+
+QUIZ_ADMIN_TEST_TRIGGER_LABEL = "🧪 题目测试 (发给我)"
+QUIZ_ADMIN_TEST_TRIGGER_CALLBACK_DATA = "admin:quiz:test_trigger"
+
+# 问答设置
+QUIZ_ADMIN_SET_PREFIX = "admin:quiz:set"
+QUIZ_ADMIN_SET_PROBABILITY = "admin:quiz:set:probability"
+QUIZ_ADMIN_SET_COOLDOWN = "admin:quiz:set:cooldown"
+QUIZ_ADMIN_SET_DAILY_LIMIT = "admin:quiz:set:daily_limit"
+QUIZ_ADMIN_SET_TIMEOUT = "admin:quiz:set:timeout"
+
+QUIZ_ADMIN_SET_PROBABILITY_LABEL = "🎲 修改触发概率"
+QUIZ_ADMIN_SET_COOLDOWN_LABEL = "⏳ 修改冷却时间"
+QUIZ_ADMIN_SET_DAILY_LIMIT_LABEL = "🔢 修改每日上限"
+QUIZ_ADMIN_SET_TIMEOUT_LABEL = "⏱️ 修改答题限时"
 MAIN_IMAGE_UPLOAD_NSFW_LABEL = "🔞 上传 NSFW"
 MAIN_IMAGE_CONTINUE_UPLOAD_LABEL = "📤 继续上传"
 MAIN_IMAGE_BACK_TO_UPLOAD_LABEL = "↩️ 返回上传选择"

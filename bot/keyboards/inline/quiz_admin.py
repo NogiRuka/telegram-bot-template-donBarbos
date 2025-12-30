@@ -1,35 +1,63 @@
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+from bot.keyboards.inline.buttons import (
+    BACK_TO_ADMIN_PANEL_BUTTON,
+    BACK_TO_HOME_BUTTON,
+    BACK_TO_QUIZ_ADMIN_BUTTON
+)
+from bot.keyboards.inline.constants import (
+    QUIZ_ADMIN_ADD_QUICK_CALLBACK_DATA,
+    QUIZ_ADMIN_ADD_QUICK_LABEL,
+    QUIZ_ADMIN_LIST_IMAGES_CALLBACK_DATA,
+    QUIZ_ADMIN_LIST_IMAGES_LABEL,
+    QUIZ_ADMIN_LIST_QUESTIONS_CALLBACK_DATA,
+    QUIZ_ADMIN_LIST_QUESTIONS_LABEL,
+    QUIZ_ADMIN_SETTINGS_CALLBACK_DATA,
+    QUIZ_ADMIN_SETTINGS_LABEL,
+    QUIZ_ADMIN_TEST_TRIGGER_CALLBACK_DATA,
+    QUIZ_ADMIN_TEST_TRIGGER_LABEL,
+    QUIZ_ADMIN_SET_COOLDOWN,
+    QUIZ_ADMIN_SET_COOLDOWN_LABEL,
+    QUIZ_ADMIN_SET_DAILY_LIMIT,
+    QUIZ_ADMIN_SET_DAILY_LIMIT_LABEL,
+    QUIZ_ADMIN_SET_PROBABILITY,
+    QUIZ_ADMIN_SET_PROBABILITY_LABEL,
+    QUIZ_ADMIN_SET_TIMEOUT,
+    QUIZ_ADMIN_SET_TIMEOUT_LABEL,
+)
 
 def quiz_admin_menu_kb() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text="➕ 添加题目 (快捷)", callback_data="quiz_admin:add_quick"),
-        InlineKeyboardButton(text="⚙️ 触发设置", callback_data="quiz_admin:settings")
-    )
-    builder.row(
-        InlineKeyboardButton(text="📋 题目列表", callback_data="quiz_admin:list_questions"),
-        InlineKeyboardButton(text="🖼️ 题图列表", callback_data="quiz_admin:list_images")
-    )
-    builder.row(
-        InlineKeyboardButton(text="🧪 题目测试 (发给我)", callback_data="quiz_admin:test_trigger")
-    )
-    builder.row(
-        InlineKeyboardButton(text="🔙 返回管理面板", callback_data="admin:home")
-    )
-    return builder.as_markup()
+    """问答管理菜单键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_ADD_QUICK_LABEL, callback_data=QUIZ_ADMIN_ADD_QUICK_CALLBACK_DATA),
+            InlineKeyboardButton(text=QUIZ_ADMIN_SETTINGS_LABEL, callback_data=QUIZ_ADMIN_SETTINGS_CALLBACK_DATA)
+        ],
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_QUESTIONS_LABEL, callback_data=QUIZ_ADMIN_LIST_QUESTIONS_CALLBACK_DATA),
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_IMAGES_LABEL, callback_data=QUIZ_ADMIN_LIST_IMAGES_CALLBACK_DATA)
+        ],
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_TEST_TRIGGER_LABEL, callback_data=QUIZ_ADMIN_TEST_TRIGGER_CALLBACK_DATA)
+        ],
+        [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON]
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
 
 def quiz_settings_kb() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text="🎲 修改触发概率", callback_data="quiz_admin:set:probability"),
-        InlineKeyboardButton(text="⏳ 修改冷却时间", callback_data="quiz_admin:set:cooldown")
-    )
-    builder.row(
-        InlineKeyboardButton(text="🔢 修改每日上限", callback_data="quiz_admin:set:daily_limit"),
-        InlineKeyboardButton(text="⏱️ 修改答题限时", callback_data="quiz_admin:set:timeout")
-    )
-    builder.row(
-        InlineKeyboardButton(text="🔙 返回问答菜单", callback_data="quiz_admin:menu")
-    )
-    return builder.as_markup()
+    """问答设置键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_SET_PROBABILITY_LABEL, callback_data=QUIZ_ADMIN_SET_PROBABILITY),
+            InlineKeyboardButton(text=QUIZ_ADMIN_SET_COOLDOWN_LABEL, callback_data=QUIZ_ADMIN_SET_COOLDOWN)
+        ],
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_SET_DAILY_LIMIT_LABEL, callback_data=QUIZ_ADMIN_SET_DAILY_LIMIT),
+            InlineKeyboardButton(text=QUIZ_ADMIN_SET_TIMEOUT_LABEL, callback_data=QUIZ_ADMIN_SET_TIMEOUT)
+        ],
+        [BACK_TO_QUIZ_ADMIN_BUTTON]
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
