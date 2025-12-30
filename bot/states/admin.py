@@ -48,3 +48,7 @@ class QuizAdminState(StatesGroup):
     waiting_for_tags = State()
     
     waiting_for_image_tags = State()
+    
+    # 新增
+    waiting_for_quick_add = State()
+    waiting_for_setting_value = State()
