@@ -242,6 +242,11 @@ class GroupMessageSaver:
         """生成系统服务消息的文本描述"""
         if message.new_chat_members:
             names = [f"{u.full_name}" for u in message.new_chat_members]
+            # 检查是自己加入还是被邀请
+            if message.from_user and len(message.new_chat_members) == 1 and message.from_user.id == message.new_chat_members[0].id:
+                return f"{message.from_user.full_name} 加入了群组"
+            elif message.from_user:
+                 return f"{message.from_user.full_name} 添加了成员: {', '.join(names)}"
             return f"添加了成员: {', '.join(names)}"
         if message.left_chat_member:
             if message.from_user and message.from_user.id != message.left_chat_member.id:
@@ -356,6 +361,23 @@ class GroupMessageSaver:
             logger.exception(f"❌ 提取实体信息失败: {e}")
             return None
 
+    def is_admin_bot_notification(self, text: str) -> bool:
+        """检查是否为管理类机器人的通知消息"""
+        if not text:
+            return False
+        
+        keywords = [
+            "通过入群验证",
+            "永久封禁",
+            "解除封禁",
+            "被管理员",
+            "移除了",
+            "禁言",
+            "解除禁言",
+        ]
+        
+        return any(keyword in text for keyword in keywords)
+
     async def save_message(self, message: types.Message, config: GroupConfigModel, session: AsyncSession) -> bool:
         try:
             message_type = self.get_message_type(message)
@@ -370,9 +392,12 @@ class GroupMessageSaver:
                 if service_text:
                     text_content = service_text
                     is_service_message = True
+            
+            # 检查是否为管理机器人的通知消息（即使配置了不保存机器人消息，这些也应该保存）
+            is_admin_notification = self.is_admin_bot_notification(text_content)
 
-            # 如果是服务消息，不视为机器人消息（确保系统通知能被保存）
-            is_from_bot = message.from_user and message.from_user.is_bot and not is_service_message
+            # 如果是服务消息或管理通知，不视为机器人消息（确保系统通知能被保存）
+            is_from_bot = message.from_user and message.from_user.is_bot and not is_service_message and not is_admin_notification
             
             if not config.should_save_message(
                 message_type=message_type.value,
