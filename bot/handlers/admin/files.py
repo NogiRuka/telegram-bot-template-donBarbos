@@ -321,9 +321,13 @@ async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: M
     new_msg_ids: list[int] = []
     for it in items:
         size_str = escape_markdown_v2(format_size(it.file_size or 0))
-        name_str = escape_markdown_v2(it.file_name or "-")
+        name_str = escape_markdown_v2(it.unique_name or "-")
+        duration_part = ""
+        if it.duration:
+            duration_part = f" ｜ ⏱ {it.duration}s"
+        
         caption = (
-            f"🆔 `{it.id}` ｜ 📄 `{name_str}` ｜ 📦 {size_str} ｜ 🏷️ {escape_markdown_v2(it.label or '-')}"
+            f"🆔 `{it.id}` ｜ 📄 `{name_str}` ｜ 📦 {size_str}{duration_part} ｜ 🏷️ {escape_markdown_v2(it.label or '-')}"
         )
 
         try:
