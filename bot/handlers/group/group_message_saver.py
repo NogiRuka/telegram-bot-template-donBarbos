@@ -462,6 +462,67 @@ class GroupMessageSaver:
             return False
 
 
+    async def save_chat_member_event(self, event: types.ChatMemberUpdated, config: GroupConfigModel, session: AsyncSession) -> bool:
+        try:
+            # 仅处理机器人触发的事件（因为用户触发的通常会有服务消息）
+            if not event.from_user.is_bot:
+                return False
+                
+            text_content = None
+            old = event.old_chat_member
+            new = event.new_chat_member
+            
+            # 成员被移除/封禁
+            if new.status in ["kicked", "left"] and old.status in ["member", "administrator", "restricted"]:
+                action = "永久封禁" if new.status == "kicked" else "移除"
+                text_content = f"{event.from_user.full_name} {action}了成员: {new.user.full_name}"
+            
+            # 成员权限变更（禁言等）
+            elif new.status == "restricted" and old.status in ["member", "administrator"]:
+                text_content = f"{event.from_user.full_name} 限制了成员: {new.user.full_name}"
+                
+            # 成员被提升为管理员
+            elif new.status == "administrator" and old.status != "administrator":
+                 text_content = f"{event.from_user.full_name} 将成员提升为管理员: {new.user.full_name}"
+
+            if not text_content:
+                return False
+
+            # 使用负数时间戳作为虚拟消息ID，确保唯一性
+            import time
+            virtual_message_id = -int(time.time() * 1000000)
+
+            message_record = MessageModel.create_from_telegram(
+                message_id=virtual_message_id,
+                user_id=event.from_user.id,
+                chat_id=event.chat.id,
+                message_type=MessageType.OTHER,
+                text_content=text_content,
+                caption=None,
+                entities=None,
+                caption_entities=None,
+                file_id=None,
+                file_unique_id=None,
+                file_size=None,
+                file_name=None,
+                mime_type=None,
+                is_forwarded=False,
+                is_reply=False,
+            )
+            
+            session.add(message_record)
+            config.increment_message_count(message_record.created_at)
+            await session.commit()
+            logger.debug(
+                f"✅ 成功保存事件消息: 群组={event.chat.id}, 虚拟ID={virtual_message_id}, 内容={text_content}"
+            )
+            return True
+        except Exception as e:
+            logger.exception(f"❌ 保存事件消息失败: {e}")
+            await session.rollback()
+            return False
+
+
 message_saver = GroupMessageSaver()
 
 
@@ -483,6 +544,29 @@ async def handle_group_message(message: types.Message, session: AsyncSession) ->
                 logger.debug(f"✅ 群组 {message.chat.id} 的消息已保存")
     except Exception as e:
         logger.exception(f"❌ 处理群组消息时发生错误: {e}")
+
+
+@router.chat_member(F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]))
+async def handle_chat_member_update(event: types.ChatMemberUpdated, session: AsyncSession) -> None:
+    try:
+        # 获取群组配置
+        result = await session.execute(
+            select(GroupConfigModel).where(
+                GroupConfigModel.chat_id == event.chat.id,
+                not GroupConfigModel.is_deleted,
+            )
+        )
+        config = result.scalar_one_or_none()
+        
+        # 如果没有配置或未启用保存，跳过
+        if not config or not config.is_save_enabled():
+            return
+
+        # 尝试保存事件
+        await message_saver.save_chat_member_event(event, config, session)
+            
+    except Exception as e:
+        logger.exception(f"❌ 处理成员变更事件时发生错误: {e}")
 
 
 @router.edited_message(F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]))
