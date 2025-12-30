@@ -2,6 +2,7 @@ import contextlib
 from math import ceil
 
 from aiogram import Bot, F, Router
+from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from loguru import logger
@@ -23,6 +24,7 @@ from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminFileState
 from bot.utils.message import safe_delete_message
 from bot.utils.permissions import require_admin_feature
+from bot.filters.admin import AdminFilter
 from bot.utils.text import escape_markdown_v2, format_size
 from bot.utils.datetime import now, format_duration
 
@@ -421,3 +423,58 @@ async def close_file_item(callback: CallbackQuery) -> None:
     if callback.message:
         await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
     await callback.answer()
+
+
+@router.message(Command("gen_gf"), AdminFilter())
+async def cmd_gen_gf(message: Message, command: CommandObject, session: AsyncSession) -> None:
+    """生成文件获取命令
+    
+    功能说明:
+    - 根据文件ID生成 /gf 命令
+    
+    输入: /gen_gf 1 2 3
+    输出: `/gf unique_name1 unique_name2 ...`
+    """
+    args = command.args
+    if not args:
+        await message.reply("⚠️ 请提供文件ID, 例如: `/gen_gf 1 2 3`", parse_mode="MarkdownV2")
+        return
+        
+    try:
+        # Parse IDs, ignoring non-integers
+        ids = [int(x) for x in args.split() if x.isdigit()]
+        if not ids:
+             await message.reply("⚠️ 未找到有效的数字ID", parse_mode="MarkdownV2")
+             return
+
+        # Query
+        stmt = select(MediaFileModel).where(MediaFileModel.id.in_(ids))
+        result = await session.execute(stmt)
+        files = result.scalars().all()
+        
+        if not files:
+            await message.reply("❌ 未找到指定ID的文件", parse_mode="MarkdownV2")
+            return
+            
+        # Extract names
+        # Prefer unique_name, fallback to file_unique_id
+        names = []
+        for f in files:
+            if f.unique_name:
+                names.append(f.unique_name)
+            elif f.file_unique_id:
+                names.append(f.file_unique_id)
+                
+        if not names:
+             await message.reply("❌ 找到文件但无有效唯一名", parse_mode="MarkdownV2")
+             return
+             
+        # Generate command
+        cmd_str = f"/gf {' '.join(names)}"
+        
+        # Reply with code block
+        await message.reply(f"`{cmd_str}`", parse_mode="MarkdownV2")
+        
+    except Exception as e:
+        logger.exception("生成文件命令失败")
+        await message.reply(f"❌ 生成失败: {e}")
