@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from bot.database.database import sessionmaker
 from bot.database.models.hitokoto import HitokotoModel
 from bot.services.config_service import get_config
+from bot.utils.text import escape_markdown_v2
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,8 +57,8 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
             duration_ms = int((time.perf_counter() - start_time) * 1000)
             snippet = str(payload.get("hitokoto") or "")
             snippet = (snippet[:SNIPPET_MAX_LEN] + "…") if len(snippet) > SNIPPET_MAX_LEN else snippet
-            # logger.info(f"🟢 [Hitokoto] 响应 status={resp.status} | 耗时={duration_ms}ms")
-            # logger.info(f"📦 [Hitokoto] 数据 uuid={u} | type={t} | length={ln} | 片段='{snippet}'")
+            logger.info(f"🟢 [Hitokoto] 响应 status={resp.status} | 耗时={duration_ms}ms")
+            logger.info(f"📦 [Hitokoto] 数据 uuid={u} | type={t} | length={ln} | 片段='{snippet}'")
             try:
                 uuid = str(payload.get("uuid") or "")
                 if uuid:
@@ -134,7 +135,6 @@ def build_start_caption(
     返回值:
     - str: 用于 Markdown 解析模式的完整文案
     """
-    from bot.utils.text import escape_markdown_v2
     hitokoto_raw = "(ง •̀_•́)ง" if not payload else str(payload.get("hitokoto") or "(ง •̀_•́)ง")
     # 链接文本需进行 MarkdownV2 转义，避免包含特殊字符导致解析失败
     hitokoto = escape_markdown_v2(hitokoto_raw)
