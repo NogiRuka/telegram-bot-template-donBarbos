@@ -61,7 +61,10 @@ class QuizTriggerMiddleware(BaseMiddleware):
                             try:
                                 timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
                                 sent_msg = None
-                                caption = f"🌸 <b>桜之问答</b> 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
+                                
+                                # 获取分类名称
+                                cat_name = question.category.name if question.category else "综合"
+                                caption = f"🌸 <b>桜之问答</b> [{cat_name}] 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
                                 
                                 if image:
                                     # 发送图片
