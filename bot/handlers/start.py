@@ -110,6 +110,7 @@ async def start_handler(
             caption=caption,
             kb=kb,
             image_file_id=img.file_id,
+            image_source_type=getattr(img, "source_type", "photo"),
         )
     else:
         await main_msg.render(

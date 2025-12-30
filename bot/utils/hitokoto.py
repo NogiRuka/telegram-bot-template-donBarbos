@@ -57,7 +57,7 @@ async def fetch_hitokoto(session: AsyncSession | None, created_by: int | None = 
             duration_ms = int((time.perf_counter() - start_time) * 1000)
             snippet = str(payload.get("hitokoto") or "")
             snippet = (snippet[:SNIPPET_MAX_LEN] + "…") if len(snippet) > SNIPPET_MAX_LEN else snippet
-            logger.info(f"🟢 [Hitokoto] 响应 status={resp.status} | 耗时={duration_ms}ms")
+            # logger.info(f"🟢 [Hitokoto] 响应 status={resp.status} | 耗时={duration_ms}ms")
             logger.info(f"📦 [Hitokoto] 数据 uuid={u} | type={t} | length={ln} | 片段='{snippet}'")
             try:
                 uuid = str(payload.get("uuid") or "")

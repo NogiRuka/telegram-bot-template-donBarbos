@@ -165,13 +165,17 @@ async def start_schedule_creation(callback: CallbackQuery, state: FSMContext, ma
     example_day_str = example_base_dt.strftime('%Y%m%d')
     example_suffix = (example_base_dt + td(days=4)).strftime('%d')
     
+    # 当前时间精确到分钟，结束时间为十分钟后
+    current_time_str = now_dt.strftime('%Y%m%d%H%M')
+    ten_minutes_later_str = (now_dt + td(minutes=10)).strftime('%Y%m%d%H%M')
+    
     text = (
         "➕ *创建节日投放*\n\n"
         "请按以下格式输入（支持多种格式）：\n"
         "`ID.开始时间[.结束时间] [标签]`\n\n"
         "📝 *示例*：\n"
-        f"1\\. 精确时间段：`1.{day_str}0021.{day_str}2359 元旦活动`\n"
-        f"2\\. 当天剩余时间：`1.{day_str}0021`\n"
+        f"1\\. 精确时间段：`1.{current_time_str}.{ten_minutes_later_str} 元旦活动`\n"
+        f"2\\. 当天剩余时间：`1.{current_time_str}`\n"
         f"3\\. 全天：`1.{day_str} 周末`\n"
         f"4\\. 日期范围：`1.{day_str}.{range_end_str}`\n"
         f"5\\. 简写范围：`1.{example_day_str}-{example_suffix}`"

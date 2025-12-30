@@ -56,17 +56,27 @@ class MainMessageService:
         kb: types.InlineKeyboardMarkup,
         image_path: str | None = None,
         image_file_id: str | None = None,
+        image_source_type: str | None = None,
     ) -> bool:
         """发送新的图片主消息并记录"""
         try:
             if image_file_id:
-                msg = await self.bot.send_photo(
-                    chat_id=user_id,
-                    photo=image_file_id,
-                    caption=caption,
-                    reply_markup=kb,
-                    parse_mode="MarkdownV2",
-                )
+                if (image_source_type or "photo") == "document":
+                    msg = await self.bot.send_document(
+                        chat_id=user_id,
+                        document=image_file_id,
+                        caption=caption,
+                        reply_markup=kb,
+                        parse_mode="MarkdownV2",
+                    )
+                else:
+                    msg = await self.bot.send_photo(
+                        chat_id=user_id,
+                        photo=image_file_id,
+                        caption=caption,
+                        reply_markup=kb,
+                        parse_mode="MarkdownV2",
+                    )
             else:
                 file = FSInputFile(image_path or "")
                 msg = await self.bot.send_photo(
@@ -90,6 +100,7 @@ class MainMessageService:
         kb: types.InlineKeyboardMarkup,
         image_path: str | None = None,
         image_file_id: str | None = None,
+        image_source_type: str | None = None,
     ) -> bool:
         """
         渲染主消息（唯一对外入口）
@@ -108,7 +119,9 @@ class MainMessageService:
                 print("❌ 尚未存在主消息，必须提供 image_path")
                 return False
 
-            return await self._send_new(user_id, caption, kb, image_path=image_path, image_file_id=image_file_id)
+            return await self._send_new(
+                user_id, caption, kb, image_path=image_path, image_file_id=image_file_id, image_source_type=image_source_type
+            )
 
         chat_id, message_id = ids
 
@@ -137,7 +150,9 @@ class MainMessageService:
         except Exception:
             pass
 
-        return await self._send_new(user_id, caption, kb, image_path=image_path, image_file_id=image_file_id)
+        return await self._send_new(
+            user_id, caption, kb, image_path=image_path, image_file_id=image_file_id, image_source_type=image_source_type
+        )
 
 
     async def delete_input(self, input_message: types.Message) -> None:
