@@ -9,7 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
-from bot.database.models import MainImageScheduleModel, MainImageModel
+from bot.database.models import MainImageScheduleModel, MainImageModel, UserExtendModel
 from bot.keyboards.inline.admin import (
     get_main_image_schedule_menu_keyboard,
     get_main_image_schedule_list_pagination_keyboard,
@@ -180,6 +180,17 @@ async def start_schedule_creation(callback: CallbackQuery, state: FSMContext, ma
         f"4\\. 日期范围：`1.{day_str}.{range_end_str}`\n"
         f"5\\. 简写范围：`1.{example_day_str}-{example_suffix}`"
     )
+    try:
+        uid = callback.from_user.id if callback.from_user else None
+        if uid is not None:
+            res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == uid))
+            ext = res.scalar_one_or_none()
+            if ext and isinstance(getattr(ext, "extra_data", None), dict):
+                prev_input = ext.extra_data.get("last_main_image_schedule_input")
+                if prev_input:
+                    text += f"\n\n🕘 上次输入：`{escape_markdown_v2(prev_input)}`"
+    except Exception:
+        pass
     await main_msg.update_on_callback(callback, text, get_main_image_schedule_cancel_keyboard())
     await state.set_state(AdminMainImageState.waiting_for_schedule_input)
     await callback.answer()
@@ -229,6 +240,19 @@ async def process_schedule_input(message: Message, session: AsyncSession, state:
         session.add(model)
         
     await session.commit()
+    
+    try:
+        uid = message.from_user.id if message.from_user else None
+        if uid is not None:
+            res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == uid))
+            ext = res.scalar_one_or_none()
+            if ext:
+                data = dict(ext.extra_data) if ext.extra_data else {}
+                data["last_main_image_schedule_input"] = message.text or ""
+                ext.extra_data = data
+                await session.commit()
+    except Exception:
+        pass
     
     await state.clear()
     
