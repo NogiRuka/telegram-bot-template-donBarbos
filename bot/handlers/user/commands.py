@@ -1,15 +1,18 @@
 from aiogram import Router, types
 from aiogram.filters import Command
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.utils.text import escape_markdown_v2
+from bot.services.users import is_admin
 
 router = Router()
 
 @router.message(Command("command", "c"))
-async def cmd_list_commands(message: types.Message) -> None:
+async def cmd_list_commands(message: types.Message, session: AsyncSession) -> None:
     """
     显示可用命令列表
     """
+    # 基础命令 (对所有用户可见)
     text = """
 📜 *可用命令列表*
 
@@ -17,15 +20,24 @@ async def cmd_list_commands(message: types.Message) -> None:
 • /start - 开始使用/查看欢迎信息
 • /help - 获取帮助
 • /info - 查看个人信息
-• /gf <唯一名> - 获取文件
+• /gf <唯一名> - 获取文件 (支持多个)
 • /c, /command - 显示此命令列表
 
-👥 *群组命令* (仅管理员)
-• /group_config, /gc - 查看/修改群组配置
-• /group_config <ID/@username> - 私聊查看群组配置
-
-📝 *其他*
+� *其他*
 • 直接发送文件 - 上传文件
+"""
+
+    # 管理员命令 (仅管理员可见)
+    if message.from_user and await is_admin(session, message.from_user.id):
+        admin_text = """
+👮 *管理员命令*
+• /gen_gf <ID>... - 生成获取命令
+• /group_config, /gc - 查看/修改群组配置 (群组)
+• /group_config <ID> - 查看群组配置 (私聊)
+
+� *群组功能*
 • 回复文件 /save - 保存文件 (群组)
 """
+        text += "\n" + admin_text
+
     await message.reply(escape_markdown_v2(text), parse_mode="MarkdownV2")
