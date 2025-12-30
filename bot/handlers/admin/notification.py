@@ -130,11 +130,11 @@ async def handle_notify_complete(
     # 5️⃣ 刷新面板统计（这里依然是行级，和你原来一致）
     pending_completion, pending_review, _ = await get_notification_status_counts(session)
     text = (
-        f"*{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}*\\n\\n"
-        f"📊 *状态统计:*\\n"
-        f"• 待补全：*{pending_completion}*\\n"
-        f"• 待发送：*{pending_review}*\\n\\n"
-        f"✅ *操作完成：* 成功 {success_count}, 失败 {fail_count}\\n"
+        f"*{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}*\n\n"
+        f"📊 *状态统计:*\n"
+        f"• 待补全：*{pending_completion}*\n"
+        f"• 待发送：*{pending_review}*\n\n"
+        f"✅ *操作完成：* 成功 {success_count}, 失败 {fail_count}\n"
     )
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
     await main_msg.update_on_callback(callback, text, kb)
