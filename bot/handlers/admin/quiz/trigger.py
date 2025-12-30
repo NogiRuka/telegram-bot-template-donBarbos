@@ -22,12 +22,12 @@ async def show_trigger_settings(callback: CallbackQuery, session: AsyncSession, 
     timeout = await QuizConfigService.get_session_timeout(session)
     
     text = (
-        "<b>⚙️ 触发设置</b>\n\n"
-        f"🎲 触发概率: {prob:.1%} (每次交互)\n"
-        f"⏳ 冷却时间: {cooldown} 分钟\n"
-        f"🔢 每日上限: {daily} 次\n"
-        f"⏱️ 答题限时: {timeout} 秒"
-    )
+        f"*⚙️ 触发设置*\n\n"
+        f"🎲 触发概率：{prob:.1%} \\(每次交互\\)\n"
+        f"⏳ 冷却时间：{cooldown} 分钟\n"
+        f"🔢 每日上限：{daily} 次\n"
+        f"⏱️ 答题限时：{timeout} 秒"
+    ).replace(".", "\\.")
     await main_msg.update_on_callback(callback, text, get_quiz_trigger_keyboard())
 
 @router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":set"))

@@ -23,12 +23,13 @@ async def show_quiz_menu(callback: CallbackQuery, session: AsyncSession, state: 
     daily = await QuizConfigService.get_daily_limit(session)
     
     text = (
-        "<b>🎲 问答管理</b>\n\n"
+        "*🎲 问答管理*\n\n"
         f"当前配置：\n"
-        f"• 触发概率: {prob:.0%}\n"
-        f"• 冷却时间: {cooldown}分钟\n"
-        f"• 每日上限: {daily}次\n\n"
+        f"• 触发概率：{prob:.0%}\n"
+        f"• 冷却时间：{cooldown}分钟\n"
+        f"• 每日上限：{daily}次\n\n"
         "请选择操作："
     )
     
     await main_msg.update_on_callback(callback, text, get_quiz_admin_keyboard())
+    await callback.answer()

@@ -7,6 +7,7 @@ from bot.database.models import QuizQuestionModel, QuizImageModel
 from bot.keyboards.inline.admin import get_quiz_admin_keyboard
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_admin_feature
+from bot.utils.text import escape_markdown_v2
 from bot.config.constants import KEY_ADMIN_QUIZ
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from .router import router
@@ -19,9 +20,11 @@ async def list_questions(callback: CallbackQuery, session: AsyncSession, main_ms
     stmt = select(QuizQuestionModel).order_by(QuizQuestionModel.id.desc()).limit(10)
     questions = (await session.execute(stmt)).scalars().all()
     
-    msg = "<b>📋 最近添加的题目 (Top 10):</b>\n\n"
+    msg = "*📋 最近添加的题目 \\(Top 10\\):*\n\n"
     for q in questions:
-        msg += f"ID: {q.id} | {q.category or '无分类'}\nQ: {q.question[:20]}...\n\n"
+        cat = escape_markdown_v2(q.category or '无分类')
+        ques = escape_markdown_v2(q.question[:20])
+        msg += f"ID: {q.id} \| {cat}\nQ: {ques}\.\.\.\n\n"
         
     await main_msg.update_on_callback(callback, msg, get_quiz_admin_keyboard()) # 返回菜单
 
@@ -33,8 +36,10 @@ async def list_images(callback: CallbackQuery, session: AsyncSession, main_msg: 
     stmt = select(QuizImageModel).order_by(QuizImageModel.id.desc()).limit(10)
     images = (await session.execute(stmt)).scalars().all()
     
-    msg = "<b>🖼️ 最近添加的图片 (Top 10):</b>\n\n"
+    msg = "*🖼️ 最近添加的图片 \\(Top 10\\):*\n\n"
     for img in images:
-        msg += f"ID: {img.id} | {img.category or '无分类'}\nTags: {img.tags}\n\n"
+        cat = escape_markdown_v2(img.category or '无分类')
+        tags = escape_markdown_v2(img.tags or "")
+        msg += f"ID: {img.id} \| {cat}\nTags: {tags}\n\n"
         
     await main_msg.update_on_callback(callback, msg, get_quiz_admin_keyboard())

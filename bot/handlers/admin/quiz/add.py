@@ -15,20 +15,20 @@ from .router import router
 async def start_quick_add(callback: CallbackQuery, state: FSMContext):
     """开始快捷添加"""
     await callback.message.answer(
-        "<b>➕ 快捷添加题目</b>\n\n"
+        "*➕ 快捷添加题目*\n\n"
         "请发送一张图片（可选），并在 Caption（如果是纯文本则直接发送文本）中按以下格式输入：\n\n"
-        "<code>题目描述\n"
+        "`题目描述\n"
         "选项A 选项B 选项C 选项D\n"
-        "正确答案序号(1-4)\n"
-        "分类(如: 漫画, 小说, 影视, GV)\n"
-        "标签(逗号分隔)</code>\n\n"
+        "正确答案序号\\(1\\-4\\)\n"
+        "分类\\(如：漫画，小说，影视，GV\\)\n"
+        "标签\\(逗号分隔\\)`\n\n"
         "例如：\n"
-        "<code>这部番的主角是谁？\n"
+        "`这部番的主角是谁？\n"
         "路人甲 鸣人 佐助 小樱\n"
         "2\n"
         "动漫\n"
-        "火影忍者,JUMP</code>",
-        parse_mode="HTML"
+        "火影忍者,JUMP`",
+        parse_mode="MarkdownV2"
     )
     await state.set_state(QuizAdminState.waiting_for_quick_add)
     await callback.answer()
