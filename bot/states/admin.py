@@ -38,3 +38,13 @@ class AdminFileState(StatesGroup):
     - 其他操作可按需扩展
     """
     waiting_for_file_input = State()
+
+class QuizAdminState(StatesGroup):
+    """问答管理状态"""
+    waiting_for_question = State()
+    waiting_for_options = State()
+    waiting_for_correct_index = State()
+    waiting_for_difficulty = State()
+    waiting_for_tags = State()
+    
+    waiting_for_image_tags = State()

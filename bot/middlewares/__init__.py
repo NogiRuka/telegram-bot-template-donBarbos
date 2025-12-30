@@ -6,6 +6,7 @@ from .bot_enabled import BotEnabledMiddleware
 from .database import DatabaseMiddleware
 from .logging import LoggingMiddleware
 from .main_message import MainMessageMiddleware
+from .quiz_trigger import QuizTriggerMiddleware
 from .throttling import ThrottlingMiddleware
 
 
@@ -20,7 +21,9 @@ def register_middlewares(dp: Dispatcher) -> None:
 
     dp.message.middleware(BotEnabledMiddleware())
     dp.message.middleware(AuthMiddleware())
+    dp.message.middleware(QuizTriggerMiddleware())
 
     dp.callback_query.middleware(BotEnabledMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
+    dp.callback_query.middleware(QuizTriggerMiddleware())
     dp.callback_query.middleware(CallbackAnswerMiddleware())
