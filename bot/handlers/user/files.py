@@ -70,6 +70,14 @@ async def get_file_command(message: Message, command: CommandObject, session: As
     - 处理 /get_file 或 /gf 命令
     - 支持 /gf <args> 和 /gf@bot <args>
     """
-    args = command.args
-    search_term = args.strip() if args else ""
-    await search_and_send_file(message, session, search_term)
+    args = command.args or ""
+    terms = re.findall(r"\S+", args)
+    if not terms:
+        await search_and_send_file(message, session, "")
+        return
+    seen: set[str] = set()
+    for term in terms:
+        if term in seen:
+            continue
+        seen.add(term)
+        await search_and_send_file(message, session, term)
