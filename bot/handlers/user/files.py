@@ -28,7 +28,7 @@ async def get_file_command(message: Message, session: AsyncSession) -> None:
     """
     args = message.text.split()
     if len(args) < 2:
-        await message.answer("⚠️ 请提供文件名或ID\n用法: `/get_file <unique_name>` 或 `/gf <unique_name>`", parse_mode="MarkdownV2")
+        await message.reply("⚠️ 请提供文件名或ID\n用法: `/get_file <unique_name>` 或 `/gf <unique_name>`", parse_mode="MarkdownV2")
         return
 
     search_term = args[1].strip()
@@ -73,7 +73,7 @@ async def get_file_command(message: Message, session: AsyncSession) -> None:
             await message.answer_video_note(video_note=file_record.file_id)
             await message.answer(caption, parse_mode="MarkdownV2")
         else:
-            await message.answer(f"📦 文件ID: `{file_record.file_id}`\n(不支持的媒体类型)", parse_mode="MarkdownV2")
+            await message.reply(f"📦 文件ID: `{file_record.file_id}`\n(不支持的媒体类型)", parse_mode="MarkdownV2")
 
     except Exception as e:
-        await message.answer(f"❌ 发送文件失败: {e}")
+        await message.reply(f"❌ 发送文件失败: {e}")

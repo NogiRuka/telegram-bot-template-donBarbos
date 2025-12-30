@@ -21,9 +21,10 @@ from bot.keyboards.inline.admin import (
 from bot.keyboards.inline.constants import FILE_ADMIN_CALLBACK_DATA, FILE_ADMIN_LABEL
 from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminFileState
-from bot.utils.message import safe_delete_message, send_toast
+from bot.utils.message import safe_delete_message
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2, format_size
+from bot.utils.datetime import now
 
 
 @router.callback_query(F.data == FILE_ADMIN_CALLBACK_DATA)
@@ -119,6 +120,7 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             file_size = getattr(p, "file_size", None)
             width = getattr(p, "width", None)
             height = getattr(p, "height", None)
+            file_name = f"photo_{file_unique_id}.jpg"
         elif message.document:
             d = message.document
             media_type = "document"
@@ -137,6 +139,7 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             height = getattr(v, "height", None)
             duration = getattr(v, "duration", None)
             mime_type = getattr(v, "mime_type", None)
+            file_name = getattr(v, "file_name", None)
         elif message.audio:
             a = message.audio
             media_type = "audio"
@@ -154,6 +157,7 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             file_size = getattr(v, "file_size", None)
             duration = getattr(v, "duration", None)
             mime_type = getattr(v, "mime_type", None)
+            file_name = f"voice_{file_unique_id}.ogg"
         elif message.animation:
             an = message.animation
             media_type = "animation"
@@ -164,6 +168,7 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             height = getattr(an, "height", None)
             duration = getattr(an, "duration", None)
             mime_type = getattr(an, "mime_type", None)
+            file_name = getattr(an, "file_name", None)
         elif message.sticker:
             s = message.sticker
             media_type = "sticker"
@@ -173,6 +178,12 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             width = getattr(s, "width", None)
             height = getattr(s, "height", None)
             # sticker 没有 mime_type 与文件名
+            ext = "webp"
+            if s.is_animated:
+                ext = "tgs"
+            elif s.is_video:
+                ext = "webm"
+            file_name = f"sticker_{file_unique_id}.{ext}"
         elif message.video_note:
             vn = message.video_note
             media_type = "video_note"
@@ -182,12 +193,12 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             duration = getattr(vn, "duration", None)
             width = getattr(vn, "length", None)
             height = getattr(vn, "length", None)
+            file_name = f"videonote_{file_unique_id}.mp4"
         else:
             await message.answer("⚠️ 未检测到支持的文件类型或该消息不包含文件内容")
             return
 
         # 生成唯一文件名
-        from bot.utils.datetime import now
         current_time = now().strftime("%Y%m%d%H%M")
         # 如果没有文件名，使用 file_unique_id
         base_name = file_name if file_name else (file_unique_id or "unknown")
@@ -304,7 +315,7 @@ async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: M
     await main_msg.update_on_callback(callback, header, get_files_list_pagination_keyboard(page, total_pages, limit))
 
     if not items:
-        await send_toast(callback, "暂无数据")
+        await callback.answer("📂 当前暂无文件，请先上传后再查看～")
         return
 
     new_msg_ids: list[int] = []
