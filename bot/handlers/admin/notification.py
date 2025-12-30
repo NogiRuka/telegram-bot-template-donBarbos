@@ -454,7 +454,7 @@ async def handle_notify_send_all(
     ])
     await main_msg.update_on_callback(
         callback,
-        "⚠️ <b>确认操作</b>\n\n确定要将所有 [待发送] 状态的通知推送到频道/群组吗？",
+        "⚠️ *确认操作*\n\n确定要将所有 \\[待发送\\] 状态的通知推送到频道/群组吗？",
         confirm_kb
     )
 
