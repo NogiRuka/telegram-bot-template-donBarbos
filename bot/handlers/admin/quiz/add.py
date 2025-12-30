@@ -17,17 +17,25 @@ from .router import router
 
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":add")
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def start_quick_add(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService):
+async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
     """开始快捷添加"""
+    # Fetch categories to display
+    stmt = select(QuizCategoryModel).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
+    categories = (await session.execute(stmt)).scalars().all()
+    
+    cat_text = "\n".join([f"{c.id}\\. {escape_markdown_v2(c.name)}" for c in categories])
+    
     text = (
         "*➕ 添加题目*\n\n"
         "请发送一张图片（可选），并在 Caption（如果是纯文本则直接发送文本）中按以下格式输入：\n\n"
         "`题目描述\n"
         "选项A 选项B 选项C 选项D\n"
         "正确答案序号\\(1\\-4\\)\n"
-        "分类名称或ID\\(如：动漫 或 8\\)\n"
-        "标签\\(逗号分隔\\)\n"
-        "难度系数\\(1\\-5，默认1\\)`\n\n"
+        "分类ID\\(见下方列表\\)\n"
+        "标签\\(逗号分隔，可选\\)\n"
+        "难度系数\\(1\\-5，可选，默认1\\)`\n\n"
+        "*可用分类：*\n"
+        f"{cat_text}\n\n"
         "例如：\n"
         "`这部番的主角是谁？\n"
         "路人甲 鸣人 佐助 小樱\n"
@@ -89,19 +97,24 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
         correct_index = int(correct_idx_raw) - 1
 
         category_input = lines[3]
-        category_name = category_input
-        
-        # 如果是数字，尝试查找分类ID
+        category_id = None
+        category_name = "未知"
+
+        # 必须是ID
         if category_input.isdigit():
             cat_id = int(category_input)
-            stmt = select(QuizCategoryModel.name).where(QuizCategoryModel.id == cat_id)
+            stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id)
             result = await session.execute(stmt)
-            name = result.scalar_one_or_none()
-            if name:
-                category_name = name
+            cat = result.scalar_one_or_none()
+            if cat:
+                category_id = cat.id
+                category_name = cat.name
             else:
-                await send_toast(message, f"⚠️ 未找到ID为 {cat_id} 的分类，请检查。")
+                await send_toast(message, f"⚠️ 未找到ID为 {cat_id} 的分类，请检查下方列表。")
                 return
+        else:
+            await send_toast(message, "⚠️ 分类必须填写ID（数字）。")
+            return
         
         tags = []
         if len(lines) > 4:
@@ -116,9 +129,10 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
             difficulty=difficulty,
             reward_base=5,
             reward_bonus=15,
-            category=category_name,
+            category_id=category_id,
             tags=tags,
-            is_active=True
+            is_active=True,
+            created_by=message.from_user.id
         )
         session.add(quiz)
         await session.flush() # 获取 ID
@@ -129,19 +143,21 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
             img = QuizImageModel(
                 file_id=photo.file_id,
                 file_unique_id=photo.file_unique_id,
-                category=category_name,
+                category_id=category_id,
                 tags=tags, # 继承题目标签
                 description=f"自动添加于题目 {quiz.id}",
-                is_active=True
+                is_active=True,
+                created_by=message.from_user.id
             )
             session.add(img)
 
         await session.commit()
 
         success_text = (
-            f"✅ *题目已添加！* \\(ID: `{quiz.id}`\\)\n"
-            f"� 题目：{escape_markdown_v2(question_text)}\n"
-            f"�📂 分类：{escape_markdown_v2(category_name)}\n"
+            f"✅ *题目已添加！*\n"
+            f"🆔 ID：`{quiz.id}`\n"
+            f"❓ 题目：{escape_markdown_v2(question_text)}\n"
+            f"📂 分类：{escape_markdown_v2(category_name)} \\(`{category_id}`\\)\n"
             f"🏷️ 标签：{escape_markdown_v2(', '.join(tags))}\n"
             f"🌟 难度：{difficulty}"
         )
