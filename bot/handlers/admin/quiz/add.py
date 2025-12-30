@@ -19,7 +19,7 @@ from .router import router
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
     """开始快捷添加"""
-    # Fetch categories to display
+    # 获取可显示的分类列表
     stmt = select(QuizCategoryModel).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
     categories = (await session.execute(stmt)).scalars().all()
     

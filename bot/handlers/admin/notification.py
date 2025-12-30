@@ -52,10 +52,10 @@ async def show_notification_panel(
     pending_completion, pending_review, _ = await get_notification_status_counts(session)
 
     text = (
-        f"*{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}*\\n\\n"
-        f"📊 *状态统计:*\\n"
-        f"• 待补全：*{pending_completion}*\\n"
-        f"• 待发送：*{pending_review}*\\n"
+        f"*{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}*\n\n"
+        f"📊 *状态统计:*\n"
+        f"• 待补全：*{pending_completion}*\n"
+        f"• 待发送：*{pending_review}*\n"
     )
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
 
