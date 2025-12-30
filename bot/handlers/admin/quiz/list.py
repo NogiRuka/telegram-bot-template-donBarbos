@@ -22,7 +22,8 @@ async def list_questions(callback: CallbackQuery, session: AsyncSession, main_ms
     
     msg = "*📋 最近添加的题目 \\(Top 10\\):*\n\n"
     for q in questions:
-        cat = escape_markdown_v2(q.category or '无分类')
+        cat_name = q.category.name if q.category else '无分类'
+        cat = escape_markdown_v2(cat_name)
         ques = escape_markdown_v2(q.question[:20])
         msg += f"ID: {q.id} \| {cat}\nQ: {ques}\.\.\.\n\n"
         
@@ -38,8 +39,10 @@ async def list_images(callback: CallbackQuery, session: AsyncSession, main_msg: 
     
     msg = "*🖼️ 最近添加的图片 \\(Top 10\\):*\n\n"
     for img in images:
-        cat = escape_markdown_v2(img.category or '无分类')
-        tags = escape_markdown_v2(img.tags or "")
+        cat_name = img.category.name if img.category else '无分类'
+        cat = escape_markdown_v2(cat_name)
+        tags_str = ", ".join(img.tags) if img.tags else ""
+        tags = escape_markdown_v2(tags_str)
         msg += f"ID: {img.id} \| {cat}\nTags: {tags}\n\n"
         
     await main_msg.update_on_callback(callback, msg, get_quiz_admin_keyboard())
