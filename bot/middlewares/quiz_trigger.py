@@ -2,6 +2,7 @@ from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.types import Message, CallbackQuery, TelegramObject
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.services.quiz_service import QuizService
@@ -81,6 +82,7 @@ class QuizTriggerMiddleware(BaseMiddleware):
                                     await QuizService.update_session_message_id(session, session_id, sent_msg.message_id)
                                     
                             except Exception as e:
+                                logger.warning(f"⚠️ 发送问答题目失败: {e}")
                                 # 发送失败，可能是被屏蔽或者网络问题
                                 # 应该回滚/删除 Session 吗？
                                 # QuizService.handle_timeout 会处理过期的 Session，这里可以忽略
