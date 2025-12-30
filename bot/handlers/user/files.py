@@ -1,8 +1,9 @@
-from aiogram import Router
-from aiogram.filters import Command
+from aiogram import Router, F
+from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import re
 
 from bot.database.models.media_file import MediaFileModel
 from bot.utils.text import escape_markdown_v2
@@ -10,29 +11,12 @@ from bot.utils.text import escape_markdown_v2
 router = Router(name="user_files")
 
 
-@router.message(Command(commands=["get_file", "gf"]))
-async def get_file_command(message: Message, session: AsyncSession) -> None:
-    """获取文件命令
-
-    功能说明:
-    - 通过 /get_file <unique_name> 或 <file_unique_id> 获取文件
-    - 优先匹配 unique_name，其次匹配 file_unique_id
-    - 返回单个文件
-
-    输入参数:
-    - message: 消息对象
-    - session: 数据库会话
-
-    返回值:
-    - None
-    """
-    args = message.text.split()
-    if len(args) < 2:
+async def search_and_send_file(message: Message, session: AsyncSession, search_term: str) -> None:
+    """搜索并发送文件通用逻辑"""
+    if not search_term:
         await message.reply("⚠️ 请提供文件名或ID\n用法: `/get_file <unique_name>` 或 `/gf <unique_name>`", parse_mode="MarkdownV2")
         return
 
-    search_term = args[1].strip()
-    
     # 优先搜索 unique_name
     stmt = select(MediaFileModel).where(MediaFileModel.unique_name == search_term, MediaFileModel.is_deleted.is_(False))
     file_record = (await session.execute(stmt)).scalar_one_or_none()
@@ -77,3 +61,35 @@ async def get_file_command(message: Message, session: AsyncSession) -> None:
 
     except Exception as e:
         await message.reply(f"❌ 发送文件失败: {e}")
+
+
+@router.message(Command(commands=["get_file", "gf"]))
+async def get_file_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
+    """获取文件命令 (标准格式)
+    
+    功能说明:
+    - 处理 /get_file 或 /gf 命令
+    - 支持 /gf <args> 和 /gf@bot <args>
+    """
+    args = command.args
+    search_term = args.strip() if args else ""
+    await search_and_send_file(message, session, search_term)
+
+
+@router.message(F.text.regexp(r"^@\w+\s+/(get_file|gf)"))
+async def get_file_mention_command(message: Message, session: AsyncSession) -> None:
+    """获取文件命令 (提及在前格式)
+    
+    功能说明:
+    - 处理 @bot /gf <args> 这种非标准格式
+    """
+    text = message.text.strip()
+    # 使用正则拆分: 匹配 /get_file 或 /gf，保留后面的部分
+    parts = re.split(r"/(?:get_file|gf)", text, maxsplit=1)
+    
+    if len(parts) < 2:
+        search_term = ""
+    else:
+        search_term = parts[1].strip()
+        
+    await search_and_send_file(message, session, search_term)
