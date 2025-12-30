@@ -20,11 +20,12 @@ def get_handlers_router() -> Router:
     router = Router()
     router.include_router(start.router)
 
-    # 群组与管理员聚合路由
-    router.include_router(get_group_router())
+    # 注册功能路由 (优先级: 管理员 > 用户 > 所有者 > 群组)
+    # 注意: 群组路由包含消息保存的通配符处理器，必须放在最后
     router.include_router(get_admin_router())
     router.include_router(get_user_router())
     router.include_router(get_owner_router())
+    router.include_router(get_group_router())
 
     # 在开发模式下添加测试路由
     if TESTS_AVAILABLE and getattr(settings, "DEBUG", False):
