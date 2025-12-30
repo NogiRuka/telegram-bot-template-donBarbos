@@ -32,10 +32,9 @@ async def search_and_send_file(message: Message, session: AsyncSession, search_t
 
     try:
         caption = (
-            f"📄 *文件名*: `{escape_markdown_v2(file_record.file_name or '-')}`\n"
             f"🔖 *唯一名*: `{escape_markdown_v2(file_record.unique_name or '-')}`\n"
             f"🏷️ *类型*: {escape_markdown_v2(file_record.media_type)}\n"
-            f"📛 *标签*: {escape_markdown_v2(file_record.label or '-')}"
+            f"📛 *说明*: {escape_markdown_v2(file_record.description or '-')}"
         )
 
         if file_record.media_type == "photo":

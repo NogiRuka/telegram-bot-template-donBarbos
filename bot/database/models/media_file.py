@@ -38,7 +38,7 @@ class MediaFileModel(Base, BasicAuditMixin):
     duration: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="时长(音频/视频, 秒)")
 
     # 备注与标签
-    label: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="标签/备注")
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="说明/备注")
     extra: Mapped[str | None] = mapped_column(Text, nullable=True, comment="扩展信息(JSON 字符串)")
 
     __table_args__ = (

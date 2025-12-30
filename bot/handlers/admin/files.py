@@ -215,7 +215,7 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             width=width,
             height=height,
             duration=duration,
-            label=message.caption,
+            description=message.caption,
             created_by=message.from_user.id if message.from_user else None,
             updated_by=message.from_user.id if message.from_user else None,
         )
@@ -235,7 +235,7 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             f"📦 *大小*: {size_str}\n"
             f"🏷️ *类型*: {escape_markdown_v2(media_type)}\n"
             f"🧬 *MIME*: {mime_str}\n"
-            f"📛 *标签*: {escape_markdown_v2(model.label or '-')}"
+            f"📛 *说明*: {escape_markdown_v2(model.description or '-')}"
         )
 
         await main_msg.render(message.from_user.id, summary, get_files_save_success_keyboard())
@@ -327,7 +327,7 @@ async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: M
             duration_part = f" ｜ ⏱ {format_duration(it.duration)}"
         
         caption = (
-            f"🆔 `{it.id}` ｜ 📄 `{name_str}` ｜ 📦 {size_str}{duration_part} ｜ 🏷️ {escape_markdown_v2(it.label or '-')}"
+            f"🆔 `{it.id}` ｜ 📄 `{name_str}` ｜ 📦 {size_str}{duration_part} ｜ 🏷️ {escape_markdown_v2(it.description or '-')}"
         )
 
         try:
