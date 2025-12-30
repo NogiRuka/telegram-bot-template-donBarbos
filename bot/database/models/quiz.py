@@ -103,3 +103,16 @@ class QuizLogModel(Base, TimestampMixin):
     )
 
     repr_cols = ("user_id", "question_id", "is_correct", "reward_amount")
+
+class QuizCategoryModel(Base, TimestampMixin):
+    """
+    问答分类表
+    """
+    __tablename__ = "quiz_categories"
+
+    id: Mapped[auto_int_pk]
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, comment="分类名称")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, comment="排序权重")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否启用")
+
+    repr_cols = ("id", "name", "sort_order")

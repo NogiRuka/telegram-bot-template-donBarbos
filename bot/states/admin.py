@@ -52,3 +52,7 @@ class QuizAdminState(StatesGroup):
     # 新增
     waiting_for_quick_add = State()
     waiting_for_setting_value = State()
+    
+    # 分类管理
+    waiting_for_category_name = State()
+    waiting_for_new_category_name = State()

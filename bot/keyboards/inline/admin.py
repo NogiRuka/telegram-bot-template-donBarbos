@@ -37,6 +37,7 @@ from bot.keyboards.inline.constants import (
     NOTIFY_PREVIEW_LABEL,
     QUIZ_ADMIN_CALLBACK_DATA,
     QUIZ_ADMIN_ADD_QUICK_LABEL,
+    QUIZ_ADMIN_CATEGORY_LABEL,
     QUIZ_ADMIN_LIST_IMAGES_LABEL,
     QUIZ_ADMIN_LIST_QUESTIONS_LABEL,
     QUIZ_ADMIN_TRIGGER_LABEL,
@@ -200,7 +201,7 @@ def get_quiz_add_cancel_keyboard() -> InlineKeyboardMarkup:
 def get_quiz_add_success_keyboard() -> InlineKeyboardMarkup:
     """问答快捷添加成功键盘"""
     buttons = [
-        [InlineKeyboardButton(text="➕ 继续添加", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":add_quick")],
+        [InlineKeyboardButton(text="➕ 继续添加", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":add")],
         [BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON]
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
@@ -448,7 +449,7 @@ def get_quiz_admin_keyboard() -> InlineKeyboardMarkup:
     """问答管理菜单键盘"""
     buttons = [
         [
-            InlineKeyboardButton(text=QUIZ_ADMIN_ADD_QUICK_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":add_quick"),
+            InlineKeyboardButton(text=QUIZ_ADMIN_ADD_QUICK_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":add"),
             InlineKeyboardButton(text=QUIZ_ADMIN_TRIGGER_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":trigger")
         ],
         [
@@ -456,6 +457,7 @@ def get_quiz_admin_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=QUIZ_ADMIN_LIST_IMAGES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_images")
         ],
         [
+            InlineKeyboardButton(text=QUIZ_ADMIN_CATEGORY_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":category"),
             InlineKeyboardButton(text=QUIZ_ADMIN_TEST_TRIGGER_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":test_trigger")
         ],
         [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON]
@@ -477,5 +479,53 @@ def get_quiz_trigger_keyboard() -> InlineKeyboardMarkup:
         ],
         [BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON]
     ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+def get_quiz_category_list_keyboard(categories: list) -> InlineKeyboardMarkup:
+    """问答分类列表键盘"""
+    builder = InlineKeyboardBuilder()
+    
+    # 列表按钮
+    for cat in categories:
+        builder.button(
+            text=f"{cat.id}. {cat.name} ({'🟢' if cat.is_active else '🔴'})",
+            callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:cat:view:{cat.id}"
+        )
+    builder.adjust(2) # 每行2个
+    
+    # 功能按钮
+    builder.row(
+        InlineKeyboardButton(text="➕ 添加分类", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:cat:add")
+    )
+    
+    # 返回按钮
+    builder.row(BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON)
+    
+    return builder.as_markup()
+
+
+def get_quiz_category_item_keyboard(category_id: int, is_active: bool) -> InlineKeyboardMarkup:
+    """问答分类详情键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text="✏️ 修改名称", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:cat:edit:{category_id}"),
+            InlineKeyboardButton(text="🔴 禁用" if is_active else "🟢 启用", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:cat:toggle:{category_id}")
+        ],
+        [
+             InlineKeyboardButton(text="🗑️ 删除", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:cat:delete:{category_id}")
+        ],
+        [
+            InlineKeyboardButton(text="🔙 返回列表", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:category"),
+            BACK_TO_HOME_BUTTON
+        ]
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_quiz_category_cancel_keyboard() -> InlineKeyboardMarkup:
+    """分类编辑取消键盘"""
+    buttons = [[InlineKeyboardButton(text=MAIN_IMAGE_CANCEL_LABEL, callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:category")]]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
