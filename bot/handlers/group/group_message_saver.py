@@ -244,6 +244,8 @@ class GroupMessageSaver:
             names = [f"{u.full_name}" for u in message.new_chat_members]
             return f"添加了成员: {', '.join(names)}"
         if message.left_chat_member:
+            if message.from_user and message.from_user.id != message.left_chat_member.id:
+                return f"{message.from_user.full_name} 移除了成员: {message.left_chat_member.full_name}"
             return f"成员离开: {message.left_chat_member.full_name}"
         if message.new_chat_title:
             return f"群组名称修改为: {message.new_chat_title}"
@@ -359,7 +361,19 @@ class GroupMessageSaver:
             message_type = self.get_message_type(message)
             is_forwarded = message.forward_from is not None or message.forward_from_chat is not None
             is_reply = message.reply_to_message is not None
-            is_from_bot = message.from_user and message.from_user.is_bot
+            
+            # 预处理文本内容，检查是否为服务消息
+            text_content = message.text or message.caption or ""
+            is_service_message = False
+            if not text_content:
+                service_text = self.generate_service_message_text(message)
+                if service_text:
+                    text_content = service_text
+                    is_service_message = True
+
+            # 如果是服务消息，不视为机器人消息（确保系统通知能被保存）
+            is_from_bot = message.from_user and message.from_user.is_bot and not is_service_message
+            
             if not config.should_save_message(
                 message_type=message_type.value,
                 is_forwarded=is_forwarded,
@@ -367,10 +381,6 @@ class GroupMessageSaver:
                 is_from_bot=is_from_bot,
             ):
                 return False
-            text_content = message.text or message.caption or ""
-            # 如果没有文本内容，尝试生成系统服务消息的描述
-            if not text_content:
-                text_content = self.generate_service_message_text(message) or ""
 
             if not self.check_keywords(text_content, config.include_keywords, config.exclude_keywords):
                 return False

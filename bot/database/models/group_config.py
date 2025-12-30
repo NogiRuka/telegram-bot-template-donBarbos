@@ -145,7 +145,7 @@ class GroupConfigModel(Base, BasicAuditMixin):
     )
 
     save_bot_messages: Mapped[bool] = mapped_column(
-        Boolean, default=False, comment="保存机器人消息，默认False，是否保存机器人发送的消息"
+        Boolean, default=True, comment="保存机器人消息，默认True，是否保存机器人发送的消息"
     )
 
     # ==================== 关键词过滤字段 ====================
