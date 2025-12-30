@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import Index, Integer, Text, JSON, ForeignKey, Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk, TimestampMixin
+from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
 
 class QuizQuestionModel(Base, BasicAuditMixin):
     """
@@ -79,7 +79,7 @@ class QuizActiveSessionModel(Base, BasicAuditMixin):
 
     repr_cols = ("user_id", "question_id", "expire_at")
 
-class QuizLogModel(Base, TimestampMixin):
+class QuizLogModel(Base, BasicAuditMixin):
     """
     答题记录表
     """
@@ -104,7 +104,7 @@ class QuizLogModel(Base, TimestampMixin):
 
     repr_cols = ("user_id", "question_id", "is_correct", "reward_amount")
 
-class QuizCategoryModel(Base, TimestampMixin):
+class QuizCategoryModel(Base, BasicAuditMixin):
     """
     问答分类表
     """

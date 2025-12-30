@@ -64,7 +64,7 @@ async def add_category_process(message: Message, state: FSMContext, session: Asy
     stmt = select(QuizCategoryModel.sort_order).order_by(QuizCategoryModel.sort_order.desc()).limit(1)
     max_order = (await session.execute(stmt)).scalar_one_or_none() or 0
     
-    cat = QuizCategoryModel(name=name, sort_order=max_order + 1, is_active=True)
+    cat = QuizCategoryModel(name=name, sort_order=max_order + 1, is_active=True, created_by=message.from_user.id)
     session.add(cat)
     await session.commit()
     
@@ -127,7 +127,7 @@ async def edit_category_process(message: Message, state: FSMContext, session: As
         await send_toast(message, "⚠️ 分类名称已存在")
         return
         
-    stmt = update(QuizCategoryModel).where(QuizCategoryModel.id == cat_id).values(name=name)
+    stmt = update(QuizCategoryModel).where(QuizCategoryModel.id == cat_id).values(name=name, updated_by=message.from_user.id)
     await session.execute(stmt)
     await session.commit()
     
@@ -160,6 +160,7 @@ async def toggle_category(callback: CallbackQuery, session: AsyncSession, main_m
     
     if cat:
         cat.is_active = not cat.is_active
+        cat.updated_by = callback.from_user.id
         await session.commit()
         await callback.answer("✅ 状态已更新")
         
