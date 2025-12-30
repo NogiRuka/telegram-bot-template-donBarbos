@@ -25,7 +25,7 @@ async def list_questions(callback: CallbackQuery, session: AsyncSession, main_ms
         cat_name = q.category.name if q.category else '无分类'
         cat = escape_markdown_v2(cat_name)
         ques = escape_markdown_v2(q.question[:20])
-        msg += f"ID: {q.id} \| {cat}\nQ: {ques}\.\.\.\n\n"
+        msg += f"ID: {q.id} \\| {cat}\nQ: {ques}\\.\\.\\.\n\n"
         
     await main_msg.update_on_callback(callback, msg, get_quiz_admin_keyboard()) # 返回菜单
 
@@ -43,6 +43,6 @@ async def list_images(callback: CallbackQuery, session: AsyncSession, main_msg: 
         cat = escape_markdown_v2(cat_name)
         tags_str = ", ".join(img.tags) if img.tags else ""
         tags = escape_markdown_v2(tags_str)
-        msg += f"ID: {img.id} \| {cat}\nTags: {tags}\n\n"
+        msg += f"ID: {img.id} \\| {cat}\nTags: {tags}\n\n"
         
     await main_msg.update_on_callback(callback, msg, get_quiz_admin_keyboard())
