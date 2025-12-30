@@ -31,7 +31,7 @@ async def cmd_list_commands(message: types.Message, session: AsyncSession) -> No
     if message.from_user and await is_admin(session, message.from_user.id):
         admin_text = """
 👮 *管理员命令*
-• /gen\_gf \<ID\>\.\.\. \- 生成获取命令
+• /gen\_gf /ggf \<ID\>\.\.\. \- 生成获取命令
 • /group\_config, /gc \- 查看/修改群组配置 \(群组\)
 • /group\_config \<ID\> \- 查看群组配置 \(私聊\)
 

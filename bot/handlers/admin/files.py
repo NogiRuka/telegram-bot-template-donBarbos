@@ -425,7 +425,7 @@ async def close_file_item(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-@router.message(Command("gen_gf"), AdminFilter())
+@router.message(Command("gen_gf", "ggf"), AdminFilter())
 async def cmd_gen_gf(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """生成文件获取命令
     
@@ -437,17 +437,17 @@ async def cmd_gen_gf(message: Message, command: CommandObject, session: AsyncSes
     """
     args = command.args
     if not args:
-        await message.reply("⚠️ 请提供文件ID, 例如: `/gen_gf 1 2 3`", parse_mode="MarkdownV2")
+        await message.reply("⚠️ 请提供文件ID, 例如: `/ggf 1`", parse_mode="MarkdownV2")
         return
         
     try:
-        # Parse IDs, ignoring non-integers
+        # 解析ID，忽略非数字
         ids = [int(x) for x in args.split() if x.isdigit()]
         if not ids:
              await message.reply("⚠️ 未找到有效的数字ID", parse_mode="MarkdownV2")
              return
 
-        # Query
+        # 查询
         stmt = select(MediaFileModel).where(MediaFileModel.id.in_(ids))
         result = await session.execute(stmt)
         files = result.scalars().all()
@@ -456,8 +456,8 @@ async def cmd_gen_gf(message: Message, command: CommandObject, session: AsyncSes
             await message.reply("❌ 未找到指定ID的文件", parse_mode="MarkdownV2")
             return
             
-        # Extract names
-        # Prefer unique_name, fallback to file_unique_id
+        # 提取名称
+        # 优先使用 unique_name，没有则使用 file_unique_id
         names = []
         for f in files:
             if f.unique_name:
@@ -469,10 +469,10 @@ async def cmd_gen_gf(message: Message, command: CommandObject, session: AsyncSes
              await message.reply("❌ 找到文件但无有效唯一名", parse_mode="MarkdownV2")
              return
              
-        # Generate command
+        # 生成命令
         cmd_str = f"/gf {' '.join(names)}"
         
-        # Reply with code block
+        # 以代码块形式回复
         await message.reply(f"`{cmd_str}`", parse_mode="MarkdownV2")
         
     except Exception as e:
