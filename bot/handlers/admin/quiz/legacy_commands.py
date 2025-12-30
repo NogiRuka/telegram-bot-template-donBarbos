@@ -1,15 +1,12 @@
-from aiogram import Router, F
+from aiogram import F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import QuizQuestionModel, QuizImageModel
-from bot.filters.admin import AdminFilter
 from bot.states.admin import QuizAdminState
-
-router = Router(name="admin_quiz")
-router.message.filter(AdminFilter())
+from .router import router
 
 @router.message(Command("add_quiz"))
 async def cmd_add_quiz(message: Message, state: FSMContext):

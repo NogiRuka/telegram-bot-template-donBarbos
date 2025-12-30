@@ -1,4 +1,4 @@
-from aiogram import Router, F
+from aiogram import F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -6,20 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from bot.database.models import QuizQuestionModel, QuizImageModel
-from bot.filters.admin import AdminFilter
-from bot.handlers.admin.quiz_admin import router as quiz_admin_legacy_router
 from bot.keyboards.inline.quiz_admin import quiz_admin_menu_kb, quiz_settings_kb
 from bot.services.quiz_config_service import QuizConfigService
 from bot.services.quiz_service import QuizService
 from bot.states.admin import QuizAdminState
-
-# 创建新 Router
-router = Router(name="quiz_admin_v2")
-router.message.filter(AdminFilter())
-router.callback_query.filter(AdminFilter())
-
-# 包含旧的 Router (如果还需要命令支持，否则可以逐步迁移)
-router.include_router(quiz_admin_legacy_router)
+from .router import router
 
 @router.callback_query(F.data == "quiz_admin:menu")
 async def show_quiz_menu(callback: CallbackQuery, state: FSMContext):

@@ -12,8 +12,7 @@ from .notification import router as admin_notification_router
 from .registration import router as admin_registration_router
 from .stats import router as admin_stats_router
 from .store_admin import router as admin_store_router
-# from .quiz_admin import router as admin_quiz_router # Deprecated, replaced by quiz.menu
-from .quiz.menu import router as admin_quiz_menu_router
+from .quiz import router as admin_quiz_router
 
 
 def get_admin_router() -> Router:
@@ -42,5 +41,5 @@ def get_admin_router() -> Router:
     router.include_router(admin_currency_router)
     router.include_router(admin_main_image_router)
     router.include_router(admin_files_router)
-    router.include_router(admin_quiz_menu_router)
+    router.include_router(admin_quiz_router)
     return router
