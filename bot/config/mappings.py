@@ -18,6 +18,7 @@ from bot.keyboards.inline.constants import *
 DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     # 基础开关配置 (布尔值)
     KEY_BOT_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
+    # 用户功能开关
     KEY_USER_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
     KEY_USER_PROFILE: (True, ConfigType.BOOLEAN),
     KEY_USER_ACCOUNT: (True, ConfigType.BOOLEAN),
@@ -30,9 +31,10 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     KEY_USER_PASSWORD: (True, ConfigType.BOOLEAN),
     KEY_USER_STORE: (True, ConfigType.BOOLEAN),
     KEY_USER_CHECKIN: (True, ConfigType.BOOLEAN),
+    # 管理员功能开关
     KEY_ADMIN_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
-    KEY_ADMIN_GROUPS: (True, ConfigType.BOOLEAN),
-    KEY_ADMIN_STATS: (True, ConfigType.BOOLEAN),
+    KEY_ADMIN_GROUPS: (False, ConfigType.BOOLEAN),
+    KEY_ADMIN_STATS: (False, ConfigType.BOOLEAN),
     KEY_ADMIN_OPEN_REGISTRATION: (True, ConfigType.BOOLEAN),
     KEY_REGISTRATION_FREE_OPEN: (False, ConfigType.BOOLEAN),
     KEY_ADMIN_HITOKOTO: (True, ConfigType.BOOLEAN),
@@ -41,7 +43,7 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     KEY_ADMIN_STORE: (True, ConfigType.BOOLEAN),
     KEY_ADMIN_CURRENCY: (True, ConfigType.BOOLEAN),
     KEY_ADMIN_MAIN_IMAGE: (True, ConfigType.BOOLEAN),
-    KEY_ADMIN_MAIN_IMAGE_NSFW_ENABLED: (False, ConfigType.BOOLEAN),
+    KEY_ADMIN_MAIN_IMAGE_NSFW_ENABLED: (True, ConfigType.BOOLEAN),
     
     # 复杂类型配置
     KEY_ADMIN_HITOKOTO_CATEGORIES: (["d", "i"], ConfigType.LIST),

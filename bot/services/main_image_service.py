@@ -63,7 +63,7 @@ class MainImageService:
             
             # 更新 extra_data (保留原有数据)
             data = dict(ext.extra_data) if ext.extra_data else {}
-            data["last_display_at"] = now()
+            data["last_display_at"] = now().strftime("%Y-%m-%d %H:%M:%S")
             ext.extra_data = data
             
             await session.commit()
