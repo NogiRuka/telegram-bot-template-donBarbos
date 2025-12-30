@@ -5,14 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.admin import get_quiz_admin_keyboard
 from bot.services.quiz_config_service import QuizConfigService
+from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_admin_feature
 from bot.config.constants import KEY_ADMIN_QUIZ
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from .router import router
 
-@router.callback_query(F.data.in_({QUIZ_ADMIN_CALLBACK_DATA, "quiz_admin:menu"}))
+@router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA)
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def show_quiz_menu(callback: CallbackQuery, session: AsyncSession, state: FSMContext):
+async def show_quiz_menu(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService):
     """显示问答管理菜单"""
     await state.clear()
     
@@ -30,7 +31,4 @@ async def show_quiz_menu(callback: CallbackQuery, session: AsyncSession, state: 
         "请选择操作："
     )
     
-    await callback.message.edit_text(
-        text,
-        reply_markup=get_quiz_admin_keyboard()
-    )
+    await main_msg.update_on_callback(callback, text, get_quiz_admin_keyboard())

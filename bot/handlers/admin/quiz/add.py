@@ -7,10 +7,10 @@ from bot.database.models import QuizQuestionModel, QuizImageModel
 from bot.states.admin import QuizAdminState
 from bot.utils.permissions import require_admin_feature
 from bot.config.constants import KEY_ADMIN_QUIZ
-from bot.keyboards.inline.constants import QUIZ_ADMIN_ADD_QUICK_CALLBACK_DATA
+from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from .router import router
 
-@router.callback_query(F.data == QUIZ_ADMIN_ADD_QUICK_CALLBACK_DATA)
+@router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":add_quick")
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def start_quick_add(callback: CallbackQuery, state: FSMContext):
     """开始快捷添加"""

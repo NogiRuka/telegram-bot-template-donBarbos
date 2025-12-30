@@ -6,10 +6,10 @@ from bot.services.quiz_config_service import QuizConfigService
 from bot.services.quiz_service import QuizService
 from bot.utils.permissions import require_admin_feature
 from bot.config.constants import KEY_ADMIN_QUIZ
-from bot.keyboards.inline.constants import QUIZ_ADMIN_TEST_TRIGGER_CALLBACK_DATA
+from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from .router import router
 
-@router.callback_query(F.data == QUIZ_ADMIN_TEST_TRIGGER_CALLBACK_DATA)
+@router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":test_trigger")
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def test_trigger(callback: CallbackQuery, session: AsyncSession):
     """测试触发题目"""

@@ -3,20 +3,18 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.keyboards.inline.admin import get_quiz_settings_keyboard
+from bot.keyboards.inline.admin import get_quiz_trigger_keyboard
 from bot.services.quiz_config_service import QuizConfigService
+from bot.services.main_message import MainMessageService
 from bot.states.admin import QuizAdminState
 from bot.utils.permissions import require_admin_feature
 from bot.config.constants import KEY_ADMIN_QUIZ
-from bot.keyboards.inline.constants import (
-    QUIZ_ADMIN_SETTINGS_CALLBACK_DATA,
-    QUIZ_ADMIN_SET_PREFIX
-)
+from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from .router import router
 
-@router.callback_query(F.data == QUIZ_ADMIN_SETTINGS_CALLBACK_DATA)
+@router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":trigger")
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def show_settings(callback: CallbackQuery, session: AsyncSession):
+async def show_trigger_settings(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """显示触发设置"""
     prob = await QuizConfigService.get_trigger_probability(session)
     cooldown = await QuizConfigService.get_cooldown_minutes(session)
@@ -30,9 +28,9 @@ async def show_settings(callback: CallbackQuery, session: AsyncSession):
         f"🔢 每日上限: {daily} 次\n"
         f"⏱️ 答题限时: {timeout} 秒"
     )
-    await callback.message.edit_text(text, reply_markup=get_quiz_settings_keyboard())
+    await main_msg.update_on_callback(callback, text, get_quiz_trigger_keyboard())
 
-@router.callback_query(F.data.startswith(QUIZ_ADMIN_SET_PREFIX))
+@router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":set"))
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def ask_setting_value(callback: CallbackQuery, state: FSMContext):
     """请求输入设置值"""
