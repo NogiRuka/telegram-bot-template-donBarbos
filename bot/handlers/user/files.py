@@ -74,22 +74,3 @@ async def get_file_command(message: Message, command: CommandObject, session: As
     args = command.args
     search_term = args.strip() if args else ""
     await search_and_send_file(message, session, search_term)
-
-
-@router.message(F.text.regexp(r"^@\w+\s+/(get_file|gf)"))
-async def get_file_mention_command(message: Message, session: AsyncSession) -> None:
-    """获取文件命令 (提及在前格式)
-    
-    功能说明:
-    - 处理 @bot /gf <args> 这种非标准格式
-    """
-    text = message.text.strip()
-    # 使用正则拆分: 匹配 /get_file 或 /gf，保留后面的部分
-    parts = re.split(r"/(?:get_file|gf)", text, maxsplit=1)
-    
-    if len(parts) < 2:
-        search_term = ""
-    else:
-        search_term = parts[1].strip()
-        
-    await search_and_send_file(message, session, search_term)
