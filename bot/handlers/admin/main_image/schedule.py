@@ -1,30 +1,30 @@
+from datetime import datetime as dt
+from datetime import timedelta as td
 from math import ceil
-from datetime import datetime as dt, timedelta as td
-import re
 
-from aiogram import F, Bot
-from aiogram.types import CallbackQuery, Message
+from aiogram import Bot, F
 from aiogram.fsm.context import FSMContext
-from sqlalchemy import select, func
+from aiogram.types import CallbackQuery, Message
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .router import router
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
-from bot.database.models import MainImageScheduleModel, MainImageModel, UserExtendModel
+from bot.database.models import MainImageModel, MainImageScheduleModel, UserExtendModel
+from bot.handlers.start import build_home_view
 from bot.keyboards.inline.admin import (
-    get_main_image_schedule_menu_keyboard,
-    get_main_image_schedule_list_pagination_keyboard,
-    get_main_image_schedule_item_keyboard,
     get_main_image_schedule_cancel_keyboard,
+    get_main_image_schedule_item_keyboard,
+    get_main_image_schedule_list_pagination_keyboard,
+    get_main_image_schedule_menu_keyboard,
 )
 from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminMainImageState
-from bot.utils.permissions import require_admin_feature
-from bot.utils.message import send_toast, safe_delete_message
-from bot.utils.text import escape_markdown_v2
 from bot.utils.datetime import now
-from bot.handlers.start import build_home_view
-from .router import router
+from bot.utils.message import safe_delete_message, send_toast
+from bot.utils.permissions import require_admin_feature
+from bot.utils.text import escape_markdown_v2, safe_message_text
 
 
 async def _clear_schedule_list(state: FSMContext, bot: Bot, chat_id: int) -> None:
@@ -36,7 +36,7 @@ async def _clear_schedule_list(state: FSMContext, bot: Bot, chat_id: int) -> Non
 
     for msg_id in msg_ids:
         await safe_delete_message(bot, chat_id, msg_id)
-    
+
     await state.update_data(main_image_schedule_list_ids=[])
 
 
@@ -56,31 +56,31 @@ def _parse_schedule_input(text: str) -> tuple[list[int], dt, dt, str | None] | N
         schedule_text = parts_with_label[0]
         label = parts_with_label[1] if len(parts_with_label) > 1 else None
 
-        parts = schedule_text.split('.', 1)
+        parts = schedule_text.split(".", 1)
         if len(parts) != 2:
             return None
-        
+
         # 解析 ID 部分 (支持单个或连字符分隔)
         id_part = parts[0]
         image_ids = []
         try:
-            for x in id_part.split('-'):
+            for x in id_part.split("-"):
                 if x.strip():
                     image_ids.append(int(x.strip()))
         except ValueError:
             return None
-            
+
         if not image_ids:
             return None
 
         date_part = parts[1]
-        
+
         start_dt = None
         end_dt = None
-        
+
         # 模式1: 包含 - (1.20251201-05)
-        if '-' in date_part:
-            start_str, end_suffix = date_part.split('-')
+        if "-" in date_part:
+            start_str, end_suffix = date_part.split("-")
             if len(start_str) != 8:
                 return None
             start_dt = dt.strptime(start_str, "%Y%m%d")
@@ -90,10 +90,10 @@ def _parse_schedule_input(text: str) -> tuple[list[int], dt, dt, str | None] | N
             # 结束时间应该是那一天的结束，或者下一天的0点。通常 1-5号 包含5号，所以是 6号0点
             target_end_date = start_dt.replace(day=end_day) + td(days=1)
             end_dt = target_end_date
-            
+
         # 模式2: 包含 . (1.20251201.20251205 或 1.202512010021.202512012359)
-        elif '.' in date_part:
-            start_str, end_str = date_part.split('.')
+        elif "." in date_part:
+            start_str, end_str = date_part.split(".")
             # 判断精度
             if len(start_str) == 12: # YYYYMMDDHHMM
                 start_dt = dt.strptime(start_str, "%Y%m%d%H%M")
@@ -101,7 +101,7 @@ def _parse_schedule_input(text: str) -> tuple[list[int], dt, dt, str | None] | N
                 start_dt = dt.strptime(start_str, "%Y%m%d")
             else:
                 return None
-                
+
             if len(end_str) == 12:
                 end_dt = dt.strptime(end_str, "%Y%m%d%H%M")
             elif len(end_str) == 8:
@@ -109,19 +109,18 @@ def _parse_schedule_input(text: str) -> tuple[list[int], dt, dt, str | None] | N
                 end_dt = dt.strptime(end_str, "%Y%m%d") + td(days=1)
             else:
                 return None
-                
+
         # 模式3: 单个时间/日期 (1.20251201 或 1.202512010021)
+        elif len(date_part) == 12:
+            start_dt = dt.strptime(date_part, "%Y%m%d%H%M")
+            # 默认为当天结束 (下一天0点)
+            end_dt = (start_dt + td(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        elif len(date_part) == 8:
+            start_dt = dt.strptime(date_part, "%Y%m%d")
+            end_dt = start_dt + td(days=1)
         else:
-            if len(date_part) == 12:
-                start_dt = dt.strptime(date_part, "%Y%m%d%H%M")
-                # 默认为当天结束 (下一天0点)
-                end_dt = (start_dt + td(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-            elif len(date_part) == 8:
-                start_dt = dt.strptime(date_part, "%Y%m%d")
-                end_dt = start_dt + td(days=1)
-            else:
-                return None
-                
+            return None
+
         return image_ids, start_dt, end_dt, label
     except Exception:
         return None
@@ -134,7 +133,7 @@ async def schedule_menu(callback: CallbackQuery, state: FSMContext, main_msg: Ma
     # 清理可能存在的列表
     if callback.message:
         await _clear_schedule_list(state, callback.bot, callback.message.chat.id)
-        
+
     text = "🗓️ *节日投放管理*\n\n请选择操作："
     await main_msg.update_on_callback(callback, text, get_main_image_schedule_menu_keyboard())
     await callback.answer()
@@ -142,18 +141,18 @@ async def schedule_menu(callback: CallbackQuery, state: FSMContext, main_msg: Ma
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule:create")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def start_schedule_creation(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
+async def start_schedule_creation(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
     """开始创建投放"""
     now_dt = now()
-    day_str = now_dt.strftime('%Y%m%d')
-    next_day_str = (now_dt + td(days=1)).strftime('%Y%m%d')
-    range_end_str = (now_dt + td(days=4)).strftime('%Y%m%d')
+    day_str = now_dt.strftime("%Y%m%d")
+    (now_dt + td(days=1)).strftime("%Y%m%d")
+    range_end_str = (now_dt + td(days=4)).strftime("%Y%m%d")
     # 对于简写范围，如果跨月可能显示不直观，这里简单处理，如果+4天还在同一个月，就显示 DD，否则显示下个月的 DD
     # 但逻辑上 1.20251201-05 是同一个月。
     # 为了演示方便，我们假设用户会在当月操作。如果今天是月底，例子可能看起来像 1.20251230-03 (这是无效的逻辑吗？_parse_schedule_input 里 replace(day=3) 会变成当月3号，即过去时间)
     # 所以为了避免混淆，简写范围例子最好固定或者确保有效。
     # 既然用户要求 "根据now来"，我们尽量动态生成。如果 now_dt.day > 25，我们就在例子中用下个月1号开始。
-    
+
     example_base_dt = now_dt
     if example_base_dt.day > 25:
         # 下个月1号
@@ -161,14 +160,14 @@ async def start_schedule_creation(callback: CallbackQuery, state: FSMContext, ma
             example_base_dt = example_base_dt.replace(year=example_base_dt.year + 1, month=1, day=1)
         else:
             example_base_dt = example_base_dt.replace(month=example_base_dt.month + 1, day=1)
-    
-    example_day_str = example_base_dt.strftime('%Y%m%d')
-    example_suffix = (example_base_dt + td(days=4)).strftime('%d')
-    
+
+    example_day_str = example_base_dt.strftime("%Y%m%d")
+    example_suffix = (example_base_dt + td(days=4)).strftime("%d")
+
     # 当前时间精确到分钟，结束时间为十分钟后
-    current_time_str = now_dt.strftime('%Y%m%d%H%M')
-    ten_minutes_later_str = (now_dt + td(minutes=10)).strftime('%Y%m%d%H%M')
-    
+    current_time_str = now_dt.strftime("%Y%m%d%H%M")
+    ten_minutes_later_str = (now_dt + td(minutes=10)).strftime("%Y%m%d%H%M")
+
     text = (
         "➕ *创建节日投放*\n\n"
         "请按以下格式输入（支持多种格式）：\n"
@@ -188,9 +187,10 @@ async def start_schedule_creation(callback: CallbackQuery, state: FSMContext, ma
             if ext and isinstance(getattr(ext, "extra_data", None), dict):
                 prev_input = ext.extra_data.get("last_main_image_schedule_input")
                 if prev_input:
-                    text += f"\n\n🕘 上次输入：`{escape_markdown_v2(prev_input)}`"
-    except Exception:
-        pass
+                    text += f"\n\n🕘 上次输入：`{escape_markdown_v2(safe_message_text(prev_input, 200))}`"
+    except Exception as e:
+        err = escape_markdown_v2(safe_message_text(str(e), 200))
+        text += f"\n\n⚠️ 未能记录上次输入：`{err}`"
     await main_msg.update_on_callback(callback, text, get_main_image_schedule_cancel_keyboard())
     await state.set_state(AdminMainImageState.waiting_for_schedule_input)
     await callback.answer()
@@ -199,31 +199,28 @@ async def start_schedule_creation(callback: CallbackQuery, state: FSMContext, ma
 @router.message(AdminMainImageState.waiting_for_schedule_input)
 async def process_schedule_input(message: Message, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
     """处理投放输入"""
-    try:
-        await main_msg.delete_input(message)
-    except Exception:
-        pass
-        
+    await main_msg.delete_input(message)
+
     result = _parse_schedule_input(message.text)
     if not result:
         await message.answer("❌ 格式错误，请检查输入格式。")
         return
-        
+
     image_ids, start_time, end_time, label = result
-    
+
     # 验证图片是否存在，且不是 document 类型
     valid_ids = []
     invalid_ids = []
-    
+
     for image_id in image_ids:
         image = await session.get(MainImageModel, image_id)
         if image and image.source_type != "document":
             valid_ids.append(image_id)
         else:
             invalid_ids.append(image_id)
-            
+
     if not valid_ids:
-        await message.answer(f"❌ 所有图片 ID 均不存在。")
+        await message.answer("❌ 所有图片 ID 均不存在。")
         return
 
     # 创建投放记录
@@ -238,9 +235,9 @@ async def process_schedule_input(message: Message, session: AsyncSession, state:
             label=label
         )
         session.add(model)
-        
+
     await session.commit()
-    
+
     try:
         uid = message.from_user.id if message.from_user else None
         if uid is not None:
@@ -251,11 +248,12 @@ async def process_schedule_input(message: Message, session: AsyncSession, state:
                 data["last_main_image_schedule_input"] = message.text or ""
                 ext.extra_data = data
                 await session.commit()
-    except Exception:
-        pass
-    
+    except Exception as e:
+        err = escape_markdown_v2(safe_message_text(str(e), 200))
+        await message.answer(f"⚠️ 未能记录上次输入：`{err}`")
+
     await state.clear()
-    
+
     valid_ids_str = ", ".join(map(str, valid_ids))
     label_info = f"\n🏷️ 标签: `{escape_markdown_v2(label)}`" if label else ""
     info = (
@@ -265,11 +263,11 @@ async def process_schedule_input(message: Message, session: AsyncSession, state:
         f"📅 结束: `{end_time.strftime('%Y-%m-%d %H:%M')}`"
         f"{label_info}"
     )
-    
+
     if invalid_ids:
         invalid_ids_str = ", ".join(map(str, invalid_ids))
         info += f"\n⚠️ 未找到ID: `{invalid_ids_str}`"
-    
+
     await main_msg.render(message.from_user.id, info, get_main_image_schedule_menu_keyboard())
 
 
@@ -290,7 +288,7 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
     # 清理旧消息
     if callback.message:
         await _clear_schedule_list(state, callback.bot, callback.message.chat.id)
-        
+
     # 查询总数（排除 document 类型图片）
     count_stmt = (
         select(func.count())
@@ -303,10 +301,10 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
     )
     total_count = (await session.execute(count_stmt)).scalar_one()
     total_pages = ceil(total_count / limit) if total_count > 0 else 1
-    
-    if page > total_pages: page = total_pages
-    if page < 1: page = 1
-    
+
+    page = min(page, total_pages)
+    page = max(page, 1)
+
     # 查询数据
     stmt = (
         select(MainImageScheduleModel, MainImageModel)
@@ -320,22 +318,22 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
         .limit(limit)
     )
     rows = (await session.execute(stmt)).all()
-    
+
     # 更新主控消息
     text = (
         f"*🗓️ 节日投放列表*\n"
         f"共 {total_count} 条，当前第 {page}/{total_pages} 页"
     )
     await main_msg.update_on_callback(
-        callback, 
-        text, 
+        callback,
+        text,
         get_main_image_schedule_list_pagination_keyboard(page, total_pages, limit)
     )
-    
+
     if not rows:
         await callback.answer("📭 当前暂无节日投放记录")
         return
-        
+
     new_msg_ids = []
     for item, image in rows:
         if image.source_type == "document":
@@ -350,31 +348,31 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
         else:
             status_emoji = "🟢"
             status_text = "投放中"
-        start_str = escape_markdown_v2(item.start_time.strftime('%Y-%m-%d %H:%M'))
-        end_str = escape_markdown_v2(item.end_time.strftime('%Y-%m-%d %H:%M'))
+        start_str = escape_markdown_v2(item.start_time.strftime("%Y-%m-%d %H:%M"))
+        end_str = escape_markdown_v2(item.end_time.strftime("%Y-%m-%d %H:%M"))
         label_suffix = f" · 🏷️ {escape_markdown_v2(item.label)}" if item.label else ""
-        
+
         caption = (
             f"{status_emoji} *节日投放 · {status_text}{label_suffix}*\n\n"
             f"🖼️ *图片ID*：`{item.image_id}`\n"
             f"⏰ *投放时间*：\n"
             f"　{start_str} \\~ {end_str}\n"
         )
-        
+
         try:
             kwargs = {
                 "caption": caption,
                 "reply_markup": get_main_image_schedule_item_keyboard(item.id),
                 "parse_mode": "MarkdownV2"
             }
-            
+
             msg = await callback.message.answer_photo(photo=image.file_id, **kwargs)
-                
+
             if msg:
                 new_msg_ids.append(msg.message_id)
         except Exception as e:
             await callback.message.answer(f"❌ 投放 ID `{item.id}` 加载失败: {e}")
-            
+
     await state.update_data(main_image_schedule_list_ids=new_msg_ids)
     await callback.answer()
 
@@ -386,16 +384,16 @@ async def schedule_item_action(callback: CallbackQuery, session: AsyncSession) -
     try:
         parts = callback.data.split(":")
         action = parts[4]
-        
+
         if action == "close":
             await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
             return
-            
+
         schedule_id = int(parts[5])
     except (IndexError, ValueError):
         await callback.answer("❌ 参数错误", show_alert=True)
         return
-        
+
     if action == "delete":
         item = await session.get(MainImageScheduleModel, schedule_id)
         if item:
@@ -414,7 +412,7 @@ async def schedule_item_action(callback: CallbackQuery, session: AsyncSession) -
             await session.commit()
             await send_toast(callback, "✅ 投放已删除")
             await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
-        else: 
+        else:
             await callback.answer("❌ 记录不存在", show_alert=True)
 
 
@@ -424,9 +422,9 @@ async def back_to_home_from_schedule_list(callback: CallbackQuery, session: Asyn
     """返回主面板"""
     if callback.message:
         await _clear_schedule_list(state, callback.bot, callback.message.chat.id)
-        
+
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)
-    
+
     await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer()
