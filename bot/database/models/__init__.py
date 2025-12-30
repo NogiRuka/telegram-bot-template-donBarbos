@@ -14,7 +14,7 @@ from .main_image import MainImageModel, MainImageScheduleModel
 from .media_file import MediaFileModel
 from .message import MessageModel, MessageType
 from .notification import NotificationModel
-from .quiz import QuizActiveSessionModel, QuizImageModel, QuizLogModel, QuizQuestionModel
+from .quiz import QuizActiveSessionModel, QuizCategoryModel, QuizImageModel, QuizLogModel, QuizQuestionModel
 from .statistics import StatisticsModel, StatisticType
 from .user import UserModel
 from .user_extend import UserExtendModel, UserRole
@@ -45,6 +45,7 @@ __all__ = [
     "MessageType",
     "NotificationModel",
     "QuizActiveSessionModel",
+    "QuizCategoryModel",
     "QuizImageModel",
     "QuizLogModel",
     "QuizQuestionModel",
