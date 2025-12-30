@@ -16,6 +16,7 @@ from bot.config import (
     USER_FEATURES_MAPPING,
 )
 from bot.core.config import settings
+from bot.database.models import QuizCategoryModel
 from bot.database.models.config import ConfigModel, ConfigType
 from bot.utils.datetime import now as get_now
 from bot.utils.datetime import parse_formatted_datetime
@@ -266,6 +267,25 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
         else:
             # 环境变量也没有，初始化为空 JSON 字典
             await set_config(session, KEY_USER_LINES_INFO, None, ConfigType.JSON, default_value={})
+
+    # 初始化默认问答分类 (如果表为空)
+    stmt = select(QuizCategoryModel).limit(1)
+    result = await session.execute(stmt)
+    if not result.scalar_one_or_none():
+        categories = [
+            (1, "国产剧"), (2, "台剧"), (3, "泰剧"), (4, "韩剧"), (5, "日剧"),
+            (6, "欧美剧"), (7, "其他剧"), (8, "动漫"), (9, "漫画"), (10, "钙片"),
+            (11, "小说"), (12, "广播剧"), (13, "游戏"), (14, "音乐"), (15, "其他")
+        ]
+        for cat_id, name in categories:
+            cat = QuizCategoryModel(
+                id=cat_id,
+                name=name,
+                sort_order=cat_id,
+                is_active=True
+            )
+            session.add(cat)
+        await session.commit()
 
 
 def _serialize_value(ctype: ConfigType, value: Any) -> str | None:
