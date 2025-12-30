@@ -61,22 +61,14 @@ class MainMessageService:
         """发送新的图片主消息并记录"""
         try:
             if image_file_id:
-                if (image_source_type or "photo") == "document":
-                    msg = await self.bot.send_document(
-                        chat_id=user_id,
-                        document=image_file_id,
-                        caption=caption,
-                        reply_markup=kb,
-                        parse_mode="MarkdownV2",
-                    )
-                else:
-                    msg = await self.bot.send_photo(
-                        chat_id=user_id,
-                        photo=image_file_id,
-                        caption=caption,
-                        reply_markup=kb,
-                        parse_mode="MarkdownV2",
-                    )
+                # 始终使用 send_photo 保持主消息样式一致
+                msg = await self.bot.send_photo(
+                    chat_id=user_id,
+                    photo=image_file_id,
+                    caption=caption,
+                    reply_markup=kb,
+                    parse_mode="MarkdownV2",
+                )
             else:
                 file = FSInputFile(image_path or "")
                 msg = await self.bot.send_photo(

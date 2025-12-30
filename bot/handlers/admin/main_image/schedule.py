@@ -298,7 +298,7 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
     )
     
     if not rows:
-        await send_toast(callback, "暂无数据")
+        await callback.answer("📭 当前暂无节日投放记录")
         return
         
     new_msg_ids = []
@@ -331,11 +331,7 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
                 "parse_mode": "MarkdownV2"
             }
             
-            msg = None
-            if image.source_type == "document":
-                msg = await callback.message.answer_document(document=image.file_id, **kwargs)
-            else:
-                msg = await callback.message.answer_photo(photo=image.file_id, **kwargs)
+            msg = await callback.message.answer_photo(photo=image.file_id, **kwargs)
                 
             if msg:
                 new_msg_ids.append(msg.message_id)
