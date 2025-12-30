@@ -18,6 +18,7 @@ class QuizQuestionModel(Base, BasicAuditMixin):
     difficulty: Mapped[int] = mapped_column(Integer, default=1, comment="难度等级")
     reward_base: Mapped[int] = mapped_column(Integer, default=5, comment="基础奖励(答错/低保)")
     reward_bonus: Mapped[int] = mapped_column(Integer, default=15, comment="额外奖励(答对)")
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True, comment="分类")
     tags: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, comment="标签")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否启用")
     extra: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="扩展数据")
@@ -39,6 +40,7 @@ class QuizImageModel(Base, BasicAuditMixin):
     id: Mapped[auto_int_pk]
     file_id: Mapped[str] = mapped_column(String(255), nullable=False, comment="Telegram File ID")
     file_unique_id: Mapped[str] = mapped_column(String(255), nullable=False, comment="Telegram File Unique ID")
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True, comment="分类")
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, comment="关联标签")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="图片描述/备注")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否启用")

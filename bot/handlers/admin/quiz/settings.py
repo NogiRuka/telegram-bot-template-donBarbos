@@ -3,7 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.keyboards.inline.quiz_admin import quiz_settings_kb
+from bot.keyboards.inline.admin import get_quiz_settings_keyboard
 from bot.services.quiz_config_service import QuizConfigService
 from bot.states.admin import QuizAdminState
 from bot.utils.permissions import require_admin_feature
@@ -30,7 +30,7 @@ async def show_settings(callback: CallbackQuery, session: AsyncSession):
         f"🔢 每日上限: {daily} 次\n"
         f"⏱️ 答题限时: {timeout} 秒"
     )
-    await callback.message.edit_text(text, reply_markup=quiz_settings_kb())
+    await callback.message.edit_text(text, reply_markup=get_quiz_settings_keyboard())
 
 @router.callback_query(F.data.startswith(QUIZ_ADMIN_SET_PREFIX))
 @require_admin_feature(KEY_ADMIN_QUIZ)

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from bot.database.models import QuizQuestionModel, QuizImageModel
-from bot.keyboards.inline.quiz_admin import quiz_admin_menu_kb
+from bot.keyboards.inline.admin import get_quiz_admin_keyboard
 from bot.utils.permissions import require_admin_feature
 from bot.config.constants import KEY_ADMIN_QUIZ
 from bot.keyboards.inline.constants import (
@@ -25,7 +25,7 @@ async def list_questions(callback: CallbackQuery, session: AsyncSession):
     for q in questions:
         msg += f"ID: {q.id} | {q.category or '无分类'}\nQ: {q.question[:20]}...\n\n"
         
-    await callback.message.edit_text(msg, reply_markup=quiz_admin_menu_kb()) # 返回菜单
+    await callback.message.edit_text(msg, reply_markup=get_quiz_admin_keyboard()) # 返回菜单
 
 @router.callback_query(F.data == QUIZ_ADMIN_LIST_IMAGES_CALLBACK_DATA)
 @require_admin_feature(KEY_ADMIN_QUIZ)
@@ -39,4 +39,4 @@ async def list_images(callback: CallbackQuery, session: AsyncSession):
     for img in images:
         msg += f"ID: {img.id} | {img.category or '无分类'}\nTags: {img.tags}\n\n"
         
-    await callback.message.edit_text(msg, reply_markup=quiz_admin_menu_kb())
+    await callback.message.edit_text(msg, reply_markup=get_quiz_admin_keyboard())
