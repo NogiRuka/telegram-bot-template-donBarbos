@@ -241,6 +241,10 @@ FILE_SAVE_CALLBACK_DATA = "admin:files:save"
 FILE_LIST_LABEL = "📜 查看文件"
 FILE_LIST_CALLBACK_DATA = "admin:files:list"
 
+# ===== 问答管理 =====
+QUIZ_ADMIN_LABEL = "🎲 问答管理"
+QUIZ_ADMIN_CALLBACK_DATA = "admin:quiz"
+
 
 def format_with_status(label: str, enabled: bool) -> str:
     """格式化带状态的文案

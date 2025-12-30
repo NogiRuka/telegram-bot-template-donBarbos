@@ -41,6 +41,7 @@ KEY_ADMIN_CURRENCY = "admin.currency"
 KEY_ADMIN_MAIN_IMAGE = "admin.main_image"
 KEY_ADMIN_MAIN_IMAGE_NSFW_ENABLED = "admin.main_image.nsfw_enabled"
 KEY_ADMIN_FILES = "admin.files"
+KEY_ADMIN_QUIZ = "admin.quiz"
 
 # 注册相关配置
 KEY_REGISTRATION_FREE_OPEN = "registration.free_open"

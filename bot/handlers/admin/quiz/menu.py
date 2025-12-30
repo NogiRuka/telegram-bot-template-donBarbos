@@ -12,7 +12,7 @@ from bot.services.quiz_service import QuizService
 from bot.states.admin import QuizAdminState
 from .router import router
 
-@router.callback_query(F.data == "quiz_admin:menu")
+@router.callback_query(F.data.in_({"quiz_admin:menu", "admin:quiz"}))
 async def show_quiz_menu(callback: CallbackQuery, state: FSMContext):
     """显示问答管理菜单"""
     await state.clear()

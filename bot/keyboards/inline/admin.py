@@ -78,9 +78,6 @@ def get_admin_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
         if master_enabled and features.get(config_key, False):
             buttons.append([InlineKeyboardButton(text=label, callback_data=f"admin:{short_code}")])
 
-    # 临时硬编码添加问答管理入口
-    buttons.append([InlineKeyboardButton(text="🎲 问答管理", callback_data="quiz_admin:menu")])
-
     buttons.append([BACK_TO_HOME_BUTTON])
     keyboard = InlineKeyboardBuilder(markup=buttons)
 
