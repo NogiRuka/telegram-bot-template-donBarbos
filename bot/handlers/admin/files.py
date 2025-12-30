@@ -14,6 +14,7 @@ from bot.database.models import MediaFileModel
 from bot.keyboards.inline.admin import (
     get_files_admin_keyboard,
     get_files_cancel_keyboard,
+    get_files_item_keyboard,
     get_files_list_pagination_keyboard,
 )
 from bot.keyboards.inline.constants import FILE_ADMIN_CALLBACK_DATA, FILE_ADMIN_LABEL
@@ -265,7 +266,7 @@ async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: M
     try:
         parts = callback.data.split(":")
         page = int(parts[3]) if len(parts) >= 4 else 1
-        limit = int(parts[4]) if len(parts) >= 5 else 10
+        limit = int(parts[4]) if len(parts) >= 5 else 5
     except ValueError:
         await callback.answer("❌ 参数错误", show_alert=True)
         return
@@ -303,10 +304,11 @@ async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: M
         )
 
         try:
+            kb = get_files_item_keyboard(it.id)
             if it.media_type == "photo":
-                msg = await callback.message.answer_photo(photo=it.file_id, caption=caption, parse_mode="MarkdownV2")
+                msg = await callback.message.answer_photo(photo=it.file_id, caption=caption, parse_mode="MarkdownV2", reply_markup=kb)
             else:
-                msg = await callback.message.answer(caption, parse_mode="MarkdownV2")
+                msg = await callback.message.answer(caption, parse_mode="MarkdownV2", reply_markup=kb)
             if msg:
                 new_msg_ids.append(msg.message_id)
         except Exception as e:
@@ -338,4 +340,57 @@ async def back_to_home_from_files(callback: CallbackQuery, session: AsyncSession
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)
     await main_msg.update_on_callback(callback, caption, kb)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith(f"{FILE_ADMIN_CALLBACK_DATA}:item:delete:"))
+@require_admin_feature(KEY_ADMIN_FILES)
+async def delete_file_item(callback: CallbackQuery, session: AsyncSession) -> None:
+    """删除文件项
+
+    功能说明:
+    - 软删除指定文件记录
+    - 删除对应的消息
+
+    输入参数:
+    - callback: 回调对象
+    - session: 数据库会话
+
+    返回值:
+    - None
+    """
+    try:
+        file_id = int(callback.data.split(":")[-1])
+    except (ValueError, IndexError):
+        await callback.answer("❌ 参数错误", show_alert=True)
+        return
+
+    stmt = select(MediaFileModel).where(MediaFileModel.id == file_id)
+    file_item = (await session.execute(stmt)).scalar_one_or_none()
+
+    if file_item:
+        file_item.is_deleted = True
+        await session.commit()
+        if callback.message:
+            await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
+        await callback.answer("✅ 文件已删除")
+    else:
+        await callback.answer("❌ 文件不存在或已删除", show_alert=True)
+
+
+@router.callback_query(F.data == f"{FILE_ADMIN_CALLBACK_DATA}:item:close")
+async def close_file_item(callback: CallbackQuery) -> None:
+    """关闭文件项预览
+
+    功能说明:
+    - 删除当前预览消息
+
+    输入参数:
+    - callback: 回调对象
+
+    返回值:
+    - None
+    """
+    if callback.message:
+        await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
     await callback.answer()
