@@ -4,8 +4,6 @@
 包含权限角色、电话、简介、多IP、最后交互时间等扩展字段。
 """
 
-
-from datetime import date
 from datetime import datetime as dt
 from enum import Enum
 from typing import Any
@@ -70,7 +68,7 @@ class UserExtendModel(Base, BasicAuditMixin):
     currency_total: Mapped[int] = mapped_column(BigInteger, default=0, server_default=text("0"), comment="历史累计获取总量")
     streak_days: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"), comment="当前连续签到天数")
     max_streak_days: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"), comment="历史最高连续签到天数")
-    last_checkin_date: Mapped[date | None] = mapped_column(Date, nullable=True, comment="上次签到日期")
+    last_checkin_date: Mapped[dt | None] = mapped_column(Date, nullable=True, comment="上次签到日期")
 
     # 主图偏好
     display_mode: Mapped[str] = mapped_column(

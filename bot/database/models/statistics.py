@@ -10,7 +10,6 @@
 """
 
 import json
-from datetime import date
 from datetime import datetime as dt
 from enum import Enum
 from typing import Any
