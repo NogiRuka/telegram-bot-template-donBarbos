@@ -13,7 +13,7 @@ import json
 import logging
 
 from aiogram.enums import ChatType
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandObject
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,29 +46,55 @@ class GroupConfigStates(StatesGroup):
     waiting_for_limits = State()
 
 
-@router.message(Command("group_config"), F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP]), AdminFilter())
-async def cmd_group_config(message: types.Message, session: AsyncSession) -> None:
+@router.message(Command("group_config"), F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.PRIVATE]), AdminFilter())
+async def cmd_group_config(message: types.Message, command: CommandObject, session: AsyncSession) -> None:
     """
     群组配置命令
 
     显示当前群组的消息保存配置。
+    支持私聊使用：/group_config <group_id>
 
     Args:
         message: Telegram消息对象
+        command: 命令对象
         session: 数据库会话
     """
     try:
-        group_type = GroupType.SUPERGROUP if message.chat.type == "supergroup" else GroupType.GROUP
+        target_chat_id = message.chat.id
+        target_chat_title = message.chat.title
+        target_chat_username = message.chat.username
+        target_group_type = GroupType.SUPERGROUP if message.chat.type == "supergroup" else GroupType.GROUP
+
+        if message.chat.type == ChatType.PRIVATE:
+            if not command.args:
+                await message.reply("⚠️ 私聊请指定群组ID: `/group_config <group_id>`", parse_mode="Markdown")
+                return
+
+            try:
+                target_chat_id = int(command.args.strip())
+            except ValueError:
+                await message.reply("⚠️ 无效的群组ID", parse_mode="Markdown")
+                return
+
+            try:
+                chat_info = await message.bot.get_chat(target_chat_id)
+                target_chat_title = chat_info.title
+                target_chat_username = chat_info.username
+                target_group_type = GroupType.SUPERGROUP if chat_info.type == "supergroup" else GroupType.GROUP
+            except Exception as e:
+                await message.reply(f"❌ 无法获取群组信息 (Bot可能不在群组中): {e}", parse_mode="Markdown")
+                return
+
         config = await get_or_create_group_config(
             session=session,
-            chat_id=message.chat.id,
-            chat_title=message.chat.title,
-            chat_username=message.chat.username,
-            group_type=group_type,
+            chat_id=target_chat_id,
+            chat_title=target_chat_title,
+            chat_username=target_chat_username,
+            group_type=target_group_type,
             configured_by_user_id=message.from_user.id,
         )
 
-        total_messages = await get_group_message_stats(session, message.chat.id)
+        total_messages = await get_group_message_stats(session, target_chat_id)
 
         # 构建配置信息文本
         config_text = f"""
