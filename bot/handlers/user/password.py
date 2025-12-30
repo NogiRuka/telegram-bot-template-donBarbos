@@ -9,7 +9,6 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.user import get_account_center_keyboard, get_password_input_keyboard
-from bot.core.constants import CURRENCY_SYMBOL
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
@@ -56,15 +55,15 @@ async def user_password(callback: CallbackQuery, session: AsyncSession, state: F
     try:
         # 获取用户扩展信息 (require_emby_account 已保证存在)
         _user, user_extend = await get_user_and_extend(session, uid)
-        
+
         # 检查是否有未使用的购买资格
         has_ticket = await CurrencyService.has_unused_ticket(session, uid, "emby_password")
         if not has_ticket:
             await callback.answer(
-                f"🔴 您尚未购买【修改密码】资格，请前往精粹商店购买。", 
+                "🔴 您尚未购买【修改密码】资格，请前往精粹商店购买。",
                 show_alert=True
             )
-            return
+            return None
 
         logger.info("用户开始修改密码: user_id={} emby_user_id={}", uid, user_extend.emby_user_id)
 
@@ -197,7 +196,7 @@ async def handle_new_password(message: Message, session: AsyncSession, state: FS
                 "🔴 Emby 服务配置异常，请联系管理员",
                 get_account_center_keyboard(uid)
             )
-        
+
         # 调用 Emby API
         await client.update_user_password(emby_user_id, new_password)
 

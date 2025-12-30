@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config.constants import KEY_ADMIN_HITOKOTO_CATEGORIES
 from bot.database.models.config import ConfigType
-from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, BACK_TO_ADMIN_PANEL_BUTTON
+from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import HITOKOTO_LABEL
 from bot.services.config_service import get_config, set_config
 from bot.services.main_message import MainMessageService
@@ -47,7 +47,7 @@ def _build_hitokoto_ui(categories: list[str]) -> tuple[str, InlineKeyboardMarkup
     - tuple[str, InlineKeyboardMarkup]: (文本, 键盘)
     """
     type_names, all_types = _get_hitokoto_types()
-    
+
     # 构建键盘
     rows: list[list[InlineKeyboardButton]] = []
     current_row: list[InlineKeyboardButton] = []
@@ -76,7 +76,7 @@ def _build_hitokoto_ui(categories: list[str]) -> tuple[str, InlineKeyboardMarkup
         f"当前分类：{', '.join(current_names) if current_names else '未选择'}\n"
         "提示：可多次点击切换，选择会即时保存。"
     )
-    
+
     return caption, kb
 
 
@@ -114,7 +114,7 @@ async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession, 
             categories = [c for c in categories if c != ch]
         else:
             categories.append(ch)
-            
+
         operator_id = callback.from_user.id if getattr(callback, "from_user", None) else None
         await set_config(
             session,
@@ -123,10 +123,10 @@ async def admin_hitokoto_toggle(callback: CallbackQuery, session: AsyncSession, 
             ConfigType.LIST,
             operator_id=operator_id,
         )
-        
+
         caption, kb = _build_hitokoto_ui(categories)
         await main_msg.update_on_callback(callback, caption, kb)
         await callback.answer("已更新分类")
-        
+
     except (ValueError, TelegramBadRequest):
         await callback.answer("操作失败", show_alert=True)

@@ -1,10 +1,9 @@
 """
 用户信息历史快照模型
- 
+
 保存 users 表的快照, 用于追踪用户信息变更历史。
 """
- 
-from typing import TYPE_CHECKING
+
 from datetime import datetime as dt
 
 from sqlalchemy import BigInteger, Index, String

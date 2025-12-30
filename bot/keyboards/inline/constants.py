@@ -233,6 +233,14 @@ BACK_TO_HOME_CALLBACK_DATA = "back:home"
 GROUP_BACK_TO_HOME_LABEL = "↩️ 返回主面板"
 GROUP_BACK_TO_HOME_CALLBACK_DATA = "home:back"
 
+# ===== 文件管理 =====
+FILE_ADMIN_LABEL = "📁 文件管理"
+FILE_ADMIN_CALLBACK_DATA = "admin:files"
+FILE_SAVE_LABEL = "💾 保存文件"
+FILE_SAVE_CALLBACK_DATA = "admin:files:save"
+FILE_LIST_LABEL = "📜 查看文件"
+FILE_LIST_CALLBACK_DATA = "admin:files:list"
+
 
 def format_with_status(label: str, enabled: bool) -> str:
     """格式化带状态的文案

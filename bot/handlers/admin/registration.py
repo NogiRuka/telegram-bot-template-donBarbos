@@ -118,7 +118,7 @@ async def set_registration_preset(callback: CallbackQuery, session: AsyncSession
     # 使用工具函数获取当前时间并使用统一格式存储
     start_dt = now()
     formatted_start = start_dt.strftime("%Y-%m-%d %H:%M:%S")
-    
+
     payload = {"start_time": formatted_start, "duration_minutes": duration}
     await set_config(
         session,
@@ -199,7 +199,7 @@ async def input_registration_window(message: Message, session: AsyncSession, mai
     # 输入时间已经是配置时区的时间，直接使用统一格式存储
     start_dt = datetime(year, month, day, hour, minute)
     formatted_start = start_dt.strftime("%Y-%m-%d %H:%M:%S")
-    
+
     payload = {"start_time": formatted_start, "duration_minutes": duration}
     await set_config(
         session,
@@ -253,12 +253,12 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
         else:
             formatted_start = start_time
             logger.warning(f"❌ [_build_reg_kb] 无法解析时间: {start_time}")
-            
+
     # 转义 MarkdownV2 特殊字符
     formatted_start = escape_markdown_v2(formatted_start)
     end_str = escape_markdown_v2(end_str)
     tz_name = escape_markdown_v2(get_friendly_timezone_name(settings.TIMEZONE))
-    
+
     status_line = f"注册状态：{'🟢 开启' if free_open else '🔴 关闭'}\n"
     caption = (
         f"*{OPEN_REGISTRATION_LABEL}*\n\n"

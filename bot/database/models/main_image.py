@@ -1,6 +1,6 @@
 from __future__ import annotations
-from datetime import datetime as dt
 from typing import Any
+from datetime import datetime as dt
 
 from sqlalchemy import JSON, Boolean, DateTime, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -10,13 +10,13 @@ from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
 
 class MainImageModel(Base, BasicAuditMixin):
     """主图库模型
-    
+
     功能说明:
     - 存储用于主消息展示的图片条目（文件ID及元数据）
-    
+
     输入参数:
     - 无（ORM 模型）
-    
+
     返回值:
     - 无
     """
@@ -47,13 +47,13 @@ class MainImageModel(Base, BasicAuditMixin):
 
 class MainImageScheduleModel(Base, BasicAuditMixin):
     """主图投放计划模型
-    
+
     功能说明:
     - 定时在指定时间窗口内优先投放特定主图
-    
+
     输入参数:
     - 无（ORM 模型）
-    
+
     返回值:
     - 无
     """

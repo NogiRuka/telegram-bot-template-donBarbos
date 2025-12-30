@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.core.constants import DISPLAY_MODE_SFW, DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM
+from bot.core.constants import DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM, DISPLAY_MODE_SFW
 from bot.keyboards.inline.buttons import *
 
 
@@ -92,23 +92,23 @@ def get_main_image_settings_keyboard(current_mode: str, nsfw_unlocked: bool) -> 
     keyboard = InlineKeyboardBuilder()
 
     # SFW 按钮
-    sfw_text = f"✅ SFW (安全)" if current_mode == DISPLAY_MODE_SFW else "SFW (安全)"
+    sfw_text = "✅ SFW (安全)" if current_mode == DISPLAY_MODE_SFW else "SFW (安全)"
     keyboard.button(text=sfw_text, callback_data=f"{PROFILE_MAIN_IMAGE_CALLBACK_DATA}:set:{DISPLAY_MODE_SFW}")
 
     if nsfw_unlocked:
         # Random 按钮
-        random_text = f"✅ 随机 (混合)" if current_mode == DISPLAY_MODE_RANDOM else "随机 (混合)"
+        random_text = "✅ 随机 (混合)" if current_mode == DISPLAY_MODE_RANDOM else "随机 (混合)"
         keyboard.button(text=random_text, callback_data=f"{PROFILE_MAIN_IMAGE_CALLBACK_DATA}:set:{DISPLAY_MODE_RANDOM}")
-        
+
         # NSFW 按钮
-        nsfw_text = f"✅ NSFW (限制级)" if current_mode == DISPLAY_MODE_NSFW else "NSFW (限制级)"
+        nsfw_text = "✅ NSFW (限制级)" if current_mode == DISPLAY_MODE_NSFW else "NSFW (限制级)"
         keyboard.button(text=nsfw_text, callback_data=f"{PROFILE_MAIN_IMAGE_CALLBACK_DATA}:set:{DISPLAY_MODE_NSFW}")
 
     keyboard.adjust(1)
-    
+
     # 返回按钮
     keyboard.row(PROFILE_BUTTON, BACK_TO_HOME_BUTTON)
-    
+
     return keyboard.as_markup()
 
 
@@ -154,13 +154,13 @@ def get_password_input_keyboard() -> InlineKeyboardMarkup:
 
 def get_user_profile_keyboard() -> InlineKeyboardMarkup:
     """用户个人资料键盘
-    
+
     功能说明:
     - 个人资料页面底部键盘，提供主图设置和返回主页按钮
-    
+
     输入参数:
     - 无
-    
+
     返回值:
     - InlineKeyboardMarkup: 内联键盘
     """

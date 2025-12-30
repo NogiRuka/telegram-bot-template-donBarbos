@@ -1,7 +1,7 @@
 from __future__ import annotations
-from loguru import logger
 
 import bcrypt
+from loguru import logger
 
 
 def hash_password(password: str) -> str:

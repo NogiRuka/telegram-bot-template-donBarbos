@@ -58,9 +58,9 @@ async def sync_all_users_configuration(
                 res = await session.execute(stmt)
                 db_users = res.scalars().all()
                 all_users = [{"Id": u.emby_user_id, "Name": u.name, "UserDto": u.user_dto} for u in db_users]
-                
+
                 # 检查是否有未找到的用户
-                found_ids = set(u["Id"] for u in all_users)
+                found_ids = {u["Id"] for u in all_users}
                 for uid in specific_user_ids:
                     if uid not in found_ids:
                          all_users.append({"Id": uid, "Name": "Unknown", "UserDto": {}})
@@ -70,7 +70,7 @@ async def sync_all_users_configuration(
                 stmt = select(EmbyUserModel)
                 if exclude_user_ids:
                     stmt = stmt.where(EmbyUserModel.emby_user_id.notin_(exclude_user_ids))
-                
+
                 res = await session.execute(stmt)
                 db_users = res.scalars().all()
                 all_users = [{"Id": u.emby_user_id, "Name": u.name, "UserDto": u.user_dto} for u in db_users]
@@ -83,7 +83,7 @@ async def sync_all_users_configuration(
         for user in all_users:
             uid = user.get("Id")
             name = user.get("Name")
-            
+
             if not uid:
                 continue
 
@@ -108,7 +108,7 @@ async def sync_all_users_configuration(
                 policy_needs_update = False
                 if current_pref_access is not True:
                     policy_needs_update = True
-                
+
                 if policy_needs_update:
                     await client.update_user_policy(uid, user_policy)
                     logger.info(f"✅ 已更新用户 Policy: {name} ({uid})")
@@ -118,17 +118,15 @@ async def sync_all_users_configuration(
                 user_config = current_config.copy()
                 user_config["AudioLanguagePreference"] = "zh-CN,zh-TW"
                 user_config["SubtitleLanguagePreference"] = "zh-CN,zh-TW"
-                
+
                 # 检查 Configuration 是否需要更新
                 cur_audio = current_config.get("AudioLanguagePreference")
                 cur_sub = current_config.get("SubtitleLanguagePreference")
-                
+
                 config_needs_update = False
-                if cur_audio != "zh-CN,zh-TW":
+                if cur_audio != "zh-CN,zh-TW" or cur_sub != "zh-CN,zh-TW":
                     config_needs_update = True
-                elif cur_sub != "zh-CN,zh-TW":
-                    config_needs_update = True
-                
+
                 if config_needs_update:
                     await client.update_user_configuration(uid, user_config)
                     logger.info(f"✅ 已更新用户 Configuration: {name} ({uid})")

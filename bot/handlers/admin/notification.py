@@ -272,7 +272,7 @@ async def handle_item_status_toggle(
     """切换 Emby Item 状态 (Continuing <-> Ended)"""
     try:
         notif_id = int(callback.data.split(":")[2])
-        
+
         # 1. 获取 Notification
         notif = await session.get(NotificationModel, notif_id)
         if not notif:
@@ -283,11 +283,8 @@ async def handle_item_status_toggle(
         # 逻辑需与 handle_notify_preview 中的 join 条件一致
         # Episode 且有 series_id -> series_id
         # 否则 -> item_id
-        if notif.item_type == "Episode" and notif.series_id:
-            target_item_id = notif.series_id
-        else:
-            target_item_id = notif.item_id
-            
+        target_item_id = notif.series_id if notif.item_type == "Episode" and notif.series_id else notif.item_id
+
         if not target_item_id:
              await callback.answer("❌ 无法确定关联的媒体项 ID", show_alert=True)
              return
@@ -297,18 +294,18 @@ async def handle_item_status_toggle(
         if not item:
             await callback.answer("❌ 关联的媒体项不存在", show_alert=True)
             return
-            
+
         # 4. 切换状态
         current_status = item.status
         new_status = "Ended" if current_status == "Continuing" else "Continuing"
         item.status = new_status
         session.add(item)
         await session.commit()
-        
+
         # 5. 更新界面
         # 重新生成文案
         msg_text, _ = get_notification_content(item)
-        
+
         # 重新生成键盘
         status_text = "🔄 状态: " + new_status
         new_kb = InlineKeyboardMarkup(
@@ -323,15 +320,15 @@ async def handle_item_status_toggle(
                 [NOTIFY_CLOSE_PREVIEW_BUTTON]
             ]
         )
-        
+
         # 更新消息
         if callback.message.photo:
             await callback.message.edit_caption(caption=msg_text, reply_markup=new_kb)
         else:
             await callback.message.edit_text(text=msg_text, reply_markup=new_kb)
-            
+
         await callback.answer(f"✅ 状态已切换为 {new_status}")
-        
+
     except Exception as e:
         logger.error(f"切换状态失败: {e}")
         await callback.answer("❌ 操作失败", show_alert=True)

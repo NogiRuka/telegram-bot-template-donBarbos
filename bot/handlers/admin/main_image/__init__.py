@@ -1,4 +1,4 @@
+from . import list, menu, schedule, test, upload
 from .router import router
-from . import menu, upload, list, schedule, test
 
 __all__ = ["router"]

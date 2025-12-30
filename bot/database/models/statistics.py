@@ -9,11 +9,11 @@
 最后更新: 2025-10-21
 """
 
-import datetime
 import json
-from datetime import date, datetime as dt
+from datetime import date
+from datetime import datetime as dt
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy import BigInteger, Date, Float, Index, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum

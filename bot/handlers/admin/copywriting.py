@@ -5,12 +5,8 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config.constants import (
-    KEY_ADMIN_ANNOUNCEMENT, 
-    KEY_ADMIN_ANNOUNCEMENT_TEXT,
-    KEY_USER_LINES_NOTICE
-)
-from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON, BACK_TO_COPYWRITING_BUTTON
+from bot.config.constants import KEY_ADMIN_ANNOUNCEMENT, KEY_ADMIN_ANNOUNCEMENT_TEXT, KEY_USER_LINES_NOTICE
+from bot.keyboards.inline.buttons import BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_COPYWRITING_BUTTON, BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import ADMIN_COPYWRITING_CALLBACK_DATA, COPYWRITING_LABEL
 from bot.services.config_service import get_config, set_config
 from bot.services.main_message import MainMessageService
@@ -45,19 +41,19 @@ COPYWRITING_TYPES = {
 @require_admin_feature(KEY_ADMIN_ANNOUNCEMENT)
 async def open_copywriting_menu(callback: CallbackQuery, main_msg: MainMessageService) -> None:
     """文案管理主菜单
-    
+
     功能说明:
     - 展示所有可管理的文案类型列表
     """
     caption = f"*{COPYWRITING_LABEL}*\n\n请选择要管理的文案类型："
-    
+
     kb = InlineKeyboardBuilder()
     for type_code, info in COPYWRITING_TYPES.items():
         kb.row(InlineKeyboardButton(
-            text=info["label"], 
+            text=info["label"],
             callback_data=f"admin:copywriting:view:{type_code}"
         ))
-    
+
     kb.row(BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON)
     await main_msg.update_on_callback(callback, caption, kb.as_markup())
 
@@ -74,7 +70,7 @@ async def view_copywriting(callback: CallbackQuery, session: AsyncSession, main_
 
     info = COPYWRITING_TYPES[type_code]
     config_key = info["key"]
-    
+
     content = await get_config(session, config_key)
     content = (str(content).strip() if content is not None else "")
     display_content = content if content else "（当前未设置）"
@@ -91,7 +87,7 @@ async def view_copywriting(callback: CallbackQuery, session: AsyncSession, main_
         InlineKeyboardButton(text="🗑️ 清空内容", callback_data=f"admin:copywriting:clear:{type_code}"),
     )
     kb.row(BACK_TO_COPYWRITING_BUTTON, BACK_TO_HOME_BUTTON)
-    
+
     await main_msg.update_on_callback(callback, caption, kb.as_markup())
 
 
@@ -104,21 +100,21 @@ async def start_edit_copywriting(callback: CallbackQuery, state: FSMContext, mai
     if type_code not in COPYWRITING_TYPES:
         await callback.answer("❌ 未知类型")
         return
-        
+
     info = COPYWRITING_TYPES[type_code]
-    
+
     await state.set_state(CopywritingStates.waiting_for_text)
     await state.update_data(target_type=type_code)
-    
+
     caption = (
         f"✏️ 正在编辑：*{info['label']}*\n\n"
         "请输入新的文案内容：\n"
         "提示：支持 MarkdownV2 格式，发送文本后立即生效。"
     )
-    
+
     kb = InlineKeyboardBuilder()
     kb.row(InlineKeyboardButton(text="🔙 取消编辑", callback_data=f"admin:copywriting:view:{type_code}"))
-    
+
     await main_msg.update_on_callback(callback, caption, kb.as_markup())
 
 
@@ -137,26 +133,26 @@ async def clear_copywriting(callback: CallbackQuery, session: AsyncSession, main
 
     await set_config(session, config_key, None)
     await callback.answer("✅ 内容已清空")
-    
+
     # 刷新界面
     await view_copywriting(callback, session, main_msg)
 
 
 @router.message(CopywritingStates.waiting_for_text)
 async def handle_copywriting_text(
-    message: Message, 
-    session: AsyncSession, 
-    state: FSMContext, 
+    message: Message,
+    session: AsyncSession,
+    state: FSMContext,
     main_msg: MainMessageService
 ) -> None:
     """处理文案输入"""
     text = (message.text or "").strip()
     data = await state.get_data()
     type_code = data.get("target_type")
-    
+
     await state.clear()
     await main_msg.delete_input(message)
-    
+
     if not type_code or type_code not in COPYWRITING_TYPES:
         return
 
@@ -171,7 +167,7 @@ async def handle_copywriting_text(
         else:
             msg = await message.answer("🔴 更新失败，请稍后重试")
             delete_message_after_delay(msg, 5)
-            
+
     # 返回查看界面
     content = await get_config(session, config_key)
     content = (str(content).strip() if content is not None else "")

@@ -2,15 +2,16 @@ from aiogram import Router
 
 from .admin_commands import router as admin_commands_router
 from .copywriting import router as admin_copywriting_router
+from .currency_admin import router as admin_currency_router
+from .files import router as admin_files_router
 from .groups import router as admin_groups_router
 from .hitokoto import router as admin_hitokoto_router
 from .home import router as admin_home_router
+from .main_image import router as admin_main_image_router
 from .notification import router as admin_notification_router
 from .registration import router as admin_registration_router
 from .stats import router as admin_stats_router
 from .store_admin import router as admin_store_router
-from .currency_admin import router as admin_currency_router
-from .main_image import router as admin_main_image_router
 
 
 def get_admin_router() -> Router:
@@ -38,4 +39,5 @@ def get_admin_router() -> Router:
     router.include_router(admin_store_router)
     router.include_router(admin_currency_router)
     router.include_router(admin_main_image_router)
+    router.include_router(admin_files_router)
     return router

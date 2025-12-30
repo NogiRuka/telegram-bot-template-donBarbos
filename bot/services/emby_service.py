@@ -578,28 +578,28 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
     deleted = 0
 
     try:
-        devices, total = await client.get_devices()
+        devices, _total = await client.get_devices()
         if not devices:
             logger.info("📭 Emby 返回空设备列表")
             return 0
-            
+
         # logger.info(f"🔄 开始同步 Emby 设备, 共 {len(devices)} 个")
-        
+
         # 1. 获取所有现有设备 (包括已软删除的，以便恢复)
         stmt = select(EmbyDeviceModel)
         existing_res = await session.execute(stmt)
         existing_models = {m.emby_device_id: m for m in existing_res.scalars().all()}
-        
+
         api_device_ids = set()
-        
+
         # 2. 遍历 API 数据进行 插入 或 更新
         for device_data in devices:
             emby_device_id = str(device_data.get("Id"))
             if not emby_device_id:
                 continue
-            
+
             api_device_ids.add(emby_device_id)
-                
+
             reported_id = device_data.get("ReportedDeviceId")
             name = device_data.get("Name")
             last_user_name = device_data.get("LastUserName")
@@ -608,10 +608,10 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
             last_user_id = device_data.get("LastUserId")
             icon_url = device_data.get("IconUrl")
             ip_address = device_data.get("IpAddress")
-            
+
             date_last_activity_str = device_data.get("DateLastActivity")
             date_last_activity = parse_iso_datetime(date_last_activity_str) if date_last_activity_str else None
-            
+
             model = existing_models.get(emby_device_id)
             if model:
                 # 1. 如果设备已被软删除，则跳过处理（不恢复也不更新）
@@ -620,48 +620,48 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
 
                 # 2. 检查变更字段
                 changes = []
-                
+
                 if model.reported_device_id != reported_id:
                     model.reported_device_id = reported_id
                     changes.append("reported_device_id")
-                    
+
                 if model.name != name:
                     model.name = name
                     changes.append("name")
-                    
+
                 if model.last_user_name != last_user_name:
                     model.last_user_name = last_user_name
                     changes.append("last_user_name")
-                    
+
                 if model.app_name != app_name:
                     model.app_name = app_name
                     changes.append("app_name")
-                    
+
                 if model.app_version != app_version:
                     model.app_version = app_version
                     changes.append("app_version")
-                    
+
                 if model.last_user_id != last_user_id:
                     model.last_user_id = last_user_id
                     changes.append("last_user_id")
-                    
+
                 if model.date_last_activity != date_last_activity:
                     model.date_last_activity = date_last_activity
                     changes.append("date_last_activity")
-                    
+
                 if model.icon_url != icon_url:
                     model.icon_url = icon_url
                     changes.append("icon_url")
-                    
+
                 if model.ip_address != ip_address:
                     model.ip_address = ip_address
                     changes.append("ip_address")
-                
+
                 # 比较 raw_data
                 if model.raw_data != device_data:
                     model.raw_data = device_data
                     changes.append("raw_data")
-                
+
                 if changes:
                     model.remark = f"更新字段: {', '.join(changes)}"
                     updated += 1
@@ -683,23 +683,22 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
                 )
                 session.add(model)
                 inserted += 1
-            
+
         # 3. 处理删除: 数据库中有，但 API 中没有的
         for eid, model in existing_models.items():
-            if eid not in api_device_ids:
-                if not model.is_deleted:
-                    model.is_deleted = True
-                    model.deleted_at = now()
-                    model.deleted_by = 0  # 0 表示系统
-                    model.remark = "API 返回中已不存在，系统自动软删除"
-                    session.add(model)
-                    deleted += 1
-            
+            if eid not in api_device_ids and not model.is_deleted:
+                model.is_deleted = True
+                model.deleted_at = now()
+                model.deleted_by = 0  # 0 表示系统
+                model.remark = "API 返回中已不存在，系统自动软删除"
+                session.add(model)
+                deleted += 1
+
         await session.commit()
         logger.info(f"✅ Emby 设备同步完成: 插入 {inserted}, 更新 {updated}, 删除 {deleted}")
 
         return inserted + updated
-        
+
     except Exception as e:
         logger.error(f"❌ Emby 设备同步失败: {e}")
         await session.rollback()
@@ -724,7 +723,7 @@ async def cleanup_devices_by_policy(
     返回值:
     - int: 被软删除的设备数量
     """
-    
+
     # 0. 获取客户端
     client = get_emby_client()
     if not client:
@@ -733,12 +732,12 @@ async def cleanup_devices_by_policy(
     try:
         # 1. 准备排除列表
         skips = set()
-        
+
         # 排除模板用户
         tid = settings.get_emby_template_user_id()
         if tid:
             skips.add(tid)
-            
+
         # 2. 获取所有用户
         stmt = select(EmbyUserModel)
         result = await session.execute(stmt)
@@ -746,16 +745,16 @@ async def cleanup_devices_by_policy(
 
         deleted_count = 0
         updated_users_count = 0
-        
+
         for user in users:
             uid = user.emby_user_id
-            
+
             user_dto = user.user_dto or {}
             policy = user_dto.get("Policy", {})
-            
+
             # 判断是否为排除用户 (模板用户 或 管理员)
             is_excluded = (uid in skips) or policy.get("IsAdministrator", False)
-            
+
             if is_excluded:
                 # 对于排除用户，强制确保 EnableAllDevices 为 True
                 if not policy.get("EnableAllDevices", True):
@@ -763,10 +762,10 @@ async def cleanup_devices_by_policy(
                         new_policy = policy.copy()
                         new_policy["EnableAllDevices"] = True
                         new_policy["EnabledDevices"] = []
-                        
+
                         # 更新 Emby
                         await client.update_user_policy(uid, new_policy)
-                        
+
                         # 获取最新 UserDto 并更新本地
                         fresh_user_dto = await client.get_user(uid)
                         if fresh_user_dto:
@@ -792,7 +791,7 @@ async def cleanup_devices_by_policy(
                                     remark=user.remark,
                                 )
                             )
-                            
+
                             user.user_dto = fresh_user_dto
                             user.remark = "Policy恢复(排除用户): EnableAll=True"
                             session.add(user)
@@ -800,25 +799,25 @@ async def cleanup_devices_by_policy(
                             logger.info(f"🔄 恢复排除用户 {user.name} Policy: EnableAll=True")
                     except Exception as e:
                         logger.error(f"❌ 恢复排除用户 {user.name} Policy 失败: {e}")
-                
+
                 continue
-            
+
             # 3. 获取用户设备
             device_stmt = select(EmbyDeviceModel).where(
                 EmbyDeviceModel.last_user_id == uid,
-                EmbyDeviceModel.is_deleted == False
+                EmbyDeviceModel.is_deleted.is_(False)
             )
             device_res = await session.execute(device_stmt)
             devices = device_res.scalars().all()
-            
+
             # 4. 计算保留策略
             max_devices = user.max_devices
             # 按最后活动时间倒序排列
             devices.sort(key=lambda x: x.date_last_activity or datetime.min, reverse=True)
-            
+
             keep_devices = []
             enable_all_devices = False
-            
+
             if len(devices) < max_devices:
                 # 未满: 允许所有
                 keep_devices = devices
@@ -831,7 +830,7 @@ async def cleanup_devices_by_policy(
                 # 超出: 保留最新的N个
                 keep_devices = devices[:max_devices]
                 enable_all_devices = False
-                
+
                 # 软删除多余设备
                 for device in devices[max_devices:]:
                     device.is_deleted = True
@@ -840,25 +839,25 @@ async def cleanup_devices_by_policy(
                     device.remark = "超出最大设备数自动清理"
                     session.add(device)
                     deleted_count += 1
-            
+
             # 5. 检查并更新 Policy
             enabled_ids = [d.reported_device_id for d in keep_devices if d.reported_device_id]
-            
+
             current_enabled = set(policy.get("EnabledDevices", []))
             current_all = policy.get("EnableAllDevices", True)
-            
+
             new_enabled_set = set(enabled_ids)
-            
+
             # 如果配置有变 (设备列表不同 或 开关状态不同)
             if new_enabled_set != current_enabled or enable_all_devices != current_all:
                 new_policy = policy.copy()
                 new_policy["EnabledDevices"] = list(new_enabled_set)
                 new_policy["EnableAllDevices"] = enable_all_devices
-                
+
                 try:
                     # 更新 Emby
                     await client.update_user_policy(uid, new_policy)
-                    
+
                     # 获取最新 UserDto 并更新本地
                     fresh_user_dto = await client.get_user(uid)
                     if fresh_user_dto:
@@ -884,20 +883,20 @@ async def cleanup_devices_by_policy(
                                 remark=user.remark,
                             )
                         )
-                        
+
                         user.user_dto = fresh_user_dto
                         user.remark = f"Policy更新: EnableAll={enable_all_devices}, Devices={len(enabled_ids)}"
                         session.add(user)
                         updated_users_count += 1
                         logger.info(f"🔄 更新用户 {user.name} Policy: EnableAll={enable_all_devices}, Devices={len(enabled_ids)}")
-                        
+
                 except Exception as e:
                     logger.error(f"❌ 更新用户 {user.name} Policy 失败: {e}")
 
         if deleted_count > 0 or updated_users_count > 0:
             await session.commit()
             logger.info(f"✅ Policy 清理完成: 软删除 {deleted_count} 个设备, 更新 {updated_users_count} 个用户 Policy")
-        
+
         return deleted_count
 
     except Exception as e:
@@ -911,57 +910,57 @@ async def update_user_blocked_tags(
     tags: list[str]
 ) -> tuple[bool, str | None]:
     """更新用户屏蔽标签
-    
+
     功能说明:
     - 获取最新 Policy
     - 修改 BlockedTags
     - 更新 Policy
     - 更新本地缓存
-    
+
     输入参数:
     - session: 数据库会话
     - emby_user_id: Emby 用户 ID
     - tags: 新的屏蔽标签列表
-    
+
     返回值:
     - (success, error_message)
     """
     client = get_emby_client()
     if client is None:
         return False, "未配置 Emby 连接信息"
-        
+
     try:
         from sqlalchemy import select
-        from bot.database.models import EmbyUserModel, EmbyUserHistoryModel
-        from bot.utils.datetime import now
+
+        from bot.database.models import EmbyUserHistoryModel, EmbyUserModel
 
         # 1. 获取最新用户信息
         user_dto = await client.get_user(emby_user_id)
         if not user_dto:
             return False, "用户不存在"
-            
+
         policy = user_dto.get("Policy", {})
-        
+
         # 2. 比较变更
         current_tags = policy.get("BlockedTags", [])
         # 规范化比较：排序
         if sorted(current_tags) == sorted(tags):
             return True, None # 无变更
-            
+
         # 3. 更新 Policy
         new_policy = policy.copy()
         new_policy["BlockedTags"] = tags
-        
+
         await client.update_user_policy(emby_user_id, new_policy)
-        
+
         # 4. 更新本地缓存
         fresh_user_dto = await client.get_user(emby_user_id)
-        
+
         # 更新数据库
         stmt = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
         res = await session.execute(stmt)
         model = res.scalar_one_or_none()
-        
+
         if model:
             # 记录历史
             session.add(
@@ -988,9 +987,9 @@ async def update_user_blocked_tags(
             model.user_dto = fresh_user_dto
             model.remark = f"更新屏蔽标签: {tags}"
             await session.commit()
-            
+
         return True, None
-        
+
     except Exception as e:
         logger.error(f"❌ 更新屏蔽标签失败: {e}")
         return False, str(e)

@@ -1,32 +1,35 @@
-from aiogram import F
-from aiogram.types import CallbackQuery, Message
-from aiogram.fsm.context import FSMContext
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+import contextlib
 from io import BytesIO
 
+from aiogram import F
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, Message
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from .router import router
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
 from bot.database.models import MainImageModel
 from bot.keyboards.inline.admin import (
-    get_main_image_cancel_keyboard, 
+    get_main_image_cancel_keyboard,
+    get_main_image_upload_success_keyboard,
     get_main_image_upload_type_keyboard,
-    get_main_image_upload_success_keyboard
 )
 from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminMainImageState
+from bot.utils.images import get_image_dimensions
+from bot.utils.message import send_toast
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2, format_size
-from bot.utils.message import send_toast
-from bot.utils.images import get_image_dimensions
-from .router import router
+
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":upload")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
 async def start_upload_selection(callback: CallbackQuery, main_msg: MainMessageService) -> None:
     """开始上传流程 - 选择类型
-    
+
     功能说明:
     - 显示 SFW/NSFW 选择键盘
     """
@@ -49,7 +52,7 @@ async def start_upload_process(callback: CallbackQuery, state: FSMContext, main_
     is_nsfw = callback.data.endswith(":nsfw")
     await state.set_state(AdminMainImageState.waiting_for_image)
     await state.update_data(is_nsfw=is_nsfw)
-    
+
     type_text = "NSFW" if is_nsfw else "SFW"
     text = (
         f"📤 请发送 *{escape_markdown_v2(type_text)}* 类型图片：\n\n"
@@ -58,7 +61,7 @@ async def start_upload_process(callback: CallbackQuery, state: FSMContext, main_
         r"• Document \(图片文件\)" + "\n\n"
         "💬 可附带说明作为 caption。"
     )
-    
+
     await main_msg.update_on_callback(
         callback,
         text,
@@ -70,24 +73,22 @@ async def start_upload_process(callback: CallbackQuery, state: FSMContext, main_
 @router.message(AdminMainImageState.waiting_for_image)
 async def handle_image_upload(message: Message, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
     """处理图片上传
-    
+
     功能说明:
     - 接收管理员发送的 Photo 或 Document(图片)
     - 提取文件ID与基础元数据并写入 main_images 表
-    
+
     输入参数:
     - message: 管理员消息
     - session: 异步数据库会话
     - state: FSM 上下文
     - main_msg: 主消息服务
-    
+
     返回值:
     - None
     """
-    try:
+    with contextlib.suppress(Exception):
         await main_msg.delete_input(message)
-    except Exception:
-        pass
 
     file_id: str | None = None
     source_type = "photo"
@@ -111,7 +112,7 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
             mime_type = doc.mime_type
             file_size = doc.file_size
             source_type = "document"
-            
+
             # 尝试下载图片并读取尺寸
             try:
                 io_obj = BytesIO()

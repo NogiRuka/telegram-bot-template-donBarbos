@@ -161,8 +161,7 @@ def parse_formatted_datetime(s: str | None) -> datetime.datetime | None:
         return None
     try:
         # 解析为 naive datetime (无时区信息)
-        naive_dt = datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
-        return naive_dt
+        return datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
     except (ValueError, TypeError):
         return None
 

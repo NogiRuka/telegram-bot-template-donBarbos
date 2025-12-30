@@ -1,5 +1,6 @@
 from aiogram.fsm.state import State, StatesGroup
 
+
 class StoreAdminState(StatesGroup):
     """商店管理状态"""
     waiting_for_price = State()
@@ -28,3 +29,12 @@ class AdminMainImageState(StatesGroup):
     waiting_for_image = State()
     waiting_for_test_input = State()
     waiting_for_schedule_input = State()
+
+class AdminFileState(StatesGroup):
+    """文件管理状态
+
+    功能说明:
+    - 保存文件等待输入状态
+    - 其他操作可按需扩展
+    """
+    waiting_for_file_input = State()

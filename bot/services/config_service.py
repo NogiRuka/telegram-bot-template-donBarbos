@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 
-from bot.core.config import settings
 from bot.config import (
-    USER_FEATURES_MAPPING,
     ADMIN_FEATURES_MAPPING,
     DEFAULT_CONFIGS,
     KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
     KEY_REGISTRATION_FREE_OPEN,
     KEY_USER_LINES_INFO,
+    USER_FEATURES_MAPPING,
 )
+from bot.core.config import settings
 from bot.database.models.config import ConfigModel, ConfigType
 from bot.utils.datetime import now as get_now
 from bot.utils.datetime import parse_formatted_datetime
@@ -41,8 +41,7 @@ async def get_config(session: AsyncSession, key: str) -> Any:
         result = await session.execute(select(ConfigModel).where(ConfigModel.key == key))
         model: ConfigModel | None = result.scalar_one_or_none()
         if model:
-            typed_value = model.get_typed_value()
-            return typed_value
+            return model.get_typed_value()
     return None
 
 
@@ -258,10 +257,10 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
                 "port": str(settings.EMBY_PORT)
             }
             await set_config(
-                session, 
-                KEY_USER_LINES_INFO, 
-                lines_info, 
-                ConfigType.JSON, 
+                session,
+                KEY_USER_LINES_INFO,
+                lines_info,
+                ConfigType.JSON,
                 default_value=lines_info
             )
         else:

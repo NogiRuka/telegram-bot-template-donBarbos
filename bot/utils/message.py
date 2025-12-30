@@ -6,11 +6,9 @@
 
 from __future__ import annotations
 import asyncio
-from typing import Union
+
+from aiogram.types import CallbackQuery, Message
 from loguru import logger
-
-from aiogram.types import Message, CallbackQuery
-
 
 
 async def safe_delete_message(bot: Any, chat_id: int, message_id: int) -> bool:
@@ -56,9 +54,9 @@ async def delete_message(message: Any) -> bool:
 
 
 def delete_message_after_delay(
-    message: Any, 
-    delay: int = 3, 
-    chat_id: int | None = None, 
+    message: Any,
+    delay: int = 3,
+    chat_id: int | None = None,
     message_id: int | None = None
 ) -> asyncio.Task:
     """延迟指定时间后删除消息，返回异步任务。
@@ -90,7 +88,6 @@ def delete_message_after_delay(
         except Exception as e:
             # 忽略删除过程中的任何错误
             logger.debug(f"延迟删除消息失败: {e}")
-            pass
 
     task = asyncio.create_task(_delayed_delete())
     # 保存任务引用避免被垃圾回收
@@ -99,21 +96,21 @@ def delete_message_after_delay(
 
 
 async def send_temp_message(
-    messageable: Union[Message, CallbackQuery], 
-    text: str, 
+    messageable: Message | CallbackQuery,
+    text: str,
     delay: int = 10,
     reply_markup: Any = None,
-    photo: Union[str, Any] = None,
+    photo: str | Any = None,
     parse_mode: str = "MarkdownV2"
 ) -> asyncio.Task | None:
     """发送一条临时消息，并在指定时间后自动删除。
-    
+
     功能说明:
     - 统一封装发送消息并延迟删除的逻辑
     - 支持 Message 或 CallbackQuery 对象
     - 支持发送图片和键盘
     - 默认使用 MarkdownV2 格式
-    
+
     输入参数:
     - messageable: Message 或 CallbackQuery 对象，用于发送回复
     - text: 消息内容（若发送图片则作为 caption）
@@ -121,7 +118,7 @@ async def send_temp_message(
     - reply_markup: 键盘标记（可选）
     - photo: 图片对象或 file_id/url（可选）
     - parse_mode: 消息解析模式，默认 "MarkdownV2"
-    
+
     返回值:
     - asyncio.Task | None: 删除任务，如果发送失败则返回 None
     """
@@ -133,7 +130,7 @@ async def send_temp_message(
         elif hasattr(messageable, "answer"):
             # 处理普通消息 (Message)
             messager = messageable
-            
+
         if not messager:
             return None
 
@@ -150,18 +147,18 @@ async def send_temp_message(
                 reply_markup=reply_markup,
                 parse_mode=parse_mode
             )
-            
+
         return delete_message_after_delay(sent_msg, delay)
     except Exception as e:
         logger.error(f"发送临时消息失败: {e}")
         return None
 
 async def send_toast(
-    messageable: Union[Message, CallbackQuery],
+    messageable: Message | CallbackQuery,
     text: str,
     delay: int = 3,
     reply_markup: Any = None,
-    photo: Union[str, Any] = None,
+    photo: str | Any = None,
     parse_mode: str | None = None
 ) -> asyncio.Task | None:
     try:

@@ -21,7 +21,7 @@ from bot.handlers import get_handlers_router
 from bot.keyboards.default_commands import remove_default_commands, set_default_commands
 from bot.services.config_service import ensure_config_defaults
 from bot.services.currency import CurrencyService
-from bot.services.emby_service import save_all_emby_users, save_all_emby_devices, cleanup_devices_by_policy
+from bot.services.emby_service import cleanup_devices_by_policy, save_all_emby_devices, save_all_emby_users
 
 if TYPE_CHECKING:
     from aiogram import Bot

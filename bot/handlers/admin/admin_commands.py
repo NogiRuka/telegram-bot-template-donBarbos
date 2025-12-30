@@ -475,7 +475,7 @@ async def admin_open_registration_command(message: Message, command: CommandObje
             payload["start_time"] = start_time
         if duration_minutes is not None:
             payload["duration_minutes"] = int(duration_minutes)
-            
+
         await set_config(
             session,
             KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
@@ -557,9 +557,9 @@ async def admin_registration_status_command(message: Message, session: AsyncSess
     try:
         open_flag = await is_registration_open(session)
         free_open = await get_config(session, KEY_REGISTRATION_FREE_OPEN) or False
-        
+
         window = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW) or {}
-        
+
         start = window.get("start_time")
         dur = window.get("duration_minutes")
         text = "📋 注册状态\n"
@@ -627,7 +627,7 @@ async def admin_set_lines_notice_command(message: Message, command: CommandObjec
         return
 
     content = command.args.strip()
-    
+
     # 清空逻辑
     if content.lower() in ("clear", "none", "null"):
         content = ""

@@ -44,7 +44,8 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     KEY_ADMIN_CURRENCY: (True, ConfigType.BOOLEAN),
     KEY_ADMIN_MAIN_IMAGE: (True, ConfigType.BOOLEAN),
     KEY_ADMIN_MAIN_IMAGE_NSFW_ENABLED: (True, ConfigType.BOOLEAN),
-    
+    KEY_ADMIN_FILES: (True, ConfigType.BOOLEAN),
+
     # 复杂类型配置
     KEY_ADMIN_HITOKOTO_CATEGORIES: (["d", "i"], ConfigType.LIST),
     # KEY_USER_LINES_INFO 的初始化逻辑比较特殊（依赖环境变量），保留在 config_service 中处理，或可在此定义空值
@@ -92,6 +93,7 @@ ADMIN_FEATURES_MAPPING: dict[str, tuple[str, str]] = {
     "store": (KEY_ADMIN_STORE, STORE_ADMIN_LABEL),
     "currency": (KEY_ADMIN_CURRENCY, CURRENCY_ADMIN_LABEL),
     "main_image": (KEY_ADMIN_MAIN_IMAGE, MAIN_IMAGE_ADMIN_LABEL),
+    "files": (KEY_ADMIN_FILES, FILE_ADMIN_LABEL),
 }
 
 # 在管理员面板中拥有独立按钮的功能
@@ -105,4 +107,5 @@ ADMIN_PANEL_VISIBLE_FEATURES: list[str] = [
     "store",
     "currency",
     "main_image",
+    "files",
 ]

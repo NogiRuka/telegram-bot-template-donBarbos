@@ -1,15 +1,19 @@
 import asyncio
-import sys
 import os
+import sys
+
 from loguru import logger
 
 # 添加项目根目录到 Python 路径
 sys.path.append(os.getcwd())
 
-from bot.database.database import sessionmaker, engine
+import contextlib
+
+from bot.database.database import engine, sessionmaker
 from bot.services.emby_service import save_all_emby_devices
 
-async def main():
+
+async def main() -> None:
     logger.info("开始同步 Emby 设备...")
     try:
         async with sessionmaker() as session:
@@ -25,7 +29,5 @@ async def main():
         await engine.dispose()
 
 if __name__ == "__main__":
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(main())
-    except KeyboardInterrupt:
-        pass

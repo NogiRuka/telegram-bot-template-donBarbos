@@ -2,9 +2,9 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL, DISPLAY_MODE_SFW, DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM
+from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL, DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM, DISPLAY_MODE_SFW
 from bot.keyboards.inline.constants import PROFILE_LABEL, PROFILE_MAIN_IMAGE_CALLBACK_DATA
-from bot.keyboards.inline.user import get_user_profile_keyboard, get_main_image_settings_keyboard
+from bot.keyboards.inline.user import get_main_image_settings_keyboard, get_user_profile_keyboard
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.services.users import get_user_and_extend
@@ -43,7 +43,7 @@ async def user_profile(
 
     # 查询用户账号信息
     user, ext = await get_user_and_extend(session, uid)
-    
+
     # 获取货币余额
     balance = await CurrencyService.get_user_balance(session, uid)
 
@@ -103,10 +103,10 @@ async def main_image_settings(
     """主图设置菜单"""
     uid = callback.from_user.id
     _, ext = await get_user_and_extend(session, uid)
-    
+
     current_mode = ext.display_mode or DISPLAY_MODE_SFW
     nsfw_unlocked = ext.nsfw_unlocked
-    
+
     text = (
         "🖼️ *主图设置*\n\n"
         "请选择您偏好的主图显示模式：\n\n"
@@ -114,7 +114,7 @@ async def main_image_settings(
         "• *NSFW（限制级）*：仅显示限制级内容（需解锁）\n"
         "• *随机（混合）*：混合显示所有内容（需解锁）\n"
     )
-    
+
     kb = get_main_image_settings_keyboard(current_mode, nsfw_unlocked)
     await main_msg.update_on_callback(callback, text, kb)
     await callback.answer()
@@ -130,14 +130,14 @@ async def set_main_image_mode(
     """设置主图显示模式"""
     uid = callback.from_user.id
     _, ext = await get_user_and_extend(session, uid)
-    
+
     target_mode = callback.data.split(":")[-1]
-    
+
     # 验证权限
     if target_mode in (DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM) and not ext.nsfw_unlocked:
         await callback.answer("🔒 您尚未解锁 NSFW 权限", show_alert=True)
         return
-        
+
     if target_mode not in (DISPLAY_MODE_SFW, DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM):
         await callback.answer("❌ 无效的模式", show_alert=True)
         return
@@ -145,6 +145,6 @@ async def set_main_image_mode(
     # 更新设置
     ext.display_mode = target_mode
     await session.commit()
-    
+
     # 刷新界面
     await main_image_settings(callback, session, main_msg)

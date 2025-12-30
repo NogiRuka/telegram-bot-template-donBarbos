@@ -1,26 +1,27 @@
+import contextlib
 from math import ceil
 
-from aiogram import F, Bot
-from aiogram.types import CallbackQuery
+from aiogram import Bot, F
 from aiogram.fsm.context import FSMContext
-from sqlalchemy import select, func
+from aiogram.types import CallbackQuery
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .router import router
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
 from bot.database.models import MainImageModel
+from bot.handlers.start import build_home_view
 from bot.keyboards.inline.admin import (
-    get_main_image_list_type_keyboard,
-    get_main_image_list_pagination_keyboard,
     get_main_image_item_keyboard,
+    get_main_image_list_pagination_keyboard,
+    get_main_image_list_type_keyboard,
 )
 from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
-from bot.utils.permissions import require_admin_feature
-from bot.utils.message import send_toast, safe_delete_message
-from bot.utils.text import escape_markdown_v2, format_size
 from bot.utils.datetime import now
-from bot.handlers.start import build_home_view
-from .router import router
+from bot.utils.message import safe_delete_message, send_toast
+from bot.utils.permissions import require_admin_feature
+from bot.utils.text import escape_markdown_v2, format_size
 
 
 async def _clear_image_list(state: FSMContext, bot: Bot, chat_id: int) -> None:
@@ -32,7 +33,7 @@ async def _clear_image_list(state: FSMContext, bot: Bot, chat_id: int) -> None:
 
     for msg_id in msg_ids:
         await safe_delete_message(bot, chat_id, msg_id)
-    
+
     await state.update_data(main_image_list_ids=[])
 
 
@@ -60,7 +61,7 @@ async def back_to_home_from_list(callback: CallbackQuery, session: AsyncSession,
     # 构建首页视图
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)
-    
+
     await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer()
 
@@ -84,7 +85,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
         await _clear_image_list(state, callback.bot, callback.message.chat.id)
 
     is_nsfw = (type_key == "nsfw")
-    
+
     # 计算总数
     count_stmt = select(func.count()).where(
         MainImageModel.is_deleted.is_(False),
@@ -92,12 +93,10 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
     )
     total_count = (await session.execute(count_stmt)).scalar_one()
     total_pages = ceil(total_count / limit) if total_count > 0 else 1
-    
+
     # 如果页码超出范围则调整
-    if page > total_pages:
-        page = total_pages
-    if page < 1:
-        page = 1
+    page = min(page, total_pages)
+    page = max(page, 1)
 
     # 查询数据
     stmt = (
@@ -119,11 +118,11 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
         f"共 {total_count} 张，当前第 {page}/{total_pages} 页"
     )
     await main_msg.update_on_callback(
-        callback, 
-        text, 
+        callback,
+        text,
         get_main_image_list_pagination_keyboard(type_key, page, total_pages, limit)
     )
-    
+
     # 发送图片
     if not items:
         await send_toast(callback, "暂无数据")
@@ -134,7 +133,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
 
         file_size_str = escape_markdown_v2(format_size(item.file_size))
         caption = f"🆔 `{item.id}` ｜ 📝 {escape_markdown_v2(item.caption or '无')} ｜ 📦 {file_size_str} ｜ {'🟢 启用' if item.is_enabled else '🔴 禁用'}"
-        
+
         try:
             # 统一使用 MarkdownV2
             kwargs = {
@@ -142,13 +141,13 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
                 "reply_markup": get_main_image_item_keyboard(item.id, item.is_enabled),
                 "parse_mode": "MarkdownV2"
             }
-            
+
             msg = None
             if item.source_type == "document":
                 msg = await callback.message.answer_document(document=item.file_id, **kwargs)
             else:
                 msg = await callback.message.answer_photo(photo=item.file_id, **kwargs)
-            
+
             if msg:
                 new_msg_ids.append(msg.message_id)
 
@@ -167,7 +166,7 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
     try:
         parts = callback.data.split(":")
         action = parts[3]
-        
+
         if action == "close":
             await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
             return
@@ -186,19 +185,17 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
     if action == "toggle":
         item.is_enabled = not item.is_enabled
         await session.commit()
-        
+
         file_size_str = escape_markdown_v2(format_size(item.file_size))
         caption = f"🆔 `{item.id}` ｜ 📝 {escape_markdown_v2(item.caption or '无')} ｜ 📦 {file_size_str} ｜ {'🟢 启用' if item.is_enabled else '🔴 禁用'}"
-      
-        try:
+
+        with contextlib.suppress(Exception):
              await callback.message.edit_caption(
                 caption=caption,
                 reply_markup=get_main_image_item_keyboard(item.id, item.is_enabled),
                 parse_mode="MarkdownV2"
             )
-        except Exception:
-            pass 
-            
+
         status_text = "🟢 启用" if item.is_enabled else "🔴 禁用"
         await callback.answer(
             f"✅ 操作成功！\n"

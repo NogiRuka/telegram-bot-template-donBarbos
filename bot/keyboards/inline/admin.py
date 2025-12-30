@@ -2,36 +2,38 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.config import (
-    ADMIN_PANEL_VISIBLE_FEATURES,
     ADMIN_FEATURES_MAPPING,
+    ADMIN_PANEL_VISIBLE_FEATURES,
     KEY_ADMIN_FEATURES_ENABLED,
 )
 from bot.keyboards.inline.buttons import (
-    MAIN_ADMIN_BUTTONS,
     BACK_TO_ADMIN_PANEL_BUTTON,
     BACK_TO_HOME_BUTTON,
-    NOTIFY_SEND_BUTTON,
+    MAIN_ADMIN_BUTTONS,
     MAIN_IMAGE_BACK_BUTTON,
-    MAIN_IMAGE_CANCEL_BUTTON,
-    MAIN_IMAGE_UPLOAD_SFW_BUTTON,
-    MAIN_IMAGE_UPLOAD_NSFW_BUTTON,
     MAIN_IMAGE_BACK_TO_UPLOAD_BUTTON,
+    MAIN_IMAGE_CANCEL_BUTTON,
+    MAIN_IMAGE_UPLOAD_NSFW_BUTTON,
+    MAIN_IMAGE_UPLOAD_SFW_BUTTON,
+    NOTIFY_SEND_BUTTON,
 )
 from bot.keyboards.inline.constants import (
+    BACK_TO_HOME_LABEL,
+    FILE_ADMIN_CALLBACK_DATA,
+    FILE_LIST_LABEL,
+    FILE_SAVE_LABEL,
+    MAIN_IMAGE_ADMIN_CALLBACK_DATA,
+    MAIN_IMAGE_CANCEL_LABEL,
+    MAIN_IMAGE_CONTINUE_UPLOAD_LABEL,
+    MAIN_IMAGE_LIST_LABEL,
+    MAIN_IMAGE_SCHEDULE_LABEL,
+    MAIN_IMAGE_TOGGLE_NSFW_LABEL,
+    MAIN_IMAGE_UPLOAD_CALLBACK_DATA,
+    MAIN_IMAGE_UPLOAD_LABEL,
     NOTIFY_COMPLETE_CALLBACK_DATA,
     NOTIFY_COMPLETE_LABEL,
     NOTIFY_PREVIEW_CALLBACK_DATA,
     NOTIFY_PREVIEW_LABEL,
-    MAIN_IMAGE_ADMIN_CALLBACK_DATA,
-    MAIN_IMAGE_UPLOAD_LABEL,
-    MAIN_IMAGE_LIST_LABEL,
-    MAIN_IMAGE_SCHEDULE_LABEL,
-    MAIN_IMAGE_TEST_LABEL,
-    MAIN_IMAGE_TOGGLE_NSFW_LABEL,
-    MAIN_IMAGE_CANCEL_LABEL,
-    MAIN_IMAGE_CONTINUE_UPLOAD_LABEL,
-    MAIN_IMAGE_UPLOAD_CALLBACK_DATA,
-    BACK_TO_HOME_LABEL
 )
 
 
@@ -105,7 +107,7 @@ def get_main_image_list_type_keyboard() -> InlineKeyboardMarkup:
 
 def get_main_image_list_pagination_keyboard(type_key: str, page: int, total_pages: int, limit: int) -> InlineKeyboardMarkup:
     """获取主图列表分页键盘
-    
+
     输入参数:
     - type_key: sfw / nsfw
     - page: 当前页码
@@ -115,10 +117,10 @@ def get_main_image_list_pagination_keyboard(type_key: str, page: int, total_page
     # 翻页逻辑: 确保页码不越界
     prev_page = max(1, page - 1)
     next_page = min(total_pages, page + 1)
-    
+
     # 切换每页条数: 5 -> 10 -> 20 -> 5
     next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
-    
+
     buttons = [
         [
             InlineKeyboardButton(text="⬅️", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:list:view:{type_key}:{prev_page}:{limit}"),
@@ -216,7 +218,7 @@ def get_main_image_upload_success_keyboard(is_nsfw: bool) -> InlineKeyboardMarku
         text=MAIN_IMAGE_CONTINUE_UPLOAD_LABEL,
         callback_data=f"{MAIN_IMAGE_UPLOAD_CALLBACK_DATA}:{upload_type}"
     )
-    
+
     buttons = [
         [continue_button],
         [MAIN_IMAGE_BACK_TO_UPLOAD_BUTTON, BACK_TO_HOME_BUTTON],
@@ -229,7 +231,7 @@ def get_main_image_admin_keyboard() -> InlineKeyboardMarkup:
     """主图管理面板键盘
 
     功能说明:
-    - 提供上传、列表、节日投放、测试、NSFW 开关五个入口
+    - 提供上传、列表、节日投放、NSFW 开关四个入口
 
     输入参数:
     - 无
@@ -244,9 +246,6 @@ def get_main_image_admin_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(text=MAIN_IMAGE_SCHEDULE_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule"),
-            InlineKeyboardButton(text=MAIN_IMAGE_TEST_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":test"),
-        ],
-        [
             InlineKeyboardButton(text=MAIN_IMAGE_TOGGLE_NSFW_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":toggle_nsfw"),
         ],
         [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
@@ -272,10 +271,10 @@ def get_main_image_schedule_list_pagination_keyboard(page: int, total_pages: int
     # 翻页逻辑
     prev_page = max(1, page - 1)
     next_page = min(total_pages, page + 1)
-    
+
     # 切换每页条数
     next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
-    
+
     buttons = [
         [
             InlineKeyboardButton(text="⬅️", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:list:{prev_page}:{limit}"),
@@ -297,5 +296,58 @@ def get_main_image_schedule_item_keyboard(schedule_id: int) -> InlineKeyboardMar
             InlineKeyboardButton(text="🗑️ 删除", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:item:delete:{schedule_id}"),
             InlineKeyboardButton(text="❌ 关闭", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:item:close"),
         ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_files_admin_keyboard() -> InlineKeyboardMarkup:
+    """文件管理面板键盘
+
+    功能说明:
+    - 提供保存文件与查看文件两个入口
+    - 底部包含返回管理员面板与返回主页
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 键盘对象
+    """
+    buttons = [
+        [
+            InlineKeyboardButton(text=FILE_SAVE_LABEL, callback_data=FILE_ADMIN_CALLBACK_DATA + ":save"),
+            InlineKeyboardButton(text=FILE_LIST_LABEL, callback_data=FILE_ADMIN_CALLBACK_DATA + ":list:1:10"),
+        ],
+        [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_files_list_pagination_keyboard(page: int, total_pages: int, limit: int) -> InlineKeyboardMarkup:
+    """文件列表分页键盘
+
+    输入参数:
+    - page: 当前页码
+    - total_pages: 总页数
+    - limit: 每页条数
+
+    返回值:
+    - InlineKeyboardMarkup: 键盘对象
+    """
+    prev_page = max(1, page - 1)
+    next_page = min(total_pages, page + 1)
+    next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
+
+    buttons = [
+        [
+            InlineKeyboardButton(text="⬅️", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:list:{prev_page}:{limit}"),
+            InlineKeyboardButton(text=f"{page}/{total_pages} (每页{limit:02d}条)", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:list:1:{next_limit}"),
+            InlineKeyboardButton(text="➡️", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:list:{next_page}:{limit}"),
+        ],
+        [
+            InlineKeyboardButton(text="🔙 返回文件管理", callback_data=FILE_ADMIN_CALLBACK_DATA),
+            InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:back_home"),
+        ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)

@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.admin import get_admin_panel_keyboard
 from bot.keyboards.inline.constants import ADMIN_PANEL_LABEL
-
 from bot.services.config_service import list_admin_features
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import _resolve_role, require_admin_priv

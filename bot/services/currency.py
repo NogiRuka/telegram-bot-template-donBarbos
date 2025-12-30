@@ -9,23 +9,23 @@ from datetime import timedelta
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.constants import (
+    CURRENCY_NAME,
+    CURRENCY_SYMBOL,
+    PRODUCT_ACTION_CUSTOM_TITLE,
+    PRODUCT_ACTION_EMBY_IMAGE,
+    PRODUCT_ACTION_EMBY_PASSWORD,
+    PRODUCT_ACTION_MAIN_IMAGE_UNLOCK_NSFW,
+    PRODUCT_ACTION_RETRO_CHECKIN,
+)
 from bot.database.models import (
     CurrencyConfigModel,
     CurrencyProductModel,
     CurrencyTransactionModel,
     UserExtendModel,
-)
-from bot.core.constants import (
-    CURRENCY_NAME, 
-    CURRENCY_SYMBOL,
-    PRODUCT_ACTION_RETRO_CHECKIN,
-    PRODUCT_ACTION_EMBY_IMAGE,
-    PRODUCT_ACTION_EMBY_PASSWORD,
-    PRODUCT_ACTION_CUSTOM_TITLE,
-    PRODUCT_ACTION_MAIN_IMAGE_UNLOCK_NSFW
 )
 from bot.utils.datetime import now
 
@@ -103,14 +103,14 @@ class CurrencyService:
             # 额外周期奖励
             weekly_bonus = 0
             monthly_bonus = 0
-            
+
             # 优先触发月签大礼包 (每30天)
             if streak > 0 and streak % 30 == 0:
                 monthly_bonus = monthly_bonus_val
             # 否则触发周签奖励 (每7天)
             elif streak > 0 and streak % 7 == 0:
                 weekly_bonus = weekly_bonus_val
-                
+
             # 幸运暴击
             lucky_bonus = 0
             if random.randint(1, 100) <= lucky_prob:
@@ -124,8 +124,7 @@ class CurrencyService:
             user_ext.currency_balance += total_reward
             user_ext.currency_total += total_reward
 
-            if streak > user_ext.max_streak_days:
-                user_ext.max_streak_days = streak
+            user_ext.max_streak_days = max(user_ext.max_streak_days, streak)
 
             # 7. 记录流水
             meta = {
@@ -154,20 +153,20 @@ class CurrencyService:
 
             # TODO: 运势功能后续添加
             msg_parts = [
-                f"🎉 签到成功！",
+                "🎉 签到成功！",
                 f"获得：+{total_reward} {CURRENCY_SYMBOL}",
                 f"连续：{streak} 天 (加成 +{int(streak_bonus_pct*100)}%)"
             ]
-            
+
             if weekly_bonus > 0:
                 msg_parts.append(f"📈 周签奖励：+{weekly_bonus} {CURRENCY_SYMBOL}")
             if monthly_bonus > 0:
                 msg_parts.append(f"🎁 月签大礼包：+{monthly_bonus} {CURRENCY_SYMBOL}")
             if lucky_bonus > 0:
                 msg_parts.append(f"🎲 幸运暴击！\n额外获得：{CURRENCY_SYMBOL} +{lucky_bonus}")
-                
+
             msg_parts.append(f"当前{CURRENCY_NAME}：{user_ext.currency_balance} {CURRENCY_SYMBOL}")
-            
+
             msg = "\n".join(msg_parts)
             return True, msg
 
@@ -178,7 +177,7 @@ class CurrencyService:
     @staticmethod
     async def ensure_configs(session: AsyncSession) -> None:
         """初始化经济系统配置
-        
+
         如果配置不存在，则使用默认值创建。
         """
         # 默认配置定义: key -> (value, description)
@@ -191,12 +190,12 @@ class CurrencyService:
             "checkin.lucky_prob": (5, "幸运暴击概率(%)"),
             "checkin.lucky_bonus": (5, "幸运暴击奖励"),
         }
-        
+
         # 查询现有配置
         stmt = select(CurrencyConfigModel.config_key)
         result = await session.execute(stmt)
         existing_keys = set(result.scalars().all())
-        
+
         # 插入缺失的配置
         for key, (val, desc) in defaults.items():
             if key not in existing_keys:
@@ -207,7 +206,7 @@ class CurrencyService:
                     description=desc
                 )
                 session.add(config)
-        
+
         await session.commit()
 
     @staticmethod
@@ -315,7 +314,8 @@ class CurrencyService:
 
         # 检查余额是否足够 (如果是扣除)
         if amount < 0 and user_ext.currency_balance + amount < 0:
-            raise ValueError("💸 余额不足")
+            msg = "💸 余额不足"
+            raise ValueError(msg)
 
         user_ext.currency_balance += amount
         if amount > 0:
@@ -331,10 +331,10 @@ class CurrencyService:
             is_consumed=is_consumed,
         )
         session.add(tx)
-        
+
         if commit:
             await session.commit()
-            
+
         return user_ext.currency_balance
 
     @staticmethod
@@ -369,7 +369,7 @@ class CurrencyService:
     @staticmethod
     async def get_products(session: AsyncSession, user_id: int | None = None, only_active: bool = True) -> list[CurrencyProductModel]:
         """获取商品列表
-        
+
         参数:
         - session: 数据库会话
         - user_id: 用户ID (可选, 用于可见性检查)
@@ -378,53 +378,53 @@ class CurrencyService:
         stmt = select(CurrencyProductModel)
         if only_active:
             stmt = stmt.where(CurrencyProductModel.is_active.is_(True))
-        
+
         stmt = stmt.order_by(CurrencyProductModel.price)
         result = await session.execute(stmt)
         products = list(result.scalars().all())
-        
+
         if user_id is None:
             return products
-            
+
         # 可见性检查
         visible_products = []
         user_ext = await CurrencyService.get_user_extend(session, user_id)
-        
+
         for product in products:
             if not product.visible_conditions:
                 visible_products.append(product)
                 continue
-                
+
             conditions = product.visible_conditions
-            
+
             # 检查条件: min_max_streak (最小历史最高连签天数)
             if "min_max_streak" in conditions:
                 min_streak = conditions["min_max_streak"]
                 if not user_ext or user_ext.max_streak_days < min_streak:
                     continue
-                    
+
             visible_products.append(product)
-            
+
         return visible_products
 
     @staticmethod
     async def update_product(
-        session: AsyncSession, 
-        product_id: int, 
+        session: AsyncSession,
+        product_id: int,
         **kwargs
     ) -> CurrencyProductModel | None:
         """更新商品信息
-        
+
         支持更新的字段: description, price, stock, is_active
         """
         product = await CurrencyService.get_product(session, product_id)
         if not product:
             return None
-            
+
         for key, value in kwargs.items():
             if hasattr(product, key):
                 setattr(product, key, value)
-                
+
         session.add(product)
         await session.commit()
         return product
@@ -458,81 +458,80 @@ class CurrencyService:
     @staticmethod
     async def purchase_product(session: AsyncSession, user_id: int, product_id: int) -> tuple[bool, str]:
         """购买商品
-        
+
         返回: (是否成功, 提示信息)
         """
         # 1. 获取商品
         product = await CurrencyService.get_product(session, product_id)
-        
+
         if not product:
             return False, "❌ 商品不存在"
-            
+
         if not product.is_active:
             return False, "🚫 商品已下架"
-            
+
         if product.stock != -1 and product.stock <= 0:
             return False, "📦 商品库存不足"
-            
+
         # 1.5 检查购买条件
         if product.purchase_conditions:
             conditions = product.purchase_conditions
             user_ext = await CurrencyService.get_user_extend(session, user_id)
-            
+
             # 检查条件: has_emby (拥有 Emby 账号)
-            if conditions.get("has_emby"):
-                if not user_ext or not user_ext.emby_user_id:
-                    return False, "🚫 您未绑定 Emby 账号，无法购买此商品。"
+            if conditions.get("has_emby") and (not user_ext or not user_ext.emby_user_id):
+                return False, "🚫 您未绑定 Emby 账号，无法购买此商品。"
 
         # 判断是否为功能性商品（购买资格券）
         is_ticket = product.action_type in [PRODUCT_ACTION_EMBY_IMAGE, PRODUCT_ACTION_EMBY_PASSWORD]
-        
+
         # 2. 扣除代币
         try:
             await CurrencyService.add_currency(
-                session, 
-                user_id, 
-                -product.price, 
-                "purchase", 
-                f"购买 {product.name}", 
+                session,
+                user_id,
+                -product.price,
+                "purchase",
+                f"购买 {product.name}",
                 meta={"product_id": product.id, "product_name": product.name, "action_type": product.action_type},
                 is_consumed=not is_ticket,  # 如果是票据，标记为未消耗
                 commit=False  # 不立即提交，等待后续逻辑确认
             )
         except ValueError:
             return False, f"💸 余额不足，需要 {product.price} {CURRENCY_SYMBOL}"
-            
+
         # 3. 扣减库存 (如果是有限库存)
         if product.stock != -1:
             product.stock -= 1
             session.add(product)
-            
+
         # 4. 执行商品效果
         success, effect_msg = await CurrencyService._handle_product_effect(session, user_id, product)
-        
+
         if not success:
             await session.rollback()
             return False, effect_msg
-        
+
         await session.commit()
-            
+
         return True, f"🛍️ 购买成功！消耗 {product.price} {CURRENCY_SYMBOL}\n{effect_msg}"
 
     @staticmethod
     async def _handle_product_effect(session: AsyncSession, user_id: int, product: CurrencyProductModel) -> tuple[bool, str]:
         """处理商品生效逻辑
-        
+
         返回: (是否成功, 提示信息)
         """
         try:
             if product.action_type == PRODUCT_ACTION_RETRO_CHECKIN:
                 # 尝试补签逻辑
                 return await CurrencyService._try_retro_checkin(session, user_id)
-                
-            elif product.action_type in [PRODUCT_ACTION_EMBY_IMAGE, PRODUCT_ACTION_EMBY_PASSWORD]:
+
+            if product.action_type in [PRODUCT_ACTION_EMBY_IMAGE, PRODUCT_ACTION_EMBY_PASSWORD]:
                 # 功能性商品，购买后获得资格
                 return True, "✅ 您已获得使用资格，请前往 [账号中心] 使用对应功能。"
-            
-            elif product.action_type == PRODUCT_ACTION_MAIN_IMAGE_UNLOCK_NSFW:
+
+            if product.action_type == PRODUCT_ACTION_MAIN_IMAGE_UNLOCK_NSFW:
                 # 解锁主图 NSFW/随机设置权限（幂等）
                 ext = await CurrencyService.get_user_extend(session, user_id)
                 if not ext:
@@ -540,10 +539,10 @@ class CurrencyService:
                 ext.nsfw_unlocked = True
                 session.add(ext)
                 return True, "✅ 已解锁主图 NSFW/随机模式设置。"
-                
-            elif product.action_type == PRODUCT_ACTION_CUSTOM_TITLE:
+
+            if product.action_type == PRODUCT_ACTION_CUSTOM_TITLE:
                 return True, "ℹ️ 请联系频道管理员设置您的自定义群组头衔。"
-                
+
             # 默认回复
             return True, "✅ 商品购买成功。请联系频道处理。"
         except Exception as e:
@@ -556,15 +555,15 @@ class CurrencyService:
         user_ext = await CurrencyService.get_user_extend(session, user_id)
         if not user_ext:
             return False, "⚠️ 用户数据不存在。"
-            
+
         today = now().date()
         last_date = user_ext.last_checkin_date
-        
+
         if not last_date:
             return False, "⚠️ 你还没有签到过，无法使用补签卡。"
-            
+
         gap = (today - last_date).days
-        
+
         # 情况 1: 今天还没签，且断签 1 天 (例如今天 27, 上次 25。Gap=2)
         if gap == 2:
             # 补签昨天 (Today-1)
@@ -572,43 +571,41 @@ class CurrencyService:
             # 这样用户今天再签到时，streak 会继续 +1
             user_ext.last_checkin_date = today - timedelta(days=1)
             user_ext.streak_days += 1
-            
+
             # 更新最大连签
-            if user_ext.streak_days > user_ext.max_streak_days:
-                user_ext.max_streak_days = user_ext.streak_days
-                
+            user_ext.max_streak_days = max(user_ext.max_streak_days, user_ext.streak_days)
+
             session.add(user_ext)
             return True, f"✅ 成功补签 {user_ext.last_checkin_date}！\n当前连签已恢复为 {user_ext.streak_days} 天。\n⚠️ 请记得今天也要签到哦！"
-            
+
         # 情况 2: 今天已经签了 (Gap=0)，但昨天断签导致 streak 重置为 1
-        elif gap == 0:
+        if gap == 0:
             if user_ext.streak_days > 1:
                 return False, "📅 你的连签状态正常，无需补签。"
-                
+
             # 查找上一条签到记录 (排除今天)
             stmt = select(CurrencyTransactionModel).where(
                 CurrencyTransactionModel.user_id == user_id,
-                CurrencyTransactionModel.event_type == 'daily_checkin',
+                CurrencyTransactionModel.event_type == "daily_checkin",
                 func.date(CurrencyTransactionModel.created_at) < today
             ).order_by(CurrencyTransactionModel.created_at.desc()).limit(1)
-            
+
             result = await session.execute(stmt)
             last_tx = result.scalar_one_or_none()
-            
+
             if not last_tx:
                 return False, "🤔 找不到之前的签到记录，无法恢复连签。"
-                
+
             last_tx_date = last_tx.created_at.date()
             gap_tx = (today - last_tx_date).days
-            
+
             if gap_tx == 1:
                  return False, "📅 你的连签状态正常，无需补签。"
-            
+
             # TODO: 这种情况比较复杂，需要修改历史记录才能接上，暂时不支持
             return False, "⚠️ 补签功能暂时只支持在断签的第二天使用。"
 
-        else:
-            return False, "⚠️ 只能补签昨天的签到。"
+        return False, "⚠️ 只能补签昨天的签到。"
 
     @staticmethod
     async def has_unused_ticket(session: AsyncSession, user_id: int, action_type: str) -> bool:
@@ -618,9 +615,9 @@ class CurrencyService:
             CurrencyTransactionModel.event_type == "purchase",
             CurrencyTransactionModel.is_consumed.is_(False),
             # 使用 JSON 字段中的 action_type 进行过滤
-            func.json_extract(CurrencyTransactionModel.meta, '$.action_type') == action_type
+            func.json_extract(CurrencyTransactionModel.meta, "$.action_type") == action_type
         ).limit(1)
-        
+
         result = await session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
@@ -632,16 +629,16 @@ class CurrencyService:
             CurrencyTransactionModel.user_id == user_id,
             CurrencyTransactionModel.event_type == "purchase",
             CurrencyTransactionModel.is_consumed.is_(False),
-            func.json_extract(CurrencyTransactionModel.meta, '$.action_type') == action_type
+            func.json_extract(CurrencyTransactionModel.meta, "$.action_type") == action_type
         ).order_by(CurrencyTransactionModel.created_at.asc()).limit(1)
-        
+
         result = await session.execute(stmt)
         ticket = result.scalar_one_or_none()
-        
+
         if ticket:
             ticket.is_consumed = True
             session.add(ticket)
             await session.commit()
             return True
-            
+
         return False

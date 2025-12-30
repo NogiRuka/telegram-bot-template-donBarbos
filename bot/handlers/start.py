@@ -13,19 +13,20 @@ from bot.keyboards.inline.owner import get_start_owner_keyboard
 from bot.keyboards.inline.user import get_start_user_keyboard
 from bot.services.analytics import analytics
 from bot.services.config_service import get_config
+from bot.services.main_image_service import MainImageService
 from bot.services.main_message import MainMessageService
 from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
-from bot.utils.permissions import _resolve_role
 from bot.utils.images import get_common_image
-from bot.services.main_image_service import MainImageService
+from bot.utils.permissions import _resolve_role
 
 router = Router(name="start")
 
 from typing import Any
 
+
 async def build_home_view(
-    session: AsyncSession | None, 
-    user_id: int | None, 
+    session: AsyncSession | None,
+    user_id: int | None,
     append_text: str | None = None,
     hitokoto_payload: dict[str, Any] | None = None
 ) -> tuple[str, types.InlineKeyboardMarkup]:
@@ -50,7 +51,7 @@ async def build_home_view(
         payload = hitokoto_payload
     else:
         payload = await fetch_hitokoto(session, created_by=user_id)
-    
+
     user_name = "(ง •̀_•́)ง"
     if session is not None and user_id is not None:
         with contextlib.suppress(Exception):
@@ -104,7 +105,7 @@ async def start_handler(
     if img:
         # 记录展示历史
         await MainImageService.record_display(session, uid, img.id)
-        
+
         await main_msg.render(
             user_id=uid,
             caption=caption,

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import contextlib
 from typing import TYPE_CHECKING
 
 from aiogram import types
@@ -80,9 +81,8 @@ class MainMessageService:
                 )
             self.remember(user_id, msg)
             return True
-        except Exception as e:
+        except Exception:
             # 这里不抛异常，统一由调用方根据 False 判断
-            print(f"❌ 主消息发送失败: {e}")
             return False
 
     async def render(
@@ -108,7 +108,6 @@ class MainMessageService:
         if not ids:
             if not image_path and not image_file_id:
                 # 业务错误：首次渲染却没有图片
-                print("❌ 尚未存在主消息，必须提供 image_path")
                 return False
 
             return await self._send_new(
@@ -130,17 +129,11 @@ class MainMessageService:
                 return True
             except Exception as e:
                 # caption 未变化时，Telegram 会抛 message is not modified
-                if "message is not modified" in str(e):
-                    return True
-
-                print(f"⚠️ 更新 caption 失败: {e}")
-                return False
+                return "message is not modified" in str(e)
 
         # ③ 明确更换图片：删除旧消息并重发
-        try:
+        with contextlib.suppress(Exception):
             await self.bot.delete_message(chat_id, message_id)
-        except Exception:
-            pass
 
         return await self._send_new(
             user_id, caption, kb, image_path=image_path, image_file_id=image_file_id, image_source_type=image_source_type
@@ -149,13 +142,13 @@ class MainMessageService:
 
     async def delete_input(self, input_message: types.Message) -> None:
         """删除用户输入消息
-        
+
         功能说明:
         - 删除用户刚刚发送的输入消息, 保持对话整洁
-        
+
         输入参数:
         - input_message: 用户输入的消息对象
-        
+
         返回值:
         - None
         """

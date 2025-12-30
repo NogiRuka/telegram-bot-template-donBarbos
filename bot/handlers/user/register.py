@@ -12,11 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import KEY_ADMIN_OPEN_REGISTRATION_WINDOW
 from bot.core.config import settings
+from bot.keyboards.inline.constants import ACCOUNT_CENTER_LABEL
 from bot.keyboards.inline.user import (
     get_account_center_keyboard,
     get_register_input_keyboard,
 )
-from bot.keyboards.inline.constants import ACCOUNT_CENTER_LABEL
 from bot.services.config_service import get_config, is_registration_open
 from bot.services.main_message import MainMessageService
 from bot.services.users import create_and_bind_emby_user, has_emby_account
@@ -63,7 +63,7 @@ async def user_register(
         # 首先检查注册是否开放，避免不必要的用户ID获取
         if not await is_registration_open(session):
             window = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW) or {}
-            
+
             hint = "🚫 暂未开放注册"
             start_time = window.get("start_time")
             dur = window.get("duration_minutes")
@@ -81,7 +81,7 @@ async def user_register(
 
                         if dur:
                             end_dt = dt_start + timedelta(minutes=int(dur))
-                            
+
                             # 检查结束时间是否已经过去
                             if end_dt > current_time:
                                 formatted_end = format_datetime(end_dt)
@@ -286,15 +286,15 @@ async def handle_register_input(
         if ok and details:
             # 注册成功，状态清除
             await state.clear()
-            
+
             from bot.utils.text import escape_markdown_v2
-            
-            name_esc = escape_markdown_v2(details.get('name', ''))
-            pass_esc = escape_markdown_v2(details.get('password', ''))
-            
+
+            name_esc = escape_markdown_v2(details.get("name", ""))
+            pass_esc = escape_markdown_v2(details.get("password", ""))
+
             caption = (
                 f"✅ *注册成功*\n\n"
-                f"📛 Emby 用户名：`{name_esc}`\n" 
+                f"📛 Emby 用户名：`{name_esc}`\n"
                 f"🔑 Emby 密码：||{pass_esc}||\n\n"
                 f"请妥善保管您的账号信息"
             )
@@ -305,7 +305,7 @@ async def handle_register_input(
                 # 允许用户重新输入
                 from bot.utils.text import escape_markdown_v2
                 name_esc = escape_markdown_v2(name)
-                
+
                 caption = (
                     f"❌ 用户名 `{name_esc}` 已存在\n\n"
                     f"请更换一个用户名重试：\n"

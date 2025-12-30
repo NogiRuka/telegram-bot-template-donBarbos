@@ -1,4 +1,4 @@
-from aiogram import F, Router, types
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,7 +36,7 @@ async def user_info(
     - None
     """
     # 查询用户账号信息
-    user, ext = await get_user_and_extend(session, callback.from_user.id)
+    _user, ext = await get_user_and_extend(session, callback.from_user.id)
 
     # 查询 Emby 绑定信息
     emby_user = None
@@ -54,13 +54,13 @@ async def user_info(
         e_created = emby_user.date_created.strftime("%Y-%m-%d %H:%M:%S") if emby_user.date_created else "未知"
         e_last_login = emby_user.last_login_date.strftime("%Y-%m-%d %H:%M:%S") if emby_user.last_login_date else "从未登录"
         e_last_activity = emby_user.last_activity_date.strftime("%Y-%m-%d %H:%M:%S") if emby_user.last_activity_date else "从未活动"
-        
+
         # 获取禁用状态
         is_disabled = False
         if emby_user.user_dto and isinstance(emby_user.user_dto, dict):
             policy = emby_user.user_dto.get("Policy", {})
             is_disabled = policy.get("IsDisabled", False)
-        
+
         status_str = "🚫 已禁用" if is_disabled else "🟢 正常"
 
         lines.extend([
@@ -70,7 +70,7 @@ async def user_info(
             f"🗓 创建时间：{escape_markdown_v2(e_created)}",
             f"🔐 最近登录：{escape_markdown_v2(e_last_login)}",
             f"🎥 最近活动：{escape_markdown_v2(e_last_activity)}",
-            f"||🕊 部分信息隔天更新||",
+            "||🕊 部分信息隔天更新||",
         ])
     elif ext and ext.emby_user_id:
         lines.append(f"⚠️ 已绑定 ID: `{escape_markdown_v2(ext.emby_user_id)}`")

@@ -2,8 +2,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
-
 from sqlalchemy.exc import IntegrityError
+
 from bot.database.models import (
     GroupConfigModel,
     GroupType,
@@ -71,7 +71,7 @@ async def get_or_create_group_config(
         configured_by_user_id=configured_by_user_id,
     )
     session.add(config)
-    
+
     try:
         await session.commit()
     except IntegrityError:

@@ -1,5 +1,4 @@
-import re
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +14,7 @@ router = Router(name="user_checkin")
 
 @router.callback_query(F.data == DAILY_CHECKIN_CALLBACK_DATA)
 @require_user_feature(KEY_USER_CHECKIN)
-async def handle_daily_checkin(callback: CallbackQuery, session: AsyncSession):
+async def handle_daily_checkin(callback: CallbackQuery, session: AsyncSession) -> None:
     """处理每日签到回调
 
     功能说明:
@@ -30,10 +29,10 @@ async def handle_daily_checkin(callback: CallbackQuery, session: AsyncSession):
     - None
     """
     user_id = callback.from_user.id
-    
-    success, message = await CurrencyService.daily_checkin(session, user_id)
-        
+
+    _success, message = await CurrencyService.daily_checkin(session, user_id)
+
     # 发送签到结果消息并设置10秒后删除
     await send_temp_message(callback, escape_markdown_v2(message), 10)
-        
+
     await callback.answer()

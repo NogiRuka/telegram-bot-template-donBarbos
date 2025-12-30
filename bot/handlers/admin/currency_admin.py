@@ -1,26 +1,25 @@
-from aiogram import Router, F
+import contextlib
+
+from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.fsm.context import FSMContext
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.models import UserModel
 from bot.core.constants import CURRENCY_SYMBOL
-from bot.keyboards.inline.constants import (
-    CURRENCY_ADMIN_CALLBACK_DATA,
-    CURRENCY_ADMIN_LABEL
-)
+from bot.database.models import UserModel
+from bot.keyboards.inline.constants import CURRENCY_ADMIN_CALLBACK_DATA, CURRENCY_ADMIN_LABEL
 from bot.services.currency import CurrencyService
 from bot.states.admin import CurrencyAdminState
-from bot.utils.message import send_toast, delete_message_after_delay
+from bot.utils.message import delete_message_after_delay, send_toast
 from bot.utils.text import escape_markdown_v2
-from loguru import logger
 
 router = Router(name="currency_admin")
 
 @router.callback_query(F.data == CURRENCY_ADMIN_CALLBACK_DATA)
-async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext):
+async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext) -> None:
     """精粹管理 - 开始"""
     kb = InlineKeyboardBuilder()
     kb.button(text="❌ 取消", callback_data="admin:currency:cancel")
@@ -36,43 +35,39 @@ async def handle_currency_admin_start(callback: CallbackQuery, state: FSMContext
 
 
 @router.message(CurrencyAdminState.waiting_for_user)
-async def process_user_lookup(message: Message, state: FSMContext, session: AsyncSession):
+async def process_user_lookup(message: Message, state: FSMContext, session: AsyncSession) -> None:
     # 尝试删除用户发送的消息
-    try:
+    with contextlib.suppress(Exception):
         await message.delete()
-    except Exception:
-        pass
 
     # 尝试删除之前的提示消息
     data = await state.get_data()
     prompt_message_id = data.get("prompt_message_id")
     if prompt_message_id:
-        try:
+        with contextlib.suppress(Exception):
             await message.bot.delete_message(chat_id=message.chat.id, message_id=prompt_message_id)
-        except Exception:
-            pass
 
     user_id = None
-    
+
     # 尝试从文本中解析 ID
     try:
         user_id = int(message.text.strip())
     except ValueError:
         await send_toast(message, "❌ 无效的用户 ID，请输入数字 ID。")
         return
-            
+
     # 检查用户是否存在
     user_result = await session.execute(select(UserModel).where(UserModel.id == user_id))
     user = user_result.scalar_one_or_none()
     if not user:
         await send_toast(message, "❌ 找不到该用户。")
         return
-        
+
     # 获取余额
     balance = await CurrencyService.get_user_balance(session, user_id)
-    
+
     await state.update_data(target_user_id=user_id, current_balance=balance)
-    
+
     kb = InlineKeyboardBuilder()
     kb.button(text="➕ 手动加/扣币", callback_data="admin:currency:modify")
     kb.button(text="❌ 取消", callback_data="admin:currency:cancel")
@@ -92,12 +87,12 @@ async def process_user_lookup(message: Message, state: FSMContext, session: Asyn
         f"用户名: {escape_markdown_v2(username_display)}\n"
         f"当前余额: {balance} {CURRENCY_SYMBOL}"
     )
-    
+
     msg = await message.answer(text, reply_markup=kb.as_markup(), parse_mode="MarkdownV2")
     await state.update_data(prompt_message_id=msg.message_id)
 
 @router.callback_query(F.data == "admin:currency:modify")
-async def handle_modify_start(callback: CallbackQuery, state: FSMContext):
+async def handle_modify_start(callback: CallbackQuery, state: FSMContext) -> None:
     """开始修改余额"""
     text = (
         "请输入要变动的数值 (整数):\n"
@@ -110,7 +105,7 @@ async def handle_modify_start(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 @router.callback_query(F.data == "admin:currency:cancel")
-async def handle_cancel(callback: CallbackQuery, state: FSMContext):
+async def handle_cancel(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     try:
         await callback.message.delete()
@@ -118,12 +113,10 @@ async def handle_cancel(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_text("已取消操作。")
 
 @router.message(CurrencyAdminState.waiting_for_amount)
-async def process_amount(message: Message, state: FSMContext):
+async def process_amount(message: Message, state: FSMContext) -> None:
     # 尝试删除用户发送的消息
-    try:
+    with contextlib.suppress(Exception):
         await message.delete()
-    except Exception:
-        pass
 
     try:
         amount = int(message.text)
@@ -133,15 +126,15 @@ async def process_amount(message: Message, state: FSMContext):
     except ValueError:
         await send_toast(message, "❌ 请输入有效的整数。")
         return
-        
+
     await state.update_data(amount=amount)
-    
+
     # 获取 prompt_message_id 并编辑消息
     data = await state.get_data()
     prompt_message_id = data.get("prompt_message_id")
-    
+
     text = "📝 请输入操作原因 (必填):"
-    
+
     if prompt_message_id:
         try:
             await message.bot.edit_message_text(
@@ -159,18 +152,16 @@ async def process_amount(message: Message, state: FSMContext):
     await state.set_state(CurrencyAdminState.waiting_for_reason)
 
 @router.message(CurrencyAdminState.waiting_for_reason)
-async def process_reason(message: Message, state: FSMContext, session: AsyncSession):
+async def process_reason(message: Message, state: FSMContext, session: AsyncSession) -> None:
     # 删除用户发送的消息
-    try:
+    with contextlib.suppress(Exception):
         await message.delete()
-    except Exception:
-        pass
-    
+
     reason = message.text.strip()
     if not reason:
         await send_toast(message, "❌ 原因不能为空。")
         return
-        
+
     data = await state.get_data()
     user_id = data["target_user_id"]
     amount = data["amount"]
@@ -185,7 +176,7 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
             f"管理员手动操作: {reason}",
             meta={"admin_id": message.from_user.id}
         )
-        
+
         action = "增加" if amount > 0 else "扣除"
         text = (
             f"✅ *操作成功*\n\n"
@@ -194,7 +185,7 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
             f"原因: {escape_markdown_v2(reason)}\n"
             f"最新余额: {new_balance} {CURRENCY_SYMBOL}"
         )
-        
+
         if prompt_message_id:
             try:
                 msg = await message.bot.edit_message_text(

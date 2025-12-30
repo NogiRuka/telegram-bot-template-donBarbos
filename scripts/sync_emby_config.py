@@ -10,7 +10,7 @@ import contextlib
 from datetime import datetime
 
 from loguru import logger
-from sqlalchemy import select, desc
+from sqlalchemy import select
 
 from bot.core.config import settings
 from bot.database.database import sessionmaker
@@ -80,9 +80,9 @@ async def sync_all_users_configuration(
                 res = await session.execute(stmt)
                 db_users = res.scalars().all()
                 all_users = [{"Id": u.emby_user_id, "Name": u.name, "MaxDevices": u.max_devices, "UserDto": u.user_dto} for u in db_users]
-                
+
                 # 检查是否有未找到的用户
-                found_ids = set(u["Id"] for u in all_users)
+                found_ids = {u["Id"] for u in all_users}
                 for uid in specific_user_ids:
                     if uid not in found_ids:
                          # 尝试从 API 获取作为补充? 或者直接标记未知
@@ -94,7 +94,7 @@ async def sync_all_users_configuration(
                 stmt = select(EmbyUserModel)
                 if exclude_user_ids:
                     stmt = stmt.where(EmbyUserModel.emby_user_id.notin_(exclude_user_ids))
-                
+
                 res = await session.execute(stmt)
                 db_users = res.scalars().all()
                 all_users = [{"Id": u.emby_user_id, "Name": u.name, "MaxDevices": u.max_devices, "UserDto": u.user_dto} for u in db_users]
@@ -109,7 +109,7 @@ async def sync_all_users_configuration(
             name = user.get("Name")
             # 优先使用数据库中的配置，如果没有则默认3
             max_devices = user.get("MaxDevices", 3)
-            
+
             if not uid:
                 continue
 
@@ -121,14 +121,14 @@ async def sync_all_users_configuration(
                 # 查询用户设备
                 stmt = select(EmbyDeviceModel).where(
                     EmbyDeviceModel.last_user_id == uid,
-                    EmbyDeviceModel.is_deleted == False
+                    not EmbyDeviceModel.is_deleted
                 )
                 res = await session.execute(stmt)
                 devices = res.scalars().all()
 
                 enabled_ids = []
                 enable_all_devices = False
-                
+
                 if len(devices) < max_devices:
                     # Case 1: 设备数 < 最大限制
                     # 允许新设备登录 (EnableAllDevices=True)
@@ -144,18 +144,18 @@ async def sync_all_users_configuration(
                 else:
                     # Case 3: 设备数 > 最大限制 (执行清理)
                     enable_all_devices = False
-                    
+
                     # 直接按最后活动时间排序，保留最新的 max_devices 个
                     # 之前使用 AppName 去重逻辑会导致多开浏览器场景下误删
                     # sorted_devices = sorted(devices, key=lambda x: x.date_last_activity or datetime.min, reverse=True)
                     # 由于 devices 是从 DB 取出的，可能已经是某种顺序，但显式排序更安全
                     devices.sort(key=lambda x: x.date_last_activity or datetime.min, reverse=True)
                     keep_devices = devices[:max_devices]
-                    
+
                     enabled_ids = [d.reported_device_id for d in keep_devices if d.reported_device_id]
-                    
+
                     # 3. 标记废弃设备
-                    keep_ids = set(d.id for d in keep_devices)
+                    keep_ids = {d.id for d in keep_devices}
                     has_changes = False
                     for d in devices:
                         if d.id not in keep_ids:
@@ -165,7 +165,7 @@ async def sync_all_users_configuration(
                             d.remark = "超出最大设备数自动清理"
                             session.add(d)
                             has_changes = True
-                    
+
                     if has_changes:
                         await session.commit()
                         logger.info(f"🧹 用户 {name} 设备清理: 总数 {len(devices)} -> 保留 {len(keep_devices)}")
@@ -179,14 +179,14 @@ async def sync_all_users_configuration(
                 # 获取当前 Policy (从 DB 中的 UserDto 获取，避免额外 API 调用)
                 current_user_dto = user.get("UserDto") or {}
                 current_policy = current_user_dto.get("Policy", {})
-                
+
                 # 比较 EnabledDevices (注意 Emby 返回的可能是 list，我们需要 set 比较且忽略顺序)
                 current_enabled = set(current_policy.get("EnabledDevices", []))
                 new_enabled = set(enabled_ids)
-                
+
                 current_all = current_policy.get("EnableAllDevices", False)
                 # 注意: Emby 有时返回 None 或缺省值，需确保类型一致
-                
+
                 if current_enabled == new_enabled and current_all == enable_all_devices:
                     logger.debug(f"⏭️ 配置未变更，跳过更新: {name} ({uid})")
                     continue

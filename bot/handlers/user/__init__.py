@@ -1,16 +1,16 @@
 from aiogram import Router
 
 from .account import router as account_router
+from .avatar import router as avatar_router
+from .checkin import router as checkin_router
 from .devices import router as devices_router
 from .info import router as info_router
 from .lines import router as lines_router
 from .password import router as password_router
 from .profile import router as profile_router
 from .register import router as register_router
-from .tags import router as tags_router
-from .checkin import router as checkin_router
 from .store import router as store_router
-from .avatar import router as avatar_router
+from .tags import router as tags_router
 
 
 def get_user_router() -> Router:

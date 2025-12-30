@@ -97,7 +97,7 @@ async def _get_group_config_content(session: AsyncSession, config: GroupConfigMo
 
 📝 *备注*: {config.notes or "无"}
     """
-    
+
     return config_text, get_group_config_keyboard(config)
 
 
@@ -181,7 +181,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             config.save_text_messages = not config.save_text_messages
             await session.commit()
             await callback.answer(f"✅ 文本消息保存已{'启用' if config.save_text_messages else '禁用'}")
-            
+
             text, markup = await _get_group_config_content(session, config)
             with suppress(TelegramBadRequest):
                 await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
@@ -190,7 +190,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             config.save_media_messages = not config.save_media_messages
             await session.commit()
             await callback.answer(f"✅ 媒体消息保存已{'启用' if config.save_media_messages else '禁用'}")
-            
+
             text, markup = await _get_group_config_content(session, config)
             with suppress(TelegramBadRequest):
                 await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
@@ -199,7 +199,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             config.save_forwarded_messages = not config.save_forwarded_messages
             await session.commit()
             await callback.answer(f"✅ 转发消息保存已{'启用' if config.save_forwarded_messages else '禁用'}")
-            
+
             text, markup = await _get_group_config_content(session, config)
             with suppress(TelegramBadRequest):
                 await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
@@ -208,7 +208,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             config.save_reply_messages = not config.save_reply_messages
             await session.commit()
             await callback.answer(f"✅ 回复消息保存已{'启用' if config.save_reply_messages else '禁用'}")
-            
+
             text, markup = await _get_group_config_content(session, config)
             with suppress(TelegramBadRequest):
                 await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
@@ -217,7 +217,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             config.save_bot_messages = not config.save_bot_messages
             await session.commit()
             await callback.answer(f"✅ 机器人消息保存已{'启用' if config.save_bot_messages else '禁用'}")
-            
+
             text, markup = await _get_group_config_content(session, config)
             with suppress(TelegramBadRequest):
                 await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")

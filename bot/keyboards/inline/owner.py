@@ -3,10 +3,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.config import ADMIN_FEATURES_MAPPING, USER_FEATURES_MAPPING
 from bot.keyboards.inline.buttons import (
-    MAIN_OWNER_BUTTONS,
     ADMIN_LIST_BUTTON,
     BACK_TO_HOME_BUTTON,
     BACK_TO_OWNER_PANEL_BUTTON,
+    MAIN_OWNER_BUTTONS,
     OWNER_PANEL_BUTTONS,
 )
 from bot.keyboards.inline.constants import (
@@ -109,21 +109,21 @@ def get_user_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboar
     # 我们假设映射顺序是固定的: bot, all, ...
     # 总数 - 2 (bot, all) - 1 (bottom nav row) = remaining buttons
     # 实际上 buttons 列表长度 = mapping items + 1 (bottom row)
-    
+
     # 按照 mappings 定义的顺序：
     # 1. bot (1)
     # 2. all (1)
     # 3. others... (2 per row)
     # 4. bottom nav (2)
-    
+
     mapping_len = len(USER_FEATURES_MAPPING)
     # 确保至少有2个（bot, all）
-    
+
     layout = []
     if mapping_len >= 2:
         layout.append(1) # bot
         layout.append(1) # all
-        
+
         remaining = mapping_len - 2
         layout.extend([2] * (remaining // 2))
         if remaining % 2 != 0:
@@ -131,7 +131,7 @@ def get_user_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboar
     else:
         # Fallback if mapping is empty or weird
         layout.extend([1] * mapping_len)
-        
+
     layout.append(2) # bottom nav
 
     keyboard.adjust(*layout)
