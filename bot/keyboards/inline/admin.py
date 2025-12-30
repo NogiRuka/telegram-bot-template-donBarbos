@@ -316,7 +316,7 @@ def get_files_admin_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(text=FILE_SAVE_LABEL, callback_data=FILE_ADMIN_CALLBACK_DATA + ":save"),
-            InlineKeyboardButton(text=FILE_LIST_LABEL, callback_data=FILE_ADMIN_CALLBACK_DATA + ":list:1:10"),
+            InlineKeyboardButton(text=FILE_LIST_LABEL, callback_data=FILE_ADMIN_CALLBACK_DATA + ":list:1:5"),
         ],
         [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
     ]
@@ -349,5 +349,43 @@ def get_files_list_pagination_keyboard(page: int, total_pages: int, limit: int) 
             InlineKeyboardButton(text="🔙 返回文件管理", callback_data=FILE_ADMIN_CALLBACK_DATA),
             InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:back_home"),
         ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_files_cancel_keyboard() -> InlineKeyboardMarkup:
+    """文件管理取消键盘
+
+    功能说明:
+    - 提供取消按钮, 点击后返回文件管理主面板
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 键盘对象
+    """
+    buttons = [[InlineKeyboardButton(text=MAIN_IMAGE_CANCEL_LABEL, callback_data=FILE_ADMIN_CALLBACK_DATA)]]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_files_item_keyboard(file_record_id: int) -> InlineKeyboardMarkup:
+    """文件项操作键盘
+
+    功能说明:
+    - 提供删除与关闭操作
+
+    输入参数:
+    - file_record_id: 记录ID
+
+    返回值:
+    - InlineKeyboardMarkup: 键盘对象
+    """
+    buttons = [
+        [
+            InlineKeyboardButton(text="🗑️ 删除", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:item:delete:{file_record_id}"),
+            InlineKeyboardButton(text="❌ 关闭", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:item:close"),
+        ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)

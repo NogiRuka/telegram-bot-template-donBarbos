@@ -1,6 +1,7 @@
+import contextlib
 from math import ceil
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from loguru import logger
@@ -12,13 +13,13 @@ from bot.config.constants import KEY_ADMIN_FILES
 from bot.database.models import MediaFileModel
 from bot.keyboards.inline.admin import (
     get_files_admin_keyboard,
+    get_files_cancel_keyboard,
     get_files_list_pagination_keyboard,
-    get_main_image_cancel_keyboard,
 )
 from bot.keyboards.inline.constants import FILE_ADMIN_CALLBACK_DATA, FILE_ADMIN_LABEL
 from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminFileState
-from bot.utils.message import send_toast
+from bot.utils.message import safe_delete_message, send_toast
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2, format_size
 
@@ -39,6 +40,8 @@ async def show_files_panel(callback: CallbackQuery, state: FSMContext, main_msg:
     返回值:
     - None
     """
+    if callback.message:
+        await _clear_files_list(state, callback.bot, callback.message.chat.id)
     await state.clear()
     text = (
         f"*{FILE_ADMIN_LABEL}*\n\n"
@@ -71,7 +74,7 @@ async def start_file_save(callback: CallbackQuery, state: FSMContext, main_msg: 
     await main_msg.update_on_callback(
         callback,
         "请发送要保存的文件（支持图片、文档、视频、音频、语音、动画等）",
-        get_main_image_cancel_keyboard(),
+        get_files_cancel_keyboard(),
     )
     await callback.answer()
 
@@ -104,6 +107,8 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
     duration = None
 
     try:
+        with contextlib.suppress(Exception):
+            await main_msg.delete_input(message)
         if message.photo:
             p = message.photo[-1]
             media_type = "photo"
@@ -189,6 +194,7 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             width=width,
             height=height,
             duration=duration,
+            label=message.caption,
             created_by=message.from_user.id if message.from_user else None,
             updated_by=message.from_user.id if message.from_user else None,
         )
@@ -199,14 +205,17 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
         mime_str = escape_markdown_v2(mime_type or "-")
         name_str = escape_markdown_v2(file_name or "-")
         summary = (
-            "*✅ 文件已保存*\n"
-            f"类型: {escape_markdown_v2(media_type)}\n"
-            f"大小: {size_str}\n"
-            f"MIME: {mime_str}\n"
-            f"文件名: {name_str}\n"
-            f"ID: `{model.id}`"
+            "*📁 文件保存成功*\n\n"
+            f"🆔 *文件ID*: `{model.id}`\n"
+            f"🔑 *唯一ID*: `{escape_markdown_v2(file_unique_id or '-')}`\n"
+            f"📄 *文件名*: {name_str}\n"
+            f"📦 *大小*: {size_str}\n"
+            f"🏷️ *类型*: {escape_markdown_v2(media_type)}\n"
+            f"🧬 *MIME*: {mime_str}\n"
+            f"📛 *标签*: {escape_markdown_v2(model.label or '-')}"
         )
-        await main_msg.render(message.from_user.id, summary)
+
+        await main_msg.render(message.from_user.id, summary, get_files_admin_keyboard())
     except Exception as e:
         logger.exception("保存文件失败")
         await message.answer(f"❌ 保存失败: {e}")
@@ -214,9 +223,31 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
         await state.clear()
 
 
+async def _clear_files_list(state: FSMContext, bot: Bot, chat_id: int) -> None:
+    """清理文件列表发送的预览消息
+
+    功能说明:
+    - 删除列表查看过程中发送的消息并清空记录
+
+    输入参数:
+    - state: FSM 上下文
+    - bot: 机器人实例
+    - chat_id: 聊天ID
+
+    返回值:
+    - None
+    """
+    data = await state.get_data()
+    msg_ids: list[int] = data.get("files_list_ids", [])
+    if msg_ids:
+        for mid in msg_ids:
+            await safe_delete_message(bot, chat_id, mid)
+        await state.update_data(files_list_ids=[])
+
+
 @router.callback_query(F.data.startswith(FILE_ADMIN_CALLBACK_DATA + ":list"))
 @require_admin_feature(KEY_ADMIN_FILES)
-async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
+async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
     """查看文件列表（分页）
 
     功能说明:
@@ -239,6 +270,8 @@ async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: M
         await callback.answer("❌ 参数错误", show_alert=True)
         return
 
+    if callback.message:
+        await _clear_files_list(state, callback.bot, callback.message.chat.id)
     count_stmt = select(func.count()).where(MediaFileModel.is_deleted.is_(False))
     total_count = (await session.execute(count_stmt)).scalar_one()
     total_pages = ceil(total_count / limit) if total_count > 0 else 1
@@ -261,19 +294,48 @@ async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: M
         await send_toast(callback, "暂无数据")
         return
 
+    new_msg_ids: list[int] = []
     for it in items:
         size_str = escape_markdown_v2(format_size(it.file_size or 0))
-        mime_str = escape_markdown_v2(it.mime_type or "-")
         name_str = escape_markdown_v2(it.file_name or "-")
         caption = (
-            f"🆔 `{it.id}` ｜ 类型: {escape_markdown_v2(it.media_type)} ｜ "
-            f"MIME: {mime_str} ｜ 📦 {size_str} ｜ 文件名: {name_str}"
+            f"🆔 `{it.id}` ｜ 📄 `{name_str}` ｜ 📦 {size_str} ｜ 🏷️ {escape_markdown_v2(it.label or '-')}"
         )
+
         try:
             if it.media_type == "photo":
-                await callback.message.answer_photo(photo=it.file_id, caption=caption, parse_mode="MarkdownV2")
+                msg = await callback.message.answer_photo(photo=it.file_id, caption=caption, parse_mode="MarkdownV2")
             else:
-                await callback.message.answer(caption, parse_mode="MarkdownV2")
+                msg = await callback.message.answer(caption, parse_mode="MarkdownV2")
+            if msg:
+                new_msg_ids.append(msg.message_id)
         except Exception as e:
             await callback.message.answer(f"❌ 文件 ID `{it.id}` 发送失败: {e}")
+    await state.update_data(files_list_ids=new_msg_ids)
+    await callback.answer()
+
+
+@router.callback_query(F.data == FILE_ADMIN_CALLBACK_DATA + ":back_home")
+@require_admin_feature(KEY_ADMIN_FILES)
+async def back_to_home_from_files(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
+    """返回主面板
+
+    功能说明:
+    - 删除列表预览消息并返回首页
+
+    输入参数:
+    - callback: 回调对象
+    - session: 异步数据库会话
+    - state: FSM 上下文
+    - main_msg: 主消息服务
+
+    返回值:
+    - None
+    """
+    if callback.message:
+        await _clear_files_list(state, callback.bot, callback.message.chat.id)
+    from bot.handlers.start import build_home_view
+    uid = callback.from_user.id if callback.from_user else None
+    caption, kb = await build_home_view(session, uid)
+    await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer()
