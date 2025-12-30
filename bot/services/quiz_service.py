@@ -16,15 +16,16 @@ from bot.database.models import (
     QuizLogModel,
 )
 from bot.services.currency import CurrencyService
+from bot.services.quiz_config_service import QuizConfigService
 from bot.utils.datetime import now
 
 
 class QuizService:
-    # 配置常量 (可后续改为从 ConfigService 获取)
-    COOLDOWN_MINUTES = 10
-    TRIGGER_PROBABILITY = 0.05  # 5%
-    DAILY_LIMIT = 10
-    SESSION_TIMEOUT_SECONDS = 30
+    # 配置常量 (已弃用，转为从 QuizConfigService 获取)
+    # COOLDOWN_MINUTES = 10
+    # TRIGGER_PROBABILITY = 0.05  # 5%
+    # DAILY_LIMIT = 10
+    SESSION_TIMEOUT_SECONDS = 30 # 这个暂时保留作为默认值，实际也从 ConfigService 拿
     
     @staticmethod
     async def check_trigger_conditions(session: AsyncSession, user_id: int, chat_id: int) -> bool:
@@ -36,6 +37,11 @@ class QuizService:
         :param chat_id: 聊天ID (用于区分群组/私聊，目前逻辑通用)
         :return: True if triggered, False otherwise
         """
+        # 获取配置
+        trigger_prob = await QuizConfigService.get_trigger_probability(session)
+        daily_limit = await QuizConfigService.get_daily_limit(session)
+        cooldown_min = await QuizConfigService.get_cooldown_minutes(session)
+
         # 1. 检查是否存在活跃会话
         active_stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
         active_result = await session.execute(active_stmt)
@@ -52,7 +58,7 @@ class QuizService:
                 return False
 
         # 2. 概率检查 (最先检查，减少DB查询)
-        if random.random() > QuizService.TRIGGER_PROBABILITY:
+        if random.random() > trigger_prob:
             return False
 
         # 3. 每日次数检查
@@ -64,7 +70,7 @@ class QuizService:
             )
         )
         daily_count = (await session.execute(daily_count_stmt)).scalar() or 0
-        if daily_count >= QuizService.DAILY_LIMIT:
+        if daily_count >= daily_limit:
             return False
 
         # 4. 冷却时间检查
@@ -83,7 +89,7 @@ class QuizService:
             
             # 计算时间差
             elapsed = now() - last_time
-            if elapsed < timedelta(minutes=QuizService.COOLDOWN_MINUTES):
+            if elapsed < timedelta(minutes=cooldown_min):
                 return False
 
         return True
@@ -98,6 +104,8 @@ class QuizService:
         :param chat_id: 聊天ID
         :return: (Question, Image, Keyboard, SessionID) or None
         """
+        # 获取超时时间配置
+        timeout_sec = await QuizConfigService.get_session_timeout(session)
         # 1. 随机选取题目
         # 这种写法在数据量大时效率较低，但对于初期足够
         stmt = select(QuizQuestionModel).where(QuizQuestionModel.is_active == True).order_by(func.random()).limit(1)
@@ -152,7 +160,7 @@ class QuizService:
         builder.adjust(2) # 每行2个
 
         # 4. 创建 Session
-        expire_at = int((now() + timedelta(seconds=QuizService.SESSION_TIMEOUT_SECONDS)).timestamp())
+        expire_at = int((now() + timedelta(seconds=timeout_sec)).timestamp())
         
         # 这里的 message_id 暂时填 0，发送消息后需要更新
         quiz_session = QuizActiveSessionModel(
