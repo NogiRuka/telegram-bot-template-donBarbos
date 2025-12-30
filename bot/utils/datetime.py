@@ -30,7 +30,7 @@ def get_app_timezone() -> datetime.tzinfo:
     tzname = settings.get_timezone_name()
     if tzname.upper() in {"UTC", "Z"}:
         return UTC
-    if re.match(r"^[+-]\\d{2}:\\d{2}$", tzname):
+    if re.match(r"^[+-]\d{2}:\d{2}$", tzname):
         sign = 1 if tzname.startswith("+") else -1
         hours = int(tzname[1:3])
         minutes = int(tzname[4:6])
@@ -224,3 +224,28 @@ def get_friendly_timezone_name(tz_name: str) -> str:
         return f"{city.replace('_', ' ')} ({region})"
 
     return tz_name
+
+
+def format_duration(seconds: int | float | None) -> str:
+    """格式化时长为人类可读格式 (HH:MM:SS 或 MM:SS)
+
+    功能说明:
+    - 将秒数转换为 HH:MM:SS 或 MM:SS 格式
+    - 自动处理 None 或 0 值
+
+    输入参数:
+    - seconds: 总秒数 (int 或 float)
+
+    返回值:
+    - str: 格式化后的时长字符串 (如 "01:30", "01:20:30")
+    """
+    if not seconds:
+        return "00:00"
+    
+    seconds = int(seconds)
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    
+    if h > 0:
+        return f"{h:02d}:{m:02d}:{s:02d}"
+    return f"{m:02d}:{s:02d}"

@@ -24,7 +24,7 @@ from bot.states.admin import AdminFileState
 from bot.utils.message import safe_delete_message
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2, format_size
-from bot.utils.datetime import now
+from bot.utils.datetime import now, format_duration
 
 
 @router.callback_query(F.data == FILE_ADMIN_CALLBACK_DATA)
@@ -324,7 +324,7 @@ async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: M
         name_str = escape_markdown_v2(it.unique_name or "-")
         duration_part = ""
         if it.duration:
-            duration_part = f" ｜ ⏱ {it.duration}s"
+            duration_part = f" ｜ ⏱ {format_duration(it.duration)}"
         
         caption = (
             f"🆔 `{it.id}` ｜ 📄 `{name_str}` ｜ 📦 {size_str}{duration_part} ｜ 🏷️ {escape_markdown_v2(it.label or '-')}"
