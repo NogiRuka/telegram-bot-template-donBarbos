@@ -16,6 +16,7 @@ from bot.keyboards.inline.admin import (
     get_files_cancel_keyboard,
     get_files_item_keyboard,
     get_files_list_pagination_keyboard,
+    get_files_save_success_keyboard,
 )
 from bot.keyboards.inline.constants import FILE_ADMIN_CALLBACK_DATA, FILE_ADMIN_LABEL
 from bot.services.main_message import MainMessageService
@@ -185,11 +186,19 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             await message.answer("⚠️ 未检测到支持的文件类型或该消息不包含文件内容")
             return
 
+        # 生成唯一文件名
+        import time
+        timestamp = int(time.time())
+        # 如果没有文件名，使用 file_unique_id
+        base_name = file_name if file_name else (file_unique_id or "unknown")
+        unique_name = f"{base_name}_{timestamp}"
+
         model = MediaFileModel(
             file_id=file_id,
             file_unique_id=file_unique_id,
             file_size=file_size,
             file_name=file_name,
+            unique_name=unique_name,
             mime_type=mime_type,
             media_type=media_type,
             width=width,
@@ -205,23 +214,27 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
         size_str = escape_markdown_v2(format_size(file_size or 0))
         mime_str = escape_markdown_v2(mime_type or "-")
         name_str = escape_markdown_v2(file_name or "-")
+        unique_name_str = escape_markdown_v2(unique_name)
         summary = (
             "*📁 文件保存成功*\n\n"
             f"🆔 *文件ID*: `{model.id}`\n"
             f"🔑 *唯一ID*: `{escape_markdown_v2(file_unique_id or '-')}`\n"
             f"📄 *文件名*: {name_str}\n"
+            f"🔖 *唯一名*: `{unique_name_str}`\n"
             f"📦 *大小*: {size_str}\n"
             f"🏷️ *类型*: {escape_markdown_v2(media_type)}\n"
             f"🧬 *MIME*: {mime_str}\n"
             f"📛 *标签*: {escape_markdown_v2(model.label or '-')}"
         )
 
-        await main_msg.render(message.from_user.id, summary, get_files_admin_keyboard())
+        await main_msg.render(message.from_user.id, summary, get_files_save_success_keyboard())
     except Exception as e:
         logger.exception("保存文件失败")
         await message.answer(f"❌ 保存失败: {e}")
     finally:
-        await state.clear()
+        # 保持在 waiting_for_file 状态，以便继续上传
+        # await state.clear()
+        pass
 
 
 async def _clear_files_list(state: FSMContext, bot: Bot, chat_id: int) -> None:

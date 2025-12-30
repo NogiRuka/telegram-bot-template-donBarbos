@@ -370,6 +370,32 @@ def get_files_cancel_keyboard() -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
+def get_files_save_success_keyboard() -> InlineKeyboardMarkup:
+    """文件保存成功键盘
+
+    功能说明:
+    - 第一行: 继续保存 (保持在当前状态)
+    - 第二行: 返回文件管理, 返回主页
+
+    输入参数:
+    - 无
+
+    返回值:
+    - InlineKeyboardMarkup: 键盘对象
+    """
+    buttons = [
+        [
+            InlineKeyboardButton(text="📥 继续保存", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:save"),
+        ],
+        [
+            InlineKeyboardButton(text="🔙 返回文件管理", callback_data=FILE_ADMIN_CALLBACK_DATA),
+            BACK_TO_HOME_BUTTON,
+        ],
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
 def get_files_item_keyboard(file_record_id: int) -> InlineKeyboardMarkup:
     """文件项操作键盘
 

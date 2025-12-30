@@ -28,6 +28,7 @@ class MediaFileModel(Base, BasicAuditMixin):
     file_unique_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True, comment="文件唯一ID")
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="文件大小(字节)")
     file_name: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="文件名")
+    unique_name: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, comment="唯一文件名(文件名_时间戳)")
     mime_type: Mapped[str | None] = mapped_column(String(128), nullable=True, comment="MIME类型")
 
     # 类型与可选属性
