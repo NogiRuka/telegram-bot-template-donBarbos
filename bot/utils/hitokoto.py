@@ -134,11 +134,17 @@ def build_start_caption(
     返回值:
     - str: 用于 Markdown 解析模式的完整文案
     """
-    hitokoto = "(ง •̀_•́)ง" if not payload else str(payload.get("hitokoto") or "(ง •̀_•́)ง")
+    from bot.utils.text import escape_markdown_v2
+    hitokoto_raw = "(ง •̀_•́)ง" if not payload else str(payload.get("hitokoto") or "(ง •̀_•́)ง")
+    # 链接文本需进行 MarkdownV2 转义，避免包含特殊字符导致解析失败
+    hitokoto = escape_markdown_v2(hitokoto_raw)
     uuid = "" if not payload else str(payload.get("uuid") or "")
     link = f"https://hitokoto.cn?uuid={uuid}" if uuid else "https://hitokoto.cn/"
-    base = f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name}_*\n🎐 欢迎使用{project_name}\n"
+    # 用户名与项目名也需要转义
+    user_name_esc = escape_markdown_v2(user_name)
+    project_name_esc = escape_markdown_v2(project_name)
+    base = f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name_esc}_*\n🎐 欢迎使用{project_name_esc}\n"
     ann = ""
     if announcement:
-        ann = f"\n📢 公告：\n{announcement}\n"
+        ann = f"\n📢 公告：\n{escape_markdown_v2(announcement)}\n"
     return f"{base}{ann}"
