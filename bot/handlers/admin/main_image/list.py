@@ -112,7 +112,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
     items = (await session.execute(stmt)).scalars().all()
 
     # 更新控制消息
-    type_name = "NSFW" if is_nsfw else "SFW"
+    type_name = "🔞 NSFW" if is_nsfw else "🌿 SFW"
     text = (
         f"*🗂 图片列表 \\({type_name}\\)*\n"
         f"共 {total_count} 张，当前第 {page}/{total_pages} 页"
@@ -125,14 +125,14 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
 
     # 发送图片
     if not items:
-        await send_toast(callback, "暂无数据")
+        await send_toast(callback, "🈳 暂无数据，换个分类看看吧～")
         return
 
     new_msg_ids = []
     for item in items:
 
         file_size_str = escape_markdown_v2(format_size(item.file_size))
-        caption = f"🆔 `{item.id}` ｜ 📝 {escape_markdown_v2(item.caption or '无')} ｜ 📦 {file_size_str} ｜ {'🟢 启用' if item.is_enabled else '🔴 禁用'}"
+        caption = f"🆔 `{item.id}` ｜ 📦 {file_size_str} ｜ {'🟢 启用' if item.is_enabled else '🔴 禁用'} ｜ 📝 {escape_markdown_v2(item.caption or '无')}"
 
         try:
             # 统一使用 MarkdownV2

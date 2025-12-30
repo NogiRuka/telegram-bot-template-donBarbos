@@ -17,8 +17,6 @@ async def test_trigger(callback: CallbackQuery, session: AsyncSession):
     # 强制给管理员私聊发送
     target_chat_id = user_id
     
-    await callback.answer("正在生成测试题目...")
-    
     try:
         # 强制触发，不检查条件
         quiz_data = await QuizService.create_quiz_session(session, user_id, target_chat_id)
@@ -35,7 +33,7 @@ async def test_trigger(callback: CallbackQuery, session: AsyncSession):
                 
             await QuizService.update_session_message_id(session, session_id, sent.message_id)
         else:
-            await callback.message.answer("⚠️ 题库为空或生成失败。")
+            await callback.answer("⚠️ 题库为空或生成失败。")
             
     except Exception as e:
         await callback.message.answer(f"❌ 测试失败: {e}")

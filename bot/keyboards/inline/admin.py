@@ -190,6 +190,23 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
     return keyboard.as_markup()
 
 
+def get_quiz_add_cancel_keyboard() -> InlineKeyboardMarkup:
+    """问答快捷添加取消键盘"""
+    buttons = [[InlineKeyboardButton(text=MAIN_IMAGE_CANCEL_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA)]]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_quiz_add_success_keyboard() -> InlineKeyboardMarkup:
+    """问答快捷添加成功键盘"""
+    buttons = [
+        [InlineKeyboardButton(text="➕ 继续添加", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":add_quick")],
+        [BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON]
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
 def get_main_image_back_keyboard() -> InlineKeyboardMarkup:
     """主图管理返回键盘 (用于列表/查看等非输入状态)"""
     buttons = [[MAIN_IMAGE_BACK_BUTTON, BACK_TO_HOME_BUTTON]]

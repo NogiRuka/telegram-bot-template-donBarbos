@@ -8,13 +8,17 @@ from bot.states.admin import QuizAdminState
 from bot.utils.permissions import require_admin_feature
 from bot.config.constants import KEY_ADMIN_QUIZ
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
+from bot.services.main_message import MainMessageService
+from bot.keyboards.inline.admin import get_quiz_add_cancel_keyboard, get_quiz_add_success_keyboard
+from bot.utils.text import escape_markdown_v2
+from bot.utils.message import send_toast
 from .router import router
 
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":add_quick")
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def start_quick_add(callback: CallbackQuery, state: FSMContext):
+async def start_quick_add(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService):
     """开始快捷添加"""
-    await callback.message.answer(
+    text = (
         "*➕ 快捷添加题目*\n\n"
         "请发送一张图片（可选），并在 Caption（如果是纯文本则直接发送文本）中按以下格式输入：\n\n"
         "`题目描述\n"
@@ -27,25 +31,29 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext):
         "路人甲 鸣人 佐助 小樱\n"
         "2\n"
         "动漫\n"
-        "火影忍者,JUMP`",
-        parse_mode="MarkdownV2"
+        "火影忍者,JUMP`"
     )
+    await main_msg.update_on_callback(callback, text, get_quiz_add_cancel_keyboard())
     await state.set_state(QuizAdminState.waiting_for_quick_add)
     await callback.answer()
 
 @router.message(QuizAdminState.waiting_for_quick_add)
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def process_quick_add(message: Message, state: FSMContext, session: AsyncSession):
+async def process_quick_add(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
     """处理快捷添加"""
+    # 删除用户输入
+    await main_msg.delete_input(message)
+
     # 获取文本内容
     text = message.caption or message.text
     if not text:
-        await message.answer("⚠️ 请输入题目内容。")
+        await send_toast(message, "⚠️ 请输入题目内容。")
         return
 
     lines = [l.strip() for l in text.split("\n") if l.strip()]
     if len(lines) < 4:
-        await message.answer(
+        await send_toast(
+            message,
             "⚠️ 格式错误，行数不足。\n"
             "请确保包含：题目、选项、答案序号、分类、标签（可选）。"
         )
@@ -59,12 +67,12 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
         # 尝试空格分隔
         options = [o for o in options_text.split(" ") if o]
         if len(options) != 4:
-            await message.answer(f"⚠️ 选项解析失败，找到 {len(options)} 个选项，需要 4 个。")
+            await send_toast(message, f"⚠️ 选项解析失败，找到 {len(options)} 个选项，需要 4 个。")
             return
 
         correct_idx_raw = lines[2]
         if not correct_idx_raw.isdigit() or not (1 <= int(correct_idx_raw) <= 4):
-            await message.answer("⚠️ 正确答案序号必须是 1-4 的数字。")
+            await send_toast(message, "⚠️ 正确答案序号必须是 1-4 的数字。")
             return
         correct_index = int(correct_idx_raw) - 1
 
@@ -104,8 +112,14 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
             session.add(img)
         
         await session.commit()
-        await message.answer(f"✅ 题目已添加！(ID: {quiz.id})\n分类: {category}\n标签: {tags}")
+
+        success_text = (
+            f"✅ *题目已添加！* \\(ID: `{quiz.id}`\\)\n"
+            f"📂 分类：{escape_markdown_v2(category)}\n"
+            f"🏷️ 标签：{escape_markdown_v2(', '.join(tags))}"
+        )
         await state.clear()
+        await main_msg.render(message.from_user.id, success_text, get_quiz_add_success_keyboard())
         
     except Exception as e:
-        await message.answer(f"❌ 添加失败: {e}")
+        await send_toast(message, f"❌ 添加失败: {e}")
