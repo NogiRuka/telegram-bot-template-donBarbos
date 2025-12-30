@@ -9,12 +9,12 @@
 """
 
 from __future__ import annotations
-import datetime
 
 from sqlalchemy import Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, big_int_pk
+from bot.utils.datetime import now
 
 
 class UserModel(Base, BasicAuditMixin):
@@ -122,7 +122,7 @@ class UserModel(Base, BasicAuditMixin):
             operated_by_user_id: 执行删除操作的用户ID，可选
         """
         self.is_deleted = True
-        self.deleted_at = datetime.datetime.now()
+        self.deleted_at = now()
         self.deleted_by = operated_by_user_id
 
     def restore(self) -> None:
