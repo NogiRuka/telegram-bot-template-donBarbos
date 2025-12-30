@@ -228,11 +228,12 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
         )
 
         await main_msg.render(message.from_user.id, summary, get_files_save_success_keyboard())
+        # 成功后清除状态
+        await state.clear()
     except Exception as e:
         logger.exception("保存文件失败")
         await message.answer(f"❌ 保存失败: {e}")
-    finally:
-        await state.clear()
+        # 失败时保持状态，允许重试或修正
 
 
 async def _clear_files_list(state: FSMContext, bot: Bot, chat_id: int) -> None:
