@@ -227,16 +227,90 @@ class GroupMessageSaver:
                 keywords = json.loads(include_keywords)
                 if keywords and not any(keyword.lower() in text_lower for keyword in keywords):
                     return False
-            except (json.JSONDecodeError, TypeError):
-                logger.warning(f"⚠️ 无效的包含关键词JSON: {include_keywords}")
+            except json.JSONDecodeError:
+                logger.warning(f"❌ 包含关键词配置格式错误: {include_keywords}")
         if exclude_keywords:
             try:
                 keywords = json.loads(exclude_keywords)
                 if keywords and any(keyword.lower() in text_lower for keyword in keywords):
                     return False
-            except (json.JSONDecodeError, TypeError):
-                logger.warning(f"⚠️ 无效的排除关键词JSON: {exclude_keywords}")
+            except json.JSONDecodeError:
+                logger.warning(f"❌ 排除关键词配置格式错误: {exclude_keywords}")
         return True
+
+    def generate_service_message_text(self, message: types.Message) -> str | None:
+        """生成系统服务消息的文本描述"""
+        if message.new_chat_members:
+            names = [f"{u.full_name}" for u in message.new_chat_members]
+            return f"添加了成员: {', '.join(names)}"
+        if message.left_chat_member:
+            return f"成员离开: {message.left_chat_member.full_name}"
+        if message.new_chat_title:
+            return f"群组名称修改为: {message.new_chat_title}"
+        if message.new_chat_photo:
+            return "群组头像已修改"
+        if message.delete_chat_photo:
+            return "群组头像已移除"
+        if message.group_chat_created:
+            return "群组已创建"
+        if message.supergroup_chat_created:
+            return "超级群组已创建"
+        if message.channel_chat_created:
+            return "频道已创建"
+        if message.message_auto_delete_timer_changed:
+            time = message.message_auto_delete_timer_changed.message_auto_delete_time
+            if time == 0:
+                return "自动删除已禁用"
+            if time < 60:
+                time_str = f"{time} 秒"
+            elif time < 3600:
+                time_str = f"{time // 60} 分钟"
+            elif time < 86400:
+                time_str = f"{time // 3600} 小时"
+            else:
+                time_str = f"{time // 86400} 天"
+            return f"您将消息设置为在 {time_str} 内自动删除"
+        if message.pinned_message:
+            return "置顶了一条消息"
+        if message.migrate_to_chat_id:
+            return f"群组升级为超级群组，新ID: {message.migrate_to_chat_id}"
+        if message.migrate_from_chat_id:
+            return f"群组由普通群组升级而来，原ID: {message.migrate_from_chat_id}"
+        if message.successful_payment:
+            return f"支付成功: {message.successful_payment.total_amount / 100} {message.successful_payment.currency}"
+        if message.connected_website:
+            return f"登录网站: {message.connected_website}"
+        if message.write_access_allowed:
+            return "允许写入访问"
+        if message.passport_data:
+            return "收到护照数据"
+        if message.proximity_alert_triggered:
+            user = message.proximity_alert_triggered.traveler
+            dist = message.proximity_alert_triggered.distance
+            return f"接近警报: {user.full_name} 距离 {dist} 米"
+        if message.video_chat_scheduled:
+            return f"视频聊天已安排: {message.video_chat_scheduled.start_date}"
+        if message.video_chat_started:
+            return "视频聊天已开始"
+        if message.video_chat_ended:
+            duration = message.video_chat_ended.duration
+            return f"视频聊天已结束，持续 {duration} 秒"
+        if message.video_chat_participants_invited:
+            users = [u.full_name for u in message.video_chat_participants_invited.users]
+            return f"邀请加入视频聊天: {', '.join(users)}"
+        if message.forum_topic_created:
+            return f"创建了话题: {message.forum_topic_created.name}"
+        if message.forum_topic_edited:
+            return f"编辑了话题: {message.forum_topic_edited.name or '图标'}"
+        if message.forum_topic_closed:
+            return "关闭了话题"
+        if message.forum_topic_reopened:
+            return "重新打开了话题"
+        if message.general_forum_topic_hidden:
+            return "隐藏了通用话题"
+        if message.general_forum_topic_unhidden:
+            return "取消隐藏通用话题"
+        return None
 
     def extract_entities(self, entities: list | None) -> str | None:
         if not entities:
@@ -294,6 +368,10 @@ class GroupMessageSaver:
             ):
                 return False
             text_content = message.text or message.caption or ""
+            # 如果没有文本内容，尝试生成系统服务消息的描述
+            if not text_content:
+                text_content = self.generate_service_message_text(message) or ""
+
             if not self.check_keywords(text_content, config.include_keywords, config.exclude_keywords):
                 return False
             file_info = self.extract_file_info(message)
