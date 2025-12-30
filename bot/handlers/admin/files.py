@@ -187,11 +187,11 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             return
 
         # 生成唯一文件名
-        import time
-        timestamp = int(time.time())
+        from bot.utils.datetime import now
+        current_time = now().strftime("%Y%m%d%H%M")
         # 如果没有文件名，使用 file_unique_id
         base_name = file_name if file_name else (file_unique_id or "unknown")
-        unique_name = f"{base_name}_{timestamp}"
+        unique_name = f"{base_name}_{current_time}"
 
         model = MediaFileModel(
             file_id=file_id,
@@ -232,9 +232,7 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
         logger.exception("保存文件失败")
         await message.answer(f"❌ 保存失败: {e}")
     finally:
-        # 保持在 waiting_for_file 状态，以便继续上传
-        # await state.clear()
-        pass
+        await state.clear()
 
 
 async def _clear_files_list(state: FSMContext, bot: Bot, chat_id: int) -> None:
