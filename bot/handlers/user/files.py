@@ -43,7 +43,7 @@ async def get_file_command(message: Message, session: AsyncSession) -> None:
         file_record = (await session.execute(stmt)).scalar_one_or_none()
 
     if not file_record:
-        await message.answer(f"❌ 未找到文件: `{escape_markdown_v2(search_term)}`", parse_mode="MarkdownV2")
+        await message.reply(f"❌ 未找到文件: `{escape_markdown_v2(search_term)}`", parse_mode="MarkdownV2")
         return
 
     try:

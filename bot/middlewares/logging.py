@@ -2,7 +2,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from aiogram import BaseMiddleware
+from aiogram.dispatcher.event.bases import CancelHandler
 from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
+from bot.database.models.audit_log import AuditLogModel, ActionType
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -20,11 +23,47 @@ if TYPE_CHECKING:
 class LoggingMiddleware(BaseMiddleware):
     """
     全中文日志记录中间件
+    
+    功能:
+    1. 记录所有 Update 事件的日志到控制台
+    2. 将 /start 和 /gf 等关键命令记录到数据库审计表
     """
 
     def __init__(self) -> None:
         self.logger = logger
         super().__init__()
+
+    async def _record_command_audit(self, message: Message, session: AsyncSession) -> None:
+        """记录命令审计日志"""
+        if not message.text or not message.text.startswith("/"):
+            return
+
+        command = message.text.split()[0].lower()
+        if command not in ["/start", "/gf", "/get_file"]:
+            return
+
+        try:
+            audit = AuditLogModel(
+                operator_id=message.from_user.id if message.from_user else None,
+                operator_name=message.from_user.full_name if message.from_user else None,
+                user_id=message.from_user.id if message.from_user else None,
+                action_type=ActionType.USER_LOGIN if command == "/start" else ActionType.ADMIN_QUERY,
+                target_type="file" if command in ["/gf", "/get_file"] else "system",
+                target_id=command,
+                description=f"用户执行命令: {message.text}",
+                details={
+                    "chat_id": message.chat.id,
+                    "chat_type": message.chat.type,
+                    "message_id": message.message_id,
+                    "raw_text": message.text
+                },
+                ip_address=None,  # Telegram API 不提供用户 IP
+                user_agent="Telegram Bot"
+            )
+            session.add(audit)
+            await session.commit()
+        except Exception as e:
+            self.logger.error(f"记录审计日志失败: {e}")
 
     def process_message(self, message: Message) -> dict[str, Any]:
         """处理消息"""
@@ -139,6 +178,10 @@ class LoggingMiddleware(BaseMiddleware):
             target_obj = getattr(event, attr_name, None)
             if target_obj:
                 self._log_event(log_prefix, process_func(target_obj))
+                
+                # 记录特定命令的审计日志
+                if attr_name == "message" and "session" in data:
+                    await self._record_command_audit(target_obj, data["session"])
                 break
         else:
             # 2. 备用检查：如果 event 本身就是 Message/CallbackQuery 等对象（非 Update 包裹）
@@ -147,6 +190,8 @@ class LoggingMiddleware(BaseMiddleware):
 
             if event_type == "Message":
                 self._log_event("收到消息", self.process_message(event))  # type: ignore
+                if "session" in data:
+                    await self._record_command_audit(event, data["session"])  # type: ignore
             elif event_type == "CallbackQuery":
                 self._log_event("收到按钮回调", self.process_callback_query(event))  # type: ignore
             elif event_type == "InlineQuery":
