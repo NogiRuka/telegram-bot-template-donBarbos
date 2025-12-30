@@ -15,13 +15,19 @@ from bot.database.models import (
     QuizActiveSessionModel,
     QuizLogModel,
 )
+from bot.services.config_service import get_config
+from bot.config.constants import (
+    KEY_QUIZ_TRIGGER_PROBABILITY,
+    KEY_QUIZ_DAILY_LIMIT,
+    KEY_QUIZ_COOLDOWN_MINUTES,
+    KEY_QUIZ_SESSION_TIMEOUT,
+)
 from bot.services.currency import CurrencyService
-from bot.services.quiz_config_service import QuizConfigService
 from bot.utils.datetime import now
 
 
 class QuizService:
-    # 配置常量 (已弃用，转为从 QuizConfigService 获取)
+    # 配置常量 (已弃用，转为从 ConfigService 获取)
     # COOLDOWN_MINUTES = 10
     # TRIGGER_PROBABILITY = 0.05  # 5%
     # DAILY_LIMIT = 10
@@ -38,9 +44,9 @@ class QuizService:
         :return: True if triggered, False otherwise
         """
         # 获取配置
-        trigger_prob = await QuizConfigService.get_trigger_probability(session)
-        daily_limit = await QuizConfigService.get_daily_limit(session)
-        cooldown_min = await QuizConfigService.get_cooldown_minutes(session)
+        trigger_prob = await get_config(session, KEY_QUIZ_TRIGGER_PROBABILITY)
+        daily_limit = await get_config(session, KEY_QUIZ_DAILY_LIMIT)
+        cooldown_min = await get_config(session, KEY_QUIZ_COOLDOWN_MINUTES)
 
         # 1. 检查是否存在活跃会话
         active_stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
@@ -105,7 +111,7 @@ class QuizService:
         :return: (Question, Image, Keyboard, SessionID) or None
         """
         # 获取超时时间配置
-        timeout_sec = await QuizConfigService.get_session_timeout(session)
+        timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
         # 1. 随机选取题目
         # 这种写法在数据量大时效率较低，但对于初期足够
         stmt = select(QuizQuestionModel).where(QuizQuestionModel.is_active == True).order_by(func.random()).limit(1)

@@ -6,7 +6,8 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.services.quiz_service import QuizService
-from bot.services.quiz_config_service import QuizConfigService
+from bot.services.config_service import get_config
+from bot.config.constants import KEY_QUIZ_SESSION_TIMEOUT
 
 class QuizTriggerMiddleware(BaseMiddleware):
     """
@@ -58,7 +59,7 @@ class QuizTriggerMiddleware(BaseMiddleware):
                         bot = data.get("bot")
                         if bot:
                             try:
-                                timeout_sec = await QuizConfigService.get_session_timeout(session)
+                                timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
                                 sent_msg = None
                                 caption = f"🌸 <b>桜之问答</b> 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
                                 

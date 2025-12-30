@@ -4,10 +4,15 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.admin import get_quiz_admin_keyboard
-from bot.services.quiz_config_service import QuizConfigService
+from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
 from bot.utils.permissions import require_admin_feature
-from bot.config.constants import KEY_ADMIN_QUIZ
+from bot.config.constants import (
+    KEY_ADMIN_QUIZ,
+    KEY_QUIZ_COOLDOWN_MINUTES,
+    KEY_QUIZ_TRIGGER_PROBABILITY,
+    KEY_QUIZ_DAILY_LIMIT
+)
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from .router import router
 
@@ -18,9 +23,9 @@ async def show_quiz_menu(callback: CallbackQuery, session: AsyncSession, state: 
     await state.clear()
     
     # 获取当前配置状态
-    prob = await QuizConfigService.get_trigger_probability(session)
-    cooldown = await QuizConfigService.get_cooldown_minutes(session)
-    daily = await QuizConfigService.get_daily_limit(session)
+    prob = await get_config(session, KEY_QUIZ_TRIGGER_PROBABILITY)
+    cooldown = await get_config(session, KEY_QUIZ_COOLDOWN_MINUTES)
+    daily = await get_config(session, KEY_QUIZ_DAILY_LIMIT)
     
     text = (
         "*🎲 问答管理*\n\n"

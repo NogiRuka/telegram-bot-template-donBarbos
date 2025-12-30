@@ -4,11 +4,18 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.admin import get_quiz_trigger_keyboard
-from bot.services.quiz_config_service import QuizConfigService
+from bot.services.config_service import get_config, set_config
+from bot.database.models.config import ConfigType
 from bot.services.main_message import MainMessageService
 from bot.states.admin import QuizAdminState
 from bot.utils.permissions import require_admin_feature
-from bot.config.constants import KEY_ADMIN_QUIZ
+from bot.config.constants import (
+    KEY_ADMIN_QUIZ,
+    KEY_QUIZ_COOLDOWN_MINUTES,
+    KEY_QUIZ_TRIGGER_PROBABILITY,
+    KEY_QUIZ_DAILY_LIMIT,
+    KEY_QUIZ_SESSION_TIMEOUT
+)
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from .router import router
 
@@ -16,10 +23,10 @@ from .router import router
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def show_trigger_settings(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """显示触发设置"""
-    prob = await QuizConfigService.get_trigger_probability(session)
-    cooldown = await QuizConfigService.get_cooldown_minutes(session)
-    daily = await QuizConfigService.get_daily_limit(session)
-    timeout = await QuizConfigService.get_session_timeout(session)
+    prob = await get_config(session, KEY_QUIZ_TRIGGER_PROBABILITY)
+    cooldown = await get_config(session, KEY_QUIZ_COOLDOWN_MINUTES)
+    daily = await get_config(session, KEY_QUIZ_DAILY_LIMIT)
+    timeout = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
     
     text = (
         f"*⚙️ 触发设置*\n\n"
@@ -60,19 +67,19 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
         if setting_type == "probability":
             val = float(value_str)
             if not (0 <= val <= 1): raise ValueError
-            await QuizConfigService.set_trigger_probability(session, val, message.from_user.id)
+            await set_config(session, KEY_QUIZ_TRIGGER_PROBABILITY, val, ConfigType.FLOAT, operator_id=message.from_user.id)
             
         elif setting_type == "cooldown":
             val = int(value_str)
-            await QuizConfigService.set_cooldown_minutes(session, val, message.from_user.id)
+            await set_config(session, KEY_QUIZ_COOLDOWN_MINUTES, val, ConfigType.INTEGER, operator_id=message.from_user.id)
             
         elif setting_type == "daily_limit":
             val = int(value_str)
-            await QuizConfigService.set_daily_limit(session, val, message.from_user.id)
+            await set_config(session, KEY_QUIZ_DAILY_LIMIT, val, ConfigType.INTEGER, operator_id=message.from_user.id)
             
         elif setting_type == "timeout":
             val = int(value_str)
-            await QuizConfigService.set_session_timeout(session, val, message.from_user.id)
+            await set_config(session, KEY_QUIZ_SESSION_TIMEOUT, val, ConfigType.INTEGER, operator_id=message.from_user.id)
             
         await message.answer("✅ 设置已更新！")
         await state.clear()

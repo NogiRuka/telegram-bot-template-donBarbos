@@ -48,4 +48,10 @@ KEY_REGISTRATION_FREE_OPEN = "registration.free_open"
 KEY_ADMIN_OPEN_REGISTRATION_WINDOW = "admin.open_registration.window"
 KEY_ADMIN_HITOKOTO_CATEGORIES = "admin.hitokoto.categories"
 
+# 问答配置
+KEY_QUIZ_COOLDOWN_MINUTES = "quiz.cooldown_minutes"
+KEY_QUIZ_TRIGGER_PROBABILITY = "quiz.trigger_probability"
+KEY_QUIZ_DAILY_LIMIT = "quiz.daily_limit"
+KEY_QUIZ_SESSION_TIMEOUT = "quiz.session_timeout"
+
 

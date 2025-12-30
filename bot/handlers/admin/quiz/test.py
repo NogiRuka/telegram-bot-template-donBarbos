@@ -2,10 +2,10 @@ from aiogram import F
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.services.quiz_config_service import QuizConfigService
+from bot.services.config_service import get_config
 from bot.services.quiz_service import QuizService
 from bot.utils.permissions import require_admin_feature
-from bot.config.constants import KEY_ADMIN_QUIZ
+from bot.config.constants import KEY_ADMIN_QUIZ, KEY_QUIZ_SESSION_TIMEOUT
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from .router import router
 
@@ -22,7 +22,7 @@ async def test_trigger(callback: CallbackQuery, session: AsyncSession):
         quiz_data = await QuizService.create_quiz_session(session, user_id, target_chat_id)
         if quiz_data:
             question, image, markup, session_id = quiz_data
-            timeout_sec = await QuizConfigService.get_session_timeout(session)
+            timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
             caption = f"🧪 <b>测试题目</b>\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
             
             bot = callback.bot
