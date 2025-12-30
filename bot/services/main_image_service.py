@@ -100,7 +100,8 @@ class MainImageService:
                 MainImageScheduleModel.end_time >= current_time,
                 MainImageScheduleModel.is_deleted.is_(False),
                 MainImageModel.is_deleted.is_(False),
-                MainImageModel.is_enabled.is_(True)
+                MainImageModel.is_enabled.is_(True),
+                MainImageModel.source_type != "document"
             )
             .order_by(MainImageScheduleModel.priority.asc())
         )
@@ -134,7 +135,8 @@ class MainImageService:
         # 优先选择符合模式的图片
         cond_stmt = select(MainImageModel).where(
             MainImageModel.is_enabled.is_(True),
-            MainImageModel.is_deleted.is_(False)
+            MainImageModel.is_deleted.is_(False),
+            MainImageModel.source_type != "document"
         )
         if mode == DISPLAY_MODE_SFW:
             cond_stmt = cond_stmt.where(MainImageModel.is_nsfw.is_(False))

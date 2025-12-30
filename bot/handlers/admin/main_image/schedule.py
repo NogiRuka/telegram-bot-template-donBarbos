@@ -200,13 +200,13 @@ async def process_schedule_input(message: Message, session: AsyncSession, state:
         
     image_ids, start_time, end_time, label = result
     
-    # 验证图片是否存在
+    # 验证图片是否存在，且不是 document 类型
     valid_ids = []
     invalid_ids = []
     
     for image_id in image_ids:
         image = await session.get(MainImageModel, image_id)
-        if image:
+        if image and image.source_type != "document":
             valid_ids.append(image_id)
         else:
             invalid_ids.append(image_id)
@@ -267,8 +267,16 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
     if callback.message:
         await _clear_schedule_list(state, callback.bot, callback.message.chat.id)
         
-    # 查询总数
-    count_stmt = select(func.count()).where(MainImageScheduleModel.is_deleted.is_(False))
+    # 查询总数（排除 document 类型图片）
+    count_stmt = (
+        select(func.count())
+        .select_from(MainImageScheduleModel)
+        .join(MainImageModel, MainImageScheduleModel.image_id == MainImageModel.id)
+        .where(
+            MainImageScheduleModel.is_deleted.is_(False),
+            MainImageModel.source_type != "document",
+        )
+    )
     total_count = (await session.execute(count_stmt)).scalar_one()
     total_pages = ceil(total_count / limit) if total_count > 0 else 1
     
@@ -279,7 +287,10 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
     stmt = (
         select(MainImageScheduleModel, MainImageModel)
         .join(MainImageModel, MainImageScheduleModel.image_id == MainImageModel.id)
-        .where(MainImageScheduleModel.is_deleted.is_(False))
+        .where(
+            MainImageScheduleModel.is_deleted.is_(False),
+            MainImageModel.source_type != "document",
+        )
         .order_by(MainImageScheduleModel.start_time.desc())
         .offset((page - 1) * limit)
         .limit(limit)
@@ -303,6 +314,8 @@ async def list_schedules(callback: CallbackQuery, session: AsyncSession, main_ms
         
     new_msg_ids = []
     for item, image in rows:
+        if image.source_type == "document":
+            continue
         now_time = now()
         if item.start_time > now_time:
             status_emoji = "🕒"
