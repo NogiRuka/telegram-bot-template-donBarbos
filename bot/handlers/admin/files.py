@@ -199,7 +199,7 @@ async def handle_file_input(message: Message, session: AsyncSession, state: FSMC
             return
 
         # 生成唯一文件名
-        current_time = now().strftime("%Y%m%d%H%M")
+        current_time = now().strftime("%Y%m%d%H%M%S")
         # 如果没有文件名，使用 file_unique_id
         base_name = file_name if file_name else (file_unique_id or "unknown")
         unique_name = f"{base_name}_{current_time}"
