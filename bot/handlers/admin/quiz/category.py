@@ -1,9 +1,8 @@
 from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from sqlalchemy import delete, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
 
 from .router import router
 from bot.config.constants import KEY_ADMIN_QUIZ
@@ -19,6 +18,7 @@ from bot.states.admin import QuizAdminState
 from bot.utils.message import send_toast
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2
+from bot.utils.datetime import now
 
 
 async def render_category_list(session: AsyncSession, main_msg: MainMessageService, user_id: int) -> None:
@@ -186,8 +186,9 @@ async def delete_category(callback: CallbackQuery, session: AsyncSession, main_m
 
     stmt = update(QuizCategoryModel).where(QuizCategoryModel.id == cat_id).values(
         is_deleted=True,
-        deleted_at=datetime.now(),
-        deleted_by=callback.from_user.id
+        deleted_at=now(),
+        deleted_by=callback.from_user.id,
+        remark="分类删除"
     )
     await session.execute(stmt)
     await session.commit()
