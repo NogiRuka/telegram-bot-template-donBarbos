@@ -32,10 +32,8 @@ from bot.states.admin import QuizAdminState
 from bot.utils.permissions import require_admin_feature
 
 
-@router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":trigger")
-@require_admin_feature(KEY_ADMIN_QUIZ)
-async def show_trigger_menu(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
-    """显示问答触发设置主菜单"""
+async def get_trigger_menu_content(session: AsyncSession):
+    """获取触发设置菜单内容"""
     # 获取概览信息
     prob = await get_config(session, KEY_QUIZ_TRIGGER_PROBABILITY)
     schedule_enabled = await get_config(session, KEY_QUIZ_SCHEDULE_ENABLE)
@@ -64,7 +62,15 @@ async def show_trigger_menu(callback: CallbackQuery, session: AsyncSession, main
         "💡 请选择要修改的设置项："
     ).replace(".", "\\.")
     
-    await main_msg.update_on_callback(callback, text, get_quiz_trigger_keyboard())
+    return text, get_quiz_trigger_keyboard()
+
+
+@router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":trigger")
+@require_admin_feature(KEY_ADMIN_QUIZ)
+async def show_trigger_menu(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
+    """显示问答触发设置主菜单"""
+    text, kb = await get_trigger_menu_content(session)
+    await main_msg.update_on_callback(callback, text, kb)
     await callback.answer()
 
 
@@ -91,7 +97,7 @@ async def show_settings_menu(callback: CallbackQuery, session: AsyncSession, mai
 
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":schedule_menu")
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def show_schedule_menu(callback: Union[CallbackQuery, Message], session: AsyncSession, main_msg: MainMessageService) -> None:
+async def show_schedule_menu(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """显示定时触发设置菜单"""
     enabled = await get_config(session, KEY_QUIZ_SCHEDULE_ENABLE)
     time_str = await get_config(session, KEY_QUIZ_SCHEDULE_TIME)
@@ -305,7 +311,7 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
 
         await send_toast(message, "✅ 设置已更新！")
         await state.clear()
-        await show_schedule_menu(message, session, main_msg)
+        await main_msg.render(user_id, session, main_msg)
 
     except ValueError:
         await send_toast(message, "⚠️ 输入无效，请重试。")
