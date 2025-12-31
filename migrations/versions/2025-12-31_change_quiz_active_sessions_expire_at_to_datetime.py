@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'change_expire_at_datetime'
-down_revision: Union[str, None] = '474aa6a'
+down_revision: Union[str, None] = '72db368f1634'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -41,4 +41,3 @@ def downgrade() -> None:
         nullable=False,
         comment='过期时间戳'
     )
-
