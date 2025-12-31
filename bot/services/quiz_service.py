@@ -83,7 +83,10 @@ class QuizService:
             from bot.database.database import sessionmaker
 
             async with sessionmaker() as session:
-                stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.id == session_id)
+                stmt = select(QuizActiveSessionModel).where(
+                    QuizActiveSessionModel.id == session_id,
+                    QuizActiveSessionModel.is_deleted == False
+                )
                 quiz_session = (await session.execute(stmt)).scalar_one_or_none()
 
                 if quiz_session:
@@ -166,7 +169,10 @@ class QuizService:
         cooldown_min = await get_config(session, KEY_QUIZ_COOLDOWN_MINUTES)
 
         # 1. 检查是否存在活跃会话
-        active_stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
+        active_stmt = select(QuizActiveSessionModel).where(
+            QuizActiveSessionModel.user_id == user_id,
+            QuizActiveSessionModel.is_deleted == False
+        )
         active_result = await session.execute(active_stmt)
         active_session = active_result.scalar_one_or_none()
 
