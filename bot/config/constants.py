@@ -53,5 +53,10 @@ KEY_QUIZ_COOLDOWN_MINUTES = "quiz.cooldown_minutes"
 KEY_QUIZ_TRIGGER_PROBABILITY = "quiz.trigger_probability"
 KEY_QUIZ_DAILY_LIMIT = "quiz.daily_limit"
 KEY_QUIZ_SESSION_TIMEOUT = "quiz.session_timeout"
+KEY_QUIZ_GLOBAL_ENABLE = "quiz.global_enable"
+KEY_QUIZ_SCHEDULE_TIME = "quiz.schedule.time"
+KEY_QUIZ_SCHEDULE_TARGET_TYPE = "quiz.schedule.target_type"
+KEY_QUIZ_SCHEDULE_TARGET_COUNT = "quiz.schedule.target_count"
+KEY_QUIZ_SCHEDULE_ENABLE = "quiz.schedule.enable"
 
 

@@ -13,6 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config.constants import (
     KEY_QUIZ_COOLDOWN_MINUTES,
     KEY_QUIZ_DAILY_LIMIT,
+    KEY_QUIZ_GLOBAL_ENABLE,
+    KEY_QUIZ_SCHEDULE_TARGET_COUNT,
+    KEY_QUIZ_SCHEDULE_TARGET_TYPE,
     KEY_QUIZ_SESSION_TIMEOUT,
     KEY_QUIZ_TRIGGER_PROBABILITY,
 )
@@ -21,6 +24,7 @@ from bot.database.models import (
     QuizImageModel,
     QuizLogModel,
     QuizQuestionModel,
+    UserModel,
 )
 from bot.services.config_service import get_config
 from bot.services.currency import CurrencyService
@@ -103,11 +107,6 @@ class QuizService:
         except Exception as e:
             logger.error(f"❌ [问答] 会话 {session_id} 超时处理出错: {e}", exc_info=True)
         finally:
-            # 这里的任务清理将在外部进行，或者如果这里是 task 的入口函数，
-            # 我们应该在完成时从集合中移除自己吗？
-            # 实际上，create_task 的调用者应该负责添加到集合，
-            # 而这里可以用回调移除，或者在这里移除。
-            # 为了简单，我们在调用处处理集合管理。
             pass
 
     @classmethod
@@ -155,6 +154,11 @@ class QuizService:
         :param bot: Bot实例 (用于删除过期消息)
         :return: True if triggered, False otherwise
         """
+        # 0. 检查总开关
+        global_enabled = await get_config(session, KEY_QUIZ_GLOBAL_ENABLE)
+        if global_enabled is False: # None 默认开启
+            return False
+
         # 获取配置
         trigger_prob = await get_config(session, KEY_QUIZ_TRIGGER_PROBABILITY)
         daily_limit = await get_config(session, KEY_QUIZ_DAILY_LIMIT)
@@ -199,174 +203,116 @@ class QuizService:
             return False
 
         # 4. 冷却时间检查
-        last_log_stmt = select(QuizLogModel.created_at).where(
+        last_log_stmt = select(QuizLogModel).where(
             QuizLogModel.user_id == user_id
-        ).order_by(desc(QuizLogModel.created_at)).limit(1)
-        last_time = (await session.execute(last_log_stmt)).scalar()
+        ).order_by(QuizLogModel.created_at.desc()).limit(1)
+        last_log = (await session.execute(last_log_stmt)).scalar_one_or_none()
 
-        if last_time:
-            # 计算时间差
-            elapsed = now() - last_time
-            if elapsed < timedelta(minutes=cooldown_min):
+        if last_log:
+            next_allowed = last_log.created_at + timedelta(minutes=cooldown_min)
+            if now() < next_allowed:
                 return False
 
         return True
 
-    @classmethod
-    async def get_random_image_by_tags(cls, session: AsyncSession, tags: list[str]) -> QuizImageModel | None:
-        """根据标签随机获取图片
-
-        功能说明:
-        - 在所有启用图片中筛选与标签有交集的图片，并随机返回一张
-
-        输入参数:
-        - session: 数据库会话
-        - tags: 标签列表
-
-        返回值:
-        - Optional[QuizImageModel]: 随机匹配的图片或 None
-        """
-        if not tags:
-            return None
-
-        img_stmt = select(QuizImageModel).where(QuizImageModel.is_active)
-        imgs = (await session.execute(img_stmt)).scalars().all()
-
-        matched_imgs = [
-            img for img in imgs
-            if img.tags and set(tags) & set(img.tags)
-        ]
-
-        if matched_imgs:
-            return random.choice(matched_imgs)
-        return None
-
-    @staticmethod
-    async def build_quiz_caption(
-        question: QuizQuestionModel,
-        image: QuizImageModel | None,
-        session: AsyncSession = None,
-        timeout_sec: int | None = None,
-        title: str = "桜之问答",
-    ) -> str:
-        """
-        构建问答消息说明
-
-        功能说明:
-        - 根据题目与图片信息生成统一的 HTML 样式说明文本
-        - 包含分类名称、超时提示、图片来源与补充说明（当来源为链接时，优先使用 extra_caption 作为链接文字）
-
-        输入参数:
-        - question: 题目对象
-        - image: 图片对象（可选）
-        - session: 数据库会话（可选，若未提供 timeout_sec 则必须提供）
-        - timeout_sec: 会话超时时间（秒，可选，若未提供则从数据库获取）
-        - title: 标题（默认桜之问答，可自定义，如测试标题）
-
-        返回值:
-        - str: 构建完成的说明文本（HTML）
-        """
-        if timeout_sec is None:
-            if session:
-                timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
-            else:
-                timeout_sec = 60 # 默认值，防止 session 和 timeout_sec 都没传的情况
-
-        if image and image.image_source:
-            if image.image_source.startswith("http"):
-                link_text = image.extra_caption.strip() if image.extra_caption else "链接"
-                extra = f"<a href='{image.image_source}'>{link_text}</a>"
-            else:
-                extra = f"{image.image_source}"
-
-        cat_name = question.category.name if question.category else "无分类"
-
-        return (
-            f"🫧 <b>{title}｜{timeout_sec} 秒挑战 🫧</b>\n\n"
-            f"🗂️ {cat_name}｜🖼️ {extra}\n\n"
-            f"💭 {question.question}"
-        )
-
-
     @staticmethod
     async def create_quiz_session(session: AsyncSession, user_id: int, chat_id: int) -> tuple[QuizQuestionModel, QuizImageModel | None, InlineKeyboardMarkup, int] | None:
         """
-        创建问答会话
-
-        :param session: 数据库会话
-        :param user_id: 用户ID
-        :param chat_id: 聊天ID
-        :return: (Question, Image, Keyboard, SessionID) or None
+        创建新的问答会话
         """
-        # 若已有活跃会话，直接返回 None 或清理过期
-        active_stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
-        active_session = (await session.execute(active_stmt)).scalar_one_or_none()
-        if active_session:
-            if active_session.expire_at <= now():
-                await QuizService.handle_timeout(session, user_id)
-            else:
-                return None
-
-        # 获取超时时间配置
-        timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
-        # 1. 随机选取题目
-        # 这种写法在数据量大时效率较低，但对于初期足够
-        stmt = select(QuizQuestionModel).where(QuizQuestionModel.is_active).order_by(func.random()).limit(1)
-        question = (await session.execute(stmt)).scalar_one_or_none()
-
+        # 1. 随机选择题目 (可优化为加权随机)
+        # 获取所有启用的题目ID
+        q_ids = (await session.execute(select(QuizQuestionModel.id).where(QuizQuestionModel.is_active == True))).scalars().all()
+        if not q_ids:
+            return None
+        
+        q_id = random.choice(q_ids)
+        question = await session.get(QuizQuestionModel, q_id)
         if not question:
             return None
 
-        # 2. 随机选取图片 (如果题目有 tag)
-        quiz_image = await QuizService.get_random_image_by_tags(session, question.tags)
+        # 2. 随机选择图片 (可选)
+        # 50% 概率带图，或者根据题目是否有特定配置
+        # 这里简单处理：如果题目有分类，优先选同分类图片；否则随机。
+        image = None
+        if random.random() < 0.5:
+            img_stmt = select(QuizImageModel).where(QuizImageModel.is_active == True)
+            if question.category_id:
+                img_stmt = img_stmt.where(QuizImageModel.category_id == question.category_id)
+            
+            # 随机取一张
+            # SQLite RANDOM() func.random()
+            img_stmt = img_stmt.order_by(func.random()).limit(1)
+            image = (await session.execute(img_stmt)).scalar_one_or_none()
 
-        # 3. 构建选项键盘（保持输入顺序）
-        options = question.options  # list[str]
-        correct_index = question.correct_index
+        # 3. 创建会话记录
+        # 打乱选项
+        options = list(question.options)
+        correct_option = options[question.correct_index]
+        random.shuffle(options)
+        new_correct_index = options.index(correct_option)
 
-        # 创建索引列表（不打乱，保持用户输入顺序）
-        indices = list(range(len(options)))
+        # 计算过期时间
+        timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
+        if timeout_sec is None:
+            timeout_sec = 60 # 默认60秒
+        expire_at = compute_expire_at(timeout_sec)
 
-        # 找到新的正确答案索引（实际上 Session 存的是原始索引，回调传回的也是原始索引，所以显示顺序变了不影响逻辑）
-        # 等等，如果在 Session 中存原始 correct_index，那么回调时只要传回用户选的原始索引即可。
-        # 按钮 callback_data: quiz:answer:{option_index}
-        # 这里的 option_index 指的是 options 列表中的下标。
-        # 无论按钮怎么排，这个下标指向的内容不变。
-
-        builder = InlineKeyboardBuilder()
-        for idx in indices:
-            builder.button(
-                text=options[idx],
-                callback_data=f"quiz:ans:{idx}"
-            )
-        builder.adjust(2)  # 每行2个（示例：第一行 A B；第二行 C D）
-
-        # 4. 创建 Session
-        expire_at = compute_expire_at(now(), timeout_sec)
-
-        # 这里的 message_id 暂时填 0，发送消息后需要更新
         quiz_session = QuizActiveSessionModel(
             user_id=user_id,
             chat_id=chat_id,
-            message_id=0,
+            message_id=0, # 稍后更新
             question_id=question.id,
-            correct_index=correct_index,
-            expire_at=expire_at
+            correct_index=new_correct_index,
+            expire_at=expire_at,
+            extra={"shuffled_options": options}
         )
         session.add(quiz_session)
-        try:
-            await session.commit()
-            await session.refresh(quiz_session)
-        except IntegrityError:
-            await session.rollback()
-            logger.warning("重复的活跃会话，跳过创建")
-            return None
+        await session.commit()
+        await session.refresh(quiz_session)
 
-        return question, quiz_image, builder.as_markup(), quiz_session.id
+        # 4. 构建键盘
+        markup = QuizService.build_quiz_keyboard(options, quiz_session.id)
+
+        return question, image, markup, quiz_session.id
+
+    @staticmethod
+    def build_quiz_keyboard(options: list[str], session_id: int) -> InlineKeyboardMarkup:
+        builder = InlineKeyboardBuilder()
+        for i, opt in enumerate(options):
+            builder.button(text=opt, callback_data=f"quiz:ans:{session_id}:{i}")
+        builder.adjust(1) # 每行一个
+        return builder.as_markup()
+
+    @staticmethod
+    async def build_quiz_caption(question: QuizQuestionModel, image: QuizImageModel | None, session: AsyncSession) -> str:
+        """构建题目文案"""
+        # 获取奖励配置
+        base = question.reward_base
+        bonus = question.reward_bonus
+        
+        currency_name = await CurrencyService.get_currency_name(session)
+        
+        text = (
+            f"🎲 *趣味问答* 🎲\n\n"
+            f"❓ *问题*: {question.question}\n"
+        )
+        if question.difficulty > 1:
+            text += f"🔥 难度: {'⭐' * question.difficulty}\n"
+            
+        text += f"\n💰 *奖励*:\n"
+        text += f"• 答对: +{base + bonus} {currency_name}\n"
+        text += f"• 答错: +{base} {currency_name} (低保)\n"
+        
+        if image and image.description:
+            text += f"\n🖼️ *提示*: {image.description}\n"
+            
+        text += "\n⏳ 请在倒计时结束前作答！"
+        return text
 
     @staticmethod
     async def update_session_message_id(session: AsyncSession, session_id: int, message_id: int) -> None:
-        """更新 Session 的 Message ID"""
+        """更新会话的消息ID"""
         stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.id == session_id)
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
         if quiz_session:
@@ -374,96 +320,217 @@ class QuizService:
             await session.commit()
 
     @staticmethod
-    async def handle_answer(session: AsyncSession, user_id: int, answer_index: int) -> tuple[bool, int, str]:
+    async def handle_answer(session: AsyncSession, session_id: int, user_index: int, user_id: int) -> dict:
         """
         处理用户回答
-        :return: (is_correct, reward_amount, message_text)
+        :return: 结果字典 {is_correct, reward, correct_option, user_option}
         """
-        # 1. 获取 Session
-        stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
+        # 1. 获取会话
+        stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.id == session_id)
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
-
+        
         if not quiz_session:
-            return False, 0, "⚠️ 题目已过期或不存在。"
+            raise QuizSessionExpiredError("会话已过期或不存在")
+            
+        if quiz_session.user_id != user_id:
+            raise ValueError("这不是你的题目哦")
 
-        # 检查是否过期
-        if quiz_session.expire_at <= now():
-            chat_id = quiz_session.chat_id
-            message_id = quiz_session.message_id
-            await QuizService.handle_timeout(session, user_id)
-            msg = "⚠️ 题目已过期或不存在。"
-            raise QuizSessionExpiredError(msg, chat_id=chat_id, message_id=message_id)
-
-        # 2. 获取题目信息 (计算奖励)
+        # 2. 验证答案
+        is_correct = (user_index == quiz_session.correct_index)
+        
+        # 获取题目信息
         question = await session.get(QuizQuestionModel, quiz_session.question_id)
-        if not question:
-            # 异常情况，清理 session
-            await session.delete(quiz_session)
-            await session.commit()
-            return False, 0, "⚠️ 题目数据异常。"
-
-        # 3. 判定结果
-        is_correct = (answer_index == quiz_session.correct_index)
-
-        # 4. 计算奖励
-        reward = question.reward_bonus if is_correct else question.reward_base
-
-        # 5. 记录日志
+        
+        # 3. 发放奖励
+        reward = question.reward_base + (question.reward_bonus if is_correct else 0)
+        await CurrencyService.add_balance(session, user_id, reward, "quiz_reward", f"问答奖励: Q{question.id}")
+        
+        # 4. 记录日志
         log = QuizLogModel(
             user_id=user_id,
             chat_id=quiz_session.chat_id,
             question_id=quiz_session.question_id,
-            user_answer=answer_index,
-            is_correct=is_correct,
-            reward_amount=reward,
-            # time_taken 暂未精确计算，可用 now() 减去 session 创建时间估算，但 session 没有 created_at 字段(只有mixin的)
-            # 这里简单处理
-            time_taken=None
+            user_answer=user_index,
+            is_correct=is_correct
         )
         session.add(log)
-
-        # 6. 发放奖励
-        if reward > 0:
-            await CurrencyService.add_currency(
-                session,
-                user_id,
-                reward,
-                "quiz_reward",
-                f"问答奖励: {'答对' if is_correct else '答错'}"
-            )
-
-        # 7. 删除 Session
+        
+        # 5. 删除会话
         await session.delete(quiz_session)
         await session.commit()
-
-        if is_correct:
-            msg = "✅ 回答正确！"  # noqa: RUF001
-        else:
-            correct_option = question.options[question.correct_index]
-            msg = f"❌ 回答错误。\n正确答案是：{correct_option}"  # noqa: RUF001
-        msg += f"\n获得奖励：+{reward} 精粹"  # noqa: RUF001
-
-        return is_correct, reward, msg
+        
+        # 获取选项文本用于显示
+        options = quiz_session.extra.get("shuffled_options", [])
+        user_opt = options[user_index] if 0 <= user_index < len(options) else "?"
+        correct_opt = options[quiz_session.correct_index] if 0 <= quiz_session.correct_index < len(options) else "?"
+        
+        return {
+            "is_correct": is_correct,
+            "reward": reward,
+            "correct_option": correct_opt,
+            "user_option": user_opt,
+            "message_id": quiz_session.message_id,
+            "chat_id": quiz_session.chat_id
+        }
 
     @staticmethod
     async def handle_timeout(session: AsyncSession, user_id: int) -> None:
-        """
-        处理超时 (通常由定时任务调用，或者用户点击已过期的按钮时触发清理)
-        """
-        stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
-        quiz_session = (await session.execute(stmt)).scalar_one_or_none()
-
-        if quiz_session:
-            # 记录超时日志
+        """处理超时（清理会话，不发奖励或发低保? 目前设计是不发）"""
+        # 查找该用户的所有过期会话
+        stmt = select(QuizActiveSessionModel).where(
+            QuizActiveSessionModel.user_id == user_id,
+            QuizActiveSessionModel.expire_at <= now()
+        )
+        sessions = (await session.execute(stmt)).scalars().all()
+        
+        for s in sessions:
+            # 记录日志 (未答)
             log = QuizLogModel(
-                user_id=user_id,
-                chat_id=quiz_session.chat_id,
-                question_id=quiz_session.question_id,
-                user_answer=None, # NULL 表示未答/超时
-                is_correct=False,
-                reward_amount=0,
-                time_taken=None
+                user_id=s.user_id,
+                chat_id=s.chat_id,
+                question_id=s.question_id,
+                user_answer=None,
+                is_correct=False
             )
             session.add(log)
-            await session.delete(quiz_session)
-            await session.commit()
+            await session.delete(s)
+            
+        await session.commit()
+
+    @staticmethod
+    async def trigger_scheduled_quiz(bot: Bot) -> None:
+        """
+        执行定时问答触发
+        """
+        from bot.database.database import sessionmaker
+        
+        logger.info("⏰ [定时问答] 开始执行定时触发任务")
+
+        async with sessionmaker() as session:
+            # 1. 再次检查总开关 (双重保障)
+            global_enabled = await get_config(session, KEY_QUIZ_GLOBAL_ENABLE)
+            if global_enabled is False: # 显式为 False 才跳过，None 默认开启
+                 logger.info("⏰ [定时问答] 总开关关闭，任务取消")
+                 return
+
+            # 2. 获取目标用户
+            target_type = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET_TYPE)
+            target_count = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET_COUNT)
+            
+            users = []
+            
+            # 基础查询条件：非机器人、未删除
+            base_stmt = select(UserModel).where(
+                UserModel.is_bot == False,
+                UserModel.is_deleted == False
+            )
+
+            if target_type == "fixed" and target_count and target_count > 0:
+                # 混合模式：一半活跃，一半随机
+                half_count = target_count // 2
+                rand_count = target_count - half_count
+                
+                # 活跃用户 (最近更新时间排序)
+                active_stmt = base_stmt.order_by(desc(UserModel.updated_at)).limit(half_count)
+                active_users = (await session.execute(active_stmt)).scalars().all()
+                
+                # 随机用户 (排除已选的活跃用户)
+                active_ids = [u.id for u in active_users]
+                if active_ids:
+                    rand_stmt = base_stmt.where(UserModel.id.not_in(active_ids)).order_by(func.random()).limit(rand_count)
+                else:
+                    rand_stmt = base_stmt.order_by(func.random()).limit(rand_count)
+                    
+                rand_users = (await session.execute(rand_stmt)).scalars().all()
+                
+                users = list(active_users) + list(rand_users)
+                logger.info(f"⏰ [定时问答] 选中 {len(users)} 名用户 (活跃: {len(active_users)}, 随机: {len(rand_users)})")
+            else:
+                # 全部用户 (谨慎使用)
+                users = (await session.execute(base_stmt)).scalars().all()
+                logger.info(f"⏰ [定时问答] 选中全部 {len(users)} 名用户")
+
+            # 3. 发送题目
+            count_sent = 0
+            for user in users:
+                try:
+                    # 检查是否有活跃会话，有则跳过
+                    active_stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user.id)
+                    if (await session.execute(active_stmt)).scalar_one_or_none():
+                         continue
+
+                    # 创建会话
+                    quiz_data = await QuizService.create_quiz_session(session, user.id, user.id) # ChatID = UserID (私聊)
+                    if not quiz_data:
+                        continue
+                        
+                    question, image, markup, session_id = quiz_data
+                    caption = await QuizService.build_quiz_caption(question, image, session)
+                    
+                    # 发送消息
+                    if image:
+                        sent_msg = await bot.send_photo(chat_id=user.id, photo=image.file_id, caption=caption, reply_markup=markup)
+                    else:
+                        sent_msg = await bot.send_message(chat_id=user.id, text=caption, reply_markup=markup)
+                    
+                    if sent_msg:
+                        await QuizService.update_session_message_id(session, session_id, sent_msg.message_id)
+                        
+                        # 启动超时任务
+                        timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
+                        if timeout_sec:
+                             QuizService.start_timeout_task(bot, user.id, sent_msg.message_id, session_id, user.id, timeout_sec)
+                        
+                        count_sent += 1
+                        # 避免风控，稍微 sleep 一下? 
+                        # await asyncio.sleep(0.1) 
+                        
+                except Exception as e:
+                    logger.warning(f"⏰ [定时问答] 发送给用户 {user.id} 失败: {e}")
+            
+            logger.info(f"⏰ [定时问答] 任务完成，成功发送 {count_sent} 条")
+
+    @classmethod
+    async def start_scheduler(cls, bot: Bot) -> None:
+        """启动定时任务调度器"""
+        logger.info("⏰ [定时问答] 调度器启动")
+        
+        from bot.config.constants import KEY_QUIZ_SCHEDULE_ENABLE, KEY_QUIZ_SCHEDULE_TIME
+        from bot.database.database import sessionmaker
+        from bot.services.config_service import get_config
+        
+        while True:
+            try:
+                await asyncio.sleep(1)
+                
+                # 获取当前时间
+                current = now()
+                curr_time_str = current.strftime("%H%M%S")
+                
+                async with sessionmaker() as session:
+                    # 检查是否开启
+                    enabled = await get_config(session, KEY_QUIZ_SCHEDULE_ENABLE)
+                    if enabled is False: # 只有显式 False 才跳过，None 默认开启? 不，默认应该关闭或由上层决定
+                        # 之前的代码里 show_schedule_menu: if enabled is None: enabled = False
+                        # 这里保持一致，默认 False
+                        continue
+                    if enabled is None:
+                        continue
+                        
+                    # 检查时间
+                    sch_time = await get_config(session, KEY_QUIZ_SCHEDULE_TIME)
+                    if sch_time and sch_time == curr_time_str:
+                        # 触发!
+                        logger.info(f"⏰ [定时问答] 时间匹配 ({sch_time})，触发任务")
+                        # 使用 create_task 避免阻塞调度循环
+                        # 并稍微延迟一点点避免同一秒多次(其实 sleep(1) 够了)
+                        asyncio.create_task(cls.trigger_scheduled_quiz(bot))
+                        # 等待一秒确保时间跳变
+                        await asyncio.sleep(1)
+                        
+            except asyncio.CancelledError:
+                logger.info("🛑 [定时问答] 调度器已停止")
+                break
+            except Exception as e:
+                logger.error(f"❌ [定时问答] 调度器出错: {e}")
+                await asyncio.sleep(5)

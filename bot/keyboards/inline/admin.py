@@ -39,7 +39,15 @@ from bot.keyboards.inline.constants import (
     QUIZ_ADMIN_CALLBACK_DATA,
     QUIZ_ADMIN_CATEGORY_LABEL,
     QUIZ_ADMIN_LIST_IMAGES_LABEL,
+    QUIZ_ADMIN_LIST_LOGS_LABEL,
+    QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA,
+    QUIZ_ADMIN_LIST_MENU_LABEL,
     QUIZ_ADMIN_LIST_QUESTIONS_LABEL,
+    QUIZ_ADMIN_SCHEDULE_MENU_LABEL,
+    QUIZ_ADMIN_SCHEDULE_SET_TARGET_LABEL,
+    QUIZ_ADMIN_SCHEDULE_SET_TIME_LABEL,
+    QUIZ_ADMIN_SCHEDULE_TOGGLE_LABEL,
+    QUIZ_ADMIN_SETTINGS_MENU_LABEL,
     QUIZ_ADMIN_SET_COOLDOWN_LABEL,
     QUIZ_ADMIN_SET_DAILY_LIMIT_LABEL,
     QUIZ_ADMIN_SET_PROBABILITY_LABEL,
@@ -448,20 +456,24 @@ def get_files_item_keyboard(file_record_id: int) -> InlineKeyboardMarkup:
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_quiz_admin_keyboard() -> InlineKeyboardMarkup:
+def get_quiz_admin_keyboard(is_global_enabled: bool = True) -> InlineKeyboardMarkup:
     """问答管理菜单键盘"""
+    toggle_text = "🟢 总开关: 开启" if is_global_enabled else "🔴 总开关: 关闭"
+    
     buttons = [
         [
+            InlineKeyboardButton(text=QUIZ_ADMIN_TEST_TRIGGER_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":test_trigger"),
+            InlineKeyboardButton(text=toggle_text, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":toggle_global")
+        ],
+        [
             InlineKeyboardButton(text=QUIZ_ADMIN_ADD_QUICK_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":add"),
-            InlineKeyboardButton(text=QUIZ_ADMIN_TRIGGER_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":trigger")
-        ],
-        [
-            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_QUESTIONS_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_questions"),
-            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_IMAGES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_images")
-        ],
-        [
             InlineKeyboardButton(text=QUIZ_ADMIN_CATEGORY_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":category"),
-            InlineKeyboardButton(text=QUIZ_ADMIN_TEST_TRIGGER_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":test_trigger")
+        ],
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_MENU_LABEL, callback_data=QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA)
+        ],
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_TRIGGER_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":trigger")
         ],
         [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON]
     ]
@@ -469,8 +481,39 @@ def get_quiz_admin_keyboard() -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
+def get_quiz_list_keyboard() -> InlineKeyboardMarkup:
+    """问答列表菜单键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_QUESTIONS_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_questions"),
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_IMAGES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_images")
+        ],
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_LOGS_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_logs")
+        ],
+        [BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON]
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
 def get_quiz_trigger_keyboard() -> InlineKeyboardMarkup:
-    """问答设置键盘"""
+    """问答触发设置主菜单键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_SETTINGS_MENU_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":settings_menu")
+        ],
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_SCHEDULE_MENU_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":schedule_menu")
+        ],
+        [BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON]
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_quiz_settings_selection_keyboard() -> InlineKeyboardMarkup:
+    """问答基础参数设置选择键盘"""
     buttons = [
         [
             InlineKeyboardButton(text=QUIZ_ADMIN_SET_PROBABILITY_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":set:probability"),
@@ -480,7 +523,31 @@ def get_quiz_trigger_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=QUIZ_ADMIN_SET_DAILY_LIMIT_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":set:daily_limit"),
             InlineKeyboardButton(text=QUIZ_ADMIN_SET_TIMEOUT_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":set:timeout")
         ],
-        [BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON]
+        [
+            InlineKeyboardButton(text="🔙 返回触发设置", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":trigger"),
+            BACK_TO_HOME_BUTTON
+        ]
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_quiz_schedule_keyboard(is_enabled: bool = False) -> InlineKeyboardMarkup:
+    """问答定时触发设置键盘"""
+    toggle_text = "🟢 定时开关: 开启" if is_enabled else "🔴 定时开关: 关闭"
+    
+    buttons = [
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_SCHEDULE_SET_TIME_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":schedule:set_time"),
+            InlineKeyboardButton(text=QUIZ_ADMIN_SCHEDULE_SET_TARGET_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":schedule:set_target")
+        ],
+        [
+            InlineKeyboardButton(text=toggle_text, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":schedule:toggle")
+        ],
+        [
+            InlineKeyboardButton(text="🔙 返回触发设置", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":trigger"),
+            BACK_TO_HOME_BUTTON
+        ]
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()

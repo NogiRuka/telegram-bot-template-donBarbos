@@ -63,6 +63,10 @@ async def on_startup() -> None:
                 await cleanup_devices_by_policy(session)
             except Exception as err:  # noqa: BLE001
                 logger.warning("⚠️ 启动时同步 Emby 数据失败: {}", err)
+        
+        # 启动定时问答调度器
+        asyncio.create_task(QuizService.start_scheduler(bot))
+        
         await start_api_server()
     except (OSError, ValueError, RuntimeError) as err:
         logger.error("❗ API 服务启动失败: {}", err)
