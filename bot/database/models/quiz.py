@@ -67,7 +67,7 @@ class QuizActiveSessionModel(Base, BasicAuditMixin):
     __tablename__ = "quiz_active_sessions"
 
     id: Mapped[auto_int_pk]
-    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True, comment="用户ID (单人单会话)")
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=False, comment="用户ID (单人单会话)")
     chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="聊天ID")
     message_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="题目消息ID")
     question_id: Mapped[int] = mapped_column(ForeignKey("quiz_questions.id"), nullable=False, comment="题目ID")
