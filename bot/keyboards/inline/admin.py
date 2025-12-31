@@ -199,6 +199,50 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
     return keyboard.as_markup()
 
 
+def get_quiz_image_list_pagination_keyboard(page: int, total_pages: int, limit: int) -> InlineKeyboardMarkup:
+    """题图列表分页键盘"""
+    builder = InlineKeyboardBuilder()
+
+    # 上一页
+    if page > 1:
+        builder.button(text="⬅️ 上一页", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:image:{page - 1}:{limit}")
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
+
+    # 页码指示 (Toggle limit)
+    next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
+    builder.button(text=f"{page}/{total_pages} (每页{limit:02d}条)", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:image:1:{next_limit}")
+
+    # 下一页
+    if page < total_pages:
+        builder.button(text="下一页 ➡️", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:image:{page + 1}:{limit}")
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
+
+    builder.adjust(3)
+    
+    # 返回按钮
+    builder.row(
+        InlineKeyboardButton(text="🔙 返回列表菜单", callback_data=QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA),
+        BACK_TO_HOME_BUTTON
+    )
+
+    return builder.as_markup()
+
+
+def get_quiz_image_item_keyboard(image_id: int, is_active: bool) -> InlineKeyboardMarkup:
+    """题图单项操作键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text="🗑️ 删除", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:image:delete:{image_id}"),
+            InlineKeyboardButton(text="🔴 禁用" if is_active else "🟢 启用", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:image:toggle:{image_id}"),
+            InlineKeyboardButton(text="❌ 关闭", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:image:close")
+        ]
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
 def get_quiz_add_cancel_keyboard() -> InlineKeyboardMarkup:
     """问答快捷添加取消键盘"""
     buttons = [
@@ -490,7 +534,7 @@ def get_quiz_list_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(text=QUIZ_ADMIN_LIST_QUESTIONS_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list:view:question:1:5"),
-            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_IMAGES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_images")
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_IMAGES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list:view:image:1:5")
         ],
         [
             InlineKeyboardButton(text=QUIZ_ADMIN_LIST_LOGS_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_logs")
