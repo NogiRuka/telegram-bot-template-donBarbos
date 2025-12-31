@@ -294,11 +294,17 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
             escaped_tags = [escape_markdown_v2(tag) for tag in item.tags]
             tags_text = " \\| ".join(escaped_tags)
 
-        description = item.description or "无描述"
+        extra = "无"
+        if item.image_source:
+            if item.image_source.startswith("http"):
+                link_text = item.extra_caption.strip() if item.extra_caption else "链接"
+                extra = f"[{escape_markdown_v2(link_text)}]({item.image_source})"
+            else:
+                extra = escape_markdown_v2(item.image_source)
         
         caption = (
             f"🆔 `{item.id}` ｜ 🗂️ `{escape_markdown_v2(cat_name)}`｜ 🏷️ {tags_text} ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n\n"
-            f"📝 *{escape_markdown_v2(description)}*\n"
+            f"�️ {extra}\n"
         )
 
         try:
@@ -354,11 +360,17 @@ async def image_item_action(callback: CallbackQuery, session: AsyncSession) -> N
             escaped_tags = [escape_markdown_v2(tag) for tag in item.tags]
             tags_text = " \\| ".join(escaped_tags)
             
-        description = item.description or "无描述"
-
+        extra = "无"
+        if item.image_source:
+            if item.image_source.startswith("http"):
+                link_text = item.extra_caption.strip() if item.extra_caption else "链接"
+                extra = f"[{escape_markdown_v2(link_text)}]({item.image_source})"
+            else:
+                extra = escape_markdown_v2(item.image_source)
+        
         caption = (
             f"🆔 `{item.id}` ｜ 🗂️ `{escape_markdown_v2(cat_name)}`｜ 🏷️ {tags_text} ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n\n"
-            f"📝 *{escape_markdown_v2(description)}*\n"
+            f"�️ {extra}\n"
         )
 
         with contextlib.suppress(Exception):
