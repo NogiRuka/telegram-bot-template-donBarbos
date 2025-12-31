@@ -121,7 +121,7 @@ async def show_schedule_menu(callback: Union[CallbackQuery, Message], session: A
     
     target_display = "全部用户"
     if target_type == "fixed" and target_count is not None:
-        target_display = f"固定 {target_count} 人 (活跃+随机)"
+        target_display = f"固定 {target_count} 人（活跃+随机）"
 
     status_text = "🟢 开启" if enabled else "🔴 关闭"
     
