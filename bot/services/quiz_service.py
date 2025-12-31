@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Tuple
 
 from sqlalchemy import select, func, and_, desc
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InputFile
@@ -182,6 +183,15 @@ class QuizService:
         :param chat_id: 聊天ID
         :return: (Question, Image, Keyboard, SessionID) or None
         """
+        # 若已有活跃会话，直接返回 None 或清理过期
+        active_stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
+        active_session = (await session.execute(active_stmt)).scalar_one_or_none()
+        if active_session:
+            if active_session.expire_at < int(now().timestamp()):
+                await QuizService.handle_timeout(session, user_id)
+            else:
+                return None
+        
         # 获取超时时间配置
         timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
         # 1. 随机选取题目
@@ -230,8 +240,13 @@ class QuizService:
             expire_at=expire_at
         )
         session.add(quiz_session)
-        await session.commit()
-        await session.refresh(quiz_session)
+        try:
+            await session.commit()
+            await session.refresh(quiz_session)
+        except IntegrityError:
+            await session.rollback()
+            logger.warning("重复的活跃会话，跳过创建")
+            return None
         
         return question, quiz_image, builder.as_markup(), quiz_session.id
 
