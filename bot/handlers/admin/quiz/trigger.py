@@ -182,29 +182,34 @@ async def cancel_setting_input(callback: CallbackQuery, state: FSMContext, sessi
 
 @router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":schedule:set"))
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def ask_schedule_value(callback: CallbackQuery, state: FSMContext) -> None:
+async def ask_schedule_value(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
     """请求输入设置值 (定时参数)"""
     setting_type = callback.data.split(":")[-1] # set_time or set_target
     await state.update_data(setting_type=f"schedule_{setting_type}")
 
     if setting_type == "set_time":
         msg = (
-            "⏰ 请设置每日定时触发时间\n"
-            "格式：HHMMSS（6 位数字）\n"
-            "多个时间请用英文逗号分隔，例如：\n"
+            "⏰ *设置每日定时触发时间*\n\n"
+            "请按格式输入：\n"
+            "• 格式：`HHMMSS`（6 位数字）\n"
+            "• 多时段用英文逗号分隔\n\n"
+            "示例：\n"
             "`051700,171700,222222`"
         )
     elif setting_type == "set_target":
         msg = (
-            "👥 请选择触发对象\n"
+            "👥 *选择触发对象*\n\n"
             "• 输入 `all` 或 `全部`：面向所有用户\n"
             "• 输入数字（如 `20`）：随机/活跃挑选 20 人"
         )
     else:
         msg = "请输入值"
 
-    await callback.message.answer(msg)
     await state.set_state(QuizAdminState.waiting_for_setting_value)
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="❌ 取消", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":cancel_input")
+    await main_msg.update_on_callback(callback, msg, kb.as_markup())
     await callback.answer()
 
 

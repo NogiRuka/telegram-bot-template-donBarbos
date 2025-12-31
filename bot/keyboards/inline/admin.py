@@ -499,9 +499,7 @@ def get_quiz_trigger_keyboard() -> InlineKeyboardMarkup:
     """问答触发设置主菜单键盘"""
     buttons = [
         [
-            InlineKeyboardButton(text=QUIZ_ADMIN_SETTINGS_MENU_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":settings_menu")
-        ],
-        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_SETTINGS_MENU_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":settings_menu"),
             InlineKeyboardButton(text=QUIZ_ADMIN_SCHEDULE_MENU_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":schedule_menu")
         ],
         [BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON]
