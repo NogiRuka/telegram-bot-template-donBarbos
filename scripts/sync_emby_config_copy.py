@@ -16,17 +16,16 @@ from bot.database.models.emby_user import EmbyUserModel
 from bot.utils.emby import get_emby_client
 
 
-async def sync_all_users_configuration(
+async def sync_all_users_configuration(  # noqa: C901
     exclude_user_ids: list[str] | None = None,
     specific_user_ids: list[str] | None = None,
 ) -> tuple[int, int]:
-    """批量同步所有用户的 Configuration 和 Policy (基于用户现有配置修改)
+    """批量同步用户 Policy(强制设置为 False)
 
     功能说明:
     - 遍历所有 Emby 用户
-    - 更新 Configuration: AudioLanguagePreference, SubtitleLanguagePreference
-    - 更新 Policy: EnableUserPreferenceAccess=True
-    - **不** 更新其他字段 (包括设备限制、EnableAllDevices等，保持原样)
+    - 仅更新 Policy: 将 EnableUserPreferenceAccess 强制设为 False(不关心原值)
+    - 不修改 Configuration(语言偏好等保持原样)
     - 支持 exclude_user_ids 排除特定用户
     - 支持 specific_user_ids 仅同步特定用户 (优先级高于 exclude)
 
@@ -65,7 +64,7 @@ async def sync_all_users_configuration(
                     if uid not in found_ids:
                          all_users.append({"Id": uid, "Name": "Unknown", "UserDto": {}})
             else:
-                # 未指定用户，拉取所有用户
+                # 未指定用户, 拉取所有用户
                 # 排除 exclude_user_ids 中的用户
                 stmt = select(EmbyUserModel)
                 if exclude_user_ids:
@@ -74,7 +73,7 @@ async def sync_all_users_configuration(
                 res = await session.execute(stmt)
                 db_users = res.scalars().all()
                 all_users = [{"Id": u.emby_user_id, "Name": u.name, "UserDto": u.user_dto} for u in db_users]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"❌ 从数据库获取用户列表失败: {e}")
             return 0, 0
 
@@ -95,48 +94,17 @@ async def sync_all_users_configuration(
                 # 获取当前 UserDto (从 DB)
                 current_user_dto = user.get("UserDto") or {}
                 current_policy = current_user_dto.get("Policy", {})
-                current_config = current_user_dto.get("Configuration", {})
+                current_user_dto.get("Configuration", {})
 
-                # --- 1. 处理 Policy ---
-                # 基于当前 Policy 修改
+                # --- 处理 Policy(强制设为 False) ---
                 user_policy = current_policy.copy()
-                user_policy["EnableUserPreferenceAccess"] = True
+                user_policy["EnableUserPreferenceAccess"] = False
 
-                # 检查 Policy 是否需要更新
-                current_pref_access = current_policy.get("EnableUserPreferenceAccess", False)
+                await client.update_user_policy(uid, user_policy)
+                logger.info(f"✅ 已强制更新用户 Policy(EnableUserPreferenceAccess=False): {name} ({uid})")
+                success_count += 1
 
-                policy_needs_update = False
-                if current_pref_access is not True:
-                    policy_needs_update = True
-
-                if policy_needs_update:
-                    await client.update_user_policy(uid, user_policy)
-                    logger.info(f"✅ 已更新用户 Policy: {name} ({uid})")
-
-                # --- 2. 处理 Configuration ---
-                # 基于当前 Configuration 修改
-                user_config = current_config.copy()
-                user_config["AudioLanguagePreference"] = "zh-CN,zh-TW"
-                user_config["SubtitleLanguagePreference"] = "zh-CN,zh-TW"
-
-                # 检查 Configuration 是否需要更新
-                cur_audio = current_config.get("AudioLanguagePreference")
-                cur_sub = current_config.get("SubtitleLanguagePreference")
-
-                config_needs_update = False
-                if cur_audio != "zh-CN,zh-TW" or cur_sub != "zh-CN,zh-TW":
-                    config_needs_update = True
-
-                if config_needs_update:
-                    await client.update_user_configuration(uid, user_config)
-                    logger.info(f"✅ 已更新用户 Configuration: {name} ({uid})")
-
-                if policy_needs_update or config_needs_update:
-                    success_count += 1
-                else:
-                    logger.info(f"⏭️ 配置未变更，跳过更新: {name} ({uid})")
-
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.error(f"❌ 更新用户配置失败: {name} ({uid}) -> {e}")
                 fail_count += 1
 
