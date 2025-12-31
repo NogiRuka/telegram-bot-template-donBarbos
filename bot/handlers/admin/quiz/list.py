@@ -304,7 +304,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
         
         caption = (
             f"🆔 `{item.id}` ｜ 🗂️ `{escape_markdown_v2(cat_name)}`｜ 🏷️ {tags_text} ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n\n"
-            f"�️ {extra}\n"
+            f"🖼️ {extra}\n"
         )
 
         try:
