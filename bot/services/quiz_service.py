@@ -422,6 +422,7 @@ class QuizService:
             # 异常情况，清理 session
             quiz_session.is_deleted = True
             quiz_session.deleted_at = now()
+            quiz_session.remark = "题目数据异常，自动清理"
             await session.commit()
             return False, 0, "⚠️ 题目数据异常。", ""
 
@@ -474,6 +475,7 @@ class QuizService:
         # 7. 删除 Session
         quiz_session.is_deleted = True
         quiz_session.deleted_at = now()
+        quiz_session.remark = f"用户完成作答: {'答对' if is_correct else '答错'}"
         await session.commit()
 
         if is_correct:
@@ -508,6 +510,7 @@ class QuizService:
             session.add(log)
             quiz_session.is_deleted = True
             quiz_session.deleted_at = now()
+            quiz_session.remark = "会话超时，自动清理"
         await session.commit()
 
     @staticmethod
