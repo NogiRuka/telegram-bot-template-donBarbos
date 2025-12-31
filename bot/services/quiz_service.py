@@ -1,6 +1,7 @@
 import random
 from datetime import timedelta
 
+from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
@@ -25,6 +26,15 @@ from bot.services.currency import CurrencyService
 from bot.utils.datetime import compute_expire_at, now
 
 
+class QuizSessionExpiredError(Exception):
+    """问答会话已过期异常"""
+    def __init__(self, message: str = "题目已过期", chat_id: int = 0, message_id: int = 0):
+        self.message = message
+        self.chat_id = chat_id
+        self.message_id = message_id
+        super().__init__(self.message)
+
+
 class QuizService:
     # 配置常量 (已弃用，转为从 ConfigService 获取)
     # COOLDOWN_MINUTES = 10
@@ -33,13 +43,14 @@ class QuizService:
     SESSION_TIMEOUT_SECONDS = 30 # 这个暂时保留作为默认值，实际也从 ConfigService 拿
 
     @staticmethod
-    async def check_trigger_conditions(session: AsyncSession, user_id: int, chat_id: int) -> bool:
+    async def check_trigger_conditions(session: AsyncSession, user_id: int, chat_id: int, bot: Bot | None = None) -> bool:
         """
         检查是否满足触发问答的条件
 
         :param session: 数据库会话
         :param user_id: 用户ID
         :param chat_id: 聊天ID (用于区分群组/私聊，目前逻辑通用)
+        :param bot: Bot实例 (用于删除过期消息)
         :return: True if triggered, False otherwise
         """
         # 获取配置
@@ -55,6 +66,13 @@ class QuizService:
         if active_session:
             # 检查是否过期（expire_at 采用 datetime，精确到秒）
             if active_session.expire_at <= now():
+                # 如果传入了 bot 且有消息 ID，尝试删除过期消息
+                if bot and active_session.message_id and active_session.message_id > 0:
+                    try:
+                        await bot.delete_message(active_session.chat_id, active_session.message_id)
+                    except Exception as e:
+                        logger.warning(f"删除过期问答消息失败: {e}")
+
                 # 过期处理：记录日志并删除
                 await QuizService.handle_timeout(session, user_id)
                 # 继续后续流程（视为无活跃会话）
@@ -261,7 +279,22 @@ class QuizService:
     async def handle_answer(session: AsyncSession, user_id: int, answer_index: int) -> tuple[bool, int, str]:
         """
         处理用户回答
+ais QuizSessionExpiredError("⚠️ 题目已过期或不存在。")
 
+        # 检查是否过期
+        if quiz_session.expire_a <= now():
+            # 记录过期信息以便抛出异常时携带
+            chat_id = quiz_session.chat_id
+            message_id = qiz_sessio.message_id
+            
+           # 执行超时处理
+            wait QuizService.hande_timeout(ssion user_id)
+            
+            raise QuizSessionExpiredError(
+              ,
+                chat_id=chat_id,
+                message_id=message_id
+            )
         :return: (is_correct, reward_amount, message_text)
         """
         # 1. 获取 Session

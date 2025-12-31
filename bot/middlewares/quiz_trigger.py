@@ -47,9 +47,10 @@ class QuizTriggerMiddleware(BaseMiddleware):
         if user_id and chat_id:
             # 获取数据库会话 (假设 DatabaseMiddleware 已注入 session)
             session: AsyncSession = data.get("session")
+            bot = data.get("bot")
             if session:
                 # 检查触发条件
-                if await QuizService.check_trigger_conditions(session, user_id, chat_id):
+                if await QuizService.check_trigger_conditions(session, user_id, chat_id, bot):
                     # 创建并发送题目
                     quiz_data = await QuizService.create_quiz_session(session, user_id, chat_id)
                     if quiz_data:

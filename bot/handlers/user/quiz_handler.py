@@ -51,6 +51,13 @@ async def on_quiz_answer(callback: CallbackQuery, session: AsyncSession) -> None
                 reply_markup=None
             )
 
+    except QuizSessionExpiredError as e:
+        # 会话已过期，提示用户并删除消息
+        await callback.answer(str(e), show_alert=True)
+        # 尝试删除消息
+        with contextlib.suppress(builtins.BaseException):
+            await callback.message.delete()
+
     except ValueError:
         await callback.answer("⚠️ 数据异常", show_alert=True)
     except Exception as e:
