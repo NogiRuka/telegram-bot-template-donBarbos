@@ -1,3 +1,4 @@
+import asyncio
 import random
 from datetime import timedelta
 
@@ -24,6 +25,7 @@ from bot.database.models import (
 from bot.services.config_service import get_config
 from bot.services.currency import CurrencyService
 from bot.utils.datetime import compute_expire_at, now
+from bot.utils.message import safe_delete_message
 
 
 class QuizSessionExpiredError(Exception):
@@ -36,6 +38,77 @@ class QuizSessionExpiredError(Exception):
 
 
 class QuizService:
+    # 用于保存后台任务的引用，防止被垃圾回收
+    _background_tasks = set()
+
+    @staticmethod
+    async def schedule_quiz_timeout(
+        bot: Bot,
+        chat_id: int,
+        message_id: int,
+        session_id: int,
+        user_id: int,
+        timeout: int
+    ) -> None:
+        """
+        调度问答超时处理
+
+        功能说明:
+        - 等待指定超时时间
+        - 检查 Session 是否仍然存在
+        - 若存在则视为超时未答，删除消息并清理 Session
+        - 若不存在则视为已回答，不进行操作
+
+        :param bot: Bot 实例
+        :param chat_id: 聊天 ID
+        :param message_id: 消息 ID
+        :param session_id: 会话 ID
+        :param user_id: 用户 ID
+        :param timeout: 超时秒数
+        """
+        logger.debug(f"⏳ [问答] 会话 {session_id} 已调度超时处理，将在 {timeout} 秒后执行")
+        
+        try:
+            # 1. 等待超时
+            await asyncio.sleep(timeout)
+            logger.debug(f"⏰ [问答] 会话 {session_id} 计时结束，开始检查状态")
+
+            # 2. 检查 Session 状态
+            # 需要新的 DB 会话，因为这是一个独立的异步任务
+            from bot.database.database import sessionmaker
+
+            async with sessionmaker() as session:
+                stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.id == session_id)
+                quiz_session = (await session.execute(stmt)).scalar_one_or_none()
+
+                if quiz_session:
+                    logger.info(f"⏰ [问答] 会话 {session_id} 已超时。正在删除消息 {message_id}")
+                    # Session 还在，说明未回答 -> 超时处理
+                    
+                    # 删除消息
+                    deleted = await safe_delete_message(bot, chat_id, message_id)
+                    if not deleted:
+                        logger.warning(f"⚠️ [问答] 删除会话 {session_id} 的消息 {message_id} 失败")
+                    else:
+                        logger.info(f"🗑️ [问答] 会话 {session_id} 的消息 {message_id} 已删除")
+
+                    # 记录日志并清理 Session
+                    await QuizService.handle_timeout(session, user_id)
+                    # handle_timeout 会 commit
+                else:
+                    logger.debug(f"✅ [问答] 会话 {session_id} 已处理或已过期，跳过删除")
+        except asyncio.CancelledError:
+            logger.info(f"🛑 [问答] 会话 {session_id} 的超时任务被取消")
+            raise
+        except Exception as e:
+            logger.error(f"❌ [问答] 会话 {session_id} 超时处理出错: {e}", exc_info=True)
+        finally:
+            # 这里的任务清理将在外部进行，或者如果这里是 task 的入口函数，
+            # 我们应该在完成时从集合中移除自己吗？
+            # 实际上，create_task 的调用者应该负责添加到集合，
+            # 而这里可以用回调移除，或者在这里移除。
+            # 为了简单，我们在调用处处理集合管理。
+            pass
 
     @staticmethod
     async def check_trigger_conditions(session: AsyncSession, user_id: int, chat_id: int, bot: Bot | None = None) -> bool:

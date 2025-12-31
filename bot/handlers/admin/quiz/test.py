@@ -13,6 +13,11 @@ from bot.utils.permissions import require_admin_feature
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def test_trigger(callback: CallbackQuery, session: AsyncSession) -> None:
     """测试触发题目"""
+    import asyncio
+    from loguru import logger
+    from bot.config.constants import KEY_QUIZ_SESSION_TIMEOUT
+    from bot.services.config_service import get_config
+
     user_id = callback.from_user.id
     # 强制给管理员私聊发送
     target_chat_id = user_id
@@ -34,6 +39,27 @@ async def test_trigger(callback: CallbackQuery, session: AsyncSession) -> None:
                 sent = await bot.send_message(target_chat_id, caption, reply_markup=markup)
 
             await QuizService.update_session_message_id(session, session_id, sent.message_id)
+            
+            # 手动启动超时任务（模拟中间件行为）
+            timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
+            if timeout_sec is None:
+                timeout_sec = 60
+            
+            logger.info(f"⏳ [问答测试] 正在为会话 {session_id} 调度超时处理，时长: {timeout_sec} 秒")
+            task = asyncio.create_task(
+                QuizService.schedule_quiz_timeout(
+                    bot=bot,
+                    chat_id=target_chat_id,
+                    message_id=sent.message_id,
+                    session_id=session_id,
+                    user_id=user_id,
+                    timeout=int(timeout_sec)
+                )
+            )
+            QuizService._background_tasks.add(task)
+            task.add_done_callback(QuizService._background_tasks.discard)
+            
+            await callback.answer("✅ 测试题目已发送")
         else:
             await callback.answer("⚠️ 题库为空或生成失败。")
 

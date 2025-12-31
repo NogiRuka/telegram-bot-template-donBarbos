@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
@@ -5,6 +6,8 @@ from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject
 from loguru import logger
 
+from bot.config.constants import KEY_QUIZ_SESSION_TIMEOUT
+from bot.services.config_service import get_config
 from bot.services.quiz_service import QuizService
 
 if TYPE_CHECKING:
@@ -14,10 +17,10 @@ class QuizTriggerMiddleware(BaseMiddleware):
     """
     问答触发中间件
 
-    在用户与机器人交互后，概率触发问答。
+    在用户与机器人交互后, 概率触发问答。
     """
 
-    async def __call__(
+    async def __call__(  # noqa: PLR0912, C901
         self,
         handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
         event: TelegramObject,
@@ -38,7 +41,7 @@ class QuizTriggerMiddleware(BaseMiddleware):
                 chat_id = event.chat.id
         elif isinstance(event, CallbackQuery):
             if event.data and event.data.startswith("quiz:"):
-                # 如果是问答相关的点击，不触发新题目
+                # 如果是问答相关的点击, 不触发新题目
                 return result
             if event.from_user and not event.from_user.is_bot:
                 user_id = event.from_user.id
@@ -48,7 +51,7 @@ class QuizTriggerMiddleware(BaseMiddleware):
             # 获取数据库会话 (假设 DatabaseMiddleware 已注入 session)
             session: AsyncSession = data.get("session")
             bot = data.get("bot")
-            if session:
+            if session:  # noqa: SIM102
                 # 检查触发条件
                 if await QuizService.check_trigger_conditions(session, user_id, chat_id, bot):
                     # 创建并发送题目
@@ -87,12 +90,39 @@ class QuizTriggerMiddleware(BaseMiddleware):
 
                                 if sent_msg:
                                     # 更新 Session 中的 Message ID
-                                    await QuizService.update_session_message_id(session, session_id, sent_msg.message_id)
+                                    await QuizService.update_session_message_id(
+                                        session,
+                                        session_id,
+                                        sent_msg.message_id,
+                                    )
+                                    # 定时自动删除题目消息
+                                    try:
+                                        timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
+                                        if timeout_sec is None:
+                                            timeout_sec = 10  # 默认 10 秒
 
-                            except Exception as e:
+                                        logger.info(f"⏳ [问答] 正在为会话 {session_id} 调度超时处理，时长: {timeout_sec} 秒")
+                                        # 使用后台任务调度超时处理
+                                        task = asyncio.create_task(
+                                            QuizService.schedule_quiz_timeout(
+                                                bot=bot,
+                                                chat_id=chat_id,
+                                                message_id=sent_msg.message_id,
+                                                session_id=session_id,
+                                                user_id=user_id,
+                                                timeout=int(timeout_sec)
+                                            )
+                                        )
+                                        # 保存任务引用，防止被 GC
+                                        QuizService._background_tasks.add(task)
+                                        task.add_done_callback(QuizService._background_tasks.discard)
+                                    except Exception as e:  # noqa: BLE001
+                                        logger.warning(f"设置问答消息定时删除失败: {e}")
+
+                            except Exception as e:  # noqa: BLE001
                                 logger.warning(f"⚠️ 发送问答题目失败: {e}")
-                                # 发送失败，可能是被屏蔽或者网络问题
-                                # 应该回滚/删除 Session 吗？
-                                # QuizService.handle_timeout 会处理过期的 Session，这里可以忽略
+                                # 发送失败, 可能是被屏蔽或者网络问题
+                                # 应该回滚/删除 Session 吗?
+                                # QuizService.handle_timeout 会处理过期的 Session, 这里可以忽略
 
         return result
