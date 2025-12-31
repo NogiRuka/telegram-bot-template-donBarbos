@@ -61,24 +61,14 @@ class QuizTriggerMiddleware(BaseMiddleware):
                             try:
                                 timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
                                 sent_msg = None
-                                
-                                # 获取分类名称
-                                cat_name = question.category.name if question.category else "综合"
-                                caption = f"🌸 <b>桜之问答</b> [{cat_name}] 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
+                                caption = QuizService.build_quiz_caption(
+                                    question=question,
+                                    image=image,
+                                    timeout_sec=timeout_sec,
+                                    title="🌸 <b>桜之问答</b>"
+                                )
                                 
                                 if image:
-                                    # 处理图片来源和补充说明
-                                    if image.image_source:
-                                        # 如果来源是链接
-                                        if image.image_source.startswith("http"):
-                                            caption += f"\n\n🔗 来源：<a href='{image.image_source}'>链接</a>"
-                                            if image.extra_caption:
-                                                caption += f"\nℹ️ {image.extra_caption}"
-                                        else:
-                                            # 如果来源是文字
-                                            caption += f"\n\n🔗 来源：{image.image_source}"
-                                            # 文字来源时不显示补充说明（根据需求）
-                                    
                                     # 发送图片
                                     # 这里假设 image.file_id 是有效的 Telegram File ID
                                     sent_msg = await bot.send_photo(

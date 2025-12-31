@@ -101,11 +101,11 @@ class QuizService:
         return True
 
     @classmethod
-    async def get_random_image_by_tags(cls, session: AsyncSession, tags: list[str]) -> Optional[QuizImageModel]:
-        """根据标签随机获取图片"""
-        if not tags:
-            return None
-
+     async def get_random_image_by_tags(cls, session: AsyncSession, tags: list[str]) -> Optional[QuizImageModel]:
+         """根据标签随机获取图片"""
+         if not tags:
+             return None
+ 
         # 假设 tags 是 list[str]
         # JSON 数组包含查询 (PostgreSQL @>, SQLite 可能需要 func.json_each)
         # 这里简化处理：直接查找 active 的图片，然后在内存中过滤 tag 匹配的 (数据量不大时)
@@ -123,12 +123,49 @@ class QuizService:
             if img.tags and set(tags) & set(img.tags)
         ]
         
-        if matched_imgs:
-            return random.choice(matched_imgs)
-        return None
-
-    @staticmethod
-    async def create_quiz_session(session: AsyncSession, user_id: int, chat_id: int) -> Optional[Tuple[QuizQuestionModel, Optional[QuizImageModel], InlineKeyboardMarkup, int]]:
+         if matched_imgs:
+             return random.choice(matched_imgs)
+         return None
+ 
+     @staticmethod
+     def build_quiz_caption(
+         question: QuizQuestionModel,
+         image: Optional[QuizImageModel],
+         timeout_sec: int,
+         title: str = "🌸 <b>桜之问答</b>",
+     ) -> str:
+         """
+         构建问答消息说明
+ 
+         功能说明:
+         - 根据题目与图片信息生成统一的 HTML 样式说明文本
+         - 包含分类名称、超时提示、图片来源与补充说明
+ 
+         输入参数:
+         - question: 题目对象
+         - image: 图片对象（可选）
+         - timeout_sec: 会话超时时间（秒）
+         - title: 标题（默认桜之问答，可自定义，如测试标题）
+ 
+         返回值:
+         - str: 构建完成的说明文本（HTML）
+         """
+         cat_name = question.category.name if question.category else "综合"
+         caption = f"{title} [{cat_name}] 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
+ 
+         if image and image.image_source:
+             if image.image_source.startswith("http"):
+                 caption += f"\n\n🔗 来源：<a href='{image.image_source}'>链接</a>"
+                 if image.extra_caption:
+                     caption += f"\nℹ️ {image.extra_caption}"
+             else:
+                 caption += f"\n\n🔗 来源：{image.image_source}"
+                 # 文字来源时不显示补充说明
+ 
+         return caption
+ 
+     @staticmethod
+     async def create_quiz_session(session: AsyncSession, user_id: int, chat_id: int) -> Optional[Tuple[QuizQuestionModel, Optional[QuizImageModel], InlineKeyboardMarkup, int]]:
         """
         创建问答会话
         
