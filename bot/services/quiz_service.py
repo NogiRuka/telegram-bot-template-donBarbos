@@ -30,6 +30,7 @@ from bot.services.config_service import get_config
 from bot.services.currency import CurrencyService
 from bot.utils.datetime import compute_expire_at, now
 from bot.utils.message import safe_delete_message
+from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL
 
 
 class QuizSessionExpiredError(Exception):
@@ -276,6 +277,7 @@ class QuizService:
             else:
                 timeout_sec = 60 # 默认值，防止 session 和 timeout_sec 都没传的情况
 
+        extra = "无"
         if image and image.image_source:
             if image.image_source.startswith("http"):
                 link_text = image.extra_caption.strip() if image.extra_caption else "链接"
@@ -288,7 +290,7 @@ class QuizService:
         return (
             f"🫧 <b>{title}｜{timeout_sec} 秒挑战 🫧</b>\n\n"
             f"🗂️ {cat_name}｜🖼️ {extra}\n\n"
-            f"💭 {question.question}"
+            f"💭 <code>{question.question}</code>"
         )
 
 
@@ -348,6 +350,12 @@ class QuizService:
         # 4. 创建 Session
         expire_at = compute_expire_at(now(), timeout_sec)
 
+        # 保存用于重建 caption 的信息
+        extra_data = {"timeout_sec": timeout_sec}
+        if quiz_image:
+            extra_data["image_source"] = quiz_image.image_source
+            extra_data["extra_caption"] = quiz_image.extra_caption
+
         # 这里的 message_id 暂时填 0，发送消息后需要更新
         quiz_session = QuizActiveSessionModel(
             user_id=user_id,
@@ -355,7 +363,8 @@ class QuizService:
             message_id=0,
             question_id=question.id,
             correct_index=correct_index,
-            expire_at=expire_at
+            expire_at=expire_at,
+            extra=extra_data
         )
         session.add(quiz_session)
         try:
@@ -378,17 +387,17 @@ class QuizService:
             await session.commit()
 
     @staticmethod
-    async def handle_answer(session: AsyncSession, user_id: int, answer_index: int) -> tuple[bool, int, str]:
+    async def handle_answer(session: AsyncSession, user_id: int, answer_index: int) -> tuple[bool, int, str, str]:
         """
         处理用户回答
-        :return: (is_correct, reward_amount, message_text)
+        :return: (is_correct, reward_amount, message_text, original_caption)
         """
         # 1. 获取 Session
         stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
         
         if not quiz_session:
-            return False, 0, "⚠️ 题目已过期或不存在。"
+            return False, 0, "⚠️ 题目已过期或不存在。", ""
 
         # 检查是否过期
         if quiz_session.expire_at <= now():
@@ -404,7 +413,23 @@ class QuizService:
             # 异常情况，清理 session
             await session.delete(quiz_session)
             await session.commit()
-            return False, 0, "⚠️ 题目数据异常。"
+            return False, 0, "⚠️ 题目数据异常。", ""
+
+        # 重建原始 caption (在删除 session 前进行)
+        session_extra = quiz_session.extra or {}
+        fake_image = None
+        if "image_source" in session_extra:
+            fake_image = QuizImageModel(
+                image_source=session_extra.get("image_source"),
+                extra_caption=session_extra.get("extra_caption")
+            )
+        
+        original_caption = await QuizService.build_quiz_caption(
+            question=question,
+            image=fake_image,
+            session=session,
+            timeout_sec=session_extra.get("timeout_sec")
+        )
 
         # 3. 判定结果
         is_correct = (answer_index == quiz_session.correct_index)
@@ -444,10 +469,10 @@ class QuizService:
             msg = "✅ 回答正确！"  # noqa: RUF001
         else:
             correct_option = question.options[question.correct_index]
-            msg = f"❌ 回答错误。\n正确答案是：{correct_option}"  # noqa: RUF001
-        msg += f"\n获得奖励：+{reward} 精粹"  # noqa: RUF001
+            msg = f"❌ 回答错误。\n正确答案：{correct_option}"  # noqa: RUF001
+        msg += f"\n获得{CURRENCY_NAME}：+{reward} {CURRENCY_SYMBOL}"  # noqa: RUF001
 
-        return is_correct, reward, msg
+        return is_correct, reward, msg, original_caption
 
     @staticmethod
     async def handle_timeout(session: AsyncSession, user_id: int) -> None:
