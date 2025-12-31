@@ -13,6 +13,8 @@ from bot.config.constants import KEY_ADMIN_QUIZ
 from bot.keyboards.inline.admin import (
     QUIZ_ADMIN_CALLBACK_DATA,
 )
+from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON
+from bot.keyboards.inline.constants import QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.services.quiz_service import QuizService
 from bot.utils.message import send_toast
@@ -23,30 +25,37 @@ def get_quiz_list_pagination_keyboard(page: int, total_pages: int, limit: int = 
     """生成分页键盘"""
     builder = InlineKeyboardBuilder()
 
-    # 翻页按钮
+    # 上一页
     if page > 1:
         builder.button(
             text="⬅️ 上一页",
             callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:{page - 1}:{limit}"
         )
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
     
+    # 页码指示 (Toggle limit)
+    next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
     builder.button(
-        text=f"{page}/{total_pages}",
-        callback_data="ignore"
+        text=f"{page}/{total_pages} (每页{limit:02d}条)",
+        callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:1:{next_limit}"
     )
 
+    # 下一页
     if page < total_pages:
         builder.button(
             text="下一页 ➡️",
             callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:{page + 1}:{limit}"
         )
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
     
-    builder.row()
+    builder.adjust(3)
     
     # 返回按钮
-    builder.button(
-        text="🔙 返回菜单",
-        callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:menu"
+    builder.row(
+        InlineKeyboardButton(text="🔙 返回列表菜单", callback_data=QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA),
+        BACK_TO_HOME_BUTTON
     )
     
     return builder.as_markup()
