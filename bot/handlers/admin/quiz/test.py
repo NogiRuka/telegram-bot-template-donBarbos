@@ -13,8 +13,6 @@ from bot.utils.permissions import require_admin_feature
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def test_trigger(callback: CallbackQuery, session: AsyncSession) -> None:
     """测试触发题目"""
-    import asyncio
-    from loguru import logger
     from bot.config.constants import KEY_QUIZ_SESSION_TIMEOUT
     from bot.services.config_service import get_config
 
@@ -45,19 +43,15 @@ async def test_trigger(callback: CallbackQuery, session: AsyncSession) -> None:
             if timeout_sec is None:
                 timeout_sec = 60
             
-            logger.info(f"⏳ [问答测试] 正在为会话 {session_id} 调度超时处理，时长: {timeout_sec} 秒")
-            task = asyncio.create_task(
-                QuizService.schedule_quiz_timeout(
-                    bot=bot,
-                    chat_id=target_chat_id,
-                    message_id=sent.message_id,
-                    session_id=session_id,
-                    user_id=user_id,
-                    timeout=int(timeout_sec)
-                )
+            # 使用统一的启动方法
+            QuizService.start_timeout_task(
+                bot=bot,
+                chat_id=target_chat_id,
+                message_id=sent.message_id,
+                session_id=session_id,
+                user_id=user_id,
+                timeout=int(timeout_sec)
             )
-            QuizService._background_tasks.add(task)
-            task.add_done_callback(QuizService._background_tasks.discard)
             
             await callback.answer("✅ 测试题目已发送")
         else:

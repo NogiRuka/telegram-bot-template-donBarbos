@@ -110,6 +110,40 @@ class QuizService:
             # 为了简单，我们在调用处处理集合管理。
             pass
 
+    @classmethod
+    def start_timeout_task(
+        cls,
+        bot: Bot,
+        chat_id: int,
+        message_id: int,
+        session_id: int,
+        user_id: int,
+        timeout: int
+    ) -> None:
+        """
+        启动超时后台任务（包含 GC 保护）
+
+        :param bot: Bot 实例
+        :param chat_id: 聊天 ID
+        :param message_id: 消息 ID
+        :param session_id: 会话 ID
+        :param user_id: 用户 ID
+        :param timeout: 超时秒数
+        """
+        logger.info(f"⏳ [问答] 正在为会话 {session_id} 调度超时处理，时长: {timeout} 秒")
+        task = asyncio.create_task(
+            cls.schedule_quiz_timeout(
+                bot=bot,
+                chat_id=chat_id,
+                message_id=message_id,
+                session_id=session_id,
+                user_id=user_id,
+                timeout=timeout
+            )
+        )
+        cls._background_tasks.add(task)
+        task.add_done_callback(cls._background_tasks.discard)
+
     @staticmethod
     async def check_trigger_conditions(session: AsyncSession, user_id: int, chat_id: int, bot: Bot | None = None) -> bool:
         """

@@ -99,23 +99,17 @@ class QuizTriggerMiddleware(BaseMiddleware):
                                     try:
                                         timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
                                         if timeout_sec is None:
-                                            timeout_sec = 10  # 默认 10 秒
+                                            timeout_sec = 60  # 默认 60 秒
 
-                                        logger.info(f"⏳ [问答] 正在为会话 {session_id} 调度超时处理，时长: {timeout_sec} 秒")
-                                        # 使用后台任务调度超时处理
-                                        task = asyncio.create_task(
-                                            QuizService.schedule_quiz_timeout(
-                                                bot=bot,
-                                                chat_id=chat_id,
-                                                message_id=sent_msg.message_id,
-                                                session_id=session_id,
-                                                user_id=user_id,
-                                                timeout=int(timeout_sec)
-                                            )
+                                        # 使用封装的方法启动超时任务
+                                        QuizService.start_timeout_task(
+                                            bot=bot,
+                                            chat_id=chat_id,
+                                            message_id=sent_msg.message_id,
+                                            session_id=session_id,
+                                            user_id=user_id,
+                                            timeout=int(timeout_sec)
                                         )
-                                        # 保存任务引用，防止被 GC
-                                        QuizService._background_tasks.add(task)
-                                        task.add_done_callback(QuizService._background_tasks.discard)
                                     except Exception as e:  # noqa: BLE001
                                         logger.warning(f"设置问答消息定时删除失败: {e}")
 
