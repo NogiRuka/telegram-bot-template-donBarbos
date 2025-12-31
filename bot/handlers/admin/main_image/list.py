@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .router import router
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
 from bot.database.models import MainImageModel
-from bot.handlers.start import build_home_view
 from bot.keyboards.inline.admin import (
     get_main_image_item_keyboard,
     get_main_image_list_pagination_keyboard,
@@ -59,6 +58,7 @@ async def back_to_home_from_list(callback: CallbackQuery, session: AsyncSession,
         await _clear_image_list(state, callback.bot, callback.message.chat.id)
 
     # 构建首页视图
+    from bot.handlers.start import build_home_view
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)
 
