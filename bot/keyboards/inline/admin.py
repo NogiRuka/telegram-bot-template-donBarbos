@@ -483,13 +483,59 @@ def get_quiz_list_keyboard() -> InlineKeyboardMarkup:
     """问答列表菜单键盘"""
     buttons = [
         [
-            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_QUESTIONS_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_questions"),
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_QUESTIONS_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list:view:question:1:5"),
             InlineKeyboardButton(text=QUIZ_ADMIN_LIST_IMAGES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_images")
         ],
         [
             InlineKeyboardButton(text=QUIZ_ADMIN_LIST_LOGS_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_logs")
         ],
         [BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON]
+    ]
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_quiz_question_list_pagination_keyboard(page: int, total_pages: int, limit: int) -> InlineKeyboardMarkup:
+    """题目列表分页键盘"""
+    builder = InlineKeyboardBuilder()
+
+    # 上一页
+    if page > 1:
+        builder.button(text="⬅️ 上一页", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:question:{page - 1}:{limit}")
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
+
+    # 页码指示
+    builder.button(text=f"{page}/{total_pages}", callback_data="ignore")
+
+    # 下一页
+    if page < total_pages:
+        builder.button(text="下一页 ➡️", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:question:{page + 1}:{limit}")
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
+
+    builder.adjust(3)
+    
+    # 返回按钮
+    builder.row(
+        InlineKeyboardButton(text="🔙 返回列表菜单", callback_data=QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA),
+        BACK_TO_HOME_BUTTON
+    )
+
+    return builder.as_markup()
+
+
+def get_quiz_question_item_keyboard(question_id: int, is_active: bool) -> InlineKeyboardMarkup:
+    """题目单项操作键盘"""
+    buttons = [
+        [
+            InlineKeyboardButton(text="✏️ 编辑", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:edit:{question_id}"),
+            InlineKeyboardButton(text="🔴 禁用" if is_active else "🟢 启用", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:toggle:{question_id}")
+        ],
+        [
+            InlineKeyboardButton(text="🗑️ 删除", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:delete:{question_id}"),
+            InlineKeyboardButton(text="❌ 关闭", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:close")
+        ]
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
