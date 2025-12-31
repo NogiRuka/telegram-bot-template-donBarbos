@@ -41,7 +41,18 @@ async def show_trigger_menu(callback: CallbackQuery, session: AsyncSession, main
     schedule_time = await get_config(session, KEY_QUIZ_SCHEDULE_TIME)
 
     sch_status = "开启" if schedule_enabled else "关闭"
-    sch_time_display = f"{schedule_time[:2]}:{schedule_time[2:4]}:{schedule_time[4:]}" if schedule_time and len(schedule_time) == 6 else "未设置"
+    
+    sch_time_display = "未设置"
+    if schedule_time:
+        parts = schedule_time.split(",")
+        formatted = []
+        for part in parts:
+            part = part.strip()
+            if len(part) == 6:
+                formatted.append(f"{part[:2]}:{part[2:4]}:{part[4:]}")
+            else:
+                formatted.append(part)
+        sch_time_display = ", ".join(formatted)
 
     text = (
         "*⚙️ 触发设置*\n\n"
@@ -87,8 +98,19 @@ async def show_schedule_menu(callback: CallbackQuery, session: AsyncSession, mai
     target_count = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET_COUNT)
 
     if enabled is None: enabled = False
-    if not time_str: time_str = "未设置"
-    else: time_str = f"{time_str[:2]}:{time_str[2:4]}:{time_str[4:]}"
+    
+    if not time_str:
+        time_str = "未设置"
+    else:
+        parts = time_str.split(",")
+        formatted = []
+        for part in parts:
+            part = part.strip()
+            if len(part) == 6:
+                formatted.append(f"{part[:2]}:{part[2:4]}:{part[4:]}")
+            else:
+                formatted.append(part)
+        time_str = ", ".join(formatted)
     
     target_display = "全部用户"
     if target_type == "fixed":
@@ -188,7 +210,7 @@ async def ask_schedule_value(callback: CallbackQuery, state: FSMContext) -> None
 
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":schedule:toggle")
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def toggle_schedule(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
+async def toggle_schedule(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """切换定时任务开关"""
     current = await get_config(session, KEY_QUIZ_SCHEDULE_ENABLE)
     if current is None: current = False
@@ -201,14 +223,14 @@ async def toggle_schedule(callback: CallbackQuery, session: AsyncSession, state:
 
 @router.message(QuizAdminState.waiting_for_setting_value)
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def process_setting_value(message: Message, state: FSMContext, session: AsyncSession) -> None:
+async def process_setting_value(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
     """处理设置值输入 (统一处理基础和定时)"""
     data = await state.get_data()
     setting_type = data.get("setting_type")
     value_str = message.text.strip()
     user_id = message.from_user.id
 
-    safe_delete_message(message)
+    main_msg.delete_input(message)
 
     try:
         # 基础参数
