@@ -55,8 +55,8 @@ class QuizService:
         active_session = active_result.scalar_one_or_none()
         
         if active_session:
-            # 检查是否过期
-            if active_session.expire_at < int(now().timestamp()):
+            # 检查是否过期（expire_at 采用 datetime，精确到秒）
+            if active_session.expire_at <= now():
                 # 过期处理：记录日志并删除
                 await QuizService.handle_timeout(session, user_id)
                 # 继续后续流程（视为无活跃会话）
