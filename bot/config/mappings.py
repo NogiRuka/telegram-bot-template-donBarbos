@@ -72,8 +72,8 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     KEY_QUIZ_GLOBAL_ENABLE: (True, ConfigType.BOOLEAN),
     KEY_QUIZ_SCHEDULE_ENABLE: (True, ConfigType.BOOLEAN),
     KEY_QUIZ_SCHEDULE_TIME: ("051700,171700,222222", ConfigType.STRING),
-    KEY_QUIZ_SCHEDULE_TARGET_TYPE: ("all", ConfigType.STRING),
-    KEY_QUIZ_SCHEDULE_TARGET_COUNT: (0, ConfigType.INTEGER),
+    KEY_QUIZ_SCHEDULE_TARGET_TYPE: ("fixed", ConfigType.STRING),
+    KEY_QUIZ_SCHEDULE_TARGET_COUNT: (20, ConfigType.INTEGER),
 }
 
 # 用户功能开关映射 - 用于用户功能管理
