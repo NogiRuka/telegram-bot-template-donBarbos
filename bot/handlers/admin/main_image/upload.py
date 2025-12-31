@@ -1,5 +1,4 @@
 import contextlib
-import asyncio
 from io import BytesIO
 
 from aiogram import F
@@ -73,21 +72,12 @@ async def start_upload_process(callback: CallbackQuery, state: FSMContext, main_
 
 @router.message(AdminMainImageState.waiting_for_image)
 async def handle_image_upload(message: Message, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
-    """处理图片上传
-
-    功能说明:
-    - 接收管理员发送的 Photo 或 Document(图片)
-    - 提取文件ID与基础元数据并写入 main_images 表
-
-    输入参数:
-    - message: 管理员消息
-    - session: 异步数据库会话
-    - state: FSM 上下文
-    - main_msg: 主消息服务
-
-    返回值:
-    - None
-    """
+    """处理图片上传"""
+    # 随机延迟以缓解并发竞争
+    if message.media_group_id and not message.caption:
+         # 无 Caption 的消息稍微多等一下
+         pass
+    
     with contextlib.suppress(Exception):
         await main_msg.delete_input(message)
 
@@ -108,7 +98,7 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
             await state.update_data({group_key: caption})
         else:
             # 当前消息无 Caption，稍作等待以确保带 Caption 的消息已写入状态
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1.0)
             # 尝试从状态获取
             data = await state.get_data()
             caption = data.get(group_key, "")
