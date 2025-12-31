@@ -133,8 +133,11 @@ async def show_schedule_menu(callback: Union[CallbackQuery, Message], session: A
         "说明：每天固定时间自动发送题目"
     ).replace(".", "\\.")
     kb = get_quiz_schedule_keyboard(is_enabled=enabled)
-    await main_msg.update_on_callback(callback, text, kb)
-    await callback.answer()
+    if isinstance(callback, CallbackQuery):
+        await main_msg.update_on_callback(callback, text, kb)
+        await callback.answer()
+    elif isinstance(callback, Message):
+        await main_msg.render(callback.from_user.id, text, kb)
 
 
 @router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":set"))

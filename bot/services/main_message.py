@@ -128,8 +128,25 @@ class MainMessageService:
                 )
                 return True
             except Exception as e:
+                err_str = str(e)
                 # caption 未变化时，Telegram 会抛 message is not modified
-                return "message is not modified" in str(e)
+                if "message is not modified" in err_str:
+                    return True
+                
+                # 尝试作为纯文本编辑 (应对原消息无媒体的情况)
+                try:
+                    await self.bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        text=caption,
+                        reply_markup=kb,
+                        parse_mode="MarkdownV2",
+                    )
+                    return True
+                except Exception as text_e:
+                    if "message is not modified" in str(text_e):
+                        return True
+                    return False
 
         # ③ 明确更换图片：删除旧消息并重发
         with contextlib.suppress(Exception):
