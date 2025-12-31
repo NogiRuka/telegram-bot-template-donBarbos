@@ -52,15 +52,6 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
         "第6行：难度系数（1-5，可选，默认1）\n"
         "第7行：图片来源（链接或文字描述，可选）\n"
         "第8行：图片补充说明（可选）`\n\n"
-        "*📝 示例格式：*\n\n"
-        "`LGBT骄傲月是什么时候？\n"
-        "3月　6月　9月　12月\n"
-        "2\n"
-        "15\n"
-        "LGBT骄傲月\n"
-        "3\n"
-        "https://zh.wikipedia.org/zh-cn/%E5%90%8C%E5%BF%97%E9%AA%84%E5%82%B2#/media/File:Oslo_Pride_Parade_35.jpg\n"
-        "2018年奥斯陆骄傲游行`\n\n"
         "*可用分类：*\n"
         f"{cat_text}"
     )
@@ -71,28 +62,56 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":send_example")
 async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
     """发送示例消息"""
-    example_text = (
-        "*📝 示例格式：*\n\n"
-        "`LGBT骄傲月是什么时候？\n"
-        "3月　6月　9月　12月\n"
-        "2\n"
-        "15\n"
-        "LGBT骄傲月\n"
-        "3\n"
-        "https://zh.wikipedia.org/zh-cn/%E5%90%8C%E5%BF%97%E9%AA%84%E5%82%B2#/media/File:Oslo_Pride_Parade_35.jpg\n"
-        "2018年奥斯陆骄傲游行`"
-    )
-
-    example_image = await QuizService.get_random_image_by_tags(session, ["LGBT骄傲月"])
+    # 尝试从数据库获取 ID 为 1 的题目（示例数据）
+    stmt = select(QuizQuestionModel).where(QuizQuestionModel.id == 1)
+    result = await session.execute(stmt)
+    question = result.scalar_one_or_none()
+    
     del_btn = InlineKeyboardBuilder().button(
-        text="🗑️ 删除示例",
+        text="�️ 删除示例",
         callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":del_msg"
     ).as_markup()
 
+    if not question:
+        # 如果数据库没有示例数据，显示默认提示
+        await callback.answer("⚠️ 未找到示例数据 (ID: 1)", show_alert=True)
+        return
+
+    # 构建示例格式文本
+    # 注意：选项之间使用全角空格
+    options_str = "　".join(question.options)
+    tags_str = " ".join(question.tags or [])
+    
+    # 获取关联的图片
+    # 尝试查找 ID 为 1 的图片，或者通过 tags 查找
+    image_stmt = select(QuizImageModel).where(QuizImageModel.id == 1)
+    image_result = await session.execute(image_stmt)
+    image = image_result.scalar_one_or_none()
+
+    image_source = ""
+    extra_caption = ""
+    
+    if image:
+        image_source = image.image_source or ""
+        extra_caption = image.extra_caption or ""
+    
+    # 格式化输出
+    example_text = (
+        "*� 示例格式：*\n\n"
+        f"`{question.question}\n"
+        f"{options_str}\n"
+        f"{question.correct_index + 1}\n"
+        f"{question.category_id}\n"
+        f"{tags_str}\n"
+        f"{question.difficulty}\n"
+        f"{image_source}\n"
+        f"{extra_caption}`"
+    )
+
     try:
-        if example_image:
+        if image:
             await callback.message.answer_photo(
-                photo=example_image.file_id,
+                photo=image.file_id,
                 caption=example_text,
                 parse_mode="MarkdownV2",
                 reply_markup=del_btn
@@ -105,6 +124,10 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
             )
     except Exception:
         logger.error("发送示例消息失败", exc_info=True)
+        await callback.message.answer(
+             "❌ 发送失败，请检查图片 ID 是否有效",
+             reply_markup=del_btn
+        )
     await callback.answer()
 
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":del_msg")

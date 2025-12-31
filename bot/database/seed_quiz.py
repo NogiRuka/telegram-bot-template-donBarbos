@@ -7,24 +7,25 @@ async def seed_quiz_data(session: AsyncSession) -> None:
     """
     初始化问答数据（如果不存在）
     """
-    # 1. 确保分类存在 (ID: 15, Name: LGBT)
-    # 用户未明确提供分类名称，这里假设为 "LGBT" (从标签推断)
+    # 1. 确保分类存在 (ID: 15)
     category_id = 15
-    category_name = "LGBT"
-    
+    # config_service.py 已初始化分类 1-15，此处无需重复创建，
+    # 仅需确认 ID 15 存在即可（通常对应"其他"或用户自定义）
+    # 如果不存在（例如 config_service 未运行），则按需创建
     stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == category_id)
     result = await session.execute(stmt)
     category = result.scalar_one_or_none()
     
     if not category:
+        # 仅在不存在时创建，避免冲突
         category = QuizCategoryModel(
             id=category_id,
-            name=category_name,
+            name="其他",
             sort_order=0,
             is_active=True
         )
         session.add(category)
-        await session.flush() # 获取ID，防止后续外键错误
+        await session.flush() # 获取ID
     
     # 2. 插入题目
     question_id = 1
