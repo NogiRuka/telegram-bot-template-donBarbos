@@ -136,22 +136,22 @@ class QuizService:
         timeout_sec: int,
         title: str = "🌸 <b>桜之问答</b>",
     ) -> str:
-         """
-         构建问答消息说明
- 
-         功能说明:
-         - 根据题目与图片信息生成统一的 HTML 样式说明文本
-         - 包含分类名称、超时提示、图片来源与补充说明
- 
-         输入参数:
-         - question: 题目对象
-         - image: 图片对象（可选）
-         - timeout_sec: 会话超时时间（秒）
-         - title: 标题（默认桜之问答，可自定义，如测试标题）
- 
-         返回值:
-         - str: 构建完成的说明文本（HTML）
-         """
+        """
+        构建问答消息说明
+
+        功能说明:
+        - 根据题目与图片信息生成统一的 HTML 样式说明文本
+        - 包含分类名称、超时提示、图片来源与补充说明
+
+        输入参数:
+        - question: 题目对象
+        - image: 图片对象（可选）
+        - timeout_sec: 会话超时时间（秒）
+        - title: 标题（默认桜之问答，可自定义，如测试标题）
+
+        返回值:
+        - str: 构建完成的说明文本（HTML）
+        """
         cat_name = question.category.name if question.category else "综合"
         caption = f"{title} [{cat_name}] 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
  
