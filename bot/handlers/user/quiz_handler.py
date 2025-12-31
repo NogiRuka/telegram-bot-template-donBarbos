@@ -1,6 +1,8 @@
 import builtins
 import contextlib
 
+import html
+
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -27,7 +29,38 @@ async def on_quiz_answer(callback: CallbackQuery, session: AsyncSession) -> None
         # 如果是纯文本, 用 edit_text
         # 由于我们不知道原消息是图还是文, 可以通过 callback.message 类型判断
 
-        result_text = f"\n\n🏁 答题结束\n{msg}"
+        result_text = f"\n\n{msg}"
+
+        # 辅助函数：恢复问答格式
+        def restore_quiz_format(text: str) -> str:
+            if not text:
+                return ""
+            
+            # 1. HTML 转义 (防止原始内容干扰)
+            escaped_text = html.escape(text)
+            
+            # 2. 恢复标题加粗 (匹配第一行 🫧...🫧)
+            if escaped_text.startswith("🫧"):
+                first_newline = escaped_text.find("\n")
+                if first_newline != -1:
+                    title_line = escaped_text[:first_newline]
+                    rest = escaped_text[first_newline:]
+                    escaped_text = f"<b>{title_line}</b>{rest}"
+                else:
+                    escaped_text = f"<b>{escaped_text}</b>"
+            
+            # 3. 恢复题目代码块 (匹配 💭 ...)
+            marker = "💭 "
+            idx = escaped_text.find(marker)
+            if idx != -1:
+                prefix = escaped_text[:idx]
+                content = escaped_text[idx + len(marker):]
+                escaped_text = f"{prefix}{marker}<code>{content}</code>"
+                
+            return escaped_text
+
+        # 结果文本也需要转义，因为它是作为 HTML 发送的
+        escaped_result = html.escape(result_text)
 
         # 关闭键盘按钮
         close_kb = InlineKeyboardBuilder()
@@ -37,16 +70,20 @@ async def on_quiz_answer(callback: CallbackQuery, session: AsyncSession) -> None
         if callback.message.photo or callback.message.video or callback.message.document:
             # 带媒体的消息
             original_caption = callback.message.caption or ""
+            new_caption = restore_quiz_format(original_caption) + escaped_result
             await callback.message.edit_caption(
-                caption=original_caption + result_text,
-                reply_markup=reply_kb
+                caption=new_caption,
+                reply_markup=reply_kb,
+                parse_mode="HTML"
             )
         else:
             # 纯文本
             original_text = callback.message.text or ""
+            new_text = restore_quiz_format(original_text) + escaped_result
             await callback.message.edit_text(
-                text=original_text + result_text,
-                reply_markup=reply_kb
+                text=new_text,
+                reply_markup=reply_kb,
+                parse_mode="HTML"
             )
 
     except QuizSessionExpiredError as e:
@@ -60,13 +97,15 @@ async def on_quiz_answer(callback: CallbackQuery, session: AsyncSession) -> None
                 original_caption = callback.message.caption or ""
                 await callback.message.edit_caption(
                     caption=original_caption + hint,
-                    reply_markup=reply_kb
+                    reply_markup=reply_kb,
+                    parse_mode="HTML"
                 )
             else:
                 original_text = callback.message.text or ""
                 await callback.message.edit_text(
                     text=original_text + hint,
-                    reply_markup=reply_kb
+                    reply_markup=reply_kb,
+                    parse_mode="HTML"
                 )
         with contextlib.suppress(builtins.BaseException):
             await callback.answer()
