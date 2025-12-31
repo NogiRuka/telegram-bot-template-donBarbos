@@ -1,4 +1,6 @@
+import asyncio
 import contextlib
+import logging
 from io import BytesIO
 
 from aiogram import F
@@ -9,6 +11,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .router import router
+
+logger = logging.getLogger(__name__)
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
 from bot.database.models import MainImageModel
 from bot.keyboards.inline.admin import (
@@ -73,13 +77,12 @@ async def start_upload_process(callback: CallbackQuery, state: FSMContext, main_
 @router.message(AdminMainImageState.waiting_for_image)
 async def handle_image_upload(message: Message, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
     """处理图片上传"""
-    # 随机延迟以缓解并发竞争
-    if message.media_group_id and not message.caption:
-         # 无 Caption 的消息稍微多等一下
-         pass
-    
-    with contextlib.suppress(Exception):
+    logger.info(f"MainImage Upload Handler Triggered: msg_id={message.message_id}, media_group_id={message.media_group_id}, caption={message.caption}")
+
+    try:
         await main_msg.delete_input(message)
+    except Exception as e:
+        logger.error(f"Failed to delete input message {message.message_id}: {e}")
 
     file_id: str | None = None
     source_type = "photo"
