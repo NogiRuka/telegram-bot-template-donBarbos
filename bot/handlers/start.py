@@ -2,6 +2,7 @@ import contextlib
 
 from aiogram import F, Router, types
 from aiogram.filters import CommandStart
+from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
