@@ -13,11 +13,9 @@ from bot.utils.permissions import require_admin_feature
 
 @router.callback_query(F.data == QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA)
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def show_list_menu(callback: CallbackQuery, main_msg: MainMessageService, state: FSMContext) -> None:
+async def show_list_menu(callback: CallbackQuery, main_msg: MainMessageService) -> None:
     """显示查看列表菜单"""
-    # 清理之前可能存在的列表
-    if callback.message:
-        await _clear_quiz_list(state, callback.bot, callback.message.chat.id)
+    print("show_list_menu")
 
     text = (
         "*📋 查看列表*\n\n"

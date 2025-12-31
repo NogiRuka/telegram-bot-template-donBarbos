@@ -1,6 +1,7 @@
 from . import (
     add,
     category,
+    list,
     list_images,
     list_questions,
     list_quizzes,
@@ -13,6 +14,7 @@ from .router import router
 __all__ = [
     "add",
     "category",
+    "list",
     "list_images",
     "list_questions",
     "list_quizzes",
