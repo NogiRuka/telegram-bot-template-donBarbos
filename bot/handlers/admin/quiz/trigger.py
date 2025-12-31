@@ -132,9 +132,18 @@ async def ask_schedule_value(callback: CallbackQuery, state: FSMContext) -> None
     await state.update_data(setting_type=f"schedule_{setting_type}")
 
     if setting_type == "set_time":
-        msg = "请输入每天定时触发的时间，格式为 HHMMSS。\n多个时间请用逗号分隔，例如：051700,171700,222222"
+        msg = (
+            "⏰ 请设置每日定时触发时间\n"
+            "格式：HHMMSS（6 位数字）\n"
+            "多个时间请用英文逗号分隔，例如：\n"
+            "`051700,171700,222222`"
+        )
     elif setting_type == "set_target":
-        msg = "请输入触发对象设置。\n输入 'all' 代表全部用户。\n输入数字 (如 20) 代表随机/活跃挑选 20 人。"
+        msg = (
+            "👥 请选择触发对象\n"
+            "• 输入 `all` 或 `全部`：面向所有用户\n"
+            "• 输入数字（如 `20`）：随机/活跃挑选 20 人"
+        )
     else:
         msg = "请输入值"
 
