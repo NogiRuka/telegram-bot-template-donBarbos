@@ -130,10 +130,11 @@ class QuizService:
         return None
  
     @staticmethod
-    def build_quiz_caption(
+    async def build_quiz_caption(
         question: QuizQuestionModel,
         image: Optional[QuizImageModel],
-        timeout_sec: int,
+        session: AsyncSession = None,
+        timeout_sec: int = None,
         title: str = "🌸 <b>桜之问答</b>",
     ) -> str:
         """
@@ -146,15 +147,22 @@ class QuizService:
         输入参数:
         - question: 题目对象
         - image: 图片对象（可选）
-        - timeout_sec: 会话超时时间（秒）
+        - session: 数据库会话（可选，若未提供 timeout_sec 则必须提供）
+        - timeout_sec: 会话超时时间（秒，可选，若未提供则从数据库获取）
         - title: 标题（默认桜之问答，可自定义，如测试标题）
 
         返回值:
         - str: 构建完成的说明文本（HTML）
         """
+        if timeout_sec is None:
+            if session:
+                timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
+            else:
+                timeout_sec = 60 # 默认值，防止 session 和 timeout_sec 都没传的情况
+
         cat_name = question.category.name if question.category else "综合"
         caption = f"{title} [{cat_name}] 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
- 
+
         if image and image.image_source:
             if image.image_source.startswith("http"):
                 caption += f"\n\n🔗 来源：<a href='{image.image_source}'>链接</a>"
@@ -163,7 +171,7 @@ class QuizService:
             else:
                 caption += f"\n\n🔗 来源：{image.image_source}"
                 # 文字来源时不显示补充说明
- 
+
         return caption
  
     @staticmethod

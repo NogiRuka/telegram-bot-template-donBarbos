@@ -59,13 +59,11 @@ class QuizTriggerMiddleware(BaseMiddleware):
                         bot = data.get("bot")
                         if bot:
                             try:
-                                timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
                                 sent_msg = None
-                                caption = QuizService.build_quiz_caption(
+                                caption = await QuizService.build_quiz_caption(
                                     question=question,
                                     image=image,
-                                    timeout_sec=timeout_sec,
-                                    title="🌸 <b>桜之问答</b>"
+                                    session=session
                                 )
                                 
                                 if image:

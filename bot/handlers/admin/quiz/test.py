@@ -22,12 +22,10 @@ async def test_trigger(callback: CallbackQuery, session: AsyncSession):
         quiz_data = await QuizService.create_quiz_session(session, user_id, target_chat_id)
         if quiz_data:
             question, image, markup, session_id = quiz_data
-            timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
-            caption = QuizService.build_quiz_caption(
+            caption = await QuizService.build_quiz_caption(
                 question=question,
                 image=image,
-                timeout_sec=timeout_sec,
-                title="🌸 <b>桜之问答</b>"
+                session=session
             )
             bot = callback.bot
             if image:
