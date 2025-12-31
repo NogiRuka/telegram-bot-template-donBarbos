@@ -101,39 +101,41 @@ class QuizService:
         return True
 
     @classmethod
-     async def get_random_image_by_tags(cls, session: AsyncSession, tags: list[str]) -> Optional[QuizImageModel]:
-         """根据标签随机获取图片"""
-         if not tags:
-             return None
- 
-        # 假设 tags 是 list[str]
-        # JSON 数组包含查询 (PostgreSQL @>, SQLite 可能需要 func.json_each)
-        # 这里简化处理：直接查找 active 的图片，然后在内存中过滤 tag 匹配的 (数据量不大时)
-        # 或者，如果 tags 存储简单，可以用 LIKE。
-        # 为了严谨，我们先查出所有 active 图片，再筛选。
-        # 优化：数据库层面随机筛选一张匹配的。
-        # 由于 SQLDialect 差异，这里用 Python 筛选。
+    async def get_random_image_by_tags(cls, session: AsyncSession, tags: list[str]) -> Optional[QuizImageModel]:
+        """根据标签随机获取图片
         
+        功能说明:
+        - 在所有启用图片中筛选与标签有交集的图片，并随机返回一张
+        
+        输入参数:
+        - session: 数据库会话
+        - tags: 标签列表
+        
+        返回值:
+        - Optional[QuizImageModel]: 随机匹配的图片或 None
+        """
+        if not tags:
+            return None
+
         img_stmt = select(QuizImageModel).where(QuizImageModel.is_active == True)
         imgs = (await session.execute(img_stmt)).scalars().all()
-        
-        # 筛选有交集的图片
+
         matched_imgs = [
-            img for img in imgs 
+            img for img in imgs
             if img.tags and set(tags) & set(img.tags)
         ]
-        
-         if matched_imgs:
-             return random.choice(matched_imgs)
-         return None
+
+        if matched_imgs:
+            return random.choice(matched_imgs)
+        return None
  
-     @staticmethod
-     def build_quiz_caption(
-         question: QuizQuestionModel,
-         image: Optional[QuizImageModel],
-         timeout_sec: int,
-         title: str = "🌸 <b>桜之问答</b>",
-     ) -> str:
+    @staticmethod
+    def build_quiz_caption(
+        question: QuizQuestionModel,
+        image: Optional[QuizImageModel],
+        timeout_sec: int,
+        title: str = "🌸 <b>桜之问答</b>",
+    ) -> str:
          """
          构建问答消息说明
  
@@ -150,22 +152,22 @@ class QuizService:
          返回值:
          - str: 构建完成的说明文本（HTML）
          """
-         cat_name = question.category.name if question.category else "综合"
-         caption = f"{title} [{cat_name}] 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
+        cat_name = question.category.name if question.category else "综合"
+        caption = f"{title} [{cat_name}] 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
  
-         if image and image.image_source:
-             if image.image_source.startswith("http"):
-                 caption += f"\n\n🔗 来源：<a href='{image.image_source}'>链接</a>"
-                 if image.extra_caption:
-                     caption += f"\nℹ️ {image.extra_caption}"
-             else:
-                 caption += f"\n\n🔗 来源：{image.image_source}"
-                 # 文字来源时不显示补充说明
+        if image and image.image_source:
+            if image.image_source.startswith("http"):
+                caption += f"\n\n🔗 来源：<a href='{image.image_source}'>链接</a>"
+                if image.extra_caption:
+                    caption += f"\nℹ️ {image.extra_caption}"
+            else:
+                caption += f"\n\n🔗 来源：{image.image_source}"
+                # 文字来源时不显示补充说明
  
-         return caption
+        return caption
  
-     @staticmethod
-     async def create_quiz_session(session: AsyncSession, user_id: int, chat_id: int) -> Optional[Tuple[QuizQuestionModel, Optional[QuizImageModel], InlineKeyboardMarkup, int]]:
+    @staticmethod
+    async def create_quiz_session(session: AsyncSession, user_id: int, chat_id: int) -> Optional[Tuple[QuizQuestionModel, Optional[QuizImageModel], InlineKeyboardMarkup, int]]:
         """
         创建问答会话
         
@@ -185,7 +187,7 @@ class QuizService:
             return None
 
         # 2. 随机选取图片 (如果题目有 tag)
-        quiz_image = await cls.get_random_image_by_tags(session, question.tags)
+        quiz_image = await QuizService.get_random_image_by_tags(session, question.tags)
 
         # 3. 构建选项键盘 (打乱顺序)
         options = question.options  # list[str]
