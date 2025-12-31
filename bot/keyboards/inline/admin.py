@@ -462,18 +462,16 @@ def get_quiz_admin_keyboard(is_global_enabled: bool = True) -> InlineKeyboardMar
     
     buttons = [
         [
+            InlineKeyboardButton(text=QUIZ_ADMIN_ADD_QUICK_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":add"),
+            InlineKeyboardButton(text=QUIZ_ADMIN_TRIGGER_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":trigger")
+        ],
+        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_MENU_LABEL, callback_data=QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA),
+            InlineKeyboardButton(text=QUIZ_ADMIN_CATEGORY_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":category")
+        ],
+        [
             InlineKeyboardButton(text=QUIZ_ADMIN_TEST_TRIGGER_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":test_trigger"),
             InlineKeyboardButton(text=toggle_text, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":toggle_global")
-        ],
-        [
-            InlineKeyboardButton(text=QUIZ_ADMIN_ADD_QUICK_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":add"),
-            InlineKeyboardButton(text=QUIZ_ADMIN_CATEGORY_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":category"),
-        ],
-        [
-            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_MENU_LABEL, callback_data=QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA)
-        ],
-        [
-            InlineKeyboardButton(text=QUIZ_ADMIN_TRIGGER_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":trigger")
         ],
         [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON]
     ]
