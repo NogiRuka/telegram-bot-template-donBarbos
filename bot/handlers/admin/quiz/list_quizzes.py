@@ -14,7 +14,7 @@ from bot.keyboards.inline.admin import (
     QUIZ_ADMIN_CALLBACK_DATA,
 )
 from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON
-from bot.keyboards.inline.constants import QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA
+from bot.keyboards.inline.constants import QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA, QUIZ_ADMIN_LIST_QUIZZES_LABEL
 from bot.services.main_message import MainMessageService
 from bot.services.quiz_service import QuizService
 from bot.utils.message import send_toast
@@ -109,7 +109,7 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
 
     # 更新控制消息
     text = (
-        f"*🖼️ 题库预览*\n"
+        f"*{QUIZ_ADMIN_LIST_QUIZZES_LABEL}*\n"
         f"共 {total_count} 题，当前第 {page}/{total_pages} 页\n"
         f"⚠️ 点击选项无实际效果"
     )
@@ -137,7 +137,7 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
                 question=question,
                 image=image,
                 session=session,
-                title=f"预览 #{question.id}"
+                title=f"桜之问答 #{question.id}"
             )
 
             # 3. 构建键盘

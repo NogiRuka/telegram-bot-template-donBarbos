@@ -40,8 +40,8 @@ async def show_admin_panel(
     await callback.answer()
 
 
-@router.callback_query(F.data == "ignore")
+@router.callback_query(F.data.startswith("ignore"))
 async def ignore_callback(callback: CallbackQuery) -> None:
     """忽略回调"""
-    await callback.answer()
+    await callback.answer("✨ 功能正在路上，请稍等片刻哦～")
 

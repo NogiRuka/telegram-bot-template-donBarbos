@@ -534,9 +534,7 @@ def get_quiz_list_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(text=QUIZ_ADMIN_LIST_QUESTIONS_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list:view:question:1:5"),
-            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_IMAGES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list:view:image:1:5")
-        ],
-        [
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_IMAGES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list:view:image:1:5"),
             InlineKeyboardButton(text=QUIZ_ADMIN_LIST_QUIZZES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list:view:quiz:1:5")
         ],
         [BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON]
