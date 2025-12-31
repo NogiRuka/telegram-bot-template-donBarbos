@@ -305,7 +305,10 @@ class QuizService:
         :return: (Question, Image, Keyboard, SessionID) or None
         """
         # 若已有活跃会话，直接返回 None 或清理过期
-        active_stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
+        active_stmt = select(QuizActiveSessionModel).where(
+            QuizActiveSessionModel.user_id == user_id,
+            QuizActiveSessionModel.is_deleted == False
+        )
         active_session = (await session.execute(active_stmt)).scalar_one_or_none()
         if active_session:
             if active_session.expire_at <= now():
@@ -380,7 +383,10 @@ class QuizService:
     @staticmethod
     async def update_session_message_id(session: AsyncSession, session_id: int, message_id: int) -> None:
         """更新会话的消息ID"""
-        stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.id == session_id)
+        stmt = select(QuizActiveSessionModel).where(
+            QuizActiveSessionModel.id == session_id,
+            QuizActiveSessionModel.is_deleted == False
+        )
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
         if quiz_session:
             quiz_session.message_id = message_id
@@ -393,7 +399,10 @@ class QuizService:
         :return: (is_correct, reward_amount, message_text, original_caption)
         """
         # 1. 获取 Session
-        stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
+        stmt = select(QuizActiveSessionModel).where(
+            QuizActiveSessionModel.user_id == user_id,
+            QuizActiveSessionModel.is_deleted == False
+        )
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
         
         if not quiz_session:
@@ -411,7 +420,8 @@ class QuizService:
         question = await session.get(QuizQuestionModel, quiz_session.question_id)
         if not question:
             # 异常情况，清理 session
-            await session.delete(quiz_session)
+            quiz_session.is_deleted = True
+            quiz_session.deleted_at = now()
             await session.commit()
             return False, 0, "⚠️ 题目数据异常。", ""
 
@@ -462,7 +472,8 @@ class QuizService:
             )
 
         # 7. 删除 Session
-        await session.delete(quiz_session)
+        quiz_session.is_deleted = True
+        quiz_session.deleted_at = now()
         await session.commit()
 
         if is_correct:
@@ -479,7 +490,10 @@ class QuizService:
         """
         处理超时 (通常由定时任务调用，或者用户点击已过期的按钮时触发清理)
         """
-        stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
+        stmt = select(QuizActiveSessionModel).where(
+            QuizActiveSessionModel.user_id == user_id,
+            QuizActiveSessionModel.is_deleted == False
+        )
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
 
         if quiz_session:
@@ -492,7 +506,8 @@ class QuizService:
                 is_correct=False
             )
             session.add(log)
-            await session.delete(quiz_session)
+            quiz_session.is_deleted = True
+            quiz_session.deleted_at = now()
         await session.commit()
 
     @staticmethod
@@ -553,7 +568,10 @@ class QuizService:
             for user in users:
                 try:
                     # 检查是否有活跃会话，有则跳过
-                    active_stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user.id)
+                    active_stmt = select(QuizActiveSessionModel).where(
+                        QuizActiveSessionModel.user_id == user.id,
+                        QuizActiveSessionModel.is_deleted == False
+                    )
                     if (await session.execute(active_stmt)).scalar_one_or_none():
                          continue
 
