@@ -41,7 +41,7 @@ async def show_trigger_menu(callback: CallbackQuery, session: AsyncSession, main
     schedule_enabled = await get_config(session, KEY_QUIZ_SCHEDULE_ENABLE)
     schedule_time = await get_config(session, KEY_QUIZ_SCHEDULE_TIME)
 
-    sch_status = "开启" if schedule_enabled else "关闭"
+    sch_status = "🟢 开启" if schedule_enabled else "🔴 关闭"
     
     sch_time_display = "未设置"
     if schedule_time:
@@ -57,11 +57,11 @@ async def show_trigger_menu(callback: CallbackQuery, session: AsyncSession, main
 
     text = (
         "*⚙️ 触发设置*\n\n"
-        f"当前状态概览：\n"
-        f"• 随机触发概率：{prob:.1%}\n"
-        f"• 定时触发状态：{sch_status}\n"
-        f"• 定时触发时间：{sch_time_display}\n\n"
-        "请选择要修改的设置项："
+        "📊 当前状态概览\n"
+        f"├─ 🎲 随机触发概率：*{prob:.1%}*\n"
+        f"├─ ⏰ 定时触发状态：*{sch_status}*\n"
+        f"└─ 🕒 定时触发时间：*{sch_time_display}*\n\n"
+        "💡 请选择要修改的设置项："
     ).replace(".", "\\.")
     
     await main_msg.update_on_callback(callback, text, get_quiz_trigger_keyboard())
@@ -117,11 +117,11 @@ async def show_schedule_menu(callback: Union[CallbackQuery, Message], session: A
     if target_type == "fixed":
         target_display = f"固定 {target_count} 人 (活跃+随机)"
 
-    status_icon = "🟢" if enabled else "🔴"
-
+    status_text = "🟢 开启" if enabled else "🔴 关闭"
+    
     text = (
-        "*⏰ 定时触发设置*\n\n"
-        f"状态：{status_icon} {'开启' if enabled else '关闭'}\n"
+        "⏰ *定时触发设置*\n\n"
+        f"状态：{status_text}\n"
         f"时间：{time_str}\n"
         f"对象：{target_display}\n\n"
         "说明：每天固定时间自动发送题目"
