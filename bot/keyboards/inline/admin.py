@@ -529,11 +529,8 @@ def get_quiz_question_item_keyboard(question_id: int, is_active: bool) -> Inline
     """题目单项操作键盘"""
     buttons = [
         [
-            InlineKeyboardButton(text="✏️ 编辑", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:edit:{question_id}"),
-            InlineKeyboardButton(text="🔴 禁用" if is_active else "🟢 启用", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:toggle:{question_id}")
-        ],
-        [
             InlineKeyboardButton(text="🗑️ 删除", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:delete:{question_id}"),
+            InlineKeyboardButton(text="🔴 禁用" if is_active else "🟢 启用", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:toggle:{question_id}"),
             InlineKeyboardButton(text="❌ 关闭", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:close")
         ]
     ]
