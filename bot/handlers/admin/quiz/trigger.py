@@ -98,7 +98,8 @@ async def show_schedule_menu(callback: Union[CallbackQuery, Message], session: A
     target_type = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET_TYPE)
     target_count = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET_COUNT)
 
-    if enabled is None: enabled = False
+    if enabled is None:
+        enabled = False
     
     if not time_str:
         time_str = "未设置"
@@ -107,14 +108,19 @@ async def show_schedule_menu(callback: Union[CallbackQuery, Message], session: A
         formatted = []
         for part in parts:
             part = part.strip()
-            if len(part) == 6:
-                formatted.append(f"{part[:2]}:{part[2:4]}:{part[4:]}")
+            if len(part) == 6 and part.isdigit():
+                # 解析 HHMMSS 格式
+                hh = part[:2]
+                mm = part[2:4]
+                ss = part[4:]
+                formatted.append(f"{hh}:{mm}:{ss}")
             else:
+                # 长度不符或非数字，原样保留
                 formatted.append(part)
         time_str = ", ".join(formatted)
     
     target_display = "全部用户"
-    if target_type == "fixed":
+    if target_type == "fixed" and target_count is not None:
         target_display = f"固定 {target_count} 人 (活跃+随机)"
 
     status_text = "🟢 开启" if enabled else "🔴 关闭"
@@ -125,8 +131,7 @@ async def show_schedule_menu(callback: Union[CallbackQuery, Message], session: A
         f"时间：{time_str}\n"
         f"对象：{target_display}\n\n"
         "说明：每天固定时间自动发送题目"
-    )
-
+    ).replace(".", "\\.")
     kb = get_quiz_schedule_keyboard(is_enabled=enabled)
     await main_msg.update_on_callback(callback, text, kb)
     await callback.answer()
