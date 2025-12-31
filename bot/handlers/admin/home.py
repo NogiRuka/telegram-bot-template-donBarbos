@@ -39,3 +39,9 @@ async def show_admin_panel(
     await main_msg.update_on_callback(callback, f"*{ADMIN_PANEL_LABEL}*", kb)
     await callback.answer()
 
+
+@router.callback_query(F.data == "ignore")
+async def ignore_callback(callback: CallbackQuery) -> None:
+    """忽略回调"""
+    await callback.answer()
+

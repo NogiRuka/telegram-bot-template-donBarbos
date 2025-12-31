@@ -308,25 +308,31 @@ def get_main_image_schedule_menu_keyboard() -> InlineKeyboardMarkup:
 
 def get_main_image_schedule_list_pagination_keyboard(page: int, total_pages: int, limit: int) -> InlineKeyboardMarkup:
     """获取节日投放列表分页键盘"""
-    # 翻页逻辑
-    prev_page = max(1, page - 1)
-    next_page = min(total_pages, page + 1)
+    builder = InlineKeyboardBuilder()
+
+    # 上一页
+    if page > 1:
+        builder.button(text="⬅️ 上一页", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:list:{page - 1}:{limit}")
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
 
     # 切换每页条数
     next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
+    builder.button(text=f"{page}/{total_pages} (每页{limit:02d}条)", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:list:1:{next_limit}")
 
-    buttons = [
-        [
-            InlineKeyboardButton(text="⬅️", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:list:{prev_page}:{limit}"),
-            InlineKeyboardButton(text=f"{page}/{total_pages} (每页{limit:02d}条)", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:list:1:{next_limit}"),
-            InlineKeyboardButton(text="➡️", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:list:{next_page}:{limit}"),
-        ],
-        [
-            InlineKeyboardButton(text="🔙 返回投放菜单", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule"),
-            InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule:back_home")
-        ]
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+    # 下一页
+    if page < total_pages:
+        builder.button(text="下一页 ➡️", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:schedule:list:{page + 1}:{limit}")
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
+
+    builder.adjust(3)
+
+    builder.row(
+        InlineKeyboardButton(text="🔙 返回投放菜单", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule"),
+        InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":schedule:back_home")
+    )
+    return builder.as_markup()
 
 
 def get_main_image_schedule_item_keyboard(schedule_id: int) -> InlineKeyboardMarkup:
@@ -505,8 +511,9 @@ def get_quiz_question_list_pagination_keyboard(page: int, total_pages: int, limi
     else:
         builder.button(text="⛔️", callback_data="ignore")
 
-    # 页码指示
-    builder.button(text=f"{page}/{total_pages}", callback_data="ignore")
+    # 页码指示 (Toggle limit)
+    next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
+    builder.button(text=f"{page}/{total_pages} (每页{limit:02d}条)", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:question:1:{next_limit}")
 
     # 下一页
     if page < total_pages:
