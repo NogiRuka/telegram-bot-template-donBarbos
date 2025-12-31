@@ -126,7 +126,7 @@ async def cmd_group_config(message: types.Message, command: CommandObject, sessi
                 return
 
             input_arg = command.args.strip()
-            
+
             try:
                 # 尝试解析为整数ID
                 try:
@@ -138,13 +138,13 @@ async def cmd_group_config(message: types.Message, command: CommandObject, sessi
 
                 # 获取群组信息
                 chat_info = await message.bot.get_chat(chat_identifier)
-                
+
                 # 更新目标信息
                 target_chat_id = chat_info.id
                 target_chat_title = chat_info.title
                 target_chat_username = chat_info.username
                 target_group_type = GroupType.SUPERGROUP if chat_info.type == "supergroup" else GroupType.GROUP
-                
+
             except Exception as e:
                 await message.reply(f"❌ 无法获取群组信息 (Bot可能不在群组中或用户名无效): {e}", parse_mode="Markdown")
                 return

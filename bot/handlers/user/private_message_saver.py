@@ -202,15 +202,15 @@ class PrivateMessageSaver:
             message_type = self.get_message_type(message)
             is_forwarded = message.forward_from is not None or message.forward_from_chat is not None
             is_reply = message.reply_to_message is not None
-            
+
             text_content = message.text or message.caption or ""
-            
+
             file_info = self.extract_file_info(message)
             entities_json = self.extract_entities(message.entities) if message.entities else None
             caption_entities_json = (
                 self.extract_entities(message.caption_entities) if message.caption_entities else None
             )
-            
+
             message_record = MessageModel.create_from_telegram(
                 message_id=message.message_id,
                 user_id=message.from_user.id if message.from_user else 0,
@@ -236,7 +236,7 @@ class PrivateMessageSaver:
                     message_record.forward_from_chat_id = message.forward_from_chat.id
                 if hasattr(message, "forward_from_message_id"):
                     message_record.forward_from_message_id = message.forward_from_message_id
-            
+
             if is_reply and message.reply_to_message:
                 message_record.reply_to_message_id = message.reply_to_message.message_id
                 if message.reply_to_message.from_user:

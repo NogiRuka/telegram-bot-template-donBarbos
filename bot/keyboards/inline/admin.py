@@ -9,6 +9,7 @@ from bot.config import (
 from bot.keyboards.inline.buttons import (
     BACK_TO_ADMIN_PANEL_BUTTON,
     BACK_TO_HOME_BUTTON,
+    BACK_TO_QUIZ_ADMIN_BUTTON,
     MAIN_ADMIN_BUTTONS,
     MAIN_IMAGE_BACK_BUTTON,
     MAIN_IMAGE_BACK_TO_UPLOAD_BUTTON,
@@ -16,7 +17,6 @@ from bot.keyboards.inline.buttons import (
     MAIN_IMAGE_UPLOAD_NSFW_BUTTON,
     MAIN_IMAGE_UPLOAD_SFW_BUTTON,
     NOTIFY_SEND_BUTTON,
-    BACK_TO_QUIZ_ADMIN_BUTTON,
 )
 from bot.keyboards.inline.constants import (
     BACK_TO_HOME_LABEL,
@@ -35,17 +35,17 @@ from bot.keyboards.inline.constants import (
     NOTIFY_COMPLETE_LABEL,
     NOTIFY_PREVIEW_CALLBACK_DATA,
     NOTIFY_PREVIEW_LABEL,
-    QUIZ_ADMIN_CALLBACK_DATA,
     QUIZ_ADMIN_ADD_QUICK_LABEL,
+    QUIZ_ADMIN_CALLBACK_DATA,
     QUIZ_ADMIN_CATEGORY_LABEL,
     QUIZ_ADMIN_LIST_IMAGES_LABEL,
     QUIZ_ADMIN_LIST_QUESTIONS_LABEL,
-    QUIZ_ADMIN_TRIGGER_LABEL,
-    QUIZ_ADMIN_TEST_TRIGGER_LABEL,
     QUIZ_ADMIN_SET_COOLDOWN_LABEL,
     QUIZ_ADMIN_SET_DAILY_LIMIT_LABEL,
     QUIZ_ADMIN_SET_PROBABILITY_LABEL,
     QUIZ_ADMIN_SET_TIMEOUT_LABEL,
+    QUIZ_ADMIN_TEST_TRIGGER_LABEL,
+    QUIZ_ADMIN_TRIGGER_LABEL,
 )
 
 
@@ -485,7 +485,7 @@ def get_quiz_trigger_keyboard() -> InlineKeyboardMarkup:
 def get_quiz_category_list_keyboard(categories: list) -> InlineKeyboardMarkup:
     """问答分类列表键盘"""
     builder = InlineKeyboardBuilder()
-    
+
     # 列表按钮
     for cat in categories:
         builder.button(
@@ -493,15 +493,15 @@ def get_quiz_category_list_keyboard(categories: list) -> InlineKeyboardMarkup:
             callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:cat:view:{cat.id}"
         )
     builder.adjust(2) # 每行2个
-    
+
     # 功能按钮
     builder.row(
         InlineKeyboardButton(text="➕ 添加分类", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:cat:add")
     )
-    
+
     # 返回按钮
     builder.row(BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON)
-    
+
     return builder.as_markup()
 
 

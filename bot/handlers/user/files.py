@@ -1,9 +1,10 @@
-from aiogram import Router, F
+import re
+
+from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import re
 
 from bot.database.models.media_file import MediaFileModel
 from bot.utils.text import escape_markdown_v2
@@ -66,7 +67,7 @@ async def search_and_send_file(message: Message, session: AsyncSession, search_t
 @router.message(Command(commands=["get_file", "gf"]))
 async def get_file_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """获取文件命令 (标准格式)
-    
+
     功能说明:
     - 处理 /get_file 或 /gf 命令
     - 支持 /gf <args> 和 /gf@bot <args>

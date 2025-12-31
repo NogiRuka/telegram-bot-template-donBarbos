@@ -99,6 +99,7 @@ async def sync_all_users_configuration(  # noqa: C901
                 # --- 处理 Policy(强制设为 False) ---
                 user_policy = current_policy.copy()
                 user_policy["EnableUserPreferenceAccess"] = False
+                # user_policy["EnableUserPreferenceAccess"] = True
 
                 await client.update_user_policy(uid, user_policy)
                 logger.info(f"✅ 已强制更新用户 Policy(EnableUserPreferenceAccess=False): {name} ({uid})")
@@ -119,13 +120,12 @@ async def main() -> None:
     exclude_ids = [
         "52588e7dbcbe4ea7a575dfe86a7f4a28",
         "945e1aa74d964da183b3e6a0f0075d6f",
-        # "0e26758dc85d40488314f9d77d8c9a7d"
+        "0e26758dc85d40488314f9d77d8c9a7d"
     ]
 
     # 针对失败用户进行重试
     specific_ids = [
-        # "ed43223312414d80accfdb722ddddc47"
-        "0e26758dc85d40488314f9d77d8c9a7d"
+        # "0e26758dc85d40488314f9d77d8c9a7d"
     ]
 
     try:

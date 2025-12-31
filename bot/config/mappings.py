@@ -63,12 +63,12 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
         ConfigType.STRING
     ),
     KEY_ADMIN_ANNOUNCEMENT_TEXT: ("", ConfigType.STRING),
-    
+
     # 问答配置
     KEY_QUIZ_COOLDOWN_MINUTES: (10, ConfigType.INTEGER),
     KEY_QUIZ_TRIGGER_PROBABILITY: (0.05, ConfigType.FLOAT),
     KEY_QUIZ_DAILY_LIMIT: (10, ConfigType.INTEGER),
-    KEY_QUIZ_SESSION_TIMEOUT: (30, ConfigType.INTEGER),
+    KEY_QUIZ_SESSION_TIMEOUT: (10, ConfigType.INTEGER),
 }
 
 # 用户功能开关映射 - 用于用户功能管理

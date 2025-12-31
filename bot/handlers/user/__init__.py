@@ -9,12 +9,12 @@ from .files import router as files_router
 from .info import router as info_router
 from .lines import router as lines_router
 from .password import router as password_router
+from .private_message_saver import router as private_message_saver_router
 from .profile import router as profile_router
+from .quiz_handler import router as quiz_router
 from .register import router as register_router
 from .store import router as store_router
 from .tags import router as tags_router
-from .private_message_saver import router as private_message_saver_router
-from .quiz_handler import router as quiz_router
 
 
 def get_user_router() -> Router:

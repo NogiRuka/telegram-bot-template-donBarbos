@@ -46,13 +46,13 @@ class QuizAdminState(StatesGroup):
     waiting_for_correct_index = State()
     waiting_for_difficulty = State()
     waiting_for_tags = State()
-    
+
     waiting_for_image_tags = State()
-    
+
     # 新增
     waiting_for_quick_add = State()
     waiting_for_setting_value = State()
-    
+
     # 分类管理
     waiting_for_category_name = State()
     waiting_for_new_category_name = State()

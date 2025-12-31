@@ -243,7 +243,7 @@ def get_friendly_timezone_name(tz_name: str) -> str:
     return tz_name
 
 
-def format_duration(seconds: int | float | None) -> str:
+def format_duration(seconds: float | None) -> str:
     """格式化时长为人类可读格式 (HH:MM:SS 或 MM:SS)
 
     功能说明:
@@ -258,11 +258,11 @@ def format_duration(seconds: int | float | None) -> str:
     """
     if not seconds:
         return "00:00"
-    
+
     seconds = int(seconds)
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
-    
+
     if h > 0:
         return f"{h:02d}:{m:02d}:{s:02d}"
     return f"{m:02d}:{s:02d}"

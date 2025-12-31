@@ -21,7 +21,7 @@ def get_group_router() -> Router:
     router = Router(name="group")
     router.include_router(group_config_router)
     router.include_router(message_export_router)
-    
+
     # 消息保存器包含通配符处理器，必须放在最后
     router.include_router(group_message_saver_router)
     return router

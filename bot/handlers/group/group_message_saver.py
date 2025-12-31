@@ -245,7 +245,7 @@ class GroupMessageSaver:
             # 检查是自己加入还是被邀请
             if message.from_user and len(message.new_chat_members) == 1 and message.from_user.id == message.new_chat_members[0].id:
                 return f"{message.from_user.full_name} 加入了群组"
-            elif message.from_user:
+            if message.from_user:
                  return f"{message.from_user.full_name} 添加了成员: {', '.join(names)}"
             return f"添加了成员: {', '.join(names)}"
         if message.left_chat_member:
@@ -365,7 +365,7 @@ class GroupMessageSaver:
         """检查是否为管理类机器人的通知消息"""
         if not text:
             return False
-        
+
         keywords = [
             "通过入群验证",
             "永久封禁",
@@ -375,7 +375,7 @@ class GroupMessageSaver:
             "禁言",
             "解除禁言",
         ]
-        
+
         return any(keyword in text for keyword in keywords)
 
     async def save_message(self, message: types.Message, config: GroupConfigModel, session: AsyncSession) -> bool:
@@ -383,7 +383,7 @@ class GroupMessageSaver:
             message_type = self.get_message_type(message)
             is_forwarded = message.forward_from is not None or message.forward_from_chat is not None
             is_reply = message.reply_to_message is not None
-            
+
             # 预处理文本内容，检查是否为服务消息
             text_content = message.text or message.caption or ""
             is_service_message = False
@@ -392,13 +392,13 @@ class GroupMessageSaver:
                 if service_text:
                     text_content = service_text
                     is_service_message = True
-            
+
             # 检查是否为管理机器人的通知消息（即使配置了不保存机器人消息，这些也应该保存）
             is_admin_notification = self.is_admin_bot_notification(text_content)
 
             # 如果是服务消息或管理通知，不视为机器人消息（确保系统通知能被保存）
             is_from_bot = message.from_user and message.from_user.is_bot and not is_service_message and not is_admin_notification
-            
+
             if not config.should_save_message(
                 message_type=message_type.value,
                 is_forwarded=is_forwarded,
@@ -467,20 +467,20 @@ class GroupMessageSaver:
             # 仅处理机器人触发的事件（因为用户触发的通常会有服务消息）
             if not event.from_user.is_bot:
                 return False
-                
+
             text_content = None
             old = event.old_chat_member
             new = event.new_chat_member
-            
+
             # 成员被移除/封禁
             if new.status in ["kicked", "left"] and old.status in ["member", "administrator", "restricted"]:
                 action = "永久封禁" if new.status == "kicked" else "移除"
                 text_content = f"{event.from_user.full_name} {action}了成员: {new.user.full_name}"
-            
+
             # 成员权限变更（禁言等）
             elif new.status == "restricted" and old.status in ["member", "administrator"]:
                 text_content = f"{event.from_user.full_name} 限制了成员: {new.user.full_name}"
-                
+
             # 成员被提升为管理员
             elif new.status == "administrator" and old.status != "administrator":
                  text_content = f"{event.from_user.full_name} 将成员提升为管理员: {new.user.full_name}"
@@ -509,7 +509,7 @@ class GroupMessageSaver:
                 is_forwarded=False,
                 is_reply=False,
             )
-            
+
             session.add(message_record)
             config.increment_message_count(message_record.created_at)
             await session.commit()
@@ -557,14 +557,14 @@ async def handle_chat_member_update(event: types.ChatMemberUpdated, session: Asy
             )
         )
         config = result.scalar_one_or_none()
-        
+
         # 如果没有配置或未启用保存，跳过
         if not config or not config.is_save_enabled():
             return
 
         # 尝试保存事件
         await message_saver.save_chat_member_event(event, config, session)
-            
+
     except Exception as e:
         logger.exception(f"❌ 处理成员变更事件时发生错误: {e}")
 

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 router = Router(name="admin_files")
 from bot.config.constants import KEY_ADMIN_FILES
 from bot.database.models import MediaFileModel
+from bot.filters.admin import AdminFilter
 from bot.keyboards.inline.admin import (
     get_files_admin_keyboard,
     get_files_cancel_keyboard,
@@ -22,11 +23,10 @@ from bot.keyboards.inline.admin import (
 from bot.keyboards.inline.constants import FILE_ADMIN_CALLBACK_DATA, FILE_ADMIN_LABEL
 from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminFileState
+from bot.utils.datetime import format_duration, now
 from bot.utils.message import safe_delete_message
 from bot.utils.permissions import require_admin_feature
-from bot.filters.admin import AdminFilter
 from bot.utils.text import escape_markdown_v2, format_size
-from bot.utils.datetime import now, format_duration
 
 
 @router.callback_query(F.data == FILE_ADMIN_CALLBACK_DATA)
@@ -327,7 +327,7 @@ async def list_files(callback: CallbackQuery, session: AsyncSession, main_msg: M
         duration_part = ""
         if it.duration:
             duration_part = f" ｜ ⏱ {format_duration(it.duration)}"
-        
+
         caption = (
             f"🆔 `{it.id}` ｜ 📄 `{name_str}` ｜ 📦 {size_str}{duration_part} ｜ 🏷️ {escape_markdown_v2(it.description or '-')}"
         )
@@ -428,10 +428,10 @@ async def close_file_item(callback: CallbackQuery) -> None:
 @router.message(Command("gen_gf", "ggf"), AdminFilter())
 async def cmd_gen_gf(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """生成文件获取命令
-    
+
     功能说明:
     - 根据文件ID生成 /gf 命令
-    
+
     输入: /gen_gf 1 2 3
     输出: `/gf unique_name1 unique_name2 ...`
     """
@@ -439,7 +439,7 @@ async def cmd_gen_gf(message: Message, command: CommandObject, session: AsyncSes
     if not args:
         await message.reply("⚠️ 请提供文件ID, 例如: `/ggf 1`", parse_mode="MarkdownV2")
         return
-        
+
     try:
         # 解析ID，忽略非数字
         ids = [int(x) for x in args.split() if x.isdigit()]
@@ -451,11 +451,11 @@ async def cmd_gen_gf(message: Message, command: CommandObject, session: AsyncSes
         stmt = select(MediaFileModel).where(MediaFileModel.id.in_(ids))
         result = await session.execute(stmt)
         files = result.scalars().all()
-        
+
         if not files:
             await message.reply("❌ 未找到指定ID的文件", parse_mode="MarkdownV2")
             return
-            
+
         # 提取名称
         # 优先使用 unique_name，没有则使用 file_unique_id
         names = []
@@ -464,17 +464,17 @@ async def cmd_gen_gf(message: Message, command: CommandObject, session: AsyncSes
                 names.append(f.unique_name)
             elif f.file_unique_id:
                 names.append(f.file_unique_id)
-                
+
         if not names:
              await message.reply("❌ 找到文件但无有效唯一名", parse_mode="MarkdownV2")
              return
-             
+
         # 生成命令
         cmd_str = f"/gf {' '.join(names)}"
-        
+
         # 以代码块形式回复
         await message.reply(f"`{cmd_str}`", parse_mode="MarkdownV2")
-        
+
     except Exception as e:
         logger.exception("生成文件命令失败")
         await message.reply(f"❌ 生成失败: {e}")

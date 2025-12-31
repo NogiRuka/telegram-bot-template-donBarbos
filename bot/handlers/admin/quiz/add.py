@@ -1,31 +1,31 @@
 from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from sqlalchemy.ext.asyncio import AsyncSession
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.models import QuizQuestionModel, QuizImageModel, QuizCategoryModel
-from bot.states.admin import QuizAdminState
-from bot.utils.permissions import require_admin_feature
+from .router import router
 from bot.config.constants import KEY_ADMIN_QUIZ
+from bot.database.models import QuizCategoryModel, QuizImageModel, QuizQuestionModel
+from bot.keyboards.inline.admin import get_quiz_add_cancel_keyboard, get_quiz_add_success_keyboard
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
-from bot.keyboards.inline.admin import get_quiz_add_cancel_keyboard, get_quiz_add_success_keyboard
-from bot.utils.text import escape_markdown_v2
-from bot.utils.message import send_toast
-from .router import router
-
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.services.quiz_service import QuizService
+from bot.states.admin import QuizAdminState
+from bot.utils.message import send_toast
+from bot.utils.permissions import require_admin_feature
+from bot.utils.text import escape_markdown_v2
+
 
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":add")
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
+async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
     """开始添加"""
     # 获取可显示的分类列表
     stmt = select(QuizCategoryModel).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
     categories = (await session.execute(stmt)).scalars().all()
-    
+
     # 每行 5 个
     lines = []
     for i in range(0, len(categories), 5):
@@ -37,7 +37,7 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
         lines.append(line)
 
     cat_text = "\n".join(lines)
-    
+
     text = (
         "*➕ 添加题目*\n\n"
         "📸 可发送一张图片（可选）\n"
@@ -55,7 +55,7 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
         f"{cat_text}"
     )
     await main_msg.update_on_callback(callback, text, get_quiz_add_cancel_keyboard())
-    
+
     # 发送示例消息
     example_text = (
         "*📝 示例格式：*\n\n"
@@ -68,13 +68,13 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
         "https://example.com/source\n"
         "这是一张关于骄傲月的图片`"
     )
-    
+
     # 尝试根据示例标签查找图片
     example_image = await QuizService.get_random_image_by_tags(session, ["LGBT骄傲月"])
-    
+
     # 删除按钮
     del_btn = InlineKeyboardBuilder().button(
-        text="🗑️ 删除说明", 
+        text="🗑️ 删除示例",
         callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":del_msg"
     ).as_markup()
 
@@ -88,25 +88,26 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
              )
         else:
             await callback.message.answer(
-                example_text, 
+                example_text,
                 parse_mode="MarkdownV2",
                 reply_markup=del_btn
             )
     except Exception:
-        pass # 忽略发送失败
+        logger.error("发送示例消息失败", exc_info=True)
+        # 忽略发送失败
 
     await state.set_state(QuizAdminState.waiting_for_quick_add)
     await callback.answer()
 
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":del_msg")
-async def delete_example_msg(callback: CallbackQuery):
+async def delete_example_msg(callback: CallbackQuery) -> None:
     """删除示例消息"""
     await callback.message.delete()
     await callback.answer()
 
 @router.message(QuizAdminState.waiting_for_quick_add)
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def process_quick_add(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
+async def process_quick_add(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
     """处理快捷添加"""
     # 删除用户输入
     await main_msg.delete_input(message)
@@ -118,7 +119,7 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
         return
 
     lines = [l.strip() for l in text.split("\n") if l.strip()]
-    
+
     # 至少需要前5行 (题目, 选项, 答案, 分类, 标签)
     if len(lines) < 5:
         await send_toast(
@@ -131,7 +132,7 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
     try:
         # 1. 题目
         question_text = lines[0]
-        
+
         # 2. 选项
         options_text = lines[1]
         options = [o for o in options_text.replace("　", " ").split(" ") if o]
@@ -164,14 +165,14 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
         else:
             await send_toast(message, "⚠️ 分类必须填写ID（数字）。")
             return
-        
+
         # 5. 标签 (必填)
         tags_line = lines[4].strip()
         tags = []
-        
+
         # 统一中文逗号
         tags_line = tags_line.replace("，", ",")
-        
+
         if "," in tags_line:
             # 有逗号，按逗号分隔，保留空格
             tags = [t.strip() for t in tags_line.split(",") if t.strip()]
@@ -179,7 +180,7 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
             # 无逗号，按空格分隔（支持全角/半角空格）
             tags_line = tags_line.replace("　", " ")
             tags = [t.strip() for t in tags_line.split() if t.strip()]
-        
+
         if not tags:
              await send_toast(message, "⚠️ 标签不能为空。")
              return
@@ -245,7 +246,7 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
         )
         if image_source:
             success_text += f"\n🔗 来源：{escape_markdown_v2(image_source)}"
-            
+
         await state.clear()
         await main_msg.render(message.from_user.id, success_text, get_quiz_add_success_keyboard())
 

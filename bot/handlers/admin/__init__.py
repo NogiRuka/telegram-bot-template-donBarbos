@@ -9,10 +9,10 @@ from .hitokoto import router as admin_hitokoto_router
 from .home import router as admin_home_router
 from .main_image import router as admin_main_image_router
 from .notification import router as admin_notification_router
+from .quiz import router as admin_quiz_router
 from .registration import router as admin_registration_router
 from .stats import router as admin_stats_router
 from .store_admin import router as admin_store_router
-from .quiz import router as admin_quiz_router
 
 
 def get_admin_router() -> Router:

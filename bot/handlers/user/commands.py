@@ -13,7 +13,7 @@ async def cmd_list_commands(message: types.Message, session: AsyncSession) -> No
     """
     # 基础命令 (对所有用户可见)
     # 注意: MarkdownV2 需要转义特殊字符 (如 -, ., (, ), !) 但保留 * 用于加粗
-    text = """
+    text = r"""
 📜 *可用命令列表*
 
 👤 *用户命令*
@@ -29,7 +29,7 @@ async def cmd_list_commands(message: types.Message, session: AsyncSession) -> No
 
     # 管理员命令 (仅管理员可见)
     if message.from_user and await is_admin(session, message.from_user.id):
-        admin_text = """
+        admin_text = r"""
 👮 *管理员命令*
 • /gen\_gf /ggf \<ID\>\.\.\. \- 生成获取命令
 • /group\_config, /gc \- 查看/修改群组配置 \(群组\)

@@ -2,10 +2,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from aiogram import BaseMiddleware
-from aiogram.dispatcher.event.bases import CancelHandler
 from loguru import logger
-from sqlalchemy.ext.asyncio import AsyncSession
-from bot.database.models.audit_log import AuditLogModel, ActionType
+
+from bot.database.models.audit_log import ActionType, AuditLogModel
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -18,12 +17,13 @@ if TYPE_CHECKING:
         PreCheckoutQuery,
         TelegramObject,
     )
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class LoggingMiddleware(BaseMiddleware):
     """
     全中文日志记录中间件
-    
+
     功能:
     1. 记录所有 Update 事件的日志到控制台
     2. 将 /start 和 /gf 等关键命令记录到数据库审计表
@@ -63,7 +63,7 @@ class LoggingMiddleware(BaseMiddleware):
             session.add(audit)
             await session.commit()
         except Exception as e:
-            self.logger.error(f"记录审计日志失败: {e}")
+            self.logger.exception(f"记录审计日志失败: {e}")
 
     def process_message(self, message: Message) -> dict[str, Any]:
         """处理消息"""
@@ -178,7 +178,7 @@ class LoggingMiddleware(BaseMiddleware):
             target_obj = getattr(event, attr_name, None)
             if target_obj:
                 self._log_event(log_prefix, process_func(target_obj))
-                
+
                 # 记录特定命令的审计日志
                 if attr_name == "message" and "session" in data:
                     await self._record_command_audit(target_obj, data["session"])
