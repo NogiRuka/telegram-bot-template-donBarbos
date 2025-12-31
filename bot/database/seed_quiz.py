@@ -44,15 +44,9 @@ async def seed_quiz_data(session: AsyncSession) -> None:
             reward_bonus=15,
             category_id=category_id,
             tags=["LGBT骄傲月"],
-            is_active=True,
-            is_deleted=False,
-            # created_at=dt(2025, 12, 31, 13, 34, 17),
-            # updated_at=dt(2025, 12, 31, 13, 34, 17)
+            is_active=False,
+            is_deleted=True,
         )
-        # 手动设置时间戳需要绕过Mixin的自动设置，或者在add后修改
-        # BasicAuditMixin通常使用default=func.now()，但也允许手动赋值
-        question.created_at = dt(2025, 12, 31, 13, 34, 17)
-        question.updated_at = dt(2025, 12, 31, 13, 34, 17)
         session.add(question)
     
     # 3. 插入题图
@@ -71,11 +65,9 @@ async def seed_quiz_data(session: AsyncSession) -> None:
             description="自动添加于题目 1",
             image_source="https://zh.wikipedia.org/zh-cn/%E5%90%8C%E5%BF%97%E9%AA%84%E5%82%B2#/media/File:Oslo_Pride_Parade_35.jpg",
             extra_caption="2018年奥斯陆骄傲游行",
-            is_active=True,
-            is_deleted=False,
+            is_active=False,
+            is_deleted=True,
         )
-        image.created_at = dt(2025, 12, 31, 13, 34, 17)
-        image.updated_at = dt(2025, 12, 31, 13, 34, 17)
         session.add(image)
         
     await session.commit()

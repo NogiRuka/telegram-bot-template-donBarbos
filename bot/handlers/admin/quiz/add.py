@@ -68,7 +68,7 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
     question = result.scalar_one_or_none()
     
     del_btn = InlineKeyboardBuilder().button(
-        text="�️ 删除示例",
+        text="🗑️ 删除示例",
         callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":del_msg"
     ).as_markup()
 
@@ -97,7 +97,6 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
     
     # 格式化输出
     example_text = (
-        "*� 示例格式：*\n\n"
         f"`{question.question}\n"
         f"{options_str}\n"
         f"{question.correct_index + 1}\n"
