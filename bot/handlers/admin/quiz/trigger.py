@@ -201,14 +201,16 @@ async def cancel_schedule_input(callback: CallbackQuery, state: FSMContext, sess
 
 @router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":schedule:set"))
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def ask_schedule_value(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
+async def ask_schedule_value(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
     """请求输入设置值 (定时参数)"""
     setting_type = callback.data.split(":")[-1] # set_time or set_target
     await state.update_data(setting_type=f"schedule_{setting_type}")
 
     if setting_type == "set_time":
+        current_val = await get_config(session, KEY_QUIZ_SCHEDULE_TIME)
         msg = (
             "⏰ *设置每日定时触发时间*\n\n"
+            f"当前设置：`{current_val}`\n\n"
             "请按格式输入：\n"
             "• 格式：`HHMMSS`（6 位数字）\n"
             "• 多时段用英文逗号分隔\n\n"
@@ -216,8 +218,10 @@ async def ask_schedule_value(callback: CallbackQuery, state: FSMContext, main_ms
             "`051700,171700,222222`"
         )
     elif setting_type == "set_target":
+        current_target = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET)
         msg = (
             "👥 *选择触发对象*\n\n"
+            f"当前设置：`{current_target}`\n\n"
             "• 输入 `all` 或 `全部`：面向所有用户\n"
             "• 输入数字（如 `20`）：随机/活跃挑选 20 人"
         )
@@ -311,8 +315,9 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
 
         await send_toast(message, "✅ 设置已更新！")
         await state.clear()
-        await main_msg.render(user_id, session, main_msg)
 
+        text, kb = await get_trigger_menu_content(session)
+        await main_msg.render(user_id, text, kb)
     except ValueError:
         await send_toast(message, "⚠️ 输入无效，请重试。")
     except Exception as e:

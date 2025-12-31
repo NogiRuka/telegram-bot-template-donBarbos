@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
@@ -67,9 +67,9 @@ class QuizActiveSessionModel(Base, BasicAuditMixin):
     __tablename__ = "quiz_active_sessions"
 
     id: Mapped[auto_int_pk]
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True, comment="用户ID (单人单会话)")
-    chat_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="聊天ID")
-    message_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="题目消息ID")
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True, comment="用户ID (单人单会话)")
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="聊天ID")
+    message_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="题目消息ID")
     question_id: Mapped[int] = mapped_column(ForeignKey("quiz_questions.id"), nullable=False, comment="题目ID")
     correct_index: Mapped[int] = mapped_column(Integer, nullable=False, comment="正确选项缓存")
     expire_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, comment="过期时间（精确到秒）")
@@ -93,8 +93,8 @@ class QuizLogModel(Base, BasicAuditMixin):
     __tablename__ = "quiz_logs"
 
     id: Mapped[auto_int_pk]
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="用户ID")
-    chat_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="聊天ID")
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="用户ID")
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="聊天ID")
     question_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="题目ID")
     user_answer: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="用户选择(NULL表示未答/超时)")
     is_correct: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否正确")
