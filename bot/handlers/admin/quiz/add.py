@@ -44,7 +44,7 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
         "第2行：选项A　选项B　选项C　选项D（空格分隔）\n"
         "第3行：正确答案序号（1-4）\n"
         "第4行：分类ID（见下方列表）\n"
-        "第5行：标签1　标签2（空格或逗号分隔）\n"
+        "第5行：标签1　标签2（空格或逗号分隔，必填）\n"
         "第6行：难度系数（1-5，可选，默认1）\n"
         "第7行：图片来源（链接或文字描述，可选）\n"
         "第8行：图片补充说明（可选）`\n\n"
@@ -105,12 +105,12 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
 
     lines = [l.strip() for l in text.split("\n") if l.strip()]
     
-    # 至少需要前4行 (题目, 选项, 答案, 分类)
-    if len(lines) < 4:
+    # 至少需要前5行 (题目, 选项, 答案, 分类, 标签)
+    if len(lines) < 5:
         await send_toast(
             message,
             "⚠️ 格式错误，行数不足。\n"
-            "请确保至少包含：题目、选项、答案序号、分类。"
+            "请确保至少包含：题目、选项、答案序号、分类、标签。"
         )
         return
 
@@ -151,11 +151,24 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
             await send_toast(message, "⚠️ 分类必须填写ID（数字）。")
             return
         
-        # 5. 标签 (可选)
+        # 5. 标签 (必填)
+        tags_line = lines[4].strip()
         tags = []
-        if len(lines) > 4:
-            tags_line = lines[4]
-            tags = [t.strip() for t in tags_line.replace("，", ",").replace("　", ",").replace(" ", ",").split(",") if t.strip()]
+        
+        # 统一中文逗号
+        tags_line = tags_line.replace("，", ",")
+        
+        if "," in tags_line:
+            # 有逗号，按逗号分隔，保留空格
+            tags = [t.strip() for t in tags_line.split(",") if t.strip()]
+        else:
+            # 无逗号，按空格分隔（支持全角/半角空格）
+            tags_line = tags_line.replace("　", " ")
+            tags = [t.strip() for t in tags_line.split() if t.strip()]
+        
+        if not tags:
+             await send_toast(message, "⚠️ 标签不能为空。")
+             return
 
         # 6. 难度 (可选)
         difficulty = 1
@@ -213,7 +226,7 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
             f"🆔 ID：`{quiz.id}`\n"
             f"❓ 题目：{escape_markdown_v2(question_text)}\n"
             f"📂 分类：{escape_markdown_v2(category_name)} \\(`{category_id}`\\)\n"
-            f"🏷️ 标签：{escape_markdown_v2(', '.join(tags))}\n"
+            f"🏷️ 标签：{escape_markdown_v2('，'.join(tags))}\n"
             f"🌟 难度：{difficulty}"
         )
         if image_source:
