@@ -121,11 +121,19 @@ async def list_questions_view(callback: CallbackQuery, session: AsyncSession, ma
             options_parts.append(f"{prefix}{escaped_opt}")
 
         escaped_options_text = "   ".join(options_parts)
+        
+        # 处理标签
+        tags_text = ""
+        if item.tags:
+            escaped_tags = [escape_markdown_v2(tag) for tag in item.tags]
+            tags_text = " \\| ".join(escaped_tags)
 
         caption = (
-            f"💭 *{escape_markdown_v2(question_text)}*\n"
-            f"{escaped_options_text}\n\n"
-            f"🆔 `{item.id}` ｜ 🎚 难度: {item.difficulty} ｜ 🏷 `{escape_markdown_v2(cat_name)}` ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}"
+            f"🆔 `{item.id}` ｜ � `{escape_markdown_v2(cat_name)}` ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n"
+            f"❓ *{escape_markdown_v2(question_text)}*\n"
+            f"难度: {item.difficulty} ｜ 奖励: {item.reward_base}\\+{item.reward_bonus}\n"
+            f"选项:\n{escaped_options_text}\n"
+            f"🏷 {tags_text}"
         )
 
         try:
@@ -195,11 +203,18 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
             
         escaped_options_text = "\n".join(options_lines)
 
+        # 处理标签
+        tags_text = ""
+        if item.tags:
+            escaped_tags = [escape_markdown_v2(tag) for tag in item.tags]
+            tags_text = " \\| ".join(escaped_tags)
+
         caption = (
             f"🆔 `{item.id}` ｜ 🏷 `{escape_markdown_v2(cat_name)}` ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n"
             f"❓ *{escape_markdown_v2(question_text)}*\n"
             f"难度: {item.difficulty} ｜ 奖励: {item.reward_base}\\+{item.reward_bonus}\n"
-            f"选项:\n{escaped_options_text}"
+            f"选项:\n{escaped_options_text}\n"
+            f"🏷 {tags_text}"
         )
 
         with contextlib.suppress(Exception):
