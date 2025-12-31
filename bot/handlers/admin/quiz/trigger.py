@@ -3,6 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Union
 
 from bot.utils.message import safe_delete_message, send_toast
 
@@ -90,7 +91,7 @@ async def show_settings_menu(callback: CallbackQuery, session: AsyncSession, mai
 
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":schedule_menu")
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def show_schedule_menu(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
+async def show_schedule_menu(callback: Union[CallbackQuery, Message], session: AsyncSession, main_msg: MainMessageService) -> None:
     """显示定时触发设置菜单"""
     enabled = await get_config(session, KEY_QUIZ_SCHEDULE_ENABLE)
     time_str = await get_config(session, KEY_QUIZ_SCHEDULE_TIME)
@@ -126,8 +127,12 @@ async def show_schedule_menu(callback: CallbackQuery, session: AsyncSession, mai
         "说明：每天固定时间自动发送题目"
     )
 
-    await main_msg.update_on_callback(callback, text, get_quiz_schedule_keyboard(is_enabled=enabled))
-    await callback.answer()
+    kb = get_quiz_schedule_keyboard(is_enabled=enabled)
+    if isinstance(callback, CallbackQuery):
+        await main_msg.update_on_callback(callback, text, kb)
+        await callback.answer()
+    elif isinstance(callback, Message):
+        await main_msg.render(callback.from_user.id, text, kb)
 
 
 @router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":set"))
@@ -235,7 +240,7 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
     value_str = message.text.strip()
     user_id = message.from_user.id
 
-    main_msg.delete_input(message)
+    await main_msg.delete_input(message)
 
     try:
         # 基础参数
@@ -292,7 +297,7 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
 
         await send_toast(message, "✅ 设置已更新！")
         await state.clear()
-        await show_schedule_menu(callback, session, main_msg)
+        await show_schedule_menu(message, session, main_msg)
 
     except ValueError:
         await send_toast(message, "⚠️ 输入无效，请重试。")
