@@ -132,7 +132,7 @@ async def ask_schedule_value(callback: CallbackQuery, state: FSMContext) -> None
     await state.update_data(setting_type=f"schedule_{setting_type}")
 
     if setting_type == "set_time":
-        msg = "请输入每天定时触发的时间，格式为 HHMMSS。\n例如：222222 代表 22点22分22秒"
+        msg = "请输入每天定时触发的时间，格式为 HHMMSS。\n多个时间请用逗号分隔，例如：051700,171700,222222"
     elif setting_type == "set_target":
         msg = "请输入触发对象设置。\n输入 'all' 代表全部用户。\n输入数字 (如 20) 代表随机/活跃挑选 20 人。"
     else:
@@ -185,15 +185,25 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
         
         # 定时参数
         elif setting_type == "schedule_set_time":
-            if len(value_str) != 6 or not value_str.isdigit():
-                await message.answer("⚠️ 格式错误，请输入 6 位数字，如 222222")
+            # 支持多个时间，逗号分隔
+            time_parts = [t.strip() for t in value_str.split(",") if t.strip()]
+            if not time_parts:
+                await message.answer("⚠️ 请输入有效的时间")
                 return
-            # 简单的校验
-            h, m, s = int(value_str[:2]), int(value_str[2:4]), int(value_str[4:])
-            if not (0 <= h < 24 and 0 <= m < 60 and 0 <= s < 60):
-                await message.answer("⚠️ 时间数值不合法")
-                return
-            await set_config(session, KEY_QUIZ_SCHEDULE_TIME, value_str, ConfigType.STRING, operator_id=user_id)
+
+            for part in time_parts:
+                if len(part) != 6 or not part.isdigit():
+                    await message.answer(f"⚠️ 格式错误: {part}，请输入 6 位数字，如 222222")
+                    return
+                # 简单的校验
+                h, m, s = int(part[:2]), int(part[2:4]), int(part[4:])
+                if not (0 <= h < 24 and 0 <= m < 60 and 0 <= s < 60):
+                    await message.answer(f"⚠️ 时间数值不合法: {part}")
+                    return
+            
+            # 保存处理后的字符串(去空格)
+            final_value = ",".join(time_parts)
+            await set_config(session, KEY_QUIZ_SCHEDULE_TIME, final_value, ConfigType.STRING, operator_id=user_id)
 
         elif setting_type == "schedule_set_target":
             if value_str.lower() == "all" or value_str == "全部":

@@ -591,15 +591,18 @@ class QuizService:
                         continue
                         
                     # 检查时间
-                    sch_time = await get_config(session, KEY_QUIZ_SCHEDULE_TIME)
-                    if sch_time and sch_time == curr_time_str:
-                        # 触发!
-                        logger.info(f"⏰ [定时问答] 时间匹配 ({sch_time})，触发任务")
-                        # 使用 create_task 避免阻塞调度循环
-                        # 并稍微延迟一点点避免同一秒多次(其实 sleep(1) 够了)
-                        asyncio.create_task(cls.trigger_scheduled_quiz(bot))
-                        # 等待一秒确保时间跳变
-                        await asyncio.sleep(1)
+                    sch_time_str = await get_config(session, KEY_QUIZ_SCHEDULE_TIME)
+                    if sch_time_str:
+                        # 支持多个时间点，逗号分隔
+                        sch_times = [t.strip() for t in sch_time_str.split(",") if t.strip()]
+                        if curr_time_str in sch_times:
+                            # 触发!
+                            logger.info(f"⏰ [定时问答] 时间匹配 ({curr_time_str})，触发任务")
+                            # 使用 create_task 避免阻塞调度循环
+                            # 并稍微延迟一点点避免同一秒多次(其实 sleep(1) 够了)
+                            asyncio.create_task(cls.trigger_scheduled_quiz(bot))
+                            # 等待一秒确保时间跳变
+                            await asyncio.sleep(1)
                         
             except asyncio.CancelledError:
                 logger.info("🛑 [定时问答] 调度器已停止")
