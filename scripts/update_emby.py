@@ -11,7 +11,7 @@ import contextlib
 from loguru import logger
 from sqlalchemy import select
 
-from bot.database.database import sessionmaker
+from bot.database.database import engine, sessionmaker
 from bot.database.models.emby_user import EmbyUserModel
 from bot.utils.emby import get_emby_client
 
