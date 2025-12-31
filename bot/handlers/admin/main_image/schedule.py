@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .router import router
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
 from bot.database.models import MainImageModel, MainImageScheduleModel, UserExtendModel
-from bot.handlers.start import build_home_view
 from bot.keyboards.inline.admin import (
     get_main_image_schedule_cancel_keyboard,
     get_main_image_schedule_item_keyboard,
@@ -424,6 +423,7 @@ async def back_to_home_from_schedule_list(callback: CallbackQuery, session: Asyn
         await _clear_schedule_list(state, callback.bot, callback.message.chat.id)
 
     uid = callback.from_user.id if callback.from_user else None
+    from bot.handlers.start import build_home_view
     caption, kb = await build_home_view(session, uid)
 
     await main_msg.update_on_callback(callback, caption, kb)
