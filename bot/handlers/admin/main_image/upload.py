@@ -96,7 +96,21 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
     width: int | None = None
     height: int | None = None
     file_size: int | None = None
-    caption = message.caption or ""
+    caption = message.caption
+
+    # 处理媒体组(相册)共享 Caption
+    if message.media_group_id:
+        data = await state.get_data()
+        group_key = f"media_group_caption_{message.media_group_id}"
+        
+        if caption:
+            # 当前消息有 Caption，保存到状态供同组其他消息使用
+            await state.update_data({group_key: caption})
+        else:
+            # 当前消息无 Caption，尝试从状态获取
+            caption = data.get(group_key, "")
+    
+    caption = caption or ""
 
     if message.photo:
         p = message.photo[-1]
@@ -174,6 +188,11 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
     )
     if caption:
         text += f"\n📝 {safe_caption}"
-    # 上传成功后清除状态，显示成功键盘(含继续上传)
-    await state.clear()
-    await main_msg.render(message.from_user.id, text, get_main_image_upload_success_keyboard(is_nsfw))
+    
+    text += "\n\n📸 *请继续发送图片，或点击下方按钮结束上传*"
+
+    # 保持状态不清除，允许连续上传
+    # await state.clear()
+    
+    # 使用 Cancel 键盘 (点击返回主菜单并清除状态)
+    await main_msg.render(message.from_user.id, text, get_main_image_cancel_keyboard())
