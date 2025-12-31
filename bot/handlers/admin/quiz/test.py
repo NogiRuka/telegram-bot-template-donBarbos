@@ -27,7 +27,7 @@ async def test_trigger(callback: CallbackQuery, session: AsyncSession):
                 question=question,
                 image=image,
                 timeout_sec=timeout_sec,
-                title="🧪 <b>测试题目</b>"
+                title="🌸 <b>桜之问答</b>"
             )
             bot = callback.bot
             if image:
