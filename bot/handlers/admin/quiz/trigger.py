@@ -1,7 +1,10 @@
 from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from bot.utils.message import send_toast
 
 from .router import router
 from bot.config.constants import (
@@ -107,21 +110,52 @@ async def show_schedule_menu(callback: CallbackQuery, session: AsyncSession, mai
 
 @router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":set"))
 @require_admin_feature(KEY_ADMIN_QUIZ)
-async def ask_setting_value(callback: CallbackQuery, state: FSMContext) -> None:
+async def ask_setting_value(callback: CallbackQuery, state: FSMContext, main_msg: MainMessageService) -> None:
     """请求输入设置值 (基础参数)"""
     setting_type = callback.data.split(":")[-1]
     await state.update_data(setting_type=setting_type)
 
     prompts = {
-        "probability": "请输入新的触发概率 (0.0 - 1.0)，例如 0.05 表示 5%",
-        "cooldown": "请输入新的冷却时间 (分钟，整数)",
-        "daily_limit": "请输入新的每日触发上限 (整数)",
-        "timeout": "请输入新的答题限时 (秒，整数)"
+        "probability": (
+            "🎲 设置随机触发概率\n"
+            "请输入 0.0 - 1.0 之间的小数，例如：\n"
+            "• 0.05 → 5%  • 0.1 → 10%\n"
+            "• 0.25 → 25% • 0.5 → 50%"
+        ),
+        "cooldown": (
+            "⏳ 设置冷却时间\n"
+            "请输入整数分钟，例如：\n"
+            "• 5 → 5 分钟 • 30 → 半小时\n"
+            "• 60 → 1 小时 • 1440 → 1 天"
+        ),
+        "daily_limit": (
+            "🔢 设置每日触发上限\n"
+            "请输入正整数，例如：\n"
+            "• 10 → 每人每天最多 10 次\n"
+            "• 0 → 不限制"
+        ),
+        "timeout": (
+            "⏱️ 设置答题限时\n"
+            "请输入正整数秒数，例如：\n"
+            "• 30 → 半分钟 • 60 → 1 分钟\n"
+            "• 120 → 2 分钟 • 300 → 5 分钟"
+        )
     }
 
-    await callback.message.answer(prompts.get(setting_type, "请输入新值"))
     await state.set_state(QuizAdminState.waiting_for_setting_value)
+    
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🔙 取消", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":cancel_input")
+    
+    await main_msg.update_on_callback(callback, prompts.get(setting_type, "请输入新值"), kb.as_markup())
     await callback.answer()
+
+
+@router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":cancel_input")
+async def cancel_setting_input(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
+    """取消输入，返回基础设置菜单"""
+    await state.clear()
+    await show_settings_menu(callback, session, main_msg)
 
 
 @router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":schedule:set"))
@@ -158,10 +192,11 @@ async def toggle_schedule(callback: CallbackQuery, session: AsyncSession, state:
     """切换定时任务开关"""
     current = await get_config(session, KEY_QUIZ_SCHEDULE_ENABLE)
     if current is None: current = False
-    
+        
     new_status = not current
     await set_config(session, KEY_QUIZ_SCHEDULE_ENABLE, new_status, ConfigType.BOOLEAN, operator_id=callback.from_user.id)
     await show_schedule_menu(callback, session, main_msg)
+    await callback.answer(f"{'🔴 已关闭' if new_status else '🟢 已开启'} 定时触发任务")
 
 
 @router.message(QuizAdminState.waiting_for_setting_value)
