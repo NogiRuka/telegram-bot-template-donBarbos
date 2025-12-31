@@ -1,10 +1,11 @@
 from __future__ import annotations
-
 import datetime as dt
-from sqlalchemy import Index, Integer, Text, JSON, ForeignKey, Boolean, String, DateTime
+
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
+
 
 class QuizQuestionModel(Base, BasicAuditMixin):
     """
@@ -72,7 +73,7 @@ class QuizActiveSessionModel(Base, BasicAuditMixin):
     correct_index: Mapped[int] = mapped_column(Integer, nullable=False, comment="正确选项缓存")
     expire_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, comment="过期时间（精确到秒）")
     extra: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="扩展数据")
-    
+
     # 关联
     question: Mapped[QuizQuestionModel] = relationship()
 
