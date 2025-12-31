@@ -36,11 +36,6 @@ class QuizSessionExpiredError(Exception):
 
 
 class QuizService:
-    # 配置常量 (已弃用，转为从 ConfigService 获取)
-    # COOLDOWN_MINUTES = 10
-    # TRIGGER_PROBABILITY = 0.05  # 5%
-    # DAILY_LIMIT = 10
-    SESSION_TIMEOUT_SECONDS = 30 # 这个暂时保留作为默认值，实际也从 ConfigService 拿
 
     @staticmethod
     async def check_trigger_conditions(session: AsyncSession, user_id: int, chat_id: int, bot: Bot | None = None) -> bool:
@@ -103,13 +98,6 @@ class QuizService:
         last_time = (await session.execute(last_log_stmt)).scalar()
 
         if last_time:
-            # 这里的 last_time 是带时区的 datetime (TimestampMixin 默认 utcnow)
-            # 假设 bot.utils.datetime.now() 返回带时区的时间
-            # 需要确保时间比较的兼容性
-            if last_time.tzinfo is None:
-                # 如果数据库存的是 naive UTC
-                pass
-
             # 计算时间差
             elapsed = now() - last_time
             if elapsed < timedelta(minutes=cooldown_min):
@@ -152,7 +140,7 @@ class QuizService:
         image: QuizImageModel | None,
         session: AsyncSession = None,
         timeout_sec: int | None = None,
-        title: str = "🌸 <b>桜之问答</b>",
+        title: str = "桜之问答",
     ) -> str:
         """
         构建问答消息说明
@@ -177,15 +165,20 @@ class QuizService:
             else:
                 timeout_sec = 60 # 默认值，防止 session 和 timeout_sec 都没传的情况
 
-        cat_name = question.category.name if question.category else "综合"
-        caption = f"{title} [{cat_name}] 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
-
         if image and image.image_source:
             if image.image_source.startswith("http"):
                 link_text = image.extra_caption.strip() if image.extra_caption else "链接"
-                caption += f"\n\n🔗 来源：<a href='{image.image_source}'>{link_text}</a>"
+                extra = f"<a href='{image.image_source}'>{link_text}</a>"
             else:
-                caption += f"\n\n🔗 来源：{image.image_source}"
+                extra = f"{image.image_source}"
+
+        cat_name = question.category.name if question.category else "无分类"
+
+        caption = (
+            f"🌸 <b>{title}｜{timeout_sec} 秒挑战 🌸</b>\n\n"
+            f"🏷️ {cat_name}｜🖼️ {extra}\n\n"
+            f"💭 {question.question}"
+        )
 
         return caption
 
