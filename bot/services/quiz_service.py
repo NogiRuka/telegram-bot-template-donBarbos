@@ -142,7 +142,7 @@ class QuizService:
 
         功能说明:
         - 根据题目与图片信息生成统一的 HTML 样式说明文本
-        - 包含分类名称、超时提示、图片来源与补充说明
+        - 包含分类名称、超时提示、图片来源与补充说明（当来源为链接时，优先使用 extra_caption 作为链接文字）
 
         输入参数:
         - question: 题目对象
@@ -165,12 +165,10 @@ class QuizService:
 
         if image and image.image_source:
             if image.image_source.startswith("http"):
-                caption += f"\n\n🔗 来源：<a href='{image.image_source}'>链接</a>"
-                if image.extra_caption:
-                    caption += f"\nℹ️ {image.extra_caption}"
+                link_text = image.extra_caption.strip() if image.extra_caption else "链接"
+                caption += f"\n\n🔗 来源：<a href='{image.image_source}'>{link_text}</a>"
             else:
                 caption += f"\n\n🔗 来源：{image.image_source}"
-                # 文字来源时不显示补充说明
 
         return caption
  
