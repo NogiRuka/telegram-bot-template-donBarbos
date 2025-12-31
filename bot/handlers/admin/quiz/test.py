@@ -37,12 +37,12 @@ async def test_trigger(callback: CallbackQuery, session: AsyncSession) -> None:
                 sent = await bot.send_message(target_chat_id, caption, reply_markup=markup)
 
             await QuizService.update_session_message_id(session, session_id, sent.message_id)
-            
+
             # 手动启动超时任务（模拟中间件行为）
             timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
             if timeout_sec is None:
                 timeout_sec = 60
-            
+
             # 使用统一的启动方法
             QuizService.start_timeout_task(
                 bot=bot,
@@ -52,7 +52,7 @@ async def test_trigger(callback: CallbackQuery, session: AsyncSession) -> None:
                 user_id=user_id,
                 timeout=int(timeout_sec)
             )
-            
+
             await callback.answer("✅ 测试题目已发送")
         else:
             await callback.answer("⚠️ 题库为空或生成失败。")

@@ -1,10 +1,10 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
-
 import datetime as dt
 
 
