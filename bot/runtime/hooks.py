@@ -23,6 +23,7 @@ from bot.services.config_service import ensure_config_defaults
 from bot.services.currency import CurrencyService
 from bot.services.emby_service import cleanup_devices_by_policy, save_all_emby_devices, save_all_emby_users
 from bot.services.quiz_service import QuizService
+from bot.database.seed_quiz import seed_quiz_data
 
 if TYPE_CHECKING:
     from aiogram import Bot
@@ -55,6 +56,7 @@ async def on_startup() -> None:
         await ensure_database_and_schema()
         async with sessionmaker() as session:
             await ensure_config_defaults(session)
+            await seed_quiz_data(session)
             await CurrencyService.ensure_products(session)
             await CurrencyService.ensure_configs(session)
             try:

@@ -52,6 +52,15 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
         "第6行：难度系数（1-5，可选，默认1）\n"
         "第7行：图片来源（链接或文字描述，可选）\n"
         "第8行：图片补充说明（可选）`\n\n"
+        "*📝 示例格式：*\n\n"
+        "`LGBT骄傲月是什么时候？\n"
+        "3月　6月　9月　12月\n"
+        "2\n"
+        "15\n"
+        "LGBT骄傲月\n"
+        "3\n"
+        "https://zh.wikipedia.org/zh-cn/%E5%90%8C%E5%BF%97%E9%AA%84%E5%82%B2#/media/File:Oslo_Pride_Parade_35.jpg\n"
+        "2018年奥斯陆骄傲游行`\n\n"
         "*可用分类：*\n"
         f"{cat_text}"
     )
@@ -69,9 +78,9 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
         "2\n"
         "15\n"
         "LGBT骄傲月\n"
-        "1\n"
-        "https://example.com/source\n"
-        "这是一张关于骄傲月的图片`"
+        "3\n"
+        "https://zh.wikipedia.org/zh-cn/%E5%90%8C%E5%BF%97%E9%AA%84%E5%82%B2#/media/File:Oslo_Pride_Parade_35.jpg\n"
+        "2018年奥斯陆骄傲游行`"
     )
 
     example_image = await QuizService.get_random_image_by_tags(session, ["LGBT骄傲月"])
