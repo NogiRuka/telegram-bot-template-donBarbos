@@ -68,7 +68,7 @@ def build_question_keyboard(options: list[str]) -> InlineKeyboardMarkup:
         # 使用特定回调以便识别，或者仅仅展示用 ignore
         # 这里为了模拟真实感，可以使用类似真实的回调，或者 dummy callback
         builder.button(text=option, callback_data=f"ignore:quiz_preview:{i}")
-    builder.adjust(1) # 每行一个选项，和真实答题保持一致
+    builder.adjust(2) # 每行2个选项，和真实答题保持一致
     return builder.as_markup()
 
 
