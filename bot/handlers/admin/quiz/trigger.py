@@ -213,12 +213,10 @@ async def ask_schedule_value(callback: CallbackQuery, state: FSMContext, session
             f"当前设置：`{current_val}`\n\n"
             "请按格式输入：\n"
             "• 格式：`HHMMSS`（6 位数字）\n"
-            "• 多时段用英文逗号分隔\n\n"
-            "示例：\n"
-            "`051700,171700,222222`"
+            "• 多时段用英文逗号分隔"
         )
     elif setting_type == "set_target":
-        current_target = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET)
+        current_target = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET_TYPE)
         msg = (
             "👥 *选择触发对象*\n\n"
             f"当前设置：`{current_target}`\n\n"
