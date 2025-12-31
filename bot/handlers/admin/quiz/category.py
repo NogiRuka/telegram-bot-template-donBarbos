@@ -3,6 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
 
 from .router import router
 from bot.config.constants import KEY_ADMIN_QUIZ
@@ -22,7 +23,7 @@ from bot.utils.text import escape_markdown_v2
 
 async def render_category_list(session: AsyncSession, main_msg: MainMessageService, user_id: int) -> None:
     """渲染分类列表"""
-    stmt = select(QuizCategoryModel).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
+    stmt = select(QuizCategoryModel).where(QuizCategoryModel.is_deleted == False).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
     categories = (await session.execute(stmt)).scalars().all()
 
     text = "*🏷️ 分类管理*\n\n点击分类进行编辑或管理。"
@@ -79,7 +80,7 @@ async def add_category_process(message: Message, state: FSMContext, session: Asy
 async def view_category(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """查看分类详情"""
     cat_id = int(callback.data.split(":")[-1])
-    stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id)
+    stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, QuizCategoryModel.is_deleted == False)
     cat = (await session.execute(stmt)).scalar_one_or_none()
 
     if not cat:
@@ -156,7 +157,7 @@ async def edit_category_process(message: Message, state: FSMContext, session: As
 async def toggle_category(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """切换分类状态"""
     cat_id = int(callback.data.split(":")[-1])
-    stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id)
+    stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, QuizCategoryModel.is_deleted == False)
     cat = (await session.execute(stmt)).scalar_one_or_none()
 
     if cat:
@@ -183,9 +184,13 @@ async def delete_category(callback: CallbackQuery, session: AsyncSession, main_m
     """删除分类"""
     cat_id = int(callback.data.split(":")[-1])
 
-    stmt = delete(QuizCategoryModel).where(QuizCategoryModel.id == cat_id)
+    stmt = update(QuizCategoryModel).where(QuizCategoryModel.id == cat_id).values(
+        is_deleted=True,
+        deleted_at=datetime.now(),
+        deleted_by=callback.from_user.id
+    )
     await session.execute(stmt)
     await session.commit()
 
     await callback.answer("✅ 分类已删除")
-    await list_categories(callback, session, main_msg)
+    await render_category_list(session, main_msg, callback.from_user.id)

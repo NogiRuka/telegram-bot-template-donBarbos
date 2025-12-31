@@ -24,7 +24,7 @@ from bot.utils.text import escape_markdown_v2
 async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
     """开始添加"""
     # 获取可显示的分类列表
-    stmt = select(QuizCategoryModel).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
+    stmt = select(QuizCategoryModel).where(QuizCategoryModel.is_deleted == False).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
     categories = (await session.execute(stmt)).scalars().all()
 
     # 每行 5 个
@@ -152,7 +152,7 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
         category_name = "未知"
         if category_input.isdigit():
             cat_id = int(category_input)
-            stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id)
+            stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, QuizCategoryModel.is_deleted == False)
             result = await session.execute(stmt)
             cat = result.scalar_one_or_none()
             if cat:
