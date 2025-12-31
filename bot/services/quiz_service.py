@@ -187,7 +187,7 @@ class QuizService:
         active_stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
         active_session = (await session.execute(active_stmt)).scalar_one_or_none()
         if active_session:
-            if active_session.expire_at < int(now().timestamp()):
+            if active_session.expire_at <= now():
                 await QuizService.handle_timeout(session, user_id)
             else:
                 return None

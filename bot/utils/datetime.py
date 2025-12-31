@@ -207,21 +207,6 @@ def now() -> datetime.datetime:
     return local.replace(microsecond=0, tzinfo=None)
 
 
-def now_sec() -> datetime.datetime:
-    """获取当前时间（精确到秒）
-
-    功能说明:
-    - 等价于 now()，语义更明确：保证精确到秒，无微秒
-
-    输入参数:
-    - 无
-
-    返回值:
-    - datetime.datetime: 当前时间 (Naive, 秒级精度)
-    """
-    return now()
-
-
 def compute_expire_at(current: datetime.datetime, timeout_sec: int) -> datetime.datetime:
     """根据当前时间与超时时长计算过期时间（精确到秒）
 
@@ -230,7 +215,7 @@ def compute_expire_at(current: datetime.datetime, timeout_sec: int) -> datetime.
     - 自动去除微秒，保持与数据库一致的人性化显示
 
     输入参数:
-    - current: 当前时间（建议使用 now()/now_sec 获取）
+    - current: 当前时间（建议使用 now() 获取）
     - timeout_sec: 超时时长（秒）
 
     返回值:
