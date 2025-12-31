@@ -100,6 +100,33 @@ class QuizService:
 
         return True
 
+    @classmethod
+    async def get_random_image_by_tags(cls, session: AsyncSession, tags: list[str]) -> Optional[QuizImageModel]:
+        """根据标签随机获取图片"""
+        if not tags:
+            return None
+
+        # 假设 tags 是 list[str]
+        # JSON 数组包含查询 (PostgreSQL @>, SQLite 可能需要 func.json_each)
+        # 这里简化处理：直接查找 active 的图片，然后在内存中过滤 tag 匹配的 (数据量不大时)
+        # 或者，如果 tags 存储简单，可以用 LIKE。
+        # 为了严谨，我们先查出所有 active 图片，再筛选。
+        # 优化：数据库层面随机筛选一张匹配的。
+        # 由于 SQLDialect 差异，这里用 Python 筛选。
+        
+        img_stmt = select(QuizImageModel).where(QuizImageModel.is_active == True)
+        imgs = (await session.execute(img_stmt)).scalars().all()
+        
+        # 筛选有交集的图片
+        matched_imgs = [
+            img for img in imgs 
+            if img.tags and set(tags) & set(img.tags)
+        ]
+        
+        if matched_imgs:
+            return random.choice(matched_imgs)
+        return None
+
     @staticmethod
     async def create_quiz_session(session: AsyncSession, user_id: int, chat_id: int) -> Optional[Tuple[QuizQuestionModel, Optional[QuizImageModel], InlineKeyboardMarkup, int]]:
         """
@@ -121,27 +148,7 @@ class QuizService:
             return None
 
         # 2. 随机选取图片 (如果题目有 tag)
-        quiz_image = None
-        if question.tags:
-            # 假设 tags 是 list[str]
-            # JSON 数组包含查询 (PostgreSQL @>, SQLite 可能需要 func.json_each)
-            # 这里简化处理：直接查找 active 的图片，然后在内存中过滤 tag 匹配的 (数据量不大时)
-            # 或者，如果 tags 存储简单，可以用 LIKE。
-            # 为了严谨，我们先查出所有 active 图片，再筛选。
-            # 优化：数据库层面随机筛选一张匹配的。
-            # 由于 SQLDialect 差异，这里用 Python 筛选。
-            
-            img_stmt = select(QuizImageModel).where(QuizImageModel.is_active == True)
-            imgs = (await session.execute(img_stmt)).scalars().all()
-            
-            # 筛选有交集的图片
-            matched_imgs = [
-                img for img in imgs 
-                if img.tags and set(question.tags) & set(img.tags)
-            ]
-            
-            if matched_imgs:
-                quiz_image = random.choice(matched_imgs)
+        quiz_image = await cls.get_random_image_by_tags(session, question.tags)
 
         # 3. 构建选项键盘 (打乱顺序)
         options = question.options  # list[str]

@@ -15,6 +15,9 @@ from bot.utils.text import escape_markdown_v2
 from bot.utils.message import send_toast
 from .router import router
 
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from bot.services.quiz_service import QuizService
+
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":add")
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
@@ -53,7 +56,7 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
     )
     await main_msg.update_on_callback(callback, text, get_quiz_add_cancel_keyboard())
     
-    # 发送自动销毁的示例消息
+    # 发送示例消息
     example_text = (
         "*📝 示例格式：*\n\n"
         "`LGBT骄傲月是什么时候？\n"
@@ -66,29 +69,40 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
         "这是一张关于骄傲月的图片`"
     )
     
-    # 如果用户需要，这里可以发送一张示例图片
-    # 目前仅发送文本示例
+    # 尝试根据示例标签查找图片
+    example_image = await QuizService.get_random_image_by_tags(session, ["LGBT骄傲月"])
+    
+    # 删除按钮
+    del_btn = InlineKeyboardBuilder().button(
+        text="🗑️ 删除说明", 
+        callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":del_msg"
+    ).as_markup()
+
     try:
-        example_msg = await callback.message.answer(example_text, parse_mode="MarkdownV2")
-        # 10秒后删除
-        from bot.utils.message import safe_delete_message
-        import asyncio
-        asyncio.create_task(
-            _delete_message_after(callback.message.bot, callback.message.chat.id, example_msg.message_id, 10)
-        )
+        if example_image:
+             await callback.message.answer_photo(
+                 photo=example_image.file_id,
+                 caption=example_text,
+                 parse_mode="MarkdownV2",
+                 reply_markup=del_btn
+             )
+        else:
+            await callback.message.answer(
+                example_text, 
+                parse_mode="MarkdownV2",
+                reply_markup=del_btn
+            )
     except Exception:
         pass # 忽略发送失败
 
     await state.set_state(QuizAdminState.waiting_for_quick_add)
     await callback.answer()
 
-async def _delete_message_after(bot, chat_id, message_id, delay):
-    import asyncio
-    await asyncio.sleep(delay)
-    try:
-        await bot.delete_message(chat_id, message_id)
-    except:
-        pass
+@router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":del_msg")
+async def delete_example_msg(callback: CallbackQuery):
+    """删除示例消息"""
+    await callback.message.delete()
+    await callback.answer()
 
 @router.message(QuizAdminState.waiting_for_quick_add)
 @require_admin_feature(KEY_ADMIN_QUIZ)
