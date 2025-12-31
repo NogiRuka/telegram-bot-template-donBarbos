@@ -67,7 +67,7 @@ class QuizService:
         :param timeout: 超时秒数
         """
         logger.debug(f"⏳ [问答] 会话 {session_id} 已调度超时处理，将在 {timeout} 秒后执行")
-        
+
         try:
             # 1. 等待超时
             await asyncio.sleep(timeout)
@@ -84,7 +84,7 @@ class QuizService:
                 if quiz_session:
                     logger.info(f"⏰ [问答] 会话 {session_id} 已超时。正在删除消息 {message_id}")
                     # Session 还在，说明未回答 -> 超时处理
-                    
+
                     # 删除消息
                     deleted = await safe_delete_message(bot, chat_id, message_id)
                     if not deleted:
@@ -436,8 +436,12 @@ class QuizService:
         await session.delete(quiz_session)
         await session.commit()
 
-        msg = "✅ 回答正确！" if is_correct else f"❌ 回答错误。\n正确答案是：{question.options[question.correct_index]}"
-        msg += f"\n获得奖励：+{reward} 精粹"
+        if is_correct:
+            msg = "✅ 回答正确！"  # noqa: RUF001
+        else:
+            correct_option = question.options[question.correct_index]
+            msg = f"❌ 回答错误。\n正确答案是：{correct_option}"  # noqa: RUF001
+        msg += f"\n获得奖励：+{reward} 精粹"  # noqa: RUF001
 
         return is_correct, reward, msg
 
