@@ -256,17 +256,17 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
             # 支持多个时间，逗号分隔
             time_parts = [t.strip() for t in value_str.split(",") if t.strip()]
             if not time_parts:
-                await message.answer("⚠️ 请输入有效的时间")
+                await send_toast(message, "⚠️ 请输入有效的时间")
                 return
 
             for part in time_parts:
                 if len(part) != 6 or not part.isdigit():
-                    await message.answer(f"⚠️ 格式错误: {part}，请输入 6 位数字，如 222222")
+                    await send_toast(message, f"⚠️ 格式错误: {part}，请输入 6 位数字，如 222222")
                     return
                 # 简单的校验
                 h, m, s = int(part[:2]), int(part[2:4]), int(part[4:])
                 if not (0 <= h < 24 and 0 <= m < 60 and 0 <= s < 60):
-                    await message.answer(f"⚠️ 时间数值不合法: {part}")
+                    await send_toast(message, f"⚠️ 时间数值不合法: {part}")
                     return
             
             # 保存处理后的字符串(去空格)
@@ -282,7 +282,7 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
                 await set_config(session, KEY_QUIZ_SCHEDULE_TARGET_TYPE, "fixed", ConfigType.STRING, operator_id=user_id)
                 await set_config(session, KEY_QUIZ_SCHEDULE_TARGET_COUNT, count, ConfigType.INTEGER, operator_id=user_id)
             else:
-                await message.answer("⚠️ 输入无效，请输入 'all' 或正整数")
+                await send_toast(message, "⚠️ 输入无效，请输入 'all' 或正整数")
                 return
 
         await send_toast(message, "✅ 设置已更新！")
@@ -290,6 +290,6 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
         await show_schedule_menu(callback, session, main_msg)
 
     except ValueError:
-        await message.answer("⚠️ 输入无效，请重试。")
+        await send_toast(message, "⚠️ 输入无效，请重试。")
     except Exception as e:
-        await message.answer(f"❌ 设置失败: {e}")
+        await send_toast(message, f"❌ 设置失败: {e}")
