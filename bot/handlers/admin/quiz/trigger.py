@@ -128,11 +128,8 @@ async def show_schedule_menu(callback: Union[CallbackQuery, Message], session: A
     )
 
     kb = get_quiz_schedule_keyboard(is_enabled=enabled)
-    if isinstance(callback, CallbackQuery):
-        await main_msg.update_on_callback(callback, text, kb)
-        await callback.answer()
-    elif isinstance(callback, Message):
-        await main_msg.render(callback.from_user.id, text, kb)
+    await main_msg.update_on_callback(callback, text, kb)
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":set"))
@@ -184,6 +181,12 @@ async def cancel_setting_input(callback: CallbackQuery, state: FSMContext, sessi
     await state.clear()
     await show_settings_menu(callback, session, main_msg)
 
+@router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":cancel_input_schedule")
+async def cancel_schedule_input(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
+    """取消输入，返回定时设置菜单"""
+    await state.clear()
+    await show_schedule_menu(callback, session, main_msg)
+
 
 @router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":schedule:set"))
 @require_admin_feature(KEY_ADMIN_QUIZ)
@@ -213,7 +216,7 @@ async def ask_schedule_value(callback: CallbackQuery, state: FSMContext, main_ms
     await state.set_state(QuizAdminState.waiting_for_setting_value)
 
     kb = InlineKeyboardBuilder()
-    kb.button(text="❌ 取消", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":cancel_input")
+    kb.button(text="❌ 取消", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":cancel_input_schedule")
     await main_msg.update_on_callback(callback, msg, kb.as_markup())
     await callback.answer()
 
