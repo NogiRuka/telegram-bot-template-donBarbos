@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.utils.message import send_toast
+from bot.utils.message import safe_delete_message, send_toast
 
 from .router import router
 from bot.config.constants import (
@@ -118,9 +118,9 @@ async def ask_setting_value(callback: CallbackQuery, state: FSMContext, main_msg
     prompts = {
         "probability": (
             "🎲 设置随机触发概率\n"
-            "请输入 0.0 - 1.0 之间的小数，例如：\n"
-            "• 0.05 → 5%  • 0.1 → 10%\n"
-            "• 0.25 → 25% • 0.5 → 50%"
+            "请输入 0\\.0 \\- 1\\.0 之间的小数，例如：\n"
+            "• 0\\.05 → 5%  • 0\\.1 → 10%\n"
+            "• 0\\.25 → 25% • 0\\.5 → 50%"
         ),
         "cooldown": (
             "⏳ 设置冷却时间\n"
@@ -145,7 +145,7 @@ async def ask_setting_value(callback: CallbackQuery, state: FSMContext, main_msg
     await state.set_state(QuizAdminState.waiting_for_setting_value)
     
     kb = InlineKeyboardBuilder()
-    kb.button(text="🔙 取消", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":cancel_input")
+    kb.button(text="❌ 取消", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":cancel_input")
     
     await main_msg.update_on_callback(callback, prompts.get(setting_type, "请输入新值"), kb.as_markup())
     await callback.answer()
@@ -208,6 +208,8 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
     value_str = message.text.strip()
     user_id = message.from_user.id
 
+    safe_delete_message(message)
+
     try:
         # 基础参数
         if setting_type == "probability":
@@ -261,8 +263,9 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
                 await message.answer("⚠️ 输入无效，请输入 'all' 或正整数")
                 return
 
-        await message.answer("✅ 设置已更新！")
+        await send_toast(message, "✅ 设置已更新！")
         await state.clear()
+        await show_schedule_menu(callback, session, main_msg)
 
     except ValueError:
         await message.answer("⚠️ 输入无效，请重试。")
