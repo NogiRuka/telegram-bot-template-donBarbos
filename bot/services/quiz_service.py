@@ -364,6 +364,8 @@ class QuizService:
         if quiz_image:
             extra_data["image_source"] = quiz_image.image_source
             extra_data["extra_caption"] = quiz_image.extra_caption
+            extra_data["file_id"] = quiz_image.file_id  # 增加 file_id 记录
+            extra_data["image_id"] = quiz_image.id      # 增加 image_id 记录
 
         # 这里的 message_id 暂时填 0，发送消息后需要更新
         quiz_session = QuizActiveSessionModel(
@@ -464,7 +466,8 @@ class QuizService:
             reward_amount=reward,
             # time_taken 暂未精确计算，可用 now() 减去 session 创建时间估算，但 session 没有 created_at 字段(只有mixin的)
             # 这里简单处理
-            time_taken=None
+            time_taken=None,
+            extra=quiz_session.extra  # 保存 extra 数据 (包含图片信息)
         )
         session.add(log)
 
@@ -511,7 +514,8 @@ class QuizService:
                 chat_id=quiz_session.chat_id,
                 question_id=quiz_session.question_id,
                 user_answer=None, # NULL 表示未答/超时
-                is_correct=False
+                is_correct=False,
+                extra=quiz_session.extra  # 保存 extra 数据
             )
             session.add(log)
             quiz_session.is_deleted = True

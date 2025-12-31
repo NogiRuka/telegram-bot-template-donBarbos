@@ -39,10 +39,10 @@ from bot.keyboards.inline.constants import (
     QUIZ_ADMIN_CALLBACK_DATA,
     QUIZ_ADMIN_CATEGORY_LABEL,
     QUIZ_ADMIN_LIST_IMAGES_LABEL,
-    QUIZ_ADMIN_LIST_LOGS_LABEL,
     QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA,
     QUIZ_ADMIN_LIST_MENU_LABEL,
     QUIZ_ADMIN_LIST_QUESTIONS_LABEL,
+    QUIZ_ADMIN_LIST_QUIZZES_LABEL,
     QUIZ_ADMIN_SCHEDULE_MENU_LABEL,
     QUIZ_ADMIN_SCHEDULE_SET_TARGET_LABEL,
     QUIZ_ADMIN_SCHEDULE_SET_TIME_LABEL,
@@ -537,7 +537,7 @@ def get_quiz_list_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=QUIZ_ADMIN_LIST_IMAGES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list:view:image:1:5")
         ],
         [
-            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_LOGS_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list_logs")
+            InlineKeyboardButton(text=QUIZ_ADMIN_LIST_QUIZZES_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":list:view:quiz:1:5")
         ],
         [BACK_TO_QUIZ_ADMIN_BUTTON, BACK_TO_HOME_BUTTON]
     ]

@@ -1,4 +1,23 @@
-from . import add, category, list, list_questions, list_images, list_logs, menu, test, trigger
+from . import (
+    add,
+    category,
+    list_images,
+    list_questions,
+    list_quizzes,
+    menu,
+    test,
+    trigger,
+)
 from .router import router
 
-__all__ = ["router"]
+__all__ = [
+    "add",
+    "category",
+    "list_images",
+    "list_questions",
+    "list_quizzes",
+    "menu",
+    "router",
+    "test",
+    "trigger",
+]
