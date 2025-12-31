@@ -129,11 +129,9 @@ async def list_questions_view(callback: CallbackQuery, session: AsyncSession, ma
             tags_text = " \\| ".join(escaped_tags)
 
         caption = (
-            f"🆔 `{item.id}` ｜ � `{escape_markdown_v2(cat_name)}` ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n"
-            f"❓ *{escape_markdown_v2(question_text)}*\n"
-            f"难度: {item.difficulty} ｜ 奖励: {item.reward_base}\\+{item.reward_bonus}\n"
-            f"选项:\n{escaped_options_text}\n"
-            f"🏷 {tags_text}"
+            f"🆔 `{item.id}` ｜ 🗂️ `{escape_markdown_v2(cat_name)}`｜ 🏷️ {tags_text} ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n\n"
+            f"💭 *{escape_markdown_v2(question_text)}*\n"
+            f"{escaped_options_text}\n\n"
         )
 
         try:
@@ -186,22 +184,14 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
         if len(question_text) > 100:
             question_text = question_text[:97] + "..."
             
-        # 选项预览 (一行两个)
-        options_lines = []
-        current_line = []
+        # 选项预览（一行显示）
+        options_parts = []
         for i, opt in enumerate(item.options):
             prefix = "✅ " if i == item.correct_index else "⚪️ "
             escaped_opt = escape_markdown_v2(opt)
-            current_line.append(f"{prefix}{escaped_opt}")
-            
-            if len(current_line) == 2:
-                options_lines.append("   ".join(current_line))
-                current_line = []
-        
-        if current_line:
-            options_lines.append("   ".join(current_line))
-            
-        escaped_options_text = "\n".join(options_lines)
+            options_parts.append(f"{prefix}{escaped_opt}")
+
+        escaped_options_text = "   ".join(options_parts)
 
         # 处理标签
         tags_text = ""
@@ -210,11 +200,9 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
             tags_text = " \\| ".join(escaped_tags)
 
         caption = (
-            f"🆔 `{item.id}` ｜ 🏷 `{escape_markdown_v2(cat_name)}` ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n"
-            f"❓ *{escape_markdown_v2(question_text)}*\n"
-            f"难度: {item.difficulty} ｜ 奖励: {item.reward_base}\\+{item.reward_bonus}\n"
-            f"选项:\n{escaped_options_text}\n"
-            f"🏷 {tags_text}"
+            f"🆔 `{item.id}` ｜ 🗂️ `{escape_markdown_v2(cat_name)}`｜ 🏷️ {tags_text} ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n\n"
+            f"💭 *{escape_markdown_v2(question_text)}*\n"
+            f"{escaped_options_text}\n\n"
         )
 
         with contextlib.suppress(Exception):
