@@ -193,7 +193,10 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
 
 def get_quiz_add_cancel_keyboard() -> InlineKeyboardMarkup:
     """问答快捷添加取消键盘"""
-    buttons = [[InlineKeyboardButton(text=MAIN_IMAGE_CANCEL_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA)]]
+    buttons = [
+        [InlineKeyboardButton(text="📝 发送示例", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":send_example")],
+        [InlineKeyboardButton(text=MAIN_IMAGE_CANCEL_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA)],
+    ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
 

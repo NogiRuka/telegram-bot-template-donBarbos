@@ -2,6 +2,7 @@ from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,8 +56,12 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
         f"{cat_text}"
     )
     await main_msg.update_on_callback(callback, text, get_quiz_add_cancel_keyboard())
+    await state.set_state(QuizAdminState.waiting_for_quick_add)
+    await callback.answer()
 
-    # 发送示例消息
+@router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":send_example")
+async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
+    """发送示例消息"""
     example_text = (
         "*📝 示例格式：*\n\n"
         "`LGBT骄傲月是什么时候？\n"
@@ -69,10 +74,7 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
         "这是一张关于骄傲月的图片`"
     )
 
-    # 尝试根据示例标签查找图片
     example_image = await QuizService.get_random_image_by_tags(session, ["LGBT骄傲月"])
-
-    # 删除按钮
     del_btn = InlineKeyboardBuilder().button(
         text="🗑️ 删除示例",
         callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":del_msg"
@@ -80,12 +82,12 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
 
     try:
         if example_image:
-             await callback.message.answer_photo(
-                 photo=example_image.file_id,
-                 caption=example_text,
-                 parse_mode="MarkdownV2",
-                 reply_markup=del_btn
-             )
+            await callback.message.answer_photo(
+                photo=example_image.file_id,
+                caption=example_text,
+                parse_mode="MarkdownV2",
+                reply_markup=del_btn
+            )
         else:
             await callback.message.answer(
                 example_text,
@@ -94,9 +96,6 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
             )
     except Exception:
         logger.error("发送示例消息失败", exc_info=True)
-        # 忽略发送失败
-
-    await state.set_state(QuizAdminState.waiting_for_quick_add)
     await callback.answer()
 
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":del_msg")

@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import Any
-from datetime import datetime as dt
 
 from sqlalchemy import JSON, Boolean, DateTime, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
+from datetime import datetime as dt
 
 
 class MainImageModel(Base, BasicAuditMixin):

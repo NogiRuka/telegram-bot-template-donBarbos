@@ -28,7 +28,7 @@ from bot.utils.datetime import compute_expire_at, now
 
 class QuizSessionExpiredError(Exception):
     """问答会话已过期异常"""
-    def __init__(self, message: str = "题目已过期", chat_id: int = 0, message_id: int = 0):
+    def __init__(self, message: str = "题目已过期", chat_id: int = 0, message_id: int = 0) -> None:
         self.message = message
         self.chat_id = chat_id
         self.message_id = message_id
@@ -174,13 +174,12 @@ class QuizService:
 
         cat_name = question.category.name if question.category else "无分类"
 
-        caption = (
+        return (
             f"🫧 <b>{title}｜{timeout_sec} 秒挑战 🫧</b>\n\n"
             f"🏷️ {cat_name}｜🖼️ {extra}\n\n"
             f"💭 {question.question}"
         )
 
-        return caption
 
     @staticmethod
     async def create_quiz_session(session: AsyncSession, user_id: int, chat_id: int) -> tuple[QuizQuestionModel, QuizImageModel | None, InlineKeyboardMarkup, int] | None:
@@ -214,13 +213,12 @@ class QuizService:
         # 2. 随机选取图片 (如果题目有 tag)
         quiz_image = await QuizService.get_random_image_by_tags(session, question.tags)
 
-        # 3. 构建选项键盘 (打乱顺序)
+        # 3. 构建选项键盘（保持输入顺序）
         options = question.options  # list[str]
         correct_index = question.correct_index
 
-        # 创建索引列表并打乱
+        # 创建索引列表（不打乱，保持用户输入顺序）
         indices = list(range(len(options)))
-        random.shuffle(indices)
 
         # 找到新的正确答案索引（实际上 Session 存的是原始索引，回调传回的也是原始索引，所以显示顺序变了不影响逻辑）
         # 等等，如果在 Session 中存原始 correct_index，那么回调时只要传回用户选的原始索引即可。
@@ -234,7 +232,7 @@ class QuizService:
                 text=options[idx],
                 callback_data=f"quiz:ans:{idx}"
             )
-        builder.adjust(2) # 每行2个
+        builder.adjust(2)  # 每行2个（示例：第一行 A B；第二行 C D）
 
         # 4. 创建 Session
         expire_at = compute_expire_at(now(), timeout_sec)
@@ -272,22 +270,6 @@ class QuizService:
     async def handle_answer(session: AsyncSession, user_id: int, answer_index: int) -> tuple[bool, int, str]:
         """
         处理用户回答
-ais QuizSessionExpiredError("⚠️ 题目已过期或不存在。")
-
-        # 检查是否过期
-        if quiz_session.expire_a <= now():
-            # 记录过期信息以便抛出异常时携带
-            chat_id = quiz_session.chat_id
-            message_id = qiz_sessio.message_id
-            
-           # 执行超时处理
-            wait QuizService.hande_timeout(ssion user_id)
-            
-            raise QuizSessionExpiredError(
-              ,
-                chat_id=chat_id,
-                message_id=message_id
-            )
         :return: (is_correct, reward_amount, message_text)
         """
         # 1. 获取 Session
@@ -296,6 +278,14 @@ ais QuizSessionExpiredError("⚠️ 题目已过期或不存在。")
 
         if not quiz_session:
             return False, 0, "⚠️ 题目已过期或不存在。"
+
+        # 检查是否过期
+        if quiz_session.expire_at <= now():
+            chat_id = quiz_session.chat_id
+            message_id = quiz_session.message_id
+            await QuizService.handle_timeout(session, user_id)
+            msg = "⚠️ 题目已过期或不存在。"
+            raise QuizSessionExpiredError(msg, chat_id=chat_id, message_id=message_id)
 
         # 2. 获取题目信息 (计算奖励)
         question = await session.get(QuizQuestionModel, quiz_session.question_id)
