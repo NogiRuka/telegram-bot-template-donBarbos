@@ -1,4 +1,5 @@
 import contextlib
+import asyncio
 from io import BytesIO
 
 from aiogram import F
@@ -100,14 +101,16 @@ async def handle_image_upload(message: Message, session: AsyncSession, state: FS
 
     # 处理媒体组(相册)共享 Caption
     if message.media_group_id:
-        data = await state.get_data()
         group_key = f"media_group_caption_{message.media_group_id}"
         
         if caption:
             # 当前消息有 Caption，保存到状态供同组其他消息使用
             await state.update_data({group_key: caption})
         else:
-            # 当前消息无 Caption，尝试从状态获取
+            # 当前消息无 Caption，稍作等待以确保带 Caption 的消息已写入状态
+            await asyncio.sleep(0.5)
+            # 尝试从状态获取
+            data = await state.get_data()
             caption = data.get(group_key, "")
     
     caption = caption or ""
