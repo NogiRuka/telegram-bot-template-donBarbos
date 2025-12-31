@@ -18,35 +18,77 @@ from .router import router
 @router.callback_query(F.data == QUIZ_ADMIN_CALLBACK_DATA + ":add")
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService):
-    """开始快捷添加"""
+    """开始添加"""
     # 获取可显示的分类列表
     stmt = select(QuizCategoryModel).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
     categories = (await session.execute(stmt)).scalars().all()
     
-    cat_text = "\n".join([f"{c.id}\\. {escape_markdown_v2(c.name)}" for c in categories])
+    # 每行 5 个
+    lines = []
+    for i in range(0, len(categories), 5):
+        row = categories[i:i + 5]
+        line = "   ".join(
+            f"{c.id}\\. {escape_markdown_v2(c.name)}"
+            for c in row
+        )
+        lines.append(line)
+
+    cat_text = "\n".join(lines)
     
     text = (
         "*➕ 添加题目*\n\n"
-        "请发送一张图片（可选），并在 Caption（如果是纯文本则直接发送文本）中按以下格式输入：\n\n"
-        "`题目描述\n"
-        "选项A 选项B 选项C 选项D\n"
-        "正确答案序号\\(1\\-4\\)\n"
-        "分类ID\\(见下方列表\\)\n"
-        "标签\\(逗号分隔，可选\\)\n"
-        "难度系数\\(1\\-5，可选，默认1\\)`\n\n"
+        "📸 可发送一张图片（可选）\n"
+        "✍️ 题目请写在说明中（纯文本直接发送即可）\n\n"
+        "📝 *输入格式说明：*\n"
+        "`第1行：题目描述\n"
+        "第2行：选项A　选项B　选项C　选项D（空格分隔）\n"
+        "第3行：正确答案序号（1-4）\n"
+        "第4行：分类ID（见下方列表）\n"
+        "第5行：标签1　标签2（空格或逗号分隔）\n"
+        "第6行：难度系数（1-5，可选，默认1）\n"
+        "第7行：图片来源（链接或文字描述，可选）\n"
+        "第8行：图片补充说明（可选）`\n\n"
         "*可用分类：*\n"
-        f"{cat_text}\n\n"
-        "例如：\n"
-        "`这部番的主角是谁？\n"
-        "路人甲 鸣人 佐助 小樱\n"
-        "2\n"
-        "8\n"
-        "火影忍者,JUMP\n"
-        "1`"
+        f"{cat_text}"
     )
     await main_msg.update_on_callback(callback, text, get_quiz_add_cancel_keyboard())
+    
+    # 发送自动销毁的示例消息
+    example_text = (
+        "*📝 示例格式：*\n\n"
+        "`LGBT骄傲月是什么时候？\n"
+        "3月　6月　9月　12月\n"
+        "2\n"
+        "15\n"
+        "LGBT骄傲月\n"
+        "1\n"
+        "https://example.com/source\n"
+        "这是一张关于骄傲月的图片`"
+    )
+    
+    # 如果用户需要，这里可以发送一张示例图片
+    # 目前仅发送文本示例
+    try:
+        example_msg = await callback.message.answer(example_text, parse_mode="MarkdownV2")
+        # 10秒后删除
+        from bot.utils.message import safe_delete_message
+        import asyncio
+        asyncio.create_task(
+            _delete_message_after(callback.message.bot, callback.message.chat.id, example_msg.message_id, 10)
+        )
+    except Exception:
+        pass # 忽略发送失败
+
     await state.set_state(QuizAdminState.waiting_for_quick_add)
     await callback.answer()
+
+async def _delete_message_after(bot, chat_id, message_id, delay):
+    import asyncio
+    await asyncio.sleep(delay)
+    try:
+        await bot.delete_message(chat_id, message_id)
+    except:
+        pass
 
 @router.message(QuizAdminState.waiting_for_quick_add)
 @require_admin_feature(KEY_ADMIN_QUIZ)
@@ -63,44 +105,37 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
 
     lines = [l.strip() for l in text.split("\n") if l.strip()]
     
-    # 提取难度 (最后一行如果是数字且在1-5之间)
-    difficulty = 1
-    if lines and lines[-1].isdigit():
-        diff_val = int(lines[-1])
-        if 1 <= diff_val <= 5:
-            difficulty = diff_val
-            lines.pop()
-
+    # 至少需要前4行 (题目, 选项, 答案, 分类)
     if len(lines) < 4:
         await send_toast(
             message,
             "⚠️ 格式错误，行数不足。\n"
-            "请确保包含：题目、选项、答案序号、分类、标签（可选）。"
+            "请确保至少包含：题目、选项、答案序号、分类。"
         )
         return
 
     try:
-        # 解析
+        # 1. 题目
         question_text = lines[0]
-        options_text = lines[1]
         
-        # 尝试空格分隔
-        options = [o for o in options_text.split(" ") if o]
+        # 2. 选项
+        options_text = lines[1]
+        options = [o for o in options_text.replace("　", " ").split(" ") if o]
         if len(options) != 4:
             await send_toast(message, f"⚠️ 选项解析失败，找到 {len(options)} 个选项，需要 4 个。")
             return
 
+        # 3. 答案
         correct_idx_raw = lines[2]
         if not correct_idx_raw.isdigit() or not (1 <= int(correct_idx_raw) <= 4):
             await send_toast(message, "⚠️ 正确答案序号必须是 1-4 的数字。")
             return
         correct_index = int(correct_idx_raw) - 1
 
+        # 4. 分类
         category_input = lines[3]
         category_id = None
         category_name = "未知"
-
-        # 必须是ID
         if category_input.isdigit():
             cat_id = int(category_input)
             stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id)
@@ -110,16 +145,34 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
                 category_id = cat.id
                 category_name = cat.name
             else:
-                await send_toast(message, f"⚠️ 未找到ID为 {cat_id} 的分类，请检查下方列表。")
+                await send_toast(message, f"⚠️ 未找到ID为 {cat_id} 的分类。")
                 return
         else:
             await send_toast(message, "⚠️ 分类必须填写ID（数字）。")
             return
         
+        # 5. 标签 (可选)
         tags = []
         if len(lines) > 4:
             tags_line = lines[4]
-            tags = [t.strip() for t in tags_line.replace("，", ",").split(",") if t.strip()]
+            tags = [t.strip() for t in tags_line.replace("，", ",").replace("　", ",").replace(" ", ",").split(",") if t.strip()]
+
+        # 6. 难度 (可选)
+        difficulty = 1
+        if len(lines) > 5 and lines[5].isdigit():
+            diff_val = int(lines[5])
+            if 1 <= diff_val <= 5:
+                difficulty = diff_val
+
+        # 7. 图片来源 (可选)
+        image_source = None
+        if len(lines) > 6:
+            image_source = lines[6]
+
+        # 8. 图片补充说明 (可选)
+        extra_caption = None
+        if len(lines) > 7:
+            extra_caption = lines[7]
 
         # 保存题目
         quiz = QuizQuestionModel(
@@ -146,6 +199,8 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
                 category_id=category_id,
                 tags=tags, # 继承题目标签
                 description=f"自动添加于题目 {quiz.id}",
+                image_source=image_source,
+                extra_caption=extra_caption,
                 is_active=True,
                 created_by=message.from_user.id
             )
@@ -161,6 +216,9 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
             f"🏷️ 标签：{escape_markdown_v2(', '.join(tags))}\n"
             f"🌟 难度：{difficulty}"
         )
+        if image_source:
+            success_text += f"\n🔗 来源：{escape_markdown_v2(image_source)}"
+            
         await state.clear()
         await main_msg.render(message.from_user.id, success_text, get_quiz_add_success_keyboard())
 

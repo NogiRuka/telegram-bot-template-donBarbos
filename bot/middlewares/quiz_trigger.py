@@ -67,6 +67,18 @@ class QuizTriggerMiddleware(BaseMiddleware):
                                 caption = f"🌸 <b>桜之问答</b> [{cat_name}] 🌸\n\n{question.question}\n\n⏳ 限时 {timeout_sec} 秒"
                                 
                                 if image:
+                                    # 处理图片来源和补充说明
+                                    if image.image_source:
+                                        # 如果来源是链接
+                                        if image.image_source.startswith("http"):
+                                            caption += f"\n\n🔗 来源：<a href='{image.image_source}'>链接</a>"
+                                            if image.extra_caption:
+                                                caption += f"\nℹ️ {image.extra_caption}"
+                                        else:
+                                            # 如果来源是文字
+                                            caption += f"\n\n🔗 来源：{image.image_source}"
+                                            # 文字来源时不显示补充说明（根据需求）
+                                    
                                     # 发送图片
                                     # 这里假设 image.file_id 是有效的 Telegram File ID
                                     sent_msg = await bot.send_photo(

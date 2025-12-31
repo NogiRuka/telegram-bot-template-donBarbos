@@ -45,6 +45,8 @@ class QuizImageModel(Base, BasicAuditMixin):
     category: Mapped[QuizCategoryModel] = relationship("QuizCategoryModel", lazy="selectin")
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, comment="关联标签")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="图片描述/备注")
+    image_source: Mapped[str | None] = mapped_column(Text, nullable=True, comment="图片来源(链接或文字)")
+    extra_caption: Mapped[str | None] = mapped_column(Text, nullable=True, comment="图片补充说明")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否启用")
     extra: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="扩展数据")
 
