@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from bot.database.models.quiz import QuizQuestionModel, QuizImageModel, QuizCategoryModel
-from datetime import datetime as dt
 
 async def seed_quiz_data(session: AsyncSession) -> None:
     """
@@ -39,13 +38,13 @@ async def seed_quiz_data(session: AsyncSession) -> None:
             question="LGBT骄傲月是什么时候？",
             options=["3月", "6月", "9月", "12月"],
             correct_index=1,
-            difficulty=3,
+            difficulty=1,
             reward_base=5,
             reward_bonus=15,
             category_id=category_id,
             tags=["LGBT骄傲月"],
             is_active=False,
-            is_deleted=True,
+            is_deleted=False,
         )
         session.add(question)
     
@@ -65,8 +64,8 @@ async def seed_quiz_data(session: AsyncSession) -> None:
             description="自动添加于题目 1",
             image_source="https://zh.wikipedia.org/zh-cn/%E5%90%8C%E5%BF%97%E9%AA%84%E5%82%B2#/media/File:Oslo_Pride_Parade_35.jpg",
             extra_caption="2018年奥斯陆骄傲游行",
-            is_active=False,
-            is_deleted=True,
+            is_active=True,
+            is_deleted=False,
         )
         session.add(image)
         

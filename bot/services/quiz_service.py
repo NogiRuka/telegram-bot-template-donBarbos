@@ -240,7 +240,10 @@ class QuizService:
         if not tags:
             return None
 
-        img_stmt = select(QuizImageModel).where(QuizImageModel.is_active)
+        img_stmt = select(QuizImageModel).where(
+            QuizImageModel.is_active == True,
+            QuizImageModel.is_deleted == False
+        )
         imgs = (await session.execute(img_stmt)).scalars().all()
 
         matched_imgs = [
