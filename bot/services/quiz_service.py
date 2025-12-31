@@ -203,112 +203,170 @@ class QuizService:
             return False
 
         # 4. 冷却时间检查
-        last_log_stmt = select(QuizLogModel).where(
+        last_log_stmt = select(QuizLogModel.created_at).where(
             QuizLogModel.user_id == user_id
-        ).order_by(QuizLogModel.created_at.desc()).limit(1)
-        last_log = (await session.execute(last_log_stmt)).scalar_one_or_none()
+        ).order_by(desc(QuizLogModel.created_at)).limit(1)
+        last_time = (await session.execute(last_log_stmt)).scalar()
 
-        if last_log:
-            next_allowed = last_log.created_at + timedelta(minutes=cooldown_min)
-            if now() < next_allowed:
+        if last_time:
+            # 计算时间差
+            elapsed = now() - last_time
+            if elapsed < timedelta(minutes=cooldown_min):
                 return False
 
         return True
 
+    @classmethod
+    async def get_random_image_by_tags(cls, session: AsyncSession, tags: list[str]) -> QuizImageModel | None:
+        """根据标签随机获取图片
+
+        功能说明:
+        - 在所有启用图片中筛选与标签有交集的图片，并随机返回一张
+
+        输入参数:
+        - session: 数据库会话
+        - tags: 标签列表
+
+        返回值:
+        - Optional[QuizImageModel]: 随机匹配的图片或 None
+        """
+        if not tags:
+            return None
+
+        img_stmt = select(QuizImageModel).where(QuizImageModel.is_active)
+        imgs = (await session.execute(img_stmt)).scalars().all()
+
+        matched_imgs = [
+            img for img in imgs
+            if img.tags and set(tags) & set(img.tags)
+        ]
+
+        if matched_imgs:
+            return random.choice(matched_imgs)
+        return None
+
+    @staticmethod
+    async def build_quiz_caption(
+        question: QuizQuestionModel,
+        image: QuizImageModel | None,
+        session: AsyncSession = None,
+        timeout_sec: int | None = None,
+        title: str = "桜之问答",
+    ) -> str:
+        """
+        构建问答消息说明
+
+        功能说明:
+        - 根据题目与图片信息生成统一的 HTML 样式说明文本
+        - 包含分类名称、超时提示、图片来源与补充说明（当来源为链接时，优先使用 extra_caption 作为链接文字）
+
+        输入参数:
+        - question: 题目对象
+        - image: 图片对象（可选）
+        - session: 数据库会话（可选，若未提供 timeout_sec 则必须提供）
+        - timeout_sec: 会话超时时间（秒，可选，若未提供则从数据库获取）
+        - title: 标题（默认桜之问答，可自定义，如测试标题）
+
+        返回值:
+        - str: 构建完成的说明文本（HTML）
+        """
+        if timeout_sec is None:
+            if session:
+                timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
+            else:
+                timeout_sec = 60 # 默认值，防止 session 和 timeout_sec 都没传的情况
+
+        if image and image.image_source:
+            if image.image_source.startswith("http"):
+                link_text = image.extra_caption.strip() if image.extra_caption else "链接"
+                extra = f"<a href='{image.image_source}'>{link_text}</a>"
+            else:
+                extra = f"{image.image_source}"
+
+        cat_name = question.category.name if question.category else "无分类"
+
+        return (
+            f"🫧 <b>{title}｜{timeout_sec} 秒挑战 🫧</b>\n\n"
+            f"🗂️ {cat_name}｜🖼️ {extra}\n\n"
+            f"💭 {question.question}"
+        )
+
+
     @staticmethod
     async def create_quiz_session(session: AsyncSession, user_id: int, chat_id: int) -> tuple[QuizQuestionModel, QuizImageModel | None, InlineKeyboardMarkup, int] | None:
         """
-        创建新的问答会话
+        创建问答会话
+
+        :param session: 数据库会话
+        :param user_id: 用户ID
+        :param chat_id: 聊天ID
+        :return: (Question, Image, Keyboard, SessionID) or None
         """
-        # 1. 随机选择题目 (可优化为加权随机)
-        # 获取所有启用的题目ID
-        q_ids = (await session.execute(select(QuizQuestionModel.id).where(QuizQuestionModel.is_active == True))).scalars().all()
-        if not q_ids:
-            return None
-        
-        q_id = random.choice(q_ids)
-        question = await session.get(QuizQuestionModel, q_id)
+        # 若已有活跃会话，直接返回 None 或清理过期
+        active_stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
+        active_session = (await session.execute(active_stmt)).scalar_one_or_none()
+        if active_session:
+            if active_session.expire_at <= now():
+                await QuizService.handle_timeout(session, user_id)
+            else:
+                return None
+
+        # 获取超时时间配置
+        timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
+        # 1. 随机选取题目
+        # 这种写法在数据量大时效率较低，但对于初期足够
+        stmt = select(QuizQuestionModel).where(QuizQuestionModel.is_active).order_by(func.random()).limit(1)
+        question = (await session.execute(stmt)).scalar_one_or_none()
+
         if not question:
             return None
 
-        # 2. 随机选择图片 (可选)
-        # 50% 概率带图，或者根据题目是否有特定配置
-        # 这里简单处理：如果题目有分类，优先选同分类图片；否则随机。
-        image = None
-        if random.random() < 0.5:
-            img_stmt = select(QuizImageModel).where(QuizImageModel.is_active == True)
-            if question.category_id:
-                img_stmt = img_stmt.where(QuizImageModel.category_id == question.category_id)
-            
-            # 随机取一张
-            # SQLite RANDOM() func.random()
-            img_stmt = img_stmt.order_by(func.random()).limit(1)
-            image = (await session.execute(img_stmt)).scalar_one_or_none()
+        # 2. 随机选取图片 (如果题目有 tag)
+        quiz_image = await QuizService.get_random_image_by_tags(session, question.tags)
 
-        # 3. 创建会话记录
-        # 打乱选项
-        options = list(question.options)
-        correct_option = options[question.correct_index]
-        random.shuffle(options)
-        new_correct_index = options.index(correct_option)
+        # 3. 构建选项键盘（保持输入顺序）
+        options = question.options  # list[str]
+        correct_index = question.correct_index
 
-        # 计算过期时间
-        timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
-        if timeout_sec is None:
-            timeout_sec = 60 # 默认60秒
-        expire_at = compute_expire_at(timeout_sec)
+        # 创建索引列表（不打乱，保持用户输入顺序）
+        indices = list(range(len(options)))
 
+        # 找到新的正确答案索引（实际上 Session 存的是原始索引，回调传回的也是原始索引，所以显示顺序变了不影响逻辑）
+        # 等等，如果在 Session 中存原始 correct_index，那么回调时只要传回用户选的原始索引即可。
+        # 按钮 callback_data: quiz:answer:{option_index}
+        # 这里的 option_index 指的是 options 列表中的下标。
+        # 无论按钮怎么排，这个下标指向的内容不变。
+
+        builder = InlineKeyboardBuilder()
+        for idx in indices:
+            builder.button(
+                text=options[idx],
+                callback_data=f"quiz:ans:{idx}"
+            )
+        builder.adjust(2)  # 每行2个（示例：第一行 A B；第二行 C D）
+
+        # 4. 创建 Session
+        expire_at = compute_expire_at(now(), timeout_sec)
+
+        # 这里的 message_id 暂时填 0，发送消息后需要更新
         quiz_session = QuizActiveSessionModel(
             user_id=user_id,
             chat_id=chat_id,
-            message_id=0, # 稍后更新
+            message_id=0,
             question_id=question.id,
-            correct_index=new_correct_index,
-            expire_at=expire_at,
-            extra={"shuffled_options": options}
+            correct_index=correct_index,
+            expire_at=expire_at
         )
         session.add(quiz_session)
-        await session.commit()
-        await session.refresh(quiz_session)
+        try:
+            await session.commit()
+            await session.refresh(quiz_session)
+        except IntegrityError:
+            await session.rollback()
+            logger.warning("重复的活跃会话，跳过创建")
+            return None
 
-        # 4. 构建键盘
-        markup = QuizService.build_quiz_keyboard(options, quiz_session.id)
-
-        return question, image, markup, quiz_session.id
-
-    @staticmethod
-    def build_quiz_keyboard(options: list[str], session_id: int) -> InlineKeyboardMarkup:
-        builder = InlineKeyboardBuilder()
-        for i, opt in enumerate(options):
-            builder.button(text=opt, callback_data=f"quiz:ans:{session_id}:{i}")
-        builder.adjust(1) # 每行一个
-        return builder.as_markup()
-
-    @staticmethod
-    async def build_quiz_caption(question: QuizQuestionModel, image: QuizImageModel | None, session: AsyncSession) -> str:
-        """构建题目文案"""
-        # 获取奖励配置
-        base = question.reward_base
-        bonus = question.reward_bonus
-        
-        currency_name = await CurrencyService.get_currency_name(session)
-        
-        text = (
-            f"🎲 *趣味问答* 🎲\n\n"
-            f"❓ *问题*: {question.question}\n"
-        )
-        if question.difficulty > 1:
-            text += f"🔥 难度: {'⭐' * question.difficulty}\n"
-            
-        text += f"\n💰 *奖励*:\n"
-        text += f"• 答对: +{base + bonus} {currency_name}\n"
-        text += f"• 答错: +{base} {currency_name} (低保)\n"
-        
-        if image and image.description:
-            text += f"\n🖼️ *提示*: {image.description}\n"
-            
-        text += "\n⏳ 请在倒计时结束前作答！"
-        return text
+        return question, quiz_image, builder.as_markup(), quiz_session.id
 
     @staticmethod
     async def update_session_message_id(session: AsyncSession, session_id: int, message_id: int) -> None:
@@ -320,81 +378,96 @@ class QuizService:
             await session.commit()
 
     @staticmethod
-    async def handle_answer(session: AsyncSession, session_id: int, user_index: int, user_id: int) -> dict:
+    async def handle_answer(session: AsyncSession, user_id: int, answer_index: int) -> tuple[bool, int, str]:
         """
         处理用户回答
-        :return: 结果字典 {is_correct, reward, correct_option, user_option}
+        :return: (is_correct, reward_amount, message_text)
         """
-        # 1. 获取会话
-        stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.id == session_id)
+        # 1. 获取 Session
+        stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
         
         if not quiz_session:
-            raise QuizSessionExpiredError("会话已过期或不存在")
-            
-        if quiz_session.user_id != user_id:
-            raise ValueError("这不是你的题目哦")
+            return False, 0, "⚠️ 题目已过期或不存在。"
 
-        # 2. 验证答案
-        is_correct = (user_index == quiz_session.correct_index)
-        
-        # 获取题目信息
+        # 检查是否过期
+        if quiz_session.expire_at <= now():
+            chat_id = quiz_session.chat_id
+            message_id = quiz_session.message_id
+            await QuizService.handle_timeout(session, user_id)
+            msg = "⚠️ 题目已过期或不存在。"
+            raise QuizSessionExpiredError(msg, chat_id=chat_id, message_id=message_id)
+
+        # 2. 获取题目信息 (计算奖励)
         question = await session.get(QuizQuestionModel, quiz_session.question_id)
-        
-        # 3. 发放奖励
-        reward = question.reward_base + (question.reward_bonus if is_correct else 0)
-        await CurrencyService.add_balance(session, user_id, reward, "quiz_reward", f"问答奖励: Q{question.id}")
-        
-        # 4. 记录日志
+        if not question:
+            # 异常情况，清理 session
+            await session.delete(quiz_session)
+            await session.commit()
+            return False, 0, "⚠️ 题目数据异常。"
+
+        # 3. 判定结果
+        is_correct = (answer_index == quiz_session.correct_index)
+
+        # 4. 计算奖励
+        reward = question.reward_bonus if is_correct else question.reward_base
+
+        # 5. 记录日志
         log = QuizLogModel(
             user_id=user_id,
             chat_id=quiz_session.chat_id,
             question_id=quiz_session.question_id,
-            user_answer=user_index,
-            is_correct=is_correct
+            user_answer=answer_index,
+            is_correct=is_correct,
+            reward_amount=reward,
+            # time_taken 暂未精确计算，可用 now() 减去 session 创建时间估算，但 session 没有 created_at 字段(只有mixin的)
+            # 这里简单处理
+            time_taken=None
         )
         session.add(log)
-        
-        # 5. 删除会话
+
+        # 6. 发放奖励
+        if reward > 0:
+            await CurrencyService.add_currency(
+                session,
+                user_id,
+                reward,
+                "quiz_reward",
+                f"问答奖励: {'答对' if is_correct else '答错'}"
+            )
+
+        # 7. 删除 Session
         await session.delete(quiz_session)
         await session.commit()
-        
-        # 获取选项文本用于显示
-        options = quiz_session.extra.get("shuffled_options", [])
-        user_opt = options[user_index] if 0 <= user_index < len(options) else "?"
-        correct_opt = options[quiz_session.correct_index] if 0 <= quiz_session.correct_index < len(options) else "?"
-        
-        return {
-            "is_correct": is_correct,
-            "reward": reward,
-            "correct_option": correct_opt,
-            "user_option": user_opt,
-            "message_id": quiz_session.message_id,
-            "chat_id": quiz_session.chat_id
-        }
+
+        if is_correct:
+            msg = "✅ 回答正确！"  # noqa: RUF001
+        else:
+            correct_option = question.options[question.correct_index]
+            msg = f"❌ 回答错误。\n正确答案是：{correct_option}"  # noqa: RUF001
+        msg += f"\n获得奖励：+{reward} 精粹"  # noqa: RUF001
+
+        return is_correct, reward, msg
 
     @staticmethod
     async def handle_timeout(session: AsyncSession, user_id: int) -> None:
-        """处理超时（清理会话，不发奖励或发低保? 目前设计是不发）"""
-        # 查找该用户的所有过期会话
-        stmt = select(QuizActiveSessionModel).where(
-            QuizActiveSessionModel.user_id == user_id,
-            QuizActiveSessionModel.expire_at <= now()
-        )
-        sessions = (await session.execute(stmt)).scalars().all()
-        
-        for s in sessions:
-            # 记录日志 (未答)
+        """
+        处理超时 (通常由定时任务调用，或者用户点击已过期的按钮时触发清理)
+        """
+        stmt = select(QuizActiveSessionModel).where(QuizActiveSessionModel.user_id == user_id)
+        quiz_session = (await session.execute(stmt)).scalar_one_or_none()
+
+        if quiz_session:
+            # 记录超时日志
             log = QuizLogModel(
-                user_id=s.user_id,
-                chat_id=s.chat_id,
-                question_id=s.question_id,
-                user_answer=None,
+                user_id=user_id,
+                chat_id=quiz_session.chat_id,
+                question_id=quiz_session.question_id,
+                user_answer=None, # NULL 表示未答/超时
                 is_correct=False
             )
             session.add(log)
-            await session.delete(s)
-            
+            await session.delete(quiz_session)
         await session.commit()
 
     @staticmethod
