@@ -24,7 +24,7 @@ from bot.config.constants import (
     KEY_QUIZ_SESSION_TIMEOUT,
 )
 from bot.services.currency import CurrencyService
-from bot.utils.datetime import now
+from bot.utils.datetime import now, compute_expire_at
 
 
 class QuizService:
@@ -228,7 +228,7 @@ class QuizService:
         builder.adjust(2) # 每行2个
 
         # 4. 创建 Session
-        expire_at = int((now() + timedelta(seconds=timeout_sec)).timestamp())
+        expire_at = compute_expire_at(now(), timeout_sec)
         
         # 这里的 message_id 暂时填 0，发送消息后需要更新
         quiz_session = QuizActiveSessionModel(
