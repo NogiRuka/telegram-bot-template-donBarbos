@@ -176,7 +176,7 @@ class QuizService:
 
         return (
             f"🫧 <b>{title}｜{timeout_sec} 秒挑战 🫧</b>\n\n"
-            f"🏷️ {cat_name}｜🖼️ {extra}\n\n"
+            f"🗂️ {cat_name}｜🖼️ {extra}\n\n"
             f"💭 {question.question}"
         )
 
