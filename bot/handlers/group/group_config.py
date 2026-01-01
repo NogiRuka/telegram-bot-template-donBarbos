@@ -49,6 +49,8 @@ class GroupConfigStates(StatesGroup):
     waiting_for_limits = State()
 
 
+from bot.utils.text import escape_markdown_v2
+
 async def _get_group_config_content(session: AsyncSession, config: GroupConfigModel) -> tuple[str, types.InlineKeyboardMarkup]:
     """
     获取群组配置显示内容（文本和键盘）
@@ -62,20 +64,24 @@ async def _get_group_config_content(session: AsyncSession, config: GroupConfigMo
     """
     total_messages = await get_group_message_stats(session, config.chat_id)
 
-    # 构建配置信息文本
+    # 辅助转义函数
+    def esc(text: str) -> str:
+        return escape_markdown_v2(str(text))
+
+    # 构建配置信息文本 (MarkdownV2)
     config_text = f"""
 🔧 *群组消息保存配置*
 
 📊 *基本信息*
-• 群组: {config.get_group_info_display()}
-• 群组ID: `{config.chat_id}`
-• 群组类型: {config.group_type.value}
+• 群组: {esc(config.get_group_info_display())}
+• 群组ID: `{esc(str(config.chat_id))}`
+• 群组类型: {esc(config.group_type.value)}
 
 ⚙️ *保存设置*
-• 状态: {config.get_save_status_display()}
-• 保存模式: {config.message_save_mode.value}
-• 已保存消息: {config.total_messages_saved} 条
-• 数据库总消息: {total_messages} 条
+• 状态: {esc(config.get_save_status_display())}
+• 保存模式: {esc(config.message_save_mode.value)}
+• 已保存消息: {esc(str(config.total_messages_saved))} 条
+• 数据库总消息: {esc(str(total_messages))} 条
 
 📋 *过滤设置*
 • 文本消息: {"✅" if config.save_text_messages else "❌"}
@@ -85,18 +91,18 @@ async def _get_group_config_content(session: AsyncSession, config: GroupConfigMo
 • 机器人消息: {"✅" if config.save_bot_messages else "❌"}
 
 ⏰ *时间设置*
-• 开始时间: {config.save_start_date.strftime("%Y-%m-%d %H:%M") if config.save_start_date else "未设置"}
-• 结束时间: {config.save_end_date.strftime("%Y-%m-%d %H:%M") if config.save_end_date else "未设置"}
+• 开始时间: {esc(config.save_start_date.strftime("%Y-%m-%d %H:%M") if config.save_start_date else "未设置")}
+• 结束时间: {esc(config.save_end_date.strftime("%Y-%m-%d %H:%M") if config.save_end_date else "未设置")}
 
 📏 *限制设置*
-• 每日最大消息数: {config.max_messages_per_day or "无限制"}
-• 最大文件大小: {config.max_file_size_mb or "无限制"} MB
+• 每日最大消息数: {esc(str(config.max_messages_per_day or "无限制"))}
+• 最大文件大小: {esc(str(config.max_file_size_mb or "无限制"))} MB
 
 🔍 *关键词过滤*
 • 包含关键词: {len(json.loads(config.include_keywords)) if config.include_keywords else 0} 个
 • 排除关键词: {len(json.loads(config.exclude_keywords)) if config.exclude_keywords else 0} 个
 
-📝 *备注*: {config.notes or "无"}
+📝 *备注*: {esc(config.notes or "无")}
     """
 
     return config_text, get_group_config_keyboard(config)
@@ -173,7 +179,7 @@ async def cmd_group_config(message: types.Message, command: CommandObject, sessi
         )
 
         text, markup = await _get_group_config_content(session, config)
-        await message.reply(text, reply_markup=markup, parse_mode="Markdown")
+        await message.reply(text, reply_markup=markup, parse_mode="MarkdownV2")
 
     except Exception as e:
         logger.exception(f"❌ 显示群组配置失败: {e}")
@@ -211,7 +217,7 @@ async def handle_group_config_callback(callback: types.CallbackQuery, session: A
             # 更新界面
             text, markup = await _get_group_config_content(session, config)
             with suppress(TelegramBadRequest):
-                await callback.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
+                await callback.message.edit_text(text, reply_markup=markup, parse_mode="MarkdownV2")
 
         elif action == "change_mode":
             # 显示保存模式选择
