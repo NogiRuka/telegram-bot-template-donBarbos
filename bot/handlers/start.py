@@ -94,10 +94,10 @@ async def start_handler(
     main_msg: MainMessageService,
 ) -> None:
     """/start 入口：按角色渲染首页"""
-    # 仅允许私聊
+    # 仅允许私聊，非私聊时回复提示并结束
     if message.chat.type != "private":
+        await message.reply("💫 请私聊我来开启对话哦。")
         return
-
     uid = message.from_user.id
 
     # 检查群组验证
@@ -108,7 +108,7 @@ async def start_handler(
             target_group = f"@{target_group}"
             
         await message.answer(
-            f"🚫 您必须先加入群组 {target_group} 才能使用本机器人。",
+            f"🚫 您必须先加入群组 {target_group} 才能和我对话哦。",
         )
         return
 
