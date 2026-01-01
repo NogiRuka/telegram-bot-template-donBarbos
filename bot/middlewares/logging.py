@@ -163,6 +163,11 @@ class LoggingMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
+        # 添加通用日志打印
+        if hasattr(event, "message") and event.message and event.message.text:
+            self.logger.info(f"收到更新: {event.message.text} from user {event.message.from_user.id if event.message.from_user else 'unknown'}")
+        
+        attributes = {}
         # 定义：(属性名, 日志前缀, 处理函数)
         event_handlers = [
             ("message", "收到消息", self.process_message),
