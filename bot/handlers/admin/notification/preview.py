@@ -99,6 +99,9 @@ async def handle_notify_preview(
 
     rows = (await session.execute(stmt)).all()
 
+    if not rows:
+        await callback.answer("🈚 没有可预览的通知")
+
     # 更新主控消息
     text = (
         f"👀 *通知预览*\n\n"
@@ -107,9 +110,6 @@ async def handle_notify_preview(
     )
     kb = get_notification_preview_pagination_keyboard(page, total_pages, limit)
     await main_msg.update_on_callback(callback, text, kb)
-
-    if not rows:
-        return
 
     # 存储预览消息信息：{message_id: notification_id}
     preview_data = {}

@@ -263,8 +263,8 @@ def get_notification_preview_pagination_keyboard(page: int, total_pages: int, li
 
     # 关闭与返回
     builder.row(
-        InlineKeyboardButton(text="❌ 关闭预览", callback_data="admin:notify_close_preview"),
-        InlineKeyboardButton(text="🔙 返回通知面板", callback_data="admin:notify")
+        InlineKeyboardButton(text="🔙 返回新片通知", callback_data="admin:new_item_notification"),
+        BACK_TO_HOME_BUTTON
     )
     
     return builder.as_markup()
