@@ -38,8 +38,7 @@ async def send_group_notification(
         tags = f"{to_hashtag(group_name)} #ID{user_id} {to_hashtag(username)} {to_hashtag(action)}"
         
         # 📖 FullName Reason
-        content = f"📖 {html.escape(full_name)} {html.escape(reason)}"
-        
+        content = f"📖 <code>{html.escape(full_name)}</code> {html.escape(reason)}"
         msg_text = f"{tags}\n{content}"
 
         await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="HTML")
