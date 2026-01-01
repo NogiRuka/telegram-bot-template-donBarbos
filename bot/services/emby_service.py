@@ -994,3 +994,49 @@ async def update_user_blocked_tags(
     except Exception as e:
         logger.error(f"❌ 更新屏蔽标签失败: {e}")
         return False, str(e)
+
+
+async def run_emby_sync(session: AsyncSession) -> None:
+    """运行 Emby 数据同步与清理
+    
+    功能说明:
+    1. 同步用户
+    2. 同步设备
+    3. 清理设备
+    """
+    logger.info("🔄 开始执行 Emby 数据同步与清理...")
+    try:
+        await save_all_emby_users(session)
+        await save_all_emby_devices(session)
+        await cleanup_devices_by_policy(session)
+        logger.info("✅ Emby 数据同步与清理完成")
+    except Exception as e:
+        logger.error(f"❌ Emby 数据同步与清理失败: {e}")
+
+
+async def start_scheduler(bot: Bot) -> None:
+    """启动 Emby 定时同步调度器"""
+    logger.info("⏰ [Emby同步] 调度器启动")
+    from bot.database.database import sessionmaker
+    
+    while True:
+        try:
+            await asyncio.sleep(1)
+            
+            # 获取当前时间 HH:MM
+            now_str = datetime.now().strftime("%H:%M")
+            target_time = settings.EMBY_SYNC_TIME
+            
+            # 秒数归零时检查，避免一分钟内重复触发
+            if datetime.now().second == 0 and now_str == target_time:
+                logger.info(f"⏰ [Emby同步] 时间匹配 ({now_str})，触发同步任务")
+                async with sessionmaker() as session:
+                     await run_emby_sync(session)
+                # 等待一分钟跳过当前时间点
+                await asyncio.sleep(60)
+                
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"❌ [Emby同步] 调度器出错: {e}")
+            await asyncio.sleep(5)

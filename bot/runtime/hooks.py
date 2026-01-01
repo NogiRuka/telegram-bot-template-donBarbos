@@ -21,7 +21,7 @@ from bot.handlers import get_handlers_router
 from bot.keyboards.default_commands import remove_default_commands, set_default_commands
 from bot.services.config_service import ensure_config_defaults, sync_notification_channels
 from bot.services.currency import CurrencyService
-from bot.services.emby_service import cleanup_devices_by_policy, save_all_emby_devices, save_all_emby_users
+from bot.services.emby_service import run_emby_sync, start_scheduler
 from bot.services.quiz_service import QuizService
 from bot.database.seed_quiz import seed_quiz_data
 
