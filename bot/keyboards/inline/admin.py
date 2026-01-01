@@ -246,7 +246,7 @@ def get_notification_settings_keyboard(channels: list[dict]) -> InlineKeyboardMa
     buttons.append([BACK_TO_HOME_BUTTON])
 
     keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(1) # 每行1个
+    keyboard.adjust(2)
     return keyboard.as_markup()
 
 
