@@ -219,7 +219,7 @@ def get_notification_settings_keyboard(channels: list[dict]) -> InlineKeyboardMa
     
     # 频道列表
     for ch in channels:
-        name = ch.get("name", "Unknown")
+        name = ch.get("name", "未知频道")
         ch_id = ch.get("id")
         is_enabled = ch.get("enabled", True)
         status_icon = "🟢" if is_enabled else "🔴"
