@@ -203,6 +203,10 @@ NOTIFY_CLOSE_PREVIEW_CALLBACK_DATA = "admin:notify_close_preview"
 NOTIFY_SEND_LABEL = "🚀 一键通知"
 NOTIFY_SEND_CALLBACK_DATA = "admin:notify_send"
 
+NOTIFY_SETTINGS_LABEL = "⚙️ 通知设置"
+NOTIFY_SETTINGS_CALLBACK_DATA = "admin:notify_settings"
+NOTIFY_SETTINGS_TOGGLE_CALLBACK_DATA = "admin:notify_settings:toggle"
+
 # 确认发送
 NOTIFY_CONFIRM_SEND_LABEL = "🚀 确认发送"
 NOTIFY_CONFIRM_SEND_CALLBACK_DATA = "admin:notify_confirm_send"

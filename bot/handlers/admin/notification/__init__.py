@@ -1,4 +1,4 @@
 from .router import router
-from . import menu, preview, send
+from . import menu, preview, send, settings
 
 __all__ = ["router"]

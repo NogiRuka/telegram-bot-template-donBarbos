@@ -17,6 +17,7 @@ from bot.keyboards.inline.buttons import (
     MAIN_IMAGE_UPLOAD_NSFW_BUTTON,
     MAIN_IMAGE_UPLOAD_SFW_BUTTON,
     NOTIFY_SEND_BUTTON,
+    NOTIFY_SETTINGS_BUTTON,
 )
 from bot.keyboards.inline.constants import (
     BACK_TO_HOME_LABEL,
@@ -35,6 +36,7 @@ from bot.keyboards.inline.constants import (
     NOTIFY_COMPLETE_LABEL,
     NOTIFY_PREVIEW_CALLBACK_DATA,
     NOTIFY_PREVIEW_LABEL,
+    NOTIFY_SETTINGS_TOGGLE_CALLBACK_DATA,
     QUIZ_ADMIN_ADD_QUICK_LABEL,
     QUIZ_ADMIN_CALLBACK_DATA,
     QUIZ_ADMIN_CATEGORY_LABEL,
@@ -192,10 +194,59 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
                 callback_data=NOTIFY_PREVIEW_CALLBACK_DATA,
             ),
         ],
-        [NOTIFY_SEND_BUTTON],
+        [NOTIFY_SETTINGS_BUTTON, NOTIFY_SEND_BUTTON],
         [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)
+    return keyboard.as_markup()
+
+
+def get_notification_settings_keyboard(channels: list[dict]) -> InlineKeyboardMarkup:
+    """获取通知设置键盘
+
+    功能说明:
+    - 列出所有配置的通知频道
+    - 每个频道显示当前状态(启用/禁用), 点击可切换
+    - 底部包含返回按钮
+
+    输入参数:
+    - channels: 频道配置列表, 每个元素为 dict(id, name, enabled)
+
+    返回值:
+    - InlineKeyboardMarkup: 键盘对象
+    """
+    buttons = []
+    
+    # 频道列表
+    for ch in channels:
+        name = ch.get("name", "Unknown")
+        ch_id = ch.get("id")
+        is_enabled = ch.get("enabled", True)
+        status_icon = "🟢" if is_enabled else "🔴"
+        
+        btn_text = f"{status_icon} {name}"
+        callback = f"{NOTIFY_SETTINGS_TOGGLE_CALLBACK_DATA}:{ch_id}"
+        
+        buttons.append([InlineKeyboardButton(text=btn_text, callback_data=callback)])
+
+    # 返回按钮 (返回到通知管理面板)
+    # 注意: 这里不能直接用 BACK_TO_ADMIN_PANEL_BUTTON, 因为那是返回一级面板
+    # 我们需要返回到 NOTIFY_MENU (即通知面板)
+    # 现有的通知面板是通过 menu.py 中的 notify_menu_handler 处理的
+    # 通常我们可以复用 "admin:notify" 或者类似的 callback
+    # 查看 menu.py 发现入口 callback 是 "admin:notify" (在 buttons.py 中未定义单独常量, 但在 mapping 里有)
+    # 让我们假设通知面板的 callback 是 "admin:notify" (对应 NOTIFY_SEND_BUTTON 所在的面板)
+    # 实际上 NOTIFY_SEND_BUTTON 是在 panel 里。
+    # 让我们看 buttons.py 或 constants.py 里的定义。
+    # 刚才看 buttons.py 没看到进入 notification panel 的按钮定义 (除了 NOTIFY_SEND_BUTTON 是功能按钮)
+    # 等等，ADMIN_FEATURES_MAPPING 里有 "notify": (KEY_ADMIN_NOTIFY, "📢 上新通知")
+    # 所以 callback 是 "admin:notify"
+    
+    buttons.append([InlineKeyboardButton(text="🔙 返回通知面板", callback_data="admin:notify")])
+    buttons.append([BACK_TO_HOME_BUTTON])
+
+    keyboard = InlineKeyboardBuilder(markup=buttons)
+    keyboard.adjust(1) # 每行1个
     return keyboard.as_markup()
 
 
