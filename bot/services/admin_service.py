@@ -110,6 +110,7 @@ async def ban_emby_user(
     session.add(audit_log)
 
     # 4. 发送通知到管理员群组
+    logger.info(f"尝试发送管理员通知(Ban): bot={bool(bot)}, group={settings.OWNER_MSG_GROUP}, user_info={bool(user_info)}")
     if bot and settings.OWNER_MSG_GROUP and user_info:
         try:
             # 格式: #哪个群组 #哪个用户id #哪个用户名 #什么行为
@@ -133,8 +134,9 @@ async def ban_emby_user(
             )
             
             await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="Markdown")
+            logger.info(f"管理员通知(Ban)已发送至 {settings.OWNER_MSG_GROUP}")
         except Exception as e:
-            logger.error(f"发送管理员通知失败: {e}")
+            logger.error(f"发送管理员通知(Ban)失败: {e}")
             # 不影响主要流程
             results.append(f"⚠️ 发送通知失败: {e}")
 
@@ -186,6 +188,7 @@ async def unban_user_service(
     results.append("✅ 已记录解封审计日志")
     
     # 发送通知到管理员群组
+    logger.info(f"尝试发送管理员通知(Unban): bot={bool(bot)}, group={settings.OWNER_MSG_GROUP}, user_info={bool(user_info)}")
     if bot and settings.OWNER_MSG_GROUP and user_info:
         try:
             # 格式: #哪个群组 #哪个用户id #哪个用户名 #什么行为
@@ -208,8 +211,9 @@ async def unban_user_service(
             )
             
             await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="Markdown")
+            logger.info(f"管理员通知(Unban)已发送至 {settings.OWNER_MSG_GROUP}")
         except Exception as e:
-            logger.error(f"发送管理员通知失败: {e}")
+            logger.error(f"发送管理员通知(Unban)失败: {e}")
             results.append(f"⚠️ 发送通知失败: {e}")
             
     return results
