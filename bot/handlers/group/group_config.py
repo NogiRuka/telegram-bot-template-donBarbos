@@ -16,7 +16,7 @@ from contextlib import suppress
 from aiogram import F, Router, types
 from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import Command, CommandObject
+from aiogram.filters import Command, CommandObject, or_f
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -102,7 +102,7 @@ async def _get_group_config_content(session: AsyncSession, config: GroupConfigMo
     return config_text, get_group_config_keyboard(config)
 
 
-@router.message(Command("group_config", "gc"), F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.PRIVATE]), AdminFilter() | GroupAdminFilter())
+@router.message(Command("group_config", "gc"), F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.PRIVATE]), or_f(AdminFilter(), GroupAdminFilter()))
 async def cmd_group_config(message: types.Message, command: CommandObject, session: AsyncSession) -> None:
     """
     群组配置命令
