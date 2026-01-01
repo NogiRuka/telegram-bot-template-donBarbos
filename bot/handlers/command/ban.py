@@ -7,16 +7,10 @@ from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from loguru import logger
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
-from bot.database.models import (
-    EmbyUserModel,
-    UserExtendModel,
-)
-from bot.utils.emby import get_emby_client
-from bot.utils.datetime import now
+from bot.services.admin_service import ban_emby_user
 
 router = Router(name="command_ban")
 
@@ -73,42 +67,14 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
     else:
         results.append("ℹ️ 未配置群组，跳过群组移除")
 
-    # 2. 查找 Emby 关联
-    stmt = select(UserExtendModel).where(UserExtendModel.user_id == target_user_id)
-    result = await session.execute(stmt)
-    user_extend = result.scalar_one_or_none()
-
-    if user_extend and user_extend.emby_user_id:
-        emby_user_id = user_extend.emby_user_id
-        
-        # 删除 Emby 账号
-        emby_client = get_emby_client()
-        if emby_client:
-            try:
-                await emby_client.delete_user(emby_user_id)
-                results.append(f"✅ Emby 账号已删除 (ID: {emby_user_id})")
-            except Exception as e:
-                logger.error(f"删除 Emby 账号失败: {e}")
-                results.append(f"❌ Emby 账号删除失败: {e}")
-        else:
-            results.append("⚠️ 未配置 Emby API，跳过账号删除")
-
-        # 软删除数据库 EmbyUserModel
-        stmt_emby = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
-        result_emby = await session.execute(stmt_emby)
-        emby_user = result_emby.scalar_one_or_none()
-
-        if emby_user:
-            emby_user.is_deleted = True
-            emby_user.deleted_at = now()
-            emby_user.deleted_by = message.from_user.id
-            emby_user.remark = f"被管理员 {message.from_user.id} 手动封禁"
-            # session.add(emby_user) # SQLAlchemy 自动追踪变更
-            results.append("✅ Emby 用户数据已标记为删除")
-        else:
-            results.append("⚠️ 未找到本地 Emby 用户数据")
-    else:
-        results.append("ℹ️ 该用户未绑定 Emby 账号")
+    # 2. 调用封禁服务 (Emby 账号删除 + 软删除 + 审计日志)
+    emby_results = await ban_emby_user(
+        session=session,
+        target_user_id=target_user_id,
+        admin_id=message.from_user.id,
+        reason="管理员手动封禁"
+    )
+    results.extend(emby_results)
 
     await session.commit()
     await message.answer("\n".join(results))
