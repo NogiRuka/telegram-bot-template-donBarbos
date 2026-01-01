@@ -15,7 +15,8 @@ services:
     networks:
       - app
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
   api:
     image: bot:latest
@@ -103,8 +104,11 @@ services:
       - .env
     environment:
       - DB_HOST=mysql
+    networks:
+      - app
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     volumes:
       - ./migrations:/usr/src/app/migrations
 
