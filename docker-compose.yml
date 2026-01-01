@@ -44,6 +44,10 @@ services:
     working_dir: /usr/src/app
     env_file:
       - .env
+    environment:
+      - API_HOST=api
+      - API_PORT=${API_PORT}
+      - WEB_PORT=${WEB_PORT}
     ports:
       - ${WEB_PORT}:${WEB_PORT}
     networks:
