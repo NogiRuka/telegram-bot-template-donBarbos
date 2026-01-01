@@ -11,24 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.config import settings
 from bot.services.admin_service import unban_user_service
 from bot.utils.decorators import private_chat_only
+from bot.utils.permissions import _resolve_role
 
 router = Router(name="command_unban")
 
 
-def is_global_admin(user_id: int) -> bool:
-    """检查用户是否为全局管理员 (Owner 或 Admin)"""
-    if user_id == settings.OWNER_ID:
-        return True
-    if settings.ADMIN_IDS:
-        try:
-            admin_ids = [int(x.strip()) for x in settings.ADMIN_IDS.split(",") if x.strip() and x.strip().isdigit()]
-            return user_id in admin_ids
-        except Exception:
-            return False
-    return False
-
-
-async def check_permission(event: Message | CallbackQuery, user_id: int) -> bool:
+async def check_permission(event: Message | CallbackQuery, user_id: int, session: AsyncSession) -> bool:
     """检查权限"""
     is_authorized = False
     
@@ -42,8 +30,10 @@ async def check_permission(event: Message | CallbackQuery, user_id: int) -> bool
             is_authorized = True
     
     # 全局管理员或私聊情况下的检查
-    if not is_authorized and is_global_admin(user_id):
-        is_authorized = True
+    if not is_authorized:
+        role = await _resolve_role(session, user_id)
+        if role in ["owner", "admin"]:
+            is_authorized = True
         
     return is_authorized
 
@@ -88,10 +78,10 @@ async def unban_callback(query: CallbackQuery, session: AsyncSession) -> None:
 
 
 @router.callback_query(F.data == "close_message")
-async def close_callback(query: CallbackQuery) -> None:
+async def close_callback(query: CallbackQuery, session: AsyncSession) -> None:
     """关闭消息"""
     # 简单的权限检查：只要是群管或原触发者都可以关，这里简化为通用权限检查
-    if not await check_permission(query, query.from_user.id):
+    if not await check_permission(query, query.from_user.id, session):
          await query.answer("❌ 无权执行此操作", show_alert=True)
          return
          

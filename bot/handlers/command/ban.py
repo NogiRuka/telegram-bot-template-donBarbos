@@ -13,21 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.config import settings
 from bot.services.admin_service import ban_emby_user
 from bot.utils.decorators import private_chat_only
+from bot.utils.permissions import _resolve_role
 
 router = Router(name="command_ban")
-
-
-def is_global_admin(user_id: int) -> bool:
-    """检查用户是否为全局管理员 (Owner 或 Admin)"""
-    if user_id == settings.OWNER_ID:
-        return True
-    if settings.ADMIN_IDS:
-        try:
-            admin_ids = [int(x.strip()) for x in settings.ADMIN_IDS.split(",") if x.strip() and x.strip().isdigit()]
-            return user_id in admin_ids
-        except Exception:
-            return False
-    return False
 
 
 @router.message(Command("ban"))
@@ -53,8 +41,10 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
             is_authorized = True
     
     # 全局管理员或私聊情况下的检查
-    if not is_authorized and is_global_admin(message.from_user.id):
-        is_authorized = True
+    if not is_authorized:
+        role = await _resolve_role(session, message.from_user.id)
+        if role in ["owner", "admin"]:
+            is_authorized = True
         
     if not is_authorized:
         await message.reply("❌ 您没有权限执行此操作")
