@@ -10,7 +10,6 @@
 """
 
 from datetime import datetime, timedelta
-from functools import lru_cache
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
@@ -31,6 +30,7 @@ from bot.database.models import (
 from bot.keyboards.inline.group_config import get_confirm_keyboard
 from bot.services.message_export import MessageExportService
 from bot.utils.emby import get_emby_client
+from bot.utils.datetime import now
 
 router = Router(name="admin_commands")
 
@@ -119,7 +119,7 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
 
         if emby_user:
             emby_user.is_deleted = True
-            emby_user.deleted_at = datetime.now()
+            emby_user.deleted_at = now()
             emby_user.deleted_by = message.from_user.id
             emby_user.remark = f"被管理员 {message.from_user.id} 手动封禁"
             # session.add(emby_user) # SQLAlchemy 自动追踪变更
