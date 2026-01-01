@@ -49,6 +49,9 @@ def get_common_image() -> str:
     # 动态获取项目根目录（基于当前文件位置）
     # 当前文件在 bot/utils/images.py，根目录需向上回退 3 层
     base_dir = Path(__file__).resolve().parent.parent.parent
+    logger.info(f"当前项目根目录: {base_dir}")
+
+
     target = base_dir / "assets/ui/start.jpg"
     
     if target.exists():
