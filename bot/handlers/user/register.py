@@ -287,6 +287,30 @@ async def handle_register_input(
             # 注册成功，状态清除
             await state.clear()
 
+            # 发送群组通知
+            try:
+                from bot.utils.msg_group import send_group_notification
+                
+                # 获取用户信息
+                user = message.from_user
+                username = user.username or "NoUsername"
+                full_name = user.full_name or "Unknown"
+                
+                user_info = {
+                    "group_name": "BotRegister",
+                    "user_id": str(uid),
+                    "username": username,
+                    "full_name": full_name,
+                    "action": "Register",
+                }
+                
+                created_name = details.get("name", name)
+                reason = f"用户注册 Emby 账号: {created_name}"
+                
+                await send_group_notification(message.bot, user_info, reason)
+            except Exception as e:
+                logger.error(f"发送注册通知失败: {e}")
+
             from bot.utils.text import escape_markdown_v2
 
             name_esc = escape_markdown_v2(details.get("name", ""))
