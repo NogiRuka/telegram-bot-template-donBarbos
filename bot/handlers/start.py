@@ -3,6 +3,7 @@ import contextlib
 from aiogram import F, Router, types
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -99,6 +100,7 @@ async def start_handler(
         await message.reply("💫 请私聊我来开启对话哦。")
         return
     uid = message.from_user.id
+    logger.info(f"Start handler triggered for user {uid}")
 
     # 检查群组验证
     if not await check_user_in_group(message.bot, uid):
@@ -110,34 +112,51 @@ async def start_handler(
         await message.answer(
             f"🚫 您必须先加入群组 {target_group} 才能和我对话哦。",
         )
+        logger.info(f"User {uid} not in group {target_group}")
         return
 
     # 🧨 强制丢弃旧主消息
     main_msg.reset(uid)
 
-    # 构建首页文案与键盘
-    caption, kb = await build_home_view(session, uid)
+    try:
+        # 构建首页文案与键盘
+        caption, kb = await build_home_view(session, uid)
+        logger.debug(f"Home view built for {uid}")
 
-    # 🚀 首次渲染必须带图片
-    img = await MainImageService.select_main_image(session, uid)
-    if img:
-        # 记录展示历史
-        await MainImageService.record_display(session, uid, img.id)
+        # 🚀 首次渲染必须带图片
+        img = await MainImageService.select_main_image(session, uid)
+        
+        if img:
+            logger.info(f"Found main image for {uid}: {img.id} ({img.file_id})")
+            # 记录展示历史
+            await MainImageService.record_display(session, uid, img.id)
 
-        await main_msg.render(
-            user_id=uid,
-            caption=caption,
-            kb=kb,
-            image_file_id=img.file_id,
-            image_source_type=getattr(img, "source_type", "photo"),
-        )
-    else:
-        await main_msg.render(
-            user_id=uid,
-            caption=caption,
-            kb=kb,
-            image_path=get_common_image(),
-        )
+            await main_msg.render(
+                user_id=uid,
+                caption=caption,
+                kb=kb,
+                image_file_id=img.file_id,
+                image_source_type=getattr(img, "source_type", "photo"),
+            )
+        else:
+            fallback_img = get_common_image()
+            logger.info(f"No custom main image for {uid}, using fallback: '{fallback_img}'")
+            
+            result = await main_msg.render(
+                user_id=uid,
+                caption=caption,
+                kb=kb,
+                image_path=fallback_img,
+            )
+            if not result:
+                logger.error(f"Failed to render start message for {uid} (fallback image: '{fallback_img}')")
+                # 最后的防线：如果 render 失败（例如图片不存在），强制发文本
+                if not fallback_img:
+                    await message.answer(caption, reply_markup=kb, parse_mode="MarkdownV2")
+
+    except Exception as e:
+        logger.exception(f"Error in start_handler for {uid}: {e}")
+        await message.answer("⚠️ 系统繁忙，请稍后再试")
 
 
 @router.callback_query(F.data == "back:home")
