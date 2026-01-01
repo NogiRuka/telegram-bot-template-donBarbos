@@ -4,6 +4,7 @@
 from datetime import datetime
 
 from aiogram import Router
+from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from loguru import logger
@@ -15,8 +16,8 @@ from bot.services.admin_service import ban_emby_user
 router = Router(name="command_ban")
 
 
-def is_admin(user_id: int) -> bool:
-    """检查用户是否为管理员 (Owner 或 Admin)"""
+def is_global_admin(user_id: int) -> bool:
+    """检查用户是否为全局管理员 (Owner 或 Admin)"""
     if user_id == settings.OWNER_ID:
         return True
     if settings.ADMIN_IDS:
@@ -40,17 +41,30 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
 
     用法: /ban <telegram_user_id>
     """
-    if not is_admin(message.from_user.id):
+    # 权限检查
+    is_authorized = False
+    
+    # 如果在群组中，检查是否为群管理员
+    if message.chat.type in ["group", "supergroup"]:
+        member = await message.chat.get_member(message.from_user.id)
+        if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+            is_authorized = True
+    
+    # 全局管理员或私聊情况下的检查
+    if not is_authorized and is_global_admin(message.from_user.id):
+        is_authorized = True
+        
+    if not is_authorized:
         return
 
     if not command.args:
-        await message.answer("⚠️ 请提供 Telegram 用户 ID\n用法: `/ban <user_id>`", parse_mode="Markdown")
+        await message.reply("⚠️ 请提供 Telegram 用户 ID\n用法: `/ban <user_id>`", parse_mode="Markdown")
         return
 
     try:
         target_user_id = int(command.args)
     except ValueError:
-        await message.answer("❌ 无效的用户 ID，必须为数字")
+        await message.reply("❌ 无效的用户 ID，必须为数字")
         return
 
     results = []
@@ -97,4 +111,4 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
     results.extend(emby_results)
 
     await session.commit()
-    await message.answer("\n".join(results))
+    await message.reply("\n".join(results))
