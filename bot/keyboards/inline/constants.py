@@ -197,7 +197,7 @@ NOTIFY_PREVIEW_CALLBACK_DATA = "admin:notify_preview"
 
 # 关闭预览
 NOTIFY_CLOSE_PREVIEW_LABEL = "❌ 关闭预览"
-NOTIFY_CLOSE_PREVIEW_CALLBACK_DATA = "admin:notify_close_preview"
+NOTIFY_CLOSE_PREVIEW_CALLBACK_DATA = "delete_msg"
 
 # 一键通知
 NOTIFY_SEND_LABEL = "🚀 一键通知"

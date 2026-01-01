@@ -110,12 +110,12 @@ async def handle_notify_preview(
         msg_text, image_url = get_notification_content(item)
 
         # 创建操作键盘
-        status_text = "🔄 状态: " + ("更新中" if item.status == "Continuing" else "已完结")
+        status_text = "🔄 " + ("更新中" if item.status == "Continuing" else "已完结")
         reject_kb = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
-                    InlineKeyboardButton(text="🚫 拒绝此通知", callback_data=f"admin:notify_reject:{notif.id}"),
-                    InlineKeyboardButton(text="👥 添加通知者", callback_data=f"admin:notify_add_sender:{notif.id}"),
+                    InlineKeyboardButton(text="🚫 拒绝", callback_data=f"admin:notify_reject:{notif.id}"),
+                    InlineKeyboardButton(text="👥 添加", callback_data=f"admin:notify_add_sender:{notif.id}"),
                     InlineKeyboardButton(text=status_text, callback_data=f"admin:notify_toggle_status:{notif.id}")
                 ],
                 [NOTIFY_CLOSE_PREVIEW_BUTTON]
@@ -227,12 +227,12 @@ async def handle_item_status_toggle(
         msg_text, _ = get_notification_content(item)
 
         # 重新生成键盘
-        status_text = "🔄 状态: " + ("已完结" if item.status == "Ended" else "更新中")
+        status_text = "🔄 " + ("已完结" if item.status == "Ended" else "更新中")
         new_kb = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
-                    InlineKeyboardButton(text="🚫 拒绝此通知", callback_data=f"admin:notify_reject:{notif.id}"),
-                    InlineKeyboardButton(text="👥 添加通知者", callback_data=f"admin:notify_add_sender:{notif.id}"),
+                    InlineKeyboardButton(text="🚫 拒绝", callback_data=f"admin:notify_reject:{notif.id}"),
+                    InlineKeyboardButton(text="👥 添加", callback_data=f"admin:notify_add_sender:{notif.id}"),
                     InlineKeyboardButton(text=status_text, callback_data=f"admin:notify_toggle_status:{notif.id}")
                 ],
                 [NOTIFY_CLOSE_PREVIEW_BUTTON]
@@ -274,35 +274,6 @@ async def handle_add_sender_start(
         "请输入要添加的通知者信息（可以是用户ID、用户名等）：\n"
         "或者直接回复消息来引用用户"
     )
-
-
-@router.callback_query(F.data == "admin:notify_close_preview")
-async def handle_close_preview(
-    callback: types.CallbackQuery, 
-    state: FSMContext,
-    main_msg: MainMessageService
-) -> None:
-    """关闭所有预览消息"""
-    user_id = callback.from_user.id
-
-    # 从FSM状态获取预览数据
-    # 使用工具函数清理消息
-    # 这里的 chat_id 使用 user_id，因为通常是在私聊中
-    # 也可以使用 callback.message.chat.id
-    chat_id = callback.message.chat.id if callback.message else user_id
-    await clear_message_list_from_state(state, callback.bot, chat_id, "preview_data")
-    
-    # 同时也删除主控消息（如果它存在）或者重置它
-    # 如果用户点击的是主控消息上的"关闭预览"按钮，callback.message 就是主控消息
-    # 如果用户点击的是列表项上的"关闭预览"按钮，callback.message 是列表项
-    
-    # 尝试删除触发此回调的消息（如果是列表项，这行会删除它；如果是主控消息，这行会删除它）
-    await delete_message(callback.message)
-    
-    # 如果触发的是列表项，主控消息还在。应该也删除主控消息。
-    await main_msg.delete()
-    
-    await callback.answer("已关闭预览", show_alert=False)
 
 
 @router.message(NotificationStates.waiting_for_additional_sender)

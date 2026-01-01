@@ -1,4 +1,5 @@
 from aiogram import F, types
+from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +15,7 @@ from bot.keyboards.inline.constants import ADMIN_NEW_ITEM_NOTIFICATION_LABEL
 from bot.services.emby_service import fetch_and_save_item_details
 from bot.services.main_message import MainMessageService
 from bot.utils.notification import get_notification_status_counts
+from bot.utils.message import clear_message_list_from_state
 
 from .router import router
 
@@ -21,9 +23,12 @@ from .router import router
 async def show_notification_panel(
     callback: types.CallbackQuery,
     session: AsyncSession,
-    main_msg: MainMessageService
+    main_msg: MainMessageService,
+    state: FSMContext,
 ) -> None:
     """显示新片通知管理面板"""
+    await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "preview_data")
+
     pending_completion, pending_review, _ = await get_notification_status_counts(session)
 
     text = (
