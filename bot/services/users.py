@@ -539,6 +539,7 @@ async def has_emby_account(session: AsyncSession, user_id: int) -> bool:
 
     功能说明:
     - 查询 `user_extend.emby_user_id` 是否存在
+    - 排除 `is_deleted=True` 的软删除记录
 
     输入参数:
     - session: 异步数据库会话
@@ -547,7 +548,12 @@ async def has_emby_account(session: AsyncSession, user_id: int) -> bool:
     返回值:
     - bool: True 表示已绑定
     """
-    res = await session.execute(select(UserExtendModel.emby_user_id).where(UserExtendModel.user_id == user_id))
+    res = await session.execute(
+        select(UserExtendModel.emby_user_id).where(
+            UserExtendModel.user_id == user_id,
+            UserExtendModel.is_deleted.is_(False),
+        )
+    )
     emby_id = res.scalar_one_or_none()
     return bool(emby_id)
 
