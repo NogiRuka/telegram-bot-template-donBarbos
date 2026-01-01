@@ -6,25 +6,27 @@ async def seed_quiz_data(session: AsyncSession) -> None:
     """
     初始化问答数据（如果不存在）
     """
-    # 1. 确保分类存在 (ID: 15)
-    category_id = 15
-    # config_service.py 已初始化分类 1-15，此处无需重复创建，
-    # 仅需确认 ID 15 存在即可（通常对应"其他"或用户自定义）
-    # 如果不存在（例如 config_service 未运行），则按需创建
-    stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == category_id)
+    # 1. 确保分类存在 (如果表为空，则初始化默认分类)
+    stmt = select(QuizCategoryModel).limit(1)
     result = await session.execute(stmt)
-    category = result.scalar_one_or_none()
-    
-    if not category:
-        # 仅在不存在时创建，避免冲突
-        category = QuizCategoryModel(
-            id=category_id,
-            name="其他",
-            sort_order=0,
-            is_active=True
-        )
-        session.add(category)
-        await session.flush() # 获取ID
+    if not result.scalar_one_or_none():
+        categories = [
+            (1, "国产剧"), (2, "台剧"), (3, "泰剧"), (4, "韩剧"), (5, "日剧"),
+            (6, "欧美剧"), (7, "其他剧"), (8, "动漫"), (9, "漫画"), (10, "钙片"),
+            (11, "小说"), (12, "广播剧"), (13, "游戏"), (14, "音乐"), (15, "其他")
+        ]
+        for cat_id, name in categories:
+            cat = QuizCategoryModel(
+                id=cat_id,
+                name=name,
+                sort_order=cat_id,
+                is_active=True
+            )
+            session.add(cat)
+        await session.flush() # 确保后续可用
+
+    category_id = 15
+
     
     # 2. 插入题目
     question_id = 1
