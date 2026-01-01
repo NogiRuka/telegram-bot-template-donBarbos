@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import IO
 
 from PIL import Image
+from loguru import logger
 
 
 def get_image_dimensions(file: IO[bytes]) -> tuple[int, int] | None:
