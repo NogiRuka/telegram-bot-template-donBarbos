@@ -726,7 +726,8 @@ async def cleanup_devices_by_policy(
 
     # 0. 获取客户端
     client = get_emby_client()
-    if not client:
+    if client is None:
+        logger.warning("⚠️ 未配置 Emby 连接信息, 跳过设备清理")
         return 0
 
     try:

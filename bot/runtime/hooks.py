@@ -60,16 +60,13 @@ async def on_startup() -> None:
             await seed_quiz_data(session)
             await CurrencyService.ensure_products(session)
             await CurrencyService.ensure_configs(session)
-            try:
-                await save_all_emby_users(session)
-                await save_all_emby_devices(session)
-                # 启动时执行一次设备清理
-                await cleanup_devices_by_policy(session)
-            except Exception as err:  # noqa: BLE001
-                logger.warning("⚠️ 启动时同步 Emby 数据失败: {}", err)
-        
+            
+            await run_emby_sync(session)
+
         # 启动定时问答调度器
         asyncio.create_task(QuizService.start_scheduler(bot))
+        # 启动 Emby 定时同步调度器
+        asyncio.create_task(start_scheduler(bot))
         
         await start_api_server()
     except (OSError, ValueError, RuntimeError) as err:
