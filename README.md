@@ -46,26 +46,65 @@
 
 ## 🚀 快速开始
 
-### 🐳 Docker 部署 _(推荐方式)_
+### 🐳 Docker 部署 (推荐 - Linux 服务器)
 
-1. **配置环境变量**
-   ```bash
-   cp .env.example .env
-   # 编辑 .env 文件，配置必要的环境变量
-   ```
+本项目提供了完整的 Docker 支持，这是在 Linux 服务器上部署最简单、最稳定的方式。
 
-2. **启动所有服务**
-   ```bash
-   docker compose up -d --build
-   ```
-   > 💡 默认 Compose 仅启动 Bot、API、Web、MySQL、备份与迁移服务。如需监控或 Redis，可在 `docker-compose.yml` 中自行扩展。
+#### 1. 环境准备
 
-3. **访问服务**
-   - **Telegram Bot**: 在 Telegram 中搜索你的 Bot
-   - **Web 管理界面**: http://localhost:3000
-   - **API 文档**: http://localhost:8000/docs
+确保你的 Linux 服务器已安装以下软件。如果未安装，可以使用官方一键脚本：
 
-### 💻 本地开发
+```bash
+# 安装 Docker 和 Docker Compose
+curl -fsSL https://get.docker.com | bash
+```
+
+#### 2. 获取代码
+
+```bash
+git clone https://github.com/donBarbos/telegram-bot-template.git
+cd telegram-bot-template
+```
+
+#### 3. 配置文件
+
+复制示例配置文件并修改。**这是最关键的一步，请务必仔细填写。**
+
+```bash
+cp .env.example .env
+nano .env  # 或者使用 vim / vi
+```
+
+需要重点修改的配置项：
+- `BOT_TOKEN`: 你的 Telegram Bot Token
+- `OWNER_ID`: 你的 Telegram User ID (超级管理员)
+- `GROUP`: 绑定的群组用户名 (无需 @)
+- `OWNER_MSG_GROUP`: 管理员通知群组 ID
+- `DB_PASS`: 数据库密码 (建议设置复杂密码)
+- `EMBY_BASE_URL` / `EMBY_API_KEY`: Emby 相关配置 (如需)
+
+#### 4. 启动服务
+
+使用 Docker Compose 一键启动所有服务 (Bot, API, Web, MySQL, 备份服务等)：
+
+```bash
+docker compose up -d --build
+```
+
+#### 5. 验证部署
+
+- **查看状态**: `docker compose ps`
+- **查看日志**: `docker compose logs -f` (按 Ctrl+C 退出日志查看)
+- **停止服务**: `docker compose down`
+- **更新代码**: `git pull && docker compose up -d --build`
+
+服务默认端口：
+- **Web 管理界面**: `http://YOUR_SERVER_IP:3000`
+- **API 文档**: `http://YOUR_SERVER_IP:8000/docs`
+
+---
+
+### 💻 本地开发 (Windows/Mac/Linux)
 
 #### 📋 前置要求
 - Python 3.10+
