@@ -1,18 +1,15 @@
 FROM node:20-alpine
-
-# 安装 pnpm
 RUN npm install -g pnpm
-
 WORKDIR /usr/src/app
 
-# 优先拷贝依赖描述文件，利用 Docker 镜像层缓存
+# 1. 只拷贝依赖定义
 COPY package.json pnpm-lock.yaml* ./
 
-# 安装依赖
+# 2. 安装依赖（这一步会生成镜像内的 node_modules）
 RUN pnpm install
 
-# 拷贝其余源码
+# 3. 拷贝除 .dockerignore 以外的所有源码
+# 有了 .dockerignore，这一步就不会尝试拷贝本地的 node_modules 了
 COPY . .
 
-# 开发模式通常由 compose 启动命令覆盖，这里写默认启动
 CMD ["pnpm", "run", "dev"]
