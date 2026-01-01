@@ -165,15 +165,15 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
                     item.extra["approval_rewarded"] = True
                     
                     # 通知用户
-                     try:
-                         from bot.utils.text import escape_markdown_v2
-                         await callback.bot.send_message(
-                             submitted_by,
-                             f"🎉 *恭喜\\!* 您投稿的题目 #{item.id} 已通过审核并启用\\!\n"
-                             f"🎁 获得奖励：\\+5 {escape_markdown_v2(CURRENCY_SYMBOL)}",
-                             parse_mode="MarkdownV2"
-                         )
-                     except Exception as e:
+                    try:
+                        from bot.utils.text import escape_markdown_v2
+                        await callback.bot.send_message(
+                            submitted_by,
+                            f"🎉 *恭喜\\!* 您投稿的题目 #{item.id} 已通过审核并启用\\!\n"
+                            f"🎁 获得奖励：\\+5 {escape_markdown_v2(CURRENCY_SYMBOL)}",
+                            parse_mode="MarkdownV2"
+                        )
+                    except Exception as e:
                          # 用户可能屏蔽了机器人
                         pass
                         

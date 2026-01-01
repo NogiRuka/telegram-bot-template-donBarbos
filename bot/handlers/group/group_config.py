@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # 移除db_session导入，使用依赖注入
 from bot.database.models import GroupConfigModel, GroupType, MessageSaveMode
 from bot.filters.admin import AdminFilter
+from bot.filters.chat_admin import GroupAdminFilter
 from bot.keyboards.inline.group_config import get_confirm_keyboard, get_group_config_keyboard, get_save_mode_keyboard
 from bot.services.group_config_service import (
     get_group_message_stats,
@@ -101,7 +102,7 @@ async def _get_group_config_content(session: AsyncSession, config: GroupConfigMo
     return config_text, get_group_config_keyboard(config)
 
 
-@router.message(Command("group_config", "gc"), F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.PRIVATE]), AdminFilter())
+@router.message(Command("group_config", "gc"), F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.PRIVATE]), AdminFilter() | GroupAdminFilter())
 async def cmd_group_config(message: types.Message, command: CommandObject, session: AsyncSession) -> None:
     """
     群组配置命令
