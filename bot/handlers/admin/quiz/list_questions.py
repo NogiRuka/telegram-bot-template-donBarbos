@@ -146,6 +146,39 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
 
     if action == "toggle":
         item.is_active = not item.is_active
+        
+        # 检查是否为用户投稿且未发放审核奖励
+        if item.is_active and item.extra:
+            submitted_by = item.extra.get("submitted_by")
+            approval_rewarded = item.extra.get("approval_rewarded")
+            
+            if submitted_by and not approval_rewarded:
+                # 发放奖励
+                from bot.services.currency import CurrencyService
+                from bot.core.constants import CURRENCY_SYMBOL
+                
+                try:
+                    await CurrencyService.add_balance(session, submitted_by, 5, f"投稿题目 #{item.id} 审核通过奖励")
+                    
+                    # 更新状态
+                    item.extra = dict(item.extra) # 复制一份以触发更新
+                    item.extra["approval_rewarded"] = True
+                    
+                    # 通知用户
+                    try:
+                        await callback.bot.send_message(
+                            submitted_by,
+                            f"🎉 *恭喜！* 您投稿的题目 #{item.id} 已通过审核并启用！\n"
+                            f"🎁 获得奖励：+5 {CURRENCY_SYMBOL}",
+                            parse_mode="Markdown"
+                        )
+                    except Exception as e:
+                         # 用户可能屏蔽了机器人
+                        pass
+                        
+                except Exception as e:
+                    await callback.answer(f"⚠️ 奖励发放失败: {e}", show_alert=True)
+
         await session.commit()
 
         # 更新消息内容

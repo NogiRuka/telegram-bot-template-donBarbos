@@ -12,6 +12,7 @@ from .password import router as password_router
 from .private_message_saver import router as private_message_saver_router
 from .profile import router as profile_router
 from .quiz_handler import router as quiz_router
+from .quiz_submit import router as quiz_submit_router
 from .register import router as register_router
 from .store import router as store_router
 from .tags import router as tags_router
@@ -45,4 +46,5 @@ def get_user_router() -> Router:
     router.include_router(files_router)
     router.include_router(private_message_saver_router)
     router.include_router(quiz_router)
+    router.include_router(quiz_submit_router)
     return router

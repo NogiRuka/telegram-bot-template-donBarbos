@@ -19,6 +19,10 @@ PROFILE_CALLBACK_DATA = "user:profile"
 PROFILE_MAIN_IMAGE_LABEL = "🖼️ 主图设置"
 PROFILE_MAIN_IMAGE_CALLBACK_DATA = "user:profile:main_image"
 
+# 问答投稿
+USER_QUIZ_SUBMIT_LABEL = "✍️ 问答投稿"
+USER_QUIZ_SUBMIT_CALLBACK_DATA = "user:quiz:submit"
+
 # 账号中心
 ACCOUNT_CENTER_LABEL = "🎬 账号中心"
 ACCOUNT_CENTER_CALLBACK_DATA = "user:account"
