@@ -181,3 +181,12 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
         await session.commit()
         await callback.answer("✅ 操作成功！\n图片已删除")
         await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
+
+@router.callback_query(F.data == "delete_msg")
+async def handle_delete_msg_callback(callback: CallbackQuery):
+    """点击关闭按钮时删除提示消息"""
+    try:
+        await callback.message.delete()
+    except Exception:
+        # 防止消息已被删除或过旧导致报错
+        await callback.answer("提示已过期")
