@@ -56,42 +56,45 @@ async def ban_emby_user(
     result = await session.execute(stmt)
     user_extend = result.scalar_one_or_none()
 
+    emby_user_id = None
     if not user_extend or not user_extend.emby_user_id:
         results.append("ℹ️ 该用户未绑定 Emby 账号")
-        return results
+    else:
+        emby_user_id = user_extend.emby_user_id
 
-    emby_user_id = user_extend.emby_user_id
     deleted_by = admin_id if admin_id else 0  # 0 表示系统或未知
 
     # 1. 删除 Emby 账号 (API)
-    emby_client = get_emby_client()
-    if emby_client:
-        try:
-            await emby_client.delete_user(emby_user_id)
-            results.append(f"✅ Emby 账号已删除 (ID: {emby_user_id})")
-        except Exception as e:
-            logger.error(f"删除 Emby 账号失败: {e}")
-            results.append(f"❌ Emby 账号删除失败: {e}")
-    else:
-        results.append("⚠️ 未配置 Emby API，跳过账号删除")
+    if emby_user_id:
+        emby_client = get_emby_client()
+        if emby_client:
+            try:
+                await emby_client.delete_user(emby_user_id)
+                results.append(f"✅ Emby 账号已删除 (ID: {emby_user_id})")
+            except Exception as e:
+                logger.error(f"删除 Emby 账号失败: {e}")
+                results.append(f"❌ Emby 账号删除失败: {e}")
+        else:
+            results.append("⚠️ 未配置 Emby API，跳过账号删除")
 
     # 2. 软删除数据库 EmbyUserModel
-    stmt_emby = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
-    result_emby = await session.execute(stmt_emby)
-    emby_user = result_emby.scalar_one_or_none()
+    if emby_user_id:
+        stmt_emby = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
+        result_emby = await session.execute(stmt_emby)
+        emby_user = result_emby.scalar_one_or_none()
 
-    if emby_user:
-        # 如果已经被删除了，就不重复记录了，但还是要记录审计日志
-        if not emby_user.is_deleted:
-            emby_user.is_deleted = True
-            emby_user.deleted_at = now()
-            emby_user.deleted_by = deleted_by
-            emby_user.remark = f"{reason} (操作者: {deleted_by})"
-            results.append("✅ Emby 用户数据已标记为删除")
+        if emby_user:
+            # 如果已经被删除了，就不重复记录了，但还是要记录审计日志
+            if not emby_user.is_deleted:
+                emby_user.is_deleted = True
+                emby_user.deleted_at = now()
+                emby_user.deleted_by = deleted_by
+                emby_user.remark = f"{reason} (操作者: {deleted_by})"
+                results.append("✅ Emby 用户数据已标记为删除")
+            else:
+                 results.append("ℹ️ Emby 用户数据已是删除状态")
         else:
-             results.append("ℹ️ Emby 用户数据已是删除状态")
-    else:
-        results.append("⚠️ 未找到本地 Emby 用户数据")
+            results.append("⚠️ 未找到本地 Emby 用户数据")
 
     # 3. 记录审计日志
     audit_log = AuditLogModel(
@@ -130,7 +133,7 @@ async def ban_emby_user(
                 f"{tags}\n"
                 f"📖 说明: {reason}\n\n"
                 f"👤 用户: {full_name} (`{target_user_id}`)\n"
-                f"🎬 Emby: `{emby_user_id}`\n"
+                f"🎬 Emby: `{emby_user_id if emby_user_id else '未绑定'}`\n"
                 f"📝 结果:\n" + "\n".join(results)
             )
             
