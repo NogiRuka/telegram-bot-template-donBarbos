@@ -19,40 +19,11 @@ from bot.services.main_message import MainMessageService
 from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
 from bot.utils.images import get_common_image
 from bot.utils.message import clear_message_list_from_state
-from bot.utils.permissions import _resolve_role
-from loguru import logger
+from bot.utils.permissions import _resolve_role, check_user_in_group
 
 router = Router(name="start")
 
 from typing import Any
-
-
-async def check_user_in_group(bot: types.Bot, user_id: int) -> bool:
-    """
-    检查用户是否在配置的群组中
-
-    Args:
-        bot: Bot实例
-        user_id: 用户ID
-
-    Returns:
-        bool: 是否在群组中
-    """
-    if not settings.GROUP:
-        return True
-
-    target_group = settings.GROUP
-    # 如果不是数字ID且不以@开头，尝试添加@
-    if not str(target_group).lstrip("-").isdigit() and not target_group.startswith("@"):
-        target_group = f"@{target_group}"
-
-    try:
-        member = await bot.get_chat_member(chat_id=target_group, user_id=user_id)
-        # 成员状态：creator, administrator, member, restricted (被限制但仍在群内)
-        return member.status in ("creator", "administrator", "member", "restricted")
-    except Exception as e:
-        logger.warning(f"检查群组成员身份失败 (user_id={user_id}, group={target_group}): {e}")
-        return False
 
 
 async def build_home_view(

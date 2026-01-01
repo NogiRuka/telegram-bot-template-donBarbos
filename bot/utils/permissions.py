@@ -3,8 +3,10 @@ import contextlib
 import functools
 from typing import TYPE_CHECKING, Any
 
+from aiogram import Bot
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
+from loguru import logger
 
 from bot.core.config import settings
 from bot.database.models import UserExtendModel, UserRole
@@ -63,6 +65,34 @@ async def _resolve_role(session: AsyncSession | None, user_id: int | None) -> st
         if user_id is not None and user_id in set(settings.get_admin_ids()):
             return "admin"
     return "user"
+
+
+async def check_user_in_group(bot: Bot, user_id: int) -> bool:
+    """
+    检查用户是否在配置的群组中
+
+    Args:
+        bot: Bot实例
+        user_id: 用户ID
+
+    Returns:
+        bool: 是否在群组中
+    """
+    if not settings.GROUP:
+        return True
+
+    target_group = settings.GROUP
+    # 如果不是数字ID且不以@开头，尝试添加@
+    if not str(target_group).lstrip("-").isdigit() and not target_group.startswith("@"):
+        target_group = f"@{target_group}"
+
+    try:
+        member = await bot.get_chat_member(chat_id=target_group, user_id=user_id)
+        # 成员状态：creator, administrator, member, restricted (被限制但仍在群内)
+        return member.status in ("creator", "administrator", "member", "restricted")
+    except Exception as e:
+        logger.warning(f"检查群组成员身份失败 (user_id={user_id}, group={target_group}): {e}")
+        return False
 
 
 def require_owner(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
