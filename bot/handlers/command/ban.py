@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
 from bot.services.admin_service import ban_emby_user
+from bot.utils.decorators import private_chat_only
 
 router = Router(name="command_ban")
 
