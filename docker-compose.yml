@@ -15,10 +15,11 @@ services:
     networks:
       - app
     depends_on:
-      mysql:
-        condition: service_healthy
+      migrator:
+            condition: service_completed_successfully # 等迁移成功后再启动
 
   api:
+    build: .
     image: bot:latest
     container_name: ${COMPOSE_PROJECT_NAME}-api
     restart: always
@@ -30,13 +31,14 @@ services:
     command: python -m bot.api
     ports:
       - ${API_PORT}:${API_PORT}
-    networks:
-      - app
+    networks: [app]
     depends_on:
-      mysql:
-        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
   web:
-    image: node:20-alpine
+    build:
+          context: ./web
+          dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME}-web
     restart: unless-stopped
     working_dir: /usr/src/app
@@ -50,7 +52,9 @@ services:
       - api
     volumes:
       - ./web:/usr/src/app
-    command: sh -c "pnpm install && pnpm run dev"
+      - /usr/src/app/node_modules # 即使本地代码没 node_modules，也能用镜像里的
+    # 现在的启动命令变得非常清爽，不需要再执行安装
+    command: pnpm run dev
 
   mysql:
     image: mysql:8.0
@@ -69,7 +73,6 @@ services:
       - ${DB_PORT}:3306
     volumes:
       - mysql-data:/var/lib/mysql
-    command: --default-authentication-plugin=mysql_native_password
     healthcheck:
       test:
         [
@@ -78,8 +81,8 @@ services:
           "ping",
           "-h",
           "127.0.0.1",
-          "-u${DB_USER}",
-          "-p${DB_PASS}"
+          "-u$${DB_USER}",
+          "-p$${DB_PASS}"
         ]
       interval: 5s
       timeout: 10s
@@ -91,6 +94,7 @@ services:
   mysqlbackup:
     container_name: ${COMPOSE_PROJECT_NAME}-mysqlbackup
     image: databack/mysql-backup
+    command: dump
     restart: always
     env_file:
       - .env
@@ -110,22 +114,22 @@ services:
         condition: service_healthy
 
 
+# 数据库迁移（一次性任务）
   migrator:
+    build: . # 确保代码更新时能重新构建
     image: bot:latest
     container_name: ${COMPOSE_PROJECT_NAME}-migrator
     restart: "no"
     command: alembic upgrade head
-    env_file:
-      - .env
+    env_file: [.env]
     environment:
       - DB_HOST=mysql
-    networks:
-      - app
+    networks: [app]
     depends_on:
       mysql:
         condition: service_healthy
     volumes:
-      - ./migrations:/usr/src/app/migrations
+      - .:/usr/src/app # 挂载整个目录以确保 alembic.ini 和代码同步
 
 networks:
   app:
