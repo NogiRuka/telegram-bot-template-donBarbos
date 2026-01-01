@@ -63,7 +63,7 @@ curl -fsSL https://get.docker.com | bash
 
 ```bash
 git clone https://github.com/NogiRuka/telegram-bot-template-donBarbos.git
-cd telegram-bot-template
+cd telegram-bot-template-donBarbos
 ```
 
 #### 3. 配置文件
