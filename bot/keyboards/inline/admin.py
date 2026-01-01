@@ -149,7 +149,7 @@ def get_main_image_list_pagination_keyboard(type_key: str, page: int, total_page
         ],
         [
             InlineKeyboardButton(text="🔙 返回分类选择", callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list"),
-            InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data=MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_home")
+            BACK_TO_HOME_BUTTON
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)

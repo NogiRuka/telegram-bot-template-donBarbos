@@ -119,7 +119,7 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
     )
 
     if not questions:
-        await send_toast(callback, "🈳 暂无数据")
+        await callback.answer("🈳 暂无数据")
         return
 
     new_msg_ids = []

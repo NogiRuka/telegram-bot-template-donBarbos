@@ -71,7 +71,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
 
     # 发送图片消息
     if not items:
-        await send_toast(callback, "🈳 暂无数据")
+        await callback.answer("🈳 暂无数据")
         return
 
     new_msg_ids = []

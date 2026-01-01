@@ -71,7 +71,7 @@ async def list_questions_view(callback: CallbackQuery, session: AsyncSession, ma
 
     # 发送题目消息
     if not items:
-        await send_toast(callback, "🈳 暂无数据")
+        await callback.answer("🈳 暂无数据")
         return
 
     new_msg_ids = []

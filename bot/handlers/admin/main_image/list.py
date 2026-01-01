@@ -36,23 +36,6 @@ async def list_images_entry(callback: CallbackQuery, main_msg: MainMessageServic
     await callback.answer()
 
 
-@router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_home")
-@require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def back_to_home_from_list(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
-    """返回主面板"""
-    # 清理图片
-    if callback.message:
-        await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "main_image_list_ids")
-
-    # 构建首页视图
-    from bot.handlers.start import build_home_view
-    uid = callback.from_user.id if callback.from_user else None
-    caption, kb = await build_home_view(session, uid)
-
-    await main_msg.update_on_callback(callback, caption, kb)
-    await callback.answer()
-
-
 @router.callback_query(F.data.startswith(MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:"))
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
 async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
@@ -112,7 +95,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
 
     # 发送图片
     if not items:
-        await send_toast(callback, "🈳 暂无数据，换个分类看看吧～")
+        await callback.answer("🈳 暂无数据，换个分类看看吧～")
         return
 
     new_msg_ids = []
@@ -196,5 +179,5 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
         item.deleted_by = callback.from_user.id
         item.remark = f"删除用户 {callback.from_user.full_name} (ID: {callback.from_user.id})"
         await session.commit()
-        await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
         await callback.answer("✅ 操作成功！\n图片已删除")
+        await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
