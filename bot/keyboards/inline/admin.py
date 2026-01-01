@@ -250,8 +250,9 @@ def get_notification_preview_pagination_keyboard(page: int, total_pages: int, li
     else:
         builder.button(text="⛔️", callback_data="ignore")
 
-    # 页码指示
-    builder.button(text=f"{page}/{total_pages}", callback_data="ignore")
+    # 页码指示 (Toggle limit)
+    next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
+    builder.button(text=f"{page}/{total_pages} (每页{limit:02d}条)", callback_data=f"{base_callback}:1:{next_limit}")
 
     # 下一页
     if page < total_pages:
