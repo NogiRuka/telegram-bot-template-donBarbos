@@ -3,6 +3,7 @@
 
 提供管理员操作的核心业务逻辑，如封禁用户、清理数据等。
 """
+import html
 from typing import Optional
 
 from aiogram import Bot
@@ -128,16 +129,21 @@ async def ban_emby_user(
                 return "#" + "".join(c for c in s if c.isalnum() or c == '_')
 
             tags = f"{to_hashtag(group_name)} #ID{target_user_id} {to_hashtag(username)} {to_hashtag(action)}"
-            
+
+            # Escape HTML special characters
+            reason_safe = html.escape(reason)
+            full_name_safe = html.escape(full_name)
+            results_safe = [html.escape(r) for r in results]
+
             msg_text = (
                 f"{tags}\n"
-                f"📖 说明: {reason}\n\n"
-                f"👤 用户: {full_name} (`{target_user_id}`)\n"
-                f"🎬 Emby: `{emby_user_id if emby_user_id else '未绑定'}`\n"
-                f"📝 结果:\n" + "\n".join(results)
+                f"📖 <b>说明:</b> {reason_safe}\n\n"
+                f"👤 <b>用户:</b> {full_name_safe} (<code>{target_user_id}</code>)\n"
+                f"🎬 <b>Emby:</b> <code>{emby_user_id if emby_user_id else '未绑定'}</code>\n"
+                f"📝 <b>结果:</b>\n" + "\n".join(results_safe)
             )
-            
-            await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="Markdown")
+
+            await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="HTML")
             logger.info(f"管理员通知(Ban)已发送至 {settings.OWNER_MSG_GROUP}")
         except Exception as e:
             logger.error(f"发送管理员通知(Ban)失败: {e}")
@@ -207,15 +213,20 @@ async def unban_user_service(
                 return "#" + "".join(c for c in s if c.isalnum() or c == '_')
 
             tags = f"{to_hashtag(group_name)} #ID{target_user_id} {to_hashtag(username)} {to_hashtag(action)}"
-            
+
+            # Escape HTML special characters
+            reason_safe = html.escape(reason)
+            full_name_safe = html.escape(full_name)
+            results_safe = [html.escape(r) for r in results]
+
             msg_text = (
                 f"{tags}\n"
-                f"📖 说明: {reason}\n\n"
-                f"👤 用户: {full_name} (`{target_user_id}`)\n"
-                f"📝 结果:\n" + "\n".join(results)
+                f"📖 <b>说明:</b> {reason_safe}\n\n"
+                f"👤 <b>用户:</b> {full_name_safe} (<code>{target_user_id}</code>)\n"
+                f"📝 <b>结果:</b>\n" + "\n".join(results_safe)
             )
-            
-            await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="Markdown")
+
+            await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="HTML")
             logger.info(f"管理员通知(Unban)已发送至 {settings.OWNER_MSG_GROUP}")
         except Exception as e:
             logger.error(f"发送管理员通知(Unban)失败: {e}")

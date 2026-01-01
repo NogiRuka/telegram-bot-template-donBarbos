@@ -83,9 +83,7 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
             user_info=user_info
         )
         
-        if any("✅" in r for r in results):
-            logger.info(f"自动清理 Emby 账号成功: {user.id} - {results}")
-            # 可选: 发送通知到群组或日志频道 (这里仅打印日志)
+        logger.info(f"自动清理 Emby 账号执行结果: {user.id} - {results}")
         
         await session.commit()
     except Exception as e:
