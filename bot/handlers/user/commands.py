@@ -6,7 +6,22 @@ from bot.services.users import is_admin
 
 router = Router()
 
-@router.message(Command("command", "c"))
+@router.message(Command("start"))
+async def cmd_start(message: types.Message) -> None:
+    """
+    /start 命令处理
+    """
+    text = (
+        "👋 *欢迎使用 DonBarbos Bot* \n\n"
+        "我是您的私人助手，可以协助您管理 Emby 账号、获取资源等。\n\n"
+        "👇 *您可以尝试以下操作*：\n"
+        "• 发送 /help 查看所有可用命令\n"
+        "• 发送 /info 查看您的个人信息"
+    )
+    await message.reply(text, parse_mode="MarkdownV2")
+
+
+@router.message(Command("command", "c", "help"))
 async def cmd_list_commands(message: types.Message, session: AsyncSession) -> None:
     """
     显示可用命令列表

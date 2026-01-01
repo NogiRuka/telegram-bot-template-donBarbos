@@ -70,8 +70,8 @@ class MainMessageService:
                     reply_markup=kb,
                     parse_mode="MarkdownV2",
                 )
-            else:
-                file = FSInputFile(image_path or "")
+            elif image_path:
+                file = FSInputFile(image_path)
                 msg = await self.bot.send_photo(
                     chat_id=user_id,
                     photo=file,
@@ -79,10 +79,19 @@ class MainMessageService:
                     reply_markup=kb,
                     parse_mode="MarkdownV2",
                 )
+            else:
+                # 降级：发送纯文本
+                msg = await self.bot.send_message(
+                    chat_id=user_id,
+                    text=caption,
+                    reply_markup=kb,
+                    parse_mode="MarkdownV2",
+                )
+
             self.remember(user_id, msg)
             return True
-        except Exception:
-            # 这里不抛异常，统一由调用方根据 False 判断
+        except Exception as e:
+            logger.exception(f"❌ 发送主消息失败: {e}")
             return False
 
     async def render(
@@ -106,10 +115,7 @@ class MainMessageService:
 
         # ① 尚未有主消息
         if not ids:
-            if not image_path and not image_file_id:
-                # 业务错误：首次渲染却没有图片
-                return False
-
+            # 允许无图渲染（_send_new 会处理降级）
             return await self._send_new(
                 user_id, caption, kb, image_path=image_path, image_file_id=image_file_id, image_source_type=image_source_type
             )
