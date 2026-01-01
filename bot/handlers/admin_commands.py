@@ -119,6 +119,9 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
 
         if emby_user:
             emby_user.is_deleted = True
+            emby_user.deleted_at = datetime.now()
+            emby_user.deleted_by = message.from_user.id
+            emby_user.remark = f"被管理员 {message.from_user.id} 手动封禁"
             # session.add(emby_user) # SQLAlchemy 自动追踪变更
             results.append("✅ Emby 用户数据已标记为删除")
         else:
