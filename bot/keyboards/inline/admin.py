@@ -159,8 +159,8 @@ def get_main_image_item_keyboard(image_id: int, is_enabled: bool) -> InlineKeybo
     """获取单张主图的操作键盘"""
     buttons = [
         [
-            InlineKeyboardButton(text="🔴 禁用" if is_enabled else "🟢 启用", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:item:toggle:{image_id}"),
             InlineKeyboardButton(text="🗑️ 删除", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:item:delete:{image_id}"),
+            InlineKeyboardButton(text="🔴 禁用" if is_enabled else "🟢 启用", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:item:toggle:{image_id}"),
             InlineKeyboardButton(text="❌ 关闭", callback_data=f"{MAIN_IMAGE_ADMIN_CALLBACK_DATA}:item:close"),
         ]
     ]
