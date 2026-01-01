@@ -46,15 +46,13 @@ def get_common_image() -> str:
     返回值:
     - str: 图片文件路径; 若不可用则返回空字符串
     """
-    # 优先检查 Docker 容器内的绝对路径（如果是 Docker 环境）
-    docker_path = Path("/usr/src/app/assets/ui/start.jpg")
-    if docker_path.exists():
-        return str(docker_path)
-
-    # 本地开发环境相对路径
-    local_path = Path("assets/ui/start.jpg")
-    if local_path.exists():
-        return str(local_path)
-
+    # 动态获取项目根目录（基于当前文件位置）
+    # 当前文件在 bot/utils/images.py，根目录需向上回退 3 层
+    base_dir = Path(__file__).resolve().parent.parent.parent
+    target = base_dir / "assets/ui/start.jpg"
+    
+    if target.exists():
+        return str(target)
+    
     return ""
 
