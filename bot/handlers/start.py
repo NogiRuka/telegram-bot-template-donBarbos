@@ -100,7 +100,7 @@ async def start_handler(
         await message.reply("💫 请私聊我来开启对话哦。")
         return
     uid = message.from_user.id
-    logger.info(f"Start handler triggered for user {uid}")
+    logger.info(f"用户触发 /start 命令: user_id={uid}")
 
     # 检查群组验证
     if not await check_user_in_group(message.bot, uid):
@@ -112,7 +112,7 @@ async def start_handler(
         await message.answer(
             f"🚫 您必须先加入群组 {target_group} 才能和我对话哦。",
         )
-        logger.info(f"User {uid} not in group {target_group}")
+        logger.info(f"用户未加入群组: user_id={uid}, target={target_group}")
         return
 
     # 🧨 强制丢弃旧主消息
@@ -121,13 +121,13 @@ async def start_handler(
     try:
         # 构建首页文案与键盘
         caption, kb = await build_home_view(session, uid)
-        logger.debug(f"Home view built for {uid}")
+        logger.debug(f"首页视图构建完成: user_id={uid}")
 
         # 🚀 首次渲染必须带图片
         img = await MainImageService.select_main_image(session, uid)
         
         if img:
-            logger.info(f"Found main image for {uid}: {img.id} ({img.file_id})")
+            logger.info(f"获取到自定义主图: user_id={uid}, img_id={img.id}")
             # 记录展示历史
             await MainImageService.record_display(session, uid, img.id)
 
@@ -140,7 +140,7 @@ async def start_handler(
             )
         else:
             fallback_img = get_common_image()
-            logger.info(f"No custom main image for {uid}, using fallback: '{fallback_img}'")
+            logger.info(f"无自定义主图，使用默认图片: user_id={uid}, path='{fallback_img}'")
             
             result = await main_msg.render(
                 user_id=uid,
@@ -149,13 +149,13 @@ async def start_handler(
                 image_path=fallback_img,
             )
             if not result:
-                logger.error(f"Failed to render start message for {uid} (fallback image: '{fallback_img}')")
+                logger.error(f"渲染首页消息失败: user_id={uid}, fallback='{fallback_img}'")
                 # 最后的防线：如果 render 失败（例如图片不存在），强制发文本
                 if not fallback_img:
                     await message.answer(caption, reply_markup=kb, parse_mode="MarkdownV2")
 
     except Exception as e:
-        logger.exception(f"Error in start_handler for {uid}: {e}")
+        logger.exception(f"处理 /start 命令时发生异常: user_id={uid}, error={e}")
         await message.answer("⚠️ 系统繁忙，请稍后再试")
 
 
