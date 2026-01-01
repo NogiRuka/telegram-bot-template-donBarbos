@@ -120,7 +120,7 @@ services:
     image: bot:latest
     container_name: ${COMPOSE_PROJECT_NAME}-migrator
     restart: "no"
-    command: alembic upgrade head
+    command: uv run alembic upgrade head
     env_file: [.env]
     environment:
       - DB_HOST=mysql
