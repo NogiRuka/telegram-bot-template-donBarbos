@@ -1025,7 +1025,7 @@ async def start_scheduler(bot: Bot) -> None:
             await asyncio.sleep(1)
             
             # 获取当前时间 HH:MM
-            now_str = datetime.now().strftime("%H:%M")
+            now_str = now().strftime("%H:%M")
             target_time = settings.EMBY_SYNC_TIME
             
             # 秒数归零时检查，避免一分钟内重复触发
