@@ -8,6 +8,8 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      - DB_HOST=mysql
     ports:
       - ${WEBHOOK_PORT}:${WEBHOOK_PORT}
     networks:
@@ -23,6 +25,7 @@ services:
       - .env
     environment:
       - API_HOST=0.0.0.0
+      - DB_HOST=mysql
     command: python -m bot.api
     ports:
       - ${API_PORT}:${API_PORT}
@@ -98,10 +101,10 @@ services:
     command: alembic upgrade head
     env_file:
       - .env
-    networks:
-      - app
+    environment:
+      - DB_HOST=mysql
     depends_on:
-      - bot
+      - mysql
     volumes:
       - ./migrations:/usr/src/app/migrations
 
