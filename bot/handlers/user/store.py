@@ -1,5 +1,6 @@
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config.constants import KEY_USER_STORE
@@ -88,6 +89,27 @@ async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession
         product = await CurrencyService.get_product(session, product_id)
 
         if product:
+            # 发送群组通知
+            try:
+                from bot.utils.msg_group import send_group_notification
+
+                user = callback.from_user
+                user_info = {
+                    "group_name": "StorePurchase",
+                    "user_id": str(user_id),
+                    "username": user.username or "NoUsername",
+                    "full_name": user.full_name or "Unknown",
+                    "action": "BuyProduct",
+                }
+                
+                # 假设 product.price 是数值，转换为字符串
+                price_str = str(product.price)
+                reason = f"购买商品: {product.name} (花费: {price_str} {CURRENCY_NAME})"
+                
+                await send_group_notification(callback.bot, user_info, reason)
+            except Exception as e:
+                logger.error(f"发送购买通知失败: {e}")
+
             text = (
                 f"📦 *商品详情*\n\n"
                 f"名称: {escape_markdown_v2(product.name)}\n"
