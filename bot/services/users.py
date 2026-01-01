@@ -6,7 +6,7 @@ from sqlalchemy import func, select, update
 
 from bot.cache import build_key, cached, clear_cache
 from bot.core.config import settings
-from bot.database.models import UserExtendModel, UserHistoryModel, UserModel, UserRole
+from bot.database.models import EmbyUserModel, UserExtendModel, UserHistoryModel, UserModel, UserRole
 from bot.utils.datetime import now
 
 if TYPE_CHECKING:
@@ -489,8 +489,31 @@ async def create_and_bind_emby_user(
         res_ext = await session.execute(_select(UserExtendModel).where(UserExtendModel.user_id == user_id))
         ext = res_ext.scalar_one_or_none()
         if ext and getattr(ext, "emby_user_id", None):
-            logger.info("ℹ️ 用户已绑定 Emby 账号: user_id={} emby_user_id={}", user_id, getattr(ext, "emby_user_id", None))
-            return False, None, "已绑定 Emby 账号"
+            current_emby_id = ext.emby_user_id
+            
+            # 检查账号是否为软删除状态 (如果存在且未删除，则阻止创建)
+            stmt_check = _select(EmbyUserModel).where(
+                EmbyUserModel.emby_user_id == current_emby_id,
+                EmbyUserModel.is_deleted == False
+            )
+            res_check = await session.execute(stmt_check)
+            active_account = res_check.scalar_one_or_none()
+
+            if active_account:
+                logger.info("ℹ️ 用户已绑定 Emby 账号: user_id={} emby_user_id={}", user_id, current_emby_id)
+                return False, None, "已绑定 Emby 账号"
+
+            # 账号已软删除或不存在，执行归档并允许重新注册
+            logger.info("ℹ️ 检测到残留的软删除/无效账号，执行归档并重新注册: user_id={} old_id={}", user_id, current_emby_id)
+            
+            extra = dict(ext.extra_data) if ext.extra_data else {}
+            archived = extra.get("archived_emby_ids", [])
+            if current_emby_id not in archived:
+                archived.append(current_emby_id)
+            extra["archived_emby_ids"] = archived
+            
+            ext.extra_data = extra
+            ext.emby_user_id = None
 
         # 调用 emby_service.create_user 完整流程
         ok, user_dto, err = await emby_service.create_user(name=name, password=password)
@@ -548,12 +571,12 @@ async def has_emby_account(session: AsyncSession, user_id: int) -> bool:
     返回值:
     - bool: True 表示已绑定
     """
-    res = await session.execute(
-        select(UserExtendModel.emby_user_id).where(
-            UserExtendModel.user_id == user_id,
-            UserExtendModel.is_deleted.is_(False),
-        )
+    stmt = (
+        select(UserExtendModel.emby_user_id)
+        .join(EmbyUserModel, UserExtendModel.emby_user_id == EmbyUserModel.emby_user_id)
+        .where(UserExtendModel.user_id == user_id, EmbyUserModel.is_deleted == False)
     )
+    res = await session.execute(stmt)
     emby_id = res.scalar_one_or_none()
     return bool(emby_id)
 
