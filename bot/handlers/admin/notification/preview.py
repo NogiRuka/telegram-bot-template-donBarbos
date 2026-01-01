@@ -1,3 +1,5 @@
+from math import ceil
+
 from aiogram import F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -12,20 +14,47 @@ from bot.core.constants import (
 )
 from bot.database.models.emby_item import EmbyItemModel
 from bot.database.models.notification import NotificationModel
+from bot.keyboards.inline.admin import get_notification_preview_pagination_keyboard
 from bot.keyboards.inline.buttons import NOTIFY_CLOSE_PREVIEW_BUTTON
+from bot.services.main_message import MainMessageService
 from bot.utils.message import delete_message, delete_message_after_delay
 from bot.utils.notification import get_notification_content
 
 from .router import router, NotificationStates
 
 
-@router.callback_query(F.data == "admin:notify_preview")
+@router.callback_query(F.data.startswith("admin:notify_preview"))
 async def handle_notify_preview(
     callback: types.CallbackQuery,
     session: AsyncSession,
-    state: FSMContext
+    state: FSMContext,
+    main_msg: MainMessageService
 ) -> None:
     """生成通知预览 - 每条消息关联具体通知ID"""
+    # 解析参数: admin:notify_preview:list:1:5
+    # 或者旧入口: admin:notify_preview
+    page = 1
+    limit = 5
+    
+    try:
+        parts = callback.data.split(":")
+        if len(parts) >= 5 and parts[2] == "list":
+            page = int(parts[3])
+            limit = int(parts[4])
+    except (IndexError, ValueError):
+        pass
+
+    # 清理旧消息
+    data = await state.get_data()
+    preview_data = data.get("preview_data", {})
+    if preview_data:
+        for msg_id in preview_data:
+            try:
+                await callback.bot.delete_message(chat_id=callback.message.chat.id, message_id=msg_id)
+            except Exception:
+                pass
+        await state.update_data(preview_data={})
+
     preview_key = case(
         (
             (NotificationModel.item_type == "Episode")
@@ -52,19 +81,35 @@ async def handle_notify_preview(
         .subquery()
     )
 
+    # 查询总数
+    count_stmt = select(func.count()).select_from(subq)
+    total_count = (await session.execute(count_stmt)).scalar_one()
+
+    total_pages = ceil(total_count / limit) if total_count > 0 else 1
+    page = max(1, min(page, total_pages))
+
+    # 分页查询
     stmt = (
         select(NotificationModel, EmbyItemModel)
         .join(subq, NotificationModel.id == subq.c.notif_id)
         .join(EmbyItemModel, EmbyItemModel.id == subq.c.biz_id)
+        .offset((page - 1) * limit)
+        .limit(limit)
     )
 
     rows = (await session.execute(stmt)).all()
 
-    if not rows:
-        await callback.answer("🈚 没有可预览的通知")
-        return
+    # 更新主控消息
+    text = (
+        f"👀 *通知预览*\n\n"
+        f"共 {total_count} 条待处理通知\n"
+        f"当前第 {page}/{total_pages} 页"
+    )
+    kb = get_notification_preview_pagination_keyboard(page, total_pages, limit)
+    await main_msg.update_on_callback(callback, text, kb)
 
-    await callback.answer(f"👀 正在生成 {len(rows)} 条预览…")
+    if not rows:
+        return
 
     # 存储预览消息信息：{message_id: notification_id}
     preview_data = {}
@@ -117,7 +162,11 @@ async def handle_notify_reject(
 ) -> None:
     """拒绝单条通知 - 将指定通知状态改为rejected"""
     # 从callback_data中提取通知ID
-    notification_id = int(callback.data.split(":")[2])
+    try:
+        notification_id = int(callback.data.split(":")[2])
+    except (IndexError, ValueError):
+        await callback.answer("无效的请求", show_alert=True)
+        return
 
     # 获取指定通知
     stmt = select(NotificationModel).where(
@@ -219,7 +268,11 @@ async def handle_add_sender_start(
     """开始添加通知者流程"""
 
     # 从callback_data中提取通知ID
-    notification_id = int(callback.data.split(":")[2])
+    try:
+        notification_id = int(callback.data.split(":")[2])
+    except (IndexError, ValueError):
+        await callback.answer("无效的请求", show_alert=True)
+        return
 
     # 存储通知ID到状态
     await state.update_data(notification_id=notification_id)
@@ -232,7 +285,11 @@ async def handle_add_sender_start(
 
 
 @router.callback_query(F.data == "admin:notify_close_preview")
-async def handle_close_preview(callback: types.CallbackQuery, state: FSMContext) -> None:
+async def handle_close_preview(
+    callback: types.CallbackQuery, 
+    state: FSMContext,
+    main_msg: MainMessageService
+) -> None:
     """关闭所有预览消息"""
     user_id = callback.from_user.id
 
@@ -250,10 +307,18 @@ async def handle_close_preview(callback: types.CallbackQuery, state: FSMContext)
 
         # 清除预览数据
         await state.update_data(preview_data={})
-    else:
-        # 可能是缓存过期或重启，尝试删除当前这一条
-        await delete_message(callback.message)
-        await callback.answer("预览缓存已失效，仅删除当前消息", show_alert=False)
+    
+    # 同时也删除主控消息（如果它存在）或者重置它
+    # 如果用户点击的是主控消息上的"关闭预览"按钮，callback.message 就是主控消息
+    # 如果用户点击的是列表项上的"关闭预览"按钮，callback.message 是列表项
+    
+    # 尝试删除触发此回调的消息（如果是列表项，这行会删除它；如果是主控消息，这行会删除它）
+    await delete_message(callback.message)
+    
+    # 如果触发的是列表项，主控消息还在。应该也删除主控消息。
+    await main_msg.delete()
+    
+    await callback.answer("已关闭预览", show_alert=False)
 
 
 @router.message(NotificationStates.waiting_for_additional_sender)

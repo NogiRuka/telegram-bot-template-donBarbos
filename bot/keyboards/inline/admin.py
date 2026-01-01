@@ -237,6 +237,39 @@ def get_notification_settings_keyboard(channels: list[dict]) -> InlineKeyboardMa
     return keyboard.as_markup()
 
 
+def get_notification_preview_pagination_keyboard(page: int, total_pages: int, limit: int) -> InlineKeyboardMarkup:
+    """通知预览分页键盘"""
+    builder = InlineKeyboardBuilder()
+
+    # Callback format: admin:notify_preview:list:{page}:{limit}
+    base_callback = "admin:notify_preview:list"
+
+    # 上一页
+    if page > 1:
+        builder.button(text="⬅️ 上一页", callback_data=f"{base_callback}:{page - 1}:{limit}")
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
+
+    # 页码指示
+    builder.button(text=f"{page}/{total_pages}", callback_data="ignore")
+
+    # 下一页
+    if page < total_pages:
+        builder.button(text="下一页 ➡️", callback_data=f"{base_callback}:{page + 1}:{limit}")
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
+    
+    builder.adjust(3)
+
+    # 关闭与返回
+    builder.row(
+        InlineKeyboardButton(text="❌ 关闭预览", callback_data="admin:notify_close_preview"),
+        InlineKeyboardButton(text="🔙 返回通知面板", callback_data="admin:notify")
+    )
+    
+    return builder.as_markup()
+
+
 def get_quiz_image_list_pagination_keyboard(page: int, total_pages: int, limit: int) -> InlineKeyboardMarkup:
     """题图列表分页键盘"""
     builder = InlineKeyboardBuilder()
