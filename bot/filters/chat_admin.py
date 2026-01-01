@@ -10,6 +10,10 @@ class GroupAdminFilter(BaseFilter):
     """
 
     async def __call__(self, message: Message) -> bool:
+        # 如果是私聊，允许通过过滤器（后续逻辑会检查参数）
+        if message.chat.type == ChatType.PRIVATE:
+            return True
+
         if message.chat.type not in (ChatType.GROUP, ChatType.SUPERGROUP):
             return False
 
