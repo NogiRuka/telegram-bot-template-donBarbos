@@ -18,18 +18,13 @@ from bot.services.admin_service import ban_emby_user
 router = Router(name="group_member_events")
 
 
-@router.chat_member(F.old_chat_member.status.in_({ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR}) & F.new_chat_member.status.in_({ChatMemberStatus.LEFT, ChatMemberStatus.KICKED}))
+@router.chat_member(F.old_chat_member.status.in_({ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR, ChatMemberStatus.RESTRICTED}) & F.new_chat_member.status.in_({ChatMemberStatus.LEFT, ChatMemberStatus.KICKED}))
 async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSession) -> None:
     """
     监听群成员离开或被踢出事件
-    
-    触发条件:
-    - 旧状态: MEMBER / ADMINISTRATOR / CREATOR
-    - 新状态: LEFT (主动离开) / KICKED (被踢出/封禁)
-    
-    执行操作:
-    - 调用 ban_emby_user 清理 Emby 账号
     """
+    logger.info(f"收到成员变动事件: chat={event.chat.id}, user={event.new_chat_member.user.id}, old={event.old_chat_member.status}, new={event.new_chat_member.status}")
+
     # 仅处理配置的群组
     if settings.GROUP:
         is_match = False
@@ -49,6 +44,7 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
                 is_match = True
         
         if not is_match:
+            logger.warning(f"群组不匹配，忽略事件: config={settings.GROUP}, event_chat={event.chat.id}/{event.chat.username}")
             return
 
     user = event.new_chat_member.user
