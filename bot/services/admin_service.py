@@ -22,6 +22,48 @@ from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
 
 
+async def send_admin_notification(
+    bot: Bot,
+    user_info: dict[str, str],
+    reason: str,
+) -> None:
+    """
+    发送管理员通知（通用版）
+    
+    格式:
+    #GroupTitle #IDUserID #Username #Action
+    📖 FullName Reason
+    """
+    logger.info(f"尝试发送管理员通知: group={settings.OWNER_MSG_GROUP}")
+    
+    if not bot or not settings.OWNER_MSG_GROUP or not user_info:
+        return
+
+    try:
+        group_name = user_info.get("group_name", "UnknownGroup")
+        user_id = user_info.get("user_id", "UnknownID")
+        username = user_info.get("username", "UnknownUser")
+        full_name = user_info.get("full_name", "Unknown")
+        action = user_info.get("action", "UnknownAction")
+
+        # 简单的 hashtag 处理：去除空格
+        def to_hashtag(s: str) -> str:
+            return "#" + str(s).replace(" ", "").replace("#", "")
+
+        # #GroupTitle #IDUserID #Username #Action
+        tags = f"{to_hashtag(group_name)} #ID{user_id} {to_hashtag(username)} {to_hashtag(action)}"
+        
+        # 📖 FullName Reason
+        content = f"📖 {html.escape(full_name)} {html.escape(reason)}"
+        
+        msg_text = f"{tags}\n{content}"
+
+        await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="HTML")
+        logger.info(f"管理员通知已发送至 {settings.OWNER_MSG_GROUP}")
+    except Exception as e:
+        logger.error(f"发送管理员通知失败: {e}")
+
+
 async def ban_emby_user(
     session: AsyncSession,
     target_user_id: int,
@@ -32,13 +74,13 @@ async def ban_emby_user(
 ) -> list[str]:
     """
     封禁 Emby 用户逻辑
-
+    
     功能:
     1. 删除 Emby 账号 (API)
     2. 软删除数据库 Emby 用户数据
     3. 记录审计日志
     4. 发送通知到管理员群组 (如果配置)
-
+    
     Args:
         session: 数据库会话
         target_user_id: 目标 Telegram 用户 ID
@@ -46,7 +88,7 @@ async def ban_emby_user(
         reason: 封禁原因
         bot: Bot 实例 (用于发送通知)
         user_info: 用户信息字典 (username, full_name, group_name 等)
-
+        
     Returns:
         操作结果消息列表
     """
@@ -115,40 +157,11 @@ async def ban_emby_user(
     session.add(audit_log)
 
     # 4. 发送通知到管理员群组
-    logger.info(f"尝试发送管理员通知(Ban): bot={bool(bot)}, group={settings.OWNER_MSG_GROUP}, user_info={bool(user_info)}")
-    if bot and settings.OWNER_MSG_GROUP and user_info:
-        try:
-            # 格式: #哪个群组 #哪个用户id #哪个用户名 #什么行为
-            group_name = user_info.get("group_name", "UnknownGroup")
-            username = user_info.get("username", "UnknownUser")
-            full_name = user_info.get("full_name", "Unknown")
-            action = user_info.get("action", "Ban")
-            
-            # 转换成 hashtag 格式 (移除空格和特殊字符)
-            def to_hashtag(s: str) -> str:
-                return "#" + "".join(c for c in s if c.isalnum() or c == '_')
-
-            tags = f"{to_hashtag(group_name)} #ID{target_user_id} {to_hashtag(username)} {to_hashtag(action)}"
-
-            # Escape HTML special characters
-            reason_safe = html.escape(reason)
-            full_name_safe = html.escape(full_name)
-            results_safe = [html.escape(r) for r in results]
-
-            msg_text = (
-                f"{tags}\n"
-                f"📖 <b>说明:</b> {reason_safe}\n\n"
-                f"👤 <b>用户:</b> {full_name_safe} (<code>{target_user_id}</code>)\n"
-                f"🎬 <b>Emby:</b> <code>{emby_user_id if emby_user_id else '未绑定'}</code>\n"
-                f"📝 <b>结果:</b>\n" + "\n".join(results_safe)
-            )
-
-            await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="HTML")
-            logger.info(f"管理员通知(Ban)已发送至 {settings.OWNER_MSG_GROUP}")
-        except Exception as e:
-            logger.error(f"发送管理员通知(Ban)失败: {e}")
-            # 不影响主要流程
-            results.append(f"⚠️ 发送通知失败: {e}")
+    if bot and user_info:
+        # 确保 user_id 存在
+        user_info["user_id"] = str(target_user_id)
+        # 调用通用通知函数
+        await send_admin_notification(bot, user_info, reason)
 
     return results
 
@@ -199,37 +212,8 @@ async def unban_user_service(
     results.append("✅ 已记录解封审计日志")
     
     # 发送通知到管理员群组
-    logger.info(f"尝试发送管理员通知(Unban): bot={bool(bot)}, group={settings.OWNER_MSG_GROUP}, user_info={bool(user_info)}")
-    if bot and settings.OWNER_MSG_GROUP and user_info:
-        try:
-            # 格式: #哪个群组 #哪个用户id #哪个用户名 #什么行为
-            group_name = user_info.get("group_name", "UnknownGroup")
-            username = user_info.get("username", "UnknownUser")
-            full_name = user_info.get("full_name", "Unknown")
-            action = user_info.get("action", "Unban")
-            
-            # 转换成 hashtag 格式
-            def to_hashtag(s: str) -> str:
-                return "#" + "".join(c for c in s if c.isalnum() or c == '_')
-
-            tags = f"{to_hashtag(group_name)} #ID{target_user_id} {to_hashtag(username)} {to_hashtag(action)}"
-
-            # Escape HTML special characters
-            reason_safe = html.escape(reason)
-            full_name_safe = html.escape(full_name)
-            results_safe = [html.escape(r) for r in results]
-
-            msg_text = (
-                f"{tags}\n"
-                f"📖 <b>说明:</b> {reason_safe}\n\n"
-                f"👤 <b>用户:</b> {full_name_safe} (<code>{target_user_id}</code>)\n"
-                f"📝 <b>结果:</b>\n" + "\n".join(results_safe)
-            )
-
-            await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="HTML")
-            logger.info(f"管理员通知(Unban)已发送至 {settings.OWNER_MSG_GROUP}")
-        except Exception as e:
-            logger.error(f"发送管理员通知(Unban)失败: {e}")
-            results.append(f"⚠️ 发送通知失败: {e}")
+    if bot and user_info:
+        user_info["user_id"] = str(target_user_id)
+        await send_admin_notification(bot, user_info, reason)
             
     return results

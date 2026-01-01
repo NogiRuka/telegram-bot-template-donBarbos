@@ -14,8 +14,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
 from bot.services.admin_service import ban_emby_user
+from bot.services.users import upsert_user_on_interaction
 
 router = Router(name="group_member_events")
+
+
+@router.chat_member(F.new_chat_member.status == ChatMemberStatus.MEMBER)
+async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> None:
+    """
+    监听群成员加入事件
+    """
+    logger.info(f"收到成员加入事件: chat={event.chat.id}, user={event.new_chat_member.user.id}")
+    # 保存用户信息
+    await upsert_user_on_interaction(session, event.new_chat_member.user)
 
 
 @router.chat_member(F.old_chat_member.status.in_({ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR, ChatMemberStatus.RESTRICTED}) & F.new_chat_member.status.in_({ChatMemberStatus.LEFT, ChatMemberStatus.KICKED}))
