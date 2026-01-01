@@ -242,7 +242,7 @@ def get_notification_settings_keyboard(channels: list[dict]) -> InlineKeyboardMa
     # 等等，ADMIN_FEATURES_MAPPING 里有 "notify": (KEY_ADMIN_NOTIFY, "📢 上新通知")
     # 所以 callback 是 "admin:notify"
     
-    buttons.append([InlineKeyboardButton(text="🔙 返回通知面板", callback_data="admin:notify")])
+    buttons.append([InlineKeyboardButton(text="🔙 返回通知面板", callback_data="admin:new_item_notification")])
     buttons.append([BACK_TO_HOME_BUTTON])
 
     keyboard = InlineKeyboardBuilder(markup=buttons)

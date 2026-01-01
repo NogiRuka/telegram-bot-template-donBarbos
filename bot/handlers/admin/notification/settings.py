@@ -11,6 +11,7 @@ from bot.keyboards.inline.constants import (
 )
 from bot.services.config_service import get_config, set_config
 from bot.services.main_message import MainMessageService
+from bot.keyboards.inline.constants import NOTIFY_SETTINGS_LABEL
 
 from .router import router
 
@@ -31,10 +32,8 @@ async def notification_settings_handler(callback: CallbackQuery, session: AsyncS
     # 更新界面
     # 使用 Markdown 格式美化
     text = (
-        "⚙️ *通知频道设置*\n\n"
-        "📢 请点击下方按钮切换频道的启用/禁用状态：\n"
-        "🟢 已启用\n"
-        "🔴 已禁用"
+        f"*{NOTIFY_SETTINGS_LABEL}*\n\n"
+        "📢 请点击下方按钮切换频道的启用/禁用状态："
     )
     
     await main_msg.update_on_callback(callback, text, keyboard)
@@ -90,10 +89,8 @@ async def notification_settings_toggle_handler(callback: CallbackQuery, session:
         keyboard = get_notification_settings_keyboard(channels_config)
 
         text = (
-            "⚙️ *通知频道设置*\n\n"
-            "📢 请点击下方按钮切换频道的启用/禁用状态：\n"
-            "🟢 已启用\n"
-            "🔴 已禁用"
+            f"*{NOTIFY_SETTINGS_LABEL}*\n\n"
+            "📢 请点击下方按钮切换频道的启用/禁用状态："
         )
         
         # 更新消息
