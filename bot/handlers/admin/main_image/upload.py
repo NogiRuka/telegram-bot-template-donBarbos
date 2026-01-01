@@ -1,18 +1,13 @@
 import asyncio
-import contextlib
-import logging
-from io import BytesIO
+from typing import List
 
 from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .router import router
-
-logger = logging.getLogger(__name__)
 from bot.config.constants import KEY_ADMIN_MAIN_IMAGE
 from bot.database.models import MainImageModel
 from bot.keyboards.inline.admin import (
@@ -23,10 +18,10 @@ from bot.keyboards.inline.admin import (
 from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.states.admin import AdminMainImageState
-from bot.utils.images import get_image_dimensions
 from bot.utils.message import send_toast
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2, format_size
+from loguru import logger
 
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":upload")
@@ -75,120 +70,151 @@ async def start_upload_process(callback: CallbackQuery, state: FSMContext, main_
 
 
 @router.message(AdminMainImageState.waiting_for_image)
-async def handle_image_upload(message: Message, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
-    """处理图片上传"""
-    logger.info(f"MainImage Upload Handler Triggered: msg_id={message.message_id}, media_group_id={message.media_group_id}, caption={message.caption}")
-
-    try:
-        await main_msg.delete_input(message)
-    except Exception as e:
-        logger.error(f"Failed to delete input message {message.message_id}: {e}")
-
-    file_id: str | None = None
-    source_type = "photo"
-    mime_type: str | None = None
-    width: int | None = None
-    height: int | None = None
-    file_size: int | None = None
-    caption = message.caption
-
-    # 处理媒体组(相册)共享 Caption
-    if message.media_group_id:
-        group_key = f"media_group_caption_{message.media_group_id}"
-        
-        if caption:
-            # 当前消息有 Caption，保存到状态供同组其他消息使用
-            await state.update_data({group_key: caption})
-        else:
-            # 当前消息无 Caption，稍作等待以确保带 Caption 的消息已写入状态
-            await asyncio.sleep(1.0)
-            # 尝试从状态获取
-            data = await state.get_data()
-            caption = data.get(group_key, "")
+async def handle_image_upload(
+    message: Message, 
+    session: AsyncSession, 
+    state: FSMContext, 
+    main_msg: MainMessageService,
+    album: List[Message] = None  # 由 AlbumMiddleware 注入
+) -> None:
+    """仅处理 Photo 类型的图片上传 (支持单图和相册)"""
     
-    caption = caption or ""
-
-    if message.photo:
-        p = message.photo[-1]
-        file_id = p.file_id
-        width = p.width
-        height = p.height
-        file_size = p.file_size
-        source_type = "photo"
-    elif message.document:
-        doc = message.document
-        if doc.mime_type and doc.mime_type.startswith("image/"):
-            file_id = doc.file_id
-            mime_type = doc.mime_type
-            file_size = doc.file_size
-            source_type = "document"
-
-            # 尝试下载图片并读取尺寸
-            try:
-                io_obj = BytesIO()
-                await message.bot.download(doc, destination=io_obj)
-                dims = get_image_dimensions(io_obj)
-                if dims:
-                    width, height = dims
-            except Exception:
-                # 忽略读取尺寸失败，允许 width/height 为 None
-                pass
-        else:
-            await message.answer("❌ 仅支持图片文档，请重试。")
-            return
-    else:
-        await message.answer("❌ 未检测到图片，请发送 Photo 或 图片 Document。")
+    # 1. 统一转换为列表处理
+    media_list = album if album else [message]
+    is_single = len(media_list) == 1
+    
+    # 2. 预检：过滤掉非 Photo 的消息（比如用户混着发了视频或文档）
+    photo_messages = [m for m in media_list if m.photo]
+    if not photo_messages:
+        await message.answer("❌ 请发送图片（Photo），暂不支持文档或视频。")
         return
 
-    # 重复检测: 相同 file_id 不允许重复上传
-    try:
-        exists_stmt = select(MainImageModel.id).where(MainImageModel.file_id == file_id)
-        exists = await session.execute(exists_stmt)
-        if exists.scalar_one_or_none() is not None:
-            await send_toast(message, "❌ 图片重复了，请重新上传")
-            return
-    except Exception:
-        # 忽略检测失败，后续还有唯一约束保护
-        pass
+    # 3. 提取公共信息
+    # 提取 Caption (相册中通常只有一张图带文字)
+    common_caption = next((m.caption for m in photo_messages if m.caption), "")
+    # 获取状态数据
+    state_data = await state.get_data()
+    is_nsfw = state_data.get("is_nsfw", False)
+    
+    success_count = 0
+    last_model = None
 
-    # 获取当前上传类型
+    # 4. 循环保存图片
+    for msg in photo_messages:
+        await main_msg.delete_input(msg) # 删除用户发的消息
+        
+        # 获取最高画质的 PhotoSize 对象
+        p = msg.photo[-1]
+        file_id = p.file_id
+        
+        # 查重逻辑
+        exists = await session.execute(select(MainImageModel.id).where(MainImageModel.file_id == file_id))
+        if exists.scalar_one_or_none():
+            if is_single:
+                await send_toast(message, "❌ 图片重复了，请重新上传")
+                return
+            continue
+
+        # 构建模型
+        last_model = MainImageModel(
+            file_id=file_id,
+            source_type="photo",
+            width=p.width,
+            height=p.height,
+            file_size=p.file_size,
+            caption=common_caption,
+            is_nsfw=is_nsfw,
+        )
+        session.add(last_model)
+        success_count += 1
+
+    # 5. 提交结果并反馈
+    if success_count > 0:
+        await session.commit()
+        await session.refresh(last_model)
+
+        safe_caption = escape_markdown_v2(common_caption)
+        
+        if is_single:
+            # 单图模式：展示详细规格
+            text = (
+                "🎉 *图片上传成功！* 🌸\n\n"
+                f"🆔 *ID*：`{last_model.id}`\n"
+                f"🖼 *规格*：{last_model.width} × {last_model.height} ｜ "
+                f"{escape_markdown_v2(format_size(last_model.file_size))}\n"
+                f"{'🔞 NSFW' if is_nsfw else '🌿 SFW'}"
+            )
+            if common_caption:
+                text += f"\n📝 {safe_caption}"
+        else:
+            # 多图模式：展示统计信息
+            text = (
+                f"🎉 *成功导入 {success_count} 张图片！* 🌸\n\n"
+                f"🔞 *属性*：{'🔞 NSFW' if is_nsfw else '🌿 SFW'}\n"
+                f"📝 *说明*：{safe_caption or '无'}"
+            )
+
+        await state.clear()
+        await main_msg.render(message.from_user.id, text, get_main_image_upload_success_keyboard(is_nsfw))
+    else:
+        await message.answer("❌ 未能成功保存图片（可能已存在于库中）。")
+
+
+async def finalize_media_group_upload(
+    message: Message,
+    session: AsyncSession,
+    state: FSMContext,
+    main_msg: MainMessageService,
+    gid: str,
+):
+    await asyncio.sleep(1.5)  # 等 Telegram 把这一组全推完
+
     data = await state.get_data()
+    media_groups = data.get("media_groups", {})
+    captions = data.get("media_group_captions", {})
+
+    items = media_groups.get(gid, [])
+    caption = captions.get(gid, "")
     is_nsfw = data.get("is_nsfw", False)
 
-    model = MainImageModel(
-        file_id=file_id,
-        source_type=source_type,
-        mime_type=mime_type,
-        width=width,
-        height=height,
-        file_size=file_size,
-        caption=caption,
-        is_nsfw=is_nsfw,  # 使用状态中的设置
-    )
-    session.add(model)
-    try:
-        await session.commit()
-    except IntegrityError:
-        await session.rollback()
-        await send_toast(message, "❌ 图片重复了，请重新上传")
-        return
+    saved = []
 
-    safe_caption = escape_markdown_v2(caption)
+    for item in items:
+        model = MainImageModel(
+            file_id=item["file_id"],
+            source_type=item["source_type"],
+            mime_type=item["mime_type"],
+            width=item["width"],
+            height=item["height"],
+            file_size=item["file_size"],
+            caption=caption,
+            is_nsfw=is_nsfw,
+        )
+        session.add(model)
+        saved.append(model)
+
+    await session.commit()
+
+    # 🧹 清理 state
+    data.pop(f"media_group_finalizing_{gid}", None)
+    media_groups.pop(gid, None)
+    captions.pop(gid, None)
+
+    await state.update_data(
+        media_groups=media_groups,
+        media_group_captions=captions,
+    )
+
+    # 🎉 UI
     text = (
         "🎉 *上传成功啦～* 🌸\n\n"
-        f"🆔 *ID*：`{model.id}`\n"
-        f"🖼 *规格*：{escape_markdown_v2(f'{width} × {height}')} ｜ "
-        f"{escape_markdown_v2(format_size(file_size))}\n"
-        f"{'🔞 NSFW' if model.is_nsfw else '🌿 SFW'} ｜ "
-        f"{'🟢 启用中' if model.is_enabled else '🔴 已禁用'}"
+        f"📸 本次共保存 `{len(saved)}` 张图片\n"
+        f"{'🔞 NSFW' if is_nsfw else '🌿 SFW'} ｜ 🟢 启用中\n\n"
+        "📸 *请继续发送图片，或点击下方按钮结束上传*"
     )
-    if caption:
-        text += f"\n📝 {safe_caption}"
-    
-    text += "\n\n📸 *请继续发送图片，或点击下方按钮结束上传*"
 
-    # 保持状态不清除，允许连续上传
-    # await state.clear()
-    
-    # 使用 Cancel 键盘 (点击返回主菜单并清除状态)
-    await main_msg.render(message.from_user.id, text, get_main_image_cancel_keyboard())
+    await main_msg.render(
+        message.from_user.id,
+        text,
+        get_main_image_cancel_keyboard(),
+    )

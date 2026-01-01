@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config.constants import KEY_ADMIN_ANNOUNCEMENT_TEXT
 from bot.core.config import settings
-from bot.handlers.admin.quiz.list_utils import _clear_quiz_list
 from bot.database.models import UserModel
 from bot.keyboards.inline.admin import get_start_admin_keyboard
 from bot.keyboards.inline.owner import get_start_owner_keyboard
@@ -19,6 +18,7 @@ from bot.services.main_image_service import MainImageService
 from bot.services.main_message import MainMessageService
 from bot.utils.hitokoto import build_start_caption, fetch_hitokoto
 from bot.utils.images import get_common_image
+from bot.utils.message import clear_message_list_from_state
 from bot.utils.permissions import _resolve_role
 
 router = Router(name="start")
@@ -127,7 +127,7 @@ async def start_handler(
 @router.callback_query(F.data == "back:home")
 async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
     """返回首页：根据回调更新主消息内容"""
-    await _clear_quiz_list(state, callback.bot, callback.message.chat.id)
+    await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "quiz_list_ids")
 
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)

@@ -17,8 +17,7 @@ from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA, QUIZ_ADMIN_LIST_QUIZZES_LABEL
 from bot.services.main_message import MainMessageService
 from bot.services.quiz_service import QuizService
-from bot.utils.message import send_toast
-from bot.handlers.admin.quiz.list_utils import _clear_quiz_list
+from bot.utils.message import clear_message_list_from_state, send_toast
 from .router import router
 
 def get_quiz_list_pagination_keyboard(page: int, total_pages: int, limit: int = 5) -> InlineKeyboardMarkup:
@@ -87,7 +86,7 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
 
     # 先清理旧消息
     if callback.message:
-        await _clear_quiz_list(state, callback.bot, callback.message.chat.id)
+        await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "quiz_list_ids")
 
     # 计算总数
     count_stmt = select(func.count()).select_from(QuizQuestionModel)

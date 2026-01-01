@@ -8,7 +8,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .router import router
-from .list_utils import _clear_quiz_list
 from bot.config.constants import KEY_ADMIN_QUIZ
 from bot.database.models import QuizImageModel
 from bot.keyboards.inline.admin import (
@@ -18,7 +17,7 @@ from bot.keyboards.inline.admin import (
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.utils.datetime import now
-from bot.utils.message import safe_delete_message, send_toast
+from bot.utils.message import clear_message_list_from_state, safe_delete_message, send_toast
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2
 
@@ -38,7 +37,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
 
     # 先清理旧消息
     if callback.message:
-        await _clear_quiz_list(state, callback.bot, callback.message.chat.id)
+        await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "quiz_list_ids")
 
     # 计算总数 (排除软删除)
     count_stmt = select(func.count()).select_from(QuizImageModel).where(QuizImageModel.is_deleted.is_(False))

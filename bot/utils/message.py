@@ -6,7 +6,10 @@
 
 from __future__ import annotations
 import asyncio
+from typing import Any
 
+from aiogram import Bot
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from loguru import logger
 
@@ -104,7 +107,6 @@ async def send_temp_message(
     parse_mode: str = "MarkdownV2"
 ) -> asyncio.Task | None:
     """发送一条临时消息，并在指定时间后自动删除。
-
     功能说明:
     - 统一封装发送消息并延迟删除的逻辑
     - 支持 Message 或 CallbackQuery 对象
@@ -195,3 +197,37 @@ async def send_toast(
 
 def extract_id(callback_data: str) -> int:
     return int(callback_data.rsplit(":", 1)[-1])
+
+
+async def clear_message_list_from_state(
+    state: FSMContext,
+    bot: Bot,
+    chat_id: int,
+    key: str
+) -> None:
+    """从状态中获取消息 ID 列表并删除这些消息，然后清空状态中的列表。
+
+    功能说明:
+    - 用于批量清理已发送的消息（如列表、菜单等）
+    - 从 FSMContext 中读取指定 key 的消息 ID 列表
+    - 遍历并安全删除每条消息
+    - 最后将状态中的该 key 重置为空列表
+
+    输入参数:
+    - state: FSMContext 状态上下文
+    - bot: Bot 实例
+    - chat_id: 聊天 ID
+    - key: 状态中存储消息 ID 列表的键名
+
+    返回值:
+    - None
+    """
+    data = await state.get_data()
+    msg_ids = data.get(key, [])
+    if not msg_ids:
+        return
+
+    for msg_id in msg_ids:
+        await safe_delete_message(bot, chat_id, msg_id)
+
+    await state.update_data({key: []})

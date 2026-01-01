@@ -18,22 +18,9 @@ from bot.keyboards.inline.admin import (
 from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.utils.datetime import now
-from bot.utils.message import safe_delete_message, send_toast
+from bot.utils.message import clear_message_list_from_state, safe_delete_message, send_toast
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2, format_size
-
-
-async def _clear_image_list(state: FSMContext, bot: Bot, chat_id: int) -> None:
-    """清理已发送的图片列表消息"""
-    data = await state.get_data()
-    msg_ids = data.get("main_image_list_ids", [])
-    if not msg_ids:
-        return
-
-    for msg_id in msg_ids:
-        await safe_delete_message(bot, chat_id, msg_id)
-
-    await state.update_data(main_image_list_ids=[])
 
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list")
@@ -42,7 +29,7 @@ async def list_images_entry(callback: CallbackQuery, main_msg: MainMessageServic
     """进入图片列表 - 选择类型"""
     # 清理之前可能存在的图片
     if callback.message:
-        await _clear_image_list(state, callback.bot, callback.message.chat.id)
+        await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "main_image_list_ids")
 
     text = "请选择要查看的图片类型:"
     await main_msg.update_on_callback(callback, text, get_main_image_list_type_keyboard())
@@ -55,7 +42,7 @@ async def back_to_home_from_list(callback: CallbackQuery, session: AsyncSession,
     """返回主面板"""
     # 清理图片
     if callback.message:
-        await _clear_image_list(state, callback.bot, callback.message.chat.id)
+        await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "main_image_list_ids")
 
     # 构建首页视图
     from bot.handlers.start import build_home_view
@@ -82,7 +69,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
 
     # 先清理旧图片
     if callback.message:
-        await _clear_image_list(state, callback.bot, callback.message.chat.id)
+        await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "main_image_list_ids")
 
     is_nsfw = (type_key == "nsfw")
 
