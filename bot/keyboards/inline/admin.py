@@ -497,22 +497,31 @@ def get_files_list_pagination_keyboard(page: int, total_pages: int, limit: int) 
     返回值:
     - InlineKeyboardMarkup: 键盘对象
     """
-    prev_page = max(1, page - 1)
-    next_page = min(total_pages, page + 1)
-    next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
+    builder = InlineKeyboardBuilder()
 
-    buttons = [
-        [
-            InlineKeyboardButton(text="⬅️", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:list:{prev_page}:{limit}"),
-            InlineKeyboardButton(text=f"{page}/{total_pages} (每页{limit:02d}条)", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:list:1:{next_limit}"),
-            InlineKeyboardButton(text="➡️", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:list:{next_page}:{limit}"),
-        ],
-        [
-            InlineKeyboardButton(text="🔙 返回文件管理", callback_data=FILE_ADMIN_CALLBACK_DATA),
-            InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:back_home"),
-        ],
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+    # 上一页
+    if page > 1:
+        builder.button(text="⬅️ 上一页", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:list:{page - 1}:{limit}")
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
+
+    # 页码指示 (Toggle limit)
+    next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
+    builder.button(text=f"{page}/{total_pages} (每页{limit:02d}条)", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:list:1:{next_limit}")
+
+    # 下一页
+    if page < total_pages:
+        builder.button(text="下一页 ➡️", callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:list:{page + 1}:{limit}")
+    else:
+        builder.button(text="⛔️", callback_data="ignore")
+
+    builder.adjust(3)
+
+    builder.row(
+        InlineKeyboardButton(text="🔙 返回文件管理", callback_data=FILE_ADMIN_CALLBACK_DATA),
+        InlineKeyboardButton(text=BACK_TO_HOME_LABEL, callback_data=f"{FILE_ADMIN_CALLBACK_DATA}:back_home"),
+    )
+    return builder.as_markup()
 
 
 def get_files_cancel_keyboard() -> InlineKeyboardMarkup:
