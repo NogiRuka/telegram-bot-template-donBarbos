@@ -52,11 +52,23 @@ def get_common_image() -> str:
     base_dir = Path(__file__).resolve().parent.parent.parent
     logger.info(f"当前项目根目录: {base_dir}")
 
+    # 优先检查 Docker 容器内的路径（如果当前是在容器内运行，通常是 /usr/src/app）
+    # 但由于 base_dir 已经是动态计算的，只要文件确实存在于容器内的对应位置，pathlib 就能找到
+    # 关键在于 assets 目录是否被正确 COPY 或 VOLUME 挂载进去了
+    
+    # 尝试多个可能的路径（兼容 Docker 和本地开发）
+    candidates = [
+        base_dir / "assets/ui/start.jpg",
+        Path("/usr/src/app/assets/ui/start.jpg"),  # Docker 绝对路径
+        Path("/app/assets/ui/start.jpg"),          # 常见 Docker 路径
+        Path("assets/ui/start.jpg").resolve(),     # 相对路径
+    ]
 
-    target = base_dir / "assets/ui/start.jpg"
+    for target in candidates:
+        if target.exists():
+            logger.info(f"找到图片: {target}")
+            return str(target)
     
-    if target.exists():
-        return str(target)
-    
+    logger.warning(f"未找到默认图片，搜索路径: {[str(p) for p in candidates]}")
     return ""
 
