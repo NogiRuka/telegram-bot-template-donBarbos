@@ -120,6 +120,7 @@ services:
     image: bot:latest
     container_name: ${COMPOSE_PROJECT_NAME}-migrator
     restart: "no"
+    user: root  # 显式指定以 root 身份运行，解决挂载目录的写入权限问题
     command: uv run alembic upgrade head
     env_file: [.env]
     environment:
