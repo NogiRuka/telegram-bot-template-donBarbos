@@ -50,11 +50,20 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
 
     # 执行清理逻辑
     try:
+        user_info = {
+            "group_name": event.chat.title,
+            "username": user.username if user.username else "Unknown",
+            "full_name": user.full_name,
+            "action": "Kick" if event.new_chat_member.status == ChatMemberStatus.KICKED else "Leave"
+        }
+        
         results = await ban_emby_user(
             session=session,
             target_user_id=user.id,
             admin_id=admin_id,
-            reason=reason
+            reason=reason,
+            bot=event.bot,
+            user_info=user_info
         )
         
         if any("✅" in r for r in results):

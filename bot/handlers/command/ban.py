@@ -68,11 +68,31 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
         results.append("ℹ️ 未配置群组，跳过群组移除")
 
     # 2. 调用封禁服务 (Emby 账号删除 + 软删除 + 审计日志)
+    # 尝试获取群组信息
+    group_name = "Private"
+    if message.chat.type != "private":
+        group_name = message.chat.title
+    elif settings.GROUP:
+        # 如果是私聊但配置了群组，尝试获取群组名称（需要API调用，暂用ID代替或标记Manual）
+        group_name = f"Group{settings.GROUP}"
+
+    # 尝试获取目标用户信息 (需要额外查询，这里暂不查询，直接用ID占位)
+    # 可以在 admin_service 中查询，或者在这里查询
+    # 为了简化，这里先只传 ID
+    user_info = {
+        "group_name": group_name,
+        "username": "Unknown",
+        "full_name": "Unknown",
+        "action": "ManualBan"
+    }
+
     emby_results = await ban_emby_user(
         session=session,
         target_user_id=target_user_id,
         admin_id=message.from_user.id,
-        reason="管理员手动封禁"
+        reason="管理员手动封禁",
+        bot=message.bot,
+        user_info=user_info
     )
     results.extend(emby_results)
 

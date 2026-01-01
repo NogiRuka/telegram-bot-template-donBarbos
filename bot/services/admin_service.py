@@ -5,10 +5,12 @@
 """
 from typing import Optional
 
+from aiogram import Bot
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.config import settings
 from bot.database.models import (
     ActionType,
     AuditLogModel,
@@ -24,6 +26,8 @@ async def ban_emby_user(
     target_user_id: int,
     admin_id: Optional[int] = None,
     reason: str = "封禁",
+    bot: Optional[Bot] = None,
+    user_info: Optional[dict[str, str]] = None,
 ) -> list[str]:
     """
     封禁 Emby 用户逻辑
@@ -32,12 +36,15 @@ async def ban_emby_user(
     1. 删除 Emby 账号 (API)
     2. 软删除数据库 Emby 用户数据
     3. 记录审计日志
+    4. 发送通知到管理员群组 (如果配置)
 
     Args:
         session: 数据库会话
         target_user_id: 目标 Telegram 用户 ID
         admin_id: 执行操作的管理员 ID (可选)
         reason: 封禁原因
+        bot: Bot 实例 (用于发送通知)
+        user_info: 用户信息字典 (username, full_name, group_name 等)
 
     Returns:
         操作结果消息列表
@@ -101,5 +108,34 @@ async def ban_emby_user(
         user_agent="System/Bot"
     )
     session.add(audit_log)
+
+    # 4. 发送通知到管理员群组
+    if bot and settings.OWNER_MSG_GROUP and user_info:
+        try:
+            # 格式: #哪个群组 #哪个用户id #哪个用户名 #什么行为
+            group_name = user_info.get("group_name", "UnknownGroup")
+            username = user_info.get("username", "UnknownUser")
+            full_name = user_info.get("full_name", "Unknown")
+            action = user_info.get("action", "Ban")
+            
+            # 转换成 hashtag 格式 (移除空格和特殊字符)
+            def to_hashtag(s: str) -> str:
+                return "#" + "".join(c for c in s if c.isalnum() or c == '_')
+
+            tags = f"{to_hashtag(group_name)} #ID{target_user_id} {to_hashtag(username)} {to_hashtag(action)}"
+            
+            msg_text = (
+                f"{tags}\n"
+                f"📖 说明: {reason}\n\n"
+                f"👤 用户: {full_name} (`{target_user_id}`)\n"
+                f"🎬 Emby: `{emby_user_id}`\n"
+                f"📝 结果:\n" + "\n".join(results)
+            )
+            
+            await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="Markdown")
+        except Exception as e:
+            logger.error(f"发送管理员通知失败: {e}")
+            # 不影响主要流程
+            results.append(f"⚠️ 发送通知失败: {e}")
 
     return results

@@ -53,6 +53,7 @@ class BotSettings(EnvBaseSettings):
     EMBY_TEMPLATE_USER_ID: str | None = Field(default=None, description="Emby 模板用户ID，用于创建用户时复制配置")
     EMBY_API_PREFIX: str | None = Field(default="/emby", description="Emby API 路径前缀, 例如 /emby; 可为空")
     NOTIFICATION_CHANNEL_ID: str | None = Field(default=None, description="通知频道ID列表，逗号分隔，支持Username(@channel)或数字ID")
+    OWNER_MSG_GROUP: int | str | None = Field(default=None, description="管理员通知群组ID")
 
     @field_validator("BOT_TOKEN")
     @classmethod
