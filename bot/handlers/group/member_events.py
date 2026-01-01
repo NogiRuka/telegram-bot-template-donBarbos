@@ -31,8 +31,25 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
     - 调用 ban_emby_user 清理 Emby 账号
     """
     # 仅处理配置的群组
-    if settings.GROUP and event.chat.id != settings.GROUP:
-        return
+    if settings.GROUP:
+        is_match = False
+        # 1. 尝试匹配 Chat ID
+        try:
+            if event.chat.id == int(settings.GROUP):
+                is_match = True
+        except (ValueError, TypeError):
+            pass
+        
+        # 2. 尝试匹配 Username (忽略大小写)
+        if not is_match and event.chat.username:
+            # settings.GROUP 可能是 @username，移除 @ 后对比
+            config_group = settings.GROUP.lstrip("@").lower()
+            event_group = event.chat.username.lower()
+            if config_group == event_group:
+                is_match = True
+        
+        if not is_match:
+            return
 
     user = event.new_chat_member.user
     logger.info(f"监测到用户离开/被踢出: {user.id} ({user.full_name}) - 状态: {event.new_chat_member.status}")

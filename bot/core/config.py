@@ -74,6 +74,46 @@ class BotSettings(EnvBaseSettings):
             raise ValueError(msg)
         return v
 
+    @field_validator("GROUP")
+    @classmethod
+    def validate_group(cls, v: str | None) -> str | None:
+        """校验并格式化群组配置
+        
+        - 如果是数字 ID (如 -100xxx)，保持原样
+        - 如果是用户名 (如 username)，自动添加 @ 前缀
+        """
+        if v is None or not v.strip():
+            return None
+        v = v.strip()
+        # 检查是否为数字 ID (支持负数)
+        if v.lstrip("-").isdigit():
+            return v
+        # 检查是否为用户名，补充 @
+        if not v.startswith("@"):
+            return f"@{v}"
+        return v
+
+    @field_validator("OWNER_MSG_GROUP")
+    @classmethod
+    def validate_owner_msg_group(cls, v: int | str | None) -> int | str | None:
+        """校验并格式化管理员通知群组配置"""
+        if v is None:
+            return None
+        if isinstance(v, int):
+            return v
+        if isinstance(v, str) and not v.strip():
+            return None
+            
+        # 如果是字符串
+        s = str(v).strip()
+        # 尝试转为 int
+        if s.lstrip("-").isdigit():
+            return int(s)
+        # 用户名补充 @
+        if not s.startswith("@"):
+            return f"@{s}"
+        return s
+
     @field_validator("EMBY_BASE_URL")
     @classmethod
     def validate_emby_base_url(cls, v: str | None) -> str | None:
