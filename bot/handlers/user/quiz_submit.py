@@ -39,9 +39,9 @@ async def start_quiz_submit(callback: CallbackQuery, state: FSMContext, session:
 
     text = (
         "*✍️ 问答投稿*\n\n"
-        "欢迎为题库贡献题目！投稿一经录用将获得额外精粹奖励。\n\n"
-        "📸 可发送一张图片（可选）\n"
-        "✍️ 题目请写在说明中（纯文本直接发送即可）\n\n"
+        "欢迎为题库贡献题目\\! 投稿一经录用将获得额外精粹奖励\\。\n\n"
+        "📸 可发送一张图片\\(可选\\)\n"
+        "✍️ 题目请写在说明中\\(纯文本直接发送即可\\)\n\n"
         "📝 *输入格式说明：*\n"
         "`第1行：题目描述\n"
         "第2行：选项A　选项B　选项C　选项D（空格分隔）\n"
@@ -54,8 +54,8 @@ async def start_quiz_submit(callback: CallbackQuery, state: FSMContext, session:
         "*可用分类：*\n"
         f"{cat_text}\n\n"
         "*奖励说明：*\n"
-        f"🎁 投稿成功：+3 {CURRENCY_SYMBOL}\n"
-        f"🎁 审核通过：+5 {CURRENCY_SYMBOL}"
+        f"🎁 投稿成功：\\+3 {escape_markdown_v2(CURRENCY_SYMBOL)}\n"
+        f"🎁 审核通过：\\+5 {escape_markdown_v2(CURRENCY_SYMBOL)}"
     )
 
     # 键盘：查看示例、返回
@@ -283,11 +283,11 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
         await session.commit()
 
         success_text = (
-            f"✅ *投稿成功！*\n\n"
+            f"✅ *投稿成功\\!*\n\n"
             f"🆔 ID：`{quiz.id}`\n"
             f"❓ 题目：{escape_markdown_v2(question_text)}\n"
-            f"🎁 基础奖励：+3 {CURRENCY_SYMBOL} 已发放\n"
-            f"⏳ 题目审核通过后将额外获得 +5 {CURRENCY_SYMBOL}\n"
+            f"🎁 基础奖励：\\+3 {escape_markdown_v2(CURRENCY_SYMBOL)} 已发放\n"
+            f"⏳ 题目审核通过后将额外获得 \\+5 {escape_markdown_v2(CURRENCY_SYMBOL)}\n"
         )
         
         # 退出状态
