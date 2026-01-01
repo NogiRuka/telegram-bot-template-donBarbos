@@ -269,7 +269,6 @@ async def ensure_config_defaults(session: AsyncSession) -> None:
             await set_config(session, KEY_USER_LINES_INFO, None, ConfigType.JSON, default_value={})
 
 
-
 def _serialize_value(ctype: ConfigType, value: Any) -> str | None:
     """序列化配置值
 
@@ -301,3 +300,69 @@ def _serialize_value(ctype: ConfigType, value: Any) -> str | None:
     if ctype == ConfigType.INTEGER:
         return str(int(value))
     return str(value)
+
+
+async def sync_notification_channels(session: AsyncSession) -> None:
+    """同步通知频道配置
+
+    功能说明:
+    - 从环境变量 `NOTIFICATION_CHANNEL_ID` 读取配置
+    - 与数据库中 `KEY_NOTIFICATION_CHANNELS` 进行合并
+    - 确保环境变量中的频道都存在于配置中
+    - 保留数据库中已有的启用/禁用状态
+
+    输入参数:
+    - session: 数据库会话
+    """
+    from bot.config.constants import KEY_NOTIFICATION_CHANNELS
+
+    # 1. 获取现有配置 (List[Dict])
+    # 结构: [{"id": "123", "name": "foo", "enabled": True}, ...]
+    db_config_raw = await get_config(session, KEY_NOTIFICATION_CHANNELS)
+    db_config = []
+
+    if db_config_raw:
+        if isinstance(db_config_raw, str):
+            with contextlib.suppress(Exception):
+                db_config = _json.loads(db_config_raw)
+        elif isinstance(db_config_raw, list):
+            db_config = db_config_raw
+
+    # 2. 获取 Env 配置 (List[str|int])
+    env_channels = settings.get_notification_channel_ids()
+
+    # 3. 构建新的配置映射
+    # 使用字符串 ID 作为 Key
+    new_config_map = {}
+
+    # 加载现有配置
+    for item in db_config:
+        if isinstance(item, dict) and "id" in item:
+            new_config_map[str(item["id"])] = item
+
+    # 4. 合并 Env 配置
+    final_list = []
+
+    for channel_id in env_channels:
+        cid_str = str(channel_id)
+        existing = new_config_map.get(cid_str)
+
+        if existing:
+            # 保留原有状态
+            final_list.append(existing)
+        else:
+            # 新增，默认启用
+            final_list.append({
+                "id": cid_str,
+                "name": cid_str, # 默认使用 ID 作为名称
+                "enabled": True
+            })
+
+    # 5. 保存回 DB
+    await set_config(
+        session,
+        KEY_NOTIFICATION_CHANNELS,
+        final_list,
+        config_type=ConfigType.JSON,
+        operator_id=None # 系统操作
+    )

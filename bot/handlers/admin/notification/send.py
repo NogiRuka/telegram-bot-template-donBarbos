@@ -4,6 +4,7 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config.constants import KEY_NOTIFICATION_CHANNELS
 from bot.core.config import settings
 from bot.core.constants import (
     EVENT_TYPE_LIBRARY_NEW,
@@ -19,6 +20,7 @@ from bot.keyboards.inline.buttons import (
     NOTIFY_CONFIRM_SEND_CANCEL_BUTTON,
 )
 from bot.keyboards.inline.constants import ADMIN_NEW_ITEM_NOTIFICATION_LABEL
+from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
 from bot.utils.notification import (
     get_check_id_for_notification,
@@ -77,7 +79,19 @@ async def execute_send_all(
         return
 
     # 获取目标频道ID列表
-    target_chat_ids = settings.get_notification_channel_ids()
+    target_chat_ids = []
+    
+    # 从数据库读取配置
+    # 结构: [{"id": "123", "name": "foo", "enabled": True}, ...]
+    channels_config = await get_config(session, KEY_NOTIFICATION_CHANNELS)
+    if channels_config and isinstance(channels_config, list):
+        for ch in channels_config:
+            if isinstance(ch, dict) and ch.get("enabled"):
+                target_chat_ids.append(ch["id"])
+    
+    # 兼容旧代码：如果数据库没配置，尝试从 settings 获取 (虽然启动时已经 sync 了，但为了双重保险)
+    if not target_chat_ids:
+         target_chat_ids = settings.get_notification_channel_ids()
 
     # 如果未配置，回退到发送给当前管理员
     if not target_chat_ids:

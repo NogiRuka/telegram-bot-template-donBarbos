@@ -19,7 +19,7 @@ from bot.database.database import engine, sessionmaker
 from bot.database.models.base import Base
 from bot.handlers import get_handlers_router
 from bot.keyboards.default_commands import remove_default_commands, set_default_commands
-from bot.services.config_service import ensure_config_defaults
+from bot.services.config_service import ensure_config_defaults, sync_notification_channels
 from bot.services.currency import CurrencyService
 from bot.services.emby_service import cleanup_devices_by_policy, save_all_emby_devices, save_all_emby_users
 from bot.services.quiz_service import QuizService
@@ -56,6 +56,7 @@ async def on_startup() -> None:
         await ensure_database_and_schema()
         async with sessionmaker() as session:
             await ensure_config_defaults(session)
+            await sync_notification_channels(session)
             await seed_quiz_data(session)
             await CurrencyService.ensure_products(session)
             await CurrencyService.ensure_configs(session)

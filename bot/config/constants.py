@@ -59,4 +59,5 @@ KEY_QUIZ_SCHEDULE_TARGET_TYPE = "admin.quiz.schedule.target_type"
 KEY_QUIZ_SCHEDULE_TARGET_COUNT = "admin.quiz.schedule.target_count"
 KEY_QUIZ_SCHEDULE_ENABLE = "admin.quiz.schedule.enable"
 
-
+# 通知配置
+KEY_NOTIFICATION_CHANNELS = "notification.channels"
