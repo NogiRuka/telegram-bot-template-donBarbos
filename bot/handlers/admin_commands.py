@@ -20,7 +20,6 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
-from bot.core.emby import EmbyClient
 from bot.database.models import (
     EmbyUserModel,
     GroupConfigModel,
@@ -31,6 +30,7 @@ from bot.database.models import (
 )
 from bot.keyboards.inline.group_config import get_confirm_keyboard
 from bot.services.message_export import MessageExportService
+from bot.utils.emby import get_emby_client
 
 router = Router(name="admin_commands")
 
@@ -101,9 +101,9 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
         emby_user_id = user_extend.emby_user_id
         
         # 删除 Emby 账号
-        if settings.EMBY_BASE_URL and settings.EMBY_API_KEY:
+        emby_client = get_emby_client()
+        if emby_client:
             try:
-                emby_client = EmbyClient(settings.EMBY_BASE_URL, settings.EMBY_API_KEY)
                 await emby_client.delete_user(emby_user_id)
                 results.append(f"✅ Emby 账号已删除 (ID: {emby_user_id})")
             except Exception as e:
