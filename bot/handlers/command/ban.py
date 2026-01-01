@@ -30,6 +30,7 @@ def is_global_admin(user_id: int) -> bool:
 
 
 @router.message(Command("ban"))
+@private_chat_only
 async def ban_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     封禁用户命令

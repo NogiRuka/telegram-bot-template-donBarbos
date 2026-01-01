@@ -48,6 +48,7 @@ async def check_permission(event: Message | CallbackQuery, user_id: int) -> bool
 
 
 @router.message(Command("unban"))
+@private_chat_only
 async def unban_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     解除封禁命令
