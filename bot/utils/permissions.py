@@ -78,41 +78,6 @@ async def _resolve_role(session: AsyncSession | None, user_id: int | None) -> st
     return "user"
 
 
-def require_admin_priv(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
-    """管理员或所有者权限装饰器
-
-    功能说明:
-    - 在调用处理器前检查用户是否为管理员或所有者
-
-    输入参数:
-    - func: 需要保护的异步处理器函数
-
-    返回值:
-    - Callable[..., Awaitable[Any]]: 包装后的处理器函数
-    """
-
-    @functools.wraps(func)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
-        role: str | None = kwargs.get("role")
-        if role is None:
-            session: AsyncSession | None = kwargs.get("session")
-            first = args[0] if args else None
-            user_id = _extract_user_id(first)
-            role = await _resolve_role(session, user_id)
-        if role not in {"admin", "owner"}:
-            first = args[0] if args else None
-            if isinstance(first, CallbackQuery):
-                await first.answer("🔴 此操作仅限管理员或所有者", show_alert=True)
-                return None
-            if isinstance(first, Message):
-                await first.answer("🔴 此操作仅限管理员或所有者")
-                return None
-            return None
-        return await func(*args, **kwargs)
-
-    return wrapper
-
-
 async def is_group_admin(bot: Bot, user_id: int) -> bool:
     """检查用户是否为群组管理员
     
