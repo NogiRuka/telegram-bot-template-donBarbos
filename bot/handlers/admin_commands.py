@@ -27,38 +27,9 @@ from bot.services.message_export import MessageExportService
 router = Router(name="admin_commands")
 
 
-@lru_cache(maxsize=1)
-def get_super_admin_ids() -> list[int]:
-    """
-    获取超级管理员ID列表（带缓存）
-
-    Returns:
-        List[int]: 超级管理员ID列表
-    """
-    try:
-        return settings.get_super_admin_ids()
-    except Exception as e:
-        logger.warning(f"⚠️ 获取超级管理员ID列表失败: {e}")
-        return []
-
-
 def is_super_admin(user_id: int) -> bool:
-    """
-    检查用户是否为超级管理员
-
-    Args:
-        user_id: 用户ID
-
-    Returns:
-        bool: 是否为超级管理员
-    """
-    super_admin_ids = get_super_admin_ids()
-    return user_id in super_admin_ids
-
-
-def clear_admin_cache() -> None:
-    """清除超级管理员缓存（用于配置更新后）"""
-    get_super_admin_ids.cache_clear()
+    """检查用户是否为超级管理员 (Owner)"""
+    return user_id == settings.OWNER_ID
 
 
 @router.message(Command("admin_help"))

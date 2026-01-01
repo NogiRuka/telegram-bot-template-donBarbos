@@ -45,7 +45,7 @@ class BotSettings(EnvBaseSettings):
     DEBUG: bool = False
     OWNER_ID: int = Field(..., description="所有者用户ID（唯一，必填）")
     ADMIN_IDS: str = Field(default="", description="管理员ID列表（逗号分隔）")
-    SUPER_ADMIN_IDS: str = Field(default="", description="兼容旧字段：超级管理员ID列表（逗号分隔）")
+    GROUP: str | None = Field(default=None, description="绑定的群组Username或ID")
     PROJECT_NAME: str = Field(default="", description="项目名称，用于日志与Banner")
     EMBY_BASE_URL: str | None = Field(default=None, description="Emby 服务地址, 例如 https://your-emby.com")
     EMBY_PORT: int = Field(default=443, description="Emby 端口，默认 443（https）或 80（http）")
@@ -70,17 +70,6 @@ class BotSettings(EnvBaseSettings):
         ids = [x.strip() for x in v.split(",") if x.strip()]
         if not all(x.isdigit() for x in ids):
             msg = "ADMIN_IDS 必须全为数字，用逗号分隔"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("SUPER_ADMIN_IDS")
-    @classmethod
-    def validate_super_admin_ids(cls, v: str) -> str:
-        if not v:
-            return v
-        ids = [x.strip() for x in v.split(",") if x.strip()]
-        if not all(x.isdigit() for x in ids):
-            msg = "SUPER_ADMIN_IDS 必须全为数字，用逗号分隔"
             raise ValueError(msg)
         return v
 
@@ -240,7 +229,6 @@ class BotSettings(EnvBaseSettings):
 
         功能说明:
         - 返回配置中的 `OWNER_ID`
-        - 若未设置（不推荐），尝试从 `SUPER_ADMIN_IDS` 的第一个值回退
 
         输入参数:
         - 无
@@ -248,13 +236,7 @@ class BotSettings(EnvBaseSettings):
         返回值:
         - int: 所有者用户ID
         """
-        if self.OWNER_ID:
-            return int(self.OWNER_ID)
-        ids = self.get_super_admin_ids()
-        if ids:
-            return ids[0]
-        msg = "OWNER_ID 未设置且无法从 SUPER_ADMIN_IDS 回退"
-        raise ValueError(msg)
+        return int(self.OWNER_ID)
 
     def get_admin_ids(self) -> list[int]:
         """获取管理员用户ID列表
@@ -271,22 +253,6 @@ class BotSettings(EnvBaseSettings):
         if not self.ADMIN_IDS:
             return []
         return [int(x.strip()) for x in self.ADMIN_IDS.split(",") if x.strip()]
-
-    def get_super_admin_ids(self) -> list[int]:
-        """获取兼容旧字段的超级管理员ID列表
-
-        功能说明:
-        - 解析 `SUPER_ADMIN_IDS` 为整数列表，仅用于迁移兼容
-
-        输入参数:
-        - 无
-
-        返回值:
-        - list[int]: 旧字段的ID列表
-        """
-        if not self.SUPER_ADMIN_IDS:
-            return []
-        return [int(x.strip()) for x in self.SUPER_ADMIN_IDS.split(",") if x.strip()]
 
 
 class DBSettings(EnvBaseSettings):
