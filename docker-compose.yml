@@ -92,22 +92,22 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}-mysqlbackup
     image: databack/mysql-backup
     restart: always
+    env_file:
+      - .env
+    environment:
+      - DB_SERVER=mysql
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_DUMP_TARGET=/db
+      - DB_DUMP_FREQ=1440
+      - DB_DUMP_BEGIN=0300
     volumes:
       - ./backups:/db
     networks:
       - app
     depends_on:
-      - mysql
-    environment:
-      - DB_SERVER=mysql
-      - DB_PORT=3306
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_NAMES=${DB_NAME}
-      - DB_DUMP_FREQ=1440
-      - DB_DUMP_BEGIN=0300
-      - DB_CLEANUP_TIME=2880
-      - COMPRESSION=gzip
+      mysql:
+        condition: service_healthy
 
 
   migrator:
