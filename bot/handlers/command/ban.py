@@ -91,15 +91,45 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
         # 如果是私聊但配置了群组，尝试获取群组名称（需要API调用，暂用ID代替或标记Manual）
         group_name = f"Group{settings.GROUP}"
 
-    # 尝试获取目标用户信息 (需要额外查询，这里暂不查询，直接用ID占位)
-    # 可以在 admin_service 中查询，或者在这里查询
-    # 为了简化，这里先只传 ID
-    user_info = {
-        "group_name": group_name,
-        "username": "Unknown",
-        "full_name": "Unknown",
-        "action": "ManualBan"
-    }
+    # 尝试获取目标用户信息
+    # 查询数据库获取用户信息
+    from bot.database.models import UserModel
+    from sqlalchemy import select
+
+    db_user_result = await session.execute(select(UserModel).where(UserModel.id == target_user_id))
+    db_user = db_user_result.scalar_one_or_none()
+
+    if db_user:
+        user_info = {
+            "group_name": group_name,
+            "username": f"@{db_user.username}" if db_user.username else "Unknown",
+            "full_name": db_user.get_full_name(),
+            "action": "ManualBan"
+        }
+    else:
+        # 如果数据库中没有，尝试通过 get_chat_member 获取（如果机器人在该群组）
+        try:
+            if settings.GROUP:
+                chat_member = await message.bot.get_chat_member(chat_id=settings.GROUP, user_id=target_user_id)
+                user = chat_member.user
+                full_name = user.full_name
+                username = f"@{user.username}" if user.username else "Unknown"
+                user_info = {
+                    "group_name": group_name,
+                    "username": username,
+                    "full_name": full_name,
+                    "action": "ManualBan"
+                }
+            else:
+                raise Exception("No group configured")
+        except Exception:
+            # 最后的后备方案
+            user_info = {
+                "group_name": group_name,
+                "username": "Unknown",
+                "full_name": "Unknown",
+                "action": "ManualBan"
+            }
 
     emby_results = await ban_emby_user(
         session=session,
