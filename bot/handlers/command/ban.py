@@ -6,7 +6,7 @@ from datetime import datetime
 from aiogram import Router
 from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandObject
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,6 +55,7 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
         is_authorized = True
         
     if not is_authorized:
+        await message.reply("❌ 您没有权限执行此操作")
         return
 
     if not command.args:
@@ -111,4 +112,13 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
     results.extend(emby_results)
 
     await session.commit()
-    await message.reply("\n".join(results))
+    
+    # 构建按钮
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🔓 解除封禁", callback_data=f"unban:{target_user_id}"),
+            InlineKeyboardButton(text="❌ 关闭", callback_data="close_message")
+        ]
+    ])
+    
+    await message.reply("\n".join(results), reply_markup=kb)

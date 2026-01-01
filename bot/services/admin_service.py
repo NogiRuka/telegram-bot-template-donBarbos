@@ -139,3 +139,77 @@ async def ban_emby_user(
             results.append(f"⚠️ 发送通知失败: {e}")
 
     return results
+
+
+async def unban_user_service(
+    session: AsyncSession,
+    target_user_id: int,
+    admin_id: Optional[int] = None,
+    reason: str = "解封",
+    bot: Optional[Bot] = None,
+    user_info: Optional[dict[str, str]] = None,
+) -> list[str]:
+    """
+    解封用户服务逻辑
+    
+    功能:
+    1. 记录审计日志
+    2. 发送通知到管理员群组
+    
+    Args:
+        session: 数据库会话
+        target_user_id: 目标 Telegram 用户 ID
+        admin_id: 执行操作的管理员 ID
+        reason: 解封原因
+        bot: Bot 实例
+        user_info: 用户信息字典
+        
+    Returns:
+        操作结果消息列表
+    """
+    results = []
+    operator_id = admin_id if admin_id else 0
+    
+    # 记录审计日志
+    audit_log = AuditLogModel(
+        user_id=operator_id,
+        action_type=ActionType.USER_UNBLOCK,
+        target_id=str(target_user_id),
+        details={
+            "reason": reason,
+            "source": "manual_unban"
+        },
+        ip_address="127.0.0.1",
+        user_agent="System/Bot"
+    )
+    session.add(audit_log)
+    results.append("✅ 已记录解封审计日志")
+    
+    # 发送通知到管理员群组
+    if bot and settings.OWNER_MSG_GROUP and user_info:
+        try:
+            # 格式: #哪个群组 #哪个用户id #哪个用户名 #什么行为
+            group_name = user_info.get("group_name", "UnknownGroup")
+            username = user_info.get("username", "UnknownUser")
+            full_name = user_info.get("full_name", "Unknown")
+            action = user_info.get("action", "Unban")
+            
+            # 转换成 hashtag 格式
+            def to_hashtag(s: str) -> str:
+                return "#" + "".join(c for c in s if c.isalnum() or c == '_')
+
+            tags = f"{to_hashtag(group_name)} #ID{target_user_id} {to_hashtag(username)} {to_hashtag(action)}"
+            
+            msg_text = (
+                f"{tags}\n"
+                f"📖 说明: {reason}\n\n"
+                f"👤 用户: {full_name} (`{target_user_id}`)\n"
+                f"📝 结果:\n" + "\n".join(results)
+            )
+            
+            await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="Markdown")
+        except Exception as e:
+            logger.error(f"发送管理员通知失败: {e}")
+            results.append(f"⚠️ 发送通知失败: {e}")
+            
+    return results
