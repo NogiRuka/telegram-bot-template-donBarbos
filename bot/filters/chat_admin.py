@@ -11,7 +11,7 @@ class GroupAdminFilter(BaseFilter):
     Returns False for private chats.
     """
 
-    async def __call__(self, message: Message) -> bool:
+    async def __call__(self, message: Message, **kwargs) -> bool:
         logger.info(f"GroupAdminFilter checking for chat type: {message.chat.type}, user: {message.from_user.id if message.from_user else 'None'}")
         
         # 如果是私聊，允许通过过滤器（后续逻辑会检查参数）
