@@ -25,11 +25,14 @@ from bot.utils.text import escape_markdown_v2, format_size
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def list_images_entry(callback: CallbackQuery, main_msg: MainMessageService, state: FSMContext) -> None:
+async def list_images_entry(callback: CallbackQuery, main_msg: MainMessageService, state: FSMContext, bot: Bot) -> None:
     """进入图片列表 - 选择类型"""
     # 清理之前可能存在的图片
-    if callback.message:
-        await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "main_image_list_ids")
+    chat_id = callback.message.chat.id if callback.message else None
+    await clear_message_list_from_state(state, bot, chat_id, "main_image_list_ids")
+    
+    # 确保退出之前的状态 (如上传状态)
+    await state.set_state(None)
 
     text = "请选择要查看的图片类型:"
     await main_msg.update_on_callback(callback, text, get_main_image_list_type_keyboard())
@@ -38,13 +41,14 @@ async def list_images_entry(callback: CallbackQuery, main_msg: MainMessageServic
 
 @router.callback_query(F.data == MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:back_home")
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def back_to_home_from_list(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService) -> None:
+async def back_to_home_from_list(callback: CallbackQuery, session: AsyncSession, state: FSMContext, main_msg: MainMessageService, bot: Bot) -> None:
     """返回主面板"""
     # 清理图片
-    if callback.message:
-        await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "main_image_list_ids")
+    chat_id = callback.message.chat.id if callback.message else None
+    await clear_message_list_from_state(state, bot, chat_id, "main_image_list_ids")
 
     # 构建首页视图
+
     from bot.handlers.start import build_home_view
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)
@@ -55,7 +59,7 @@ async def back_to_home_from_list(callback: CallbackQuery, session: AsyncSession,
 
 @router.callback_query(F.data.startswith(MAIN_IMAGE_ADMIN_CALLBACK_DATA + ":list:view:"))
 @require_admin_feature(KEY_ADMIN_MAIN_IMAGE)
-async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
+async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext, bot: Bot) -> None:
     """显示图片列表（分页）"""
     # 解析参数: admin:main_image:list:view:sfw:1:5
     try:
@@ -68,8 +72,8 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
         return
 
     # 先清理旧图片
-    if callback.message:
-        await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "main_image_list_ids")
+    chat_id = callback.message.chat.id if callback.message else None
+    await clear_message_list_from_state(state, bot, chat_id, "main_image_list_ids")
 
     is_nsfw = (type_key == "nsfw")
 

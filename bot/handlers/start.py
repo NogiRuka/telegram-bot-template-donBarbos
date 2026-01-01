@@ -1,6 +1,6 @@
 import contextlib
 
-from aiogram import F, Router, types
+from aiogram import Bot, F, Router, types
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
@@ -125,9 +125,11 @@ async def start_handler(
 
 
 @router.callback_query(F.data == "back:home")
-async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
+async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext, bot: Bot) -> None:
     """返回首页：根据回调更新主消息内容"""
-    await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "quiz_list_ids")
+    chat_id = callback.message.chat.id if callback.message else None
+    await clear_message_list_from_state(state, bot, chat_id, "quiz_list_ids")
+    await clear_message_list_from_state(state, bot, chat_id, "main_image_list_ids")
 
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)
