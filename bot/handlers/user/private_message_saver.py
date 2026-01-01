@@ -255,7 +255,7 @@ class PrivateMessageSaver:
 
 message_saver = PrivateMessageSaver()
 
-@router.message(F.chat.type == ChatType.PRIVATE)
+@router.message(F.chat.type == ChatType.PRIVATE, ~F.text.startswith("/"))
 async def handle_private_message(message: types.Message, session: AsyncSession) -> None:
     """
     处理私聊消息
