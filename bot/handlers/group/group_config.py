@@ -106,15 +106,8 @@ async def _get_group_config_content(session: AsyncSession, config: GroupConfigMo
 async def cmd_group_config(message: types.Message, command: CommandObject, session: AsyncSession) -> None:
     """
     群组配置命令
-
-    显示当前群组的消息保存配置。
-    支持私聊使用：/group_config <group_id> 或 <@username>
-
-    Args:
-        message: Telegram消息对象
-        command: 命令对象
-        session: 数据库会话
     """
+    logger.info(f"cmd_group_config called by user {message.from_user.id} in chat {message.chat.id}")
     try:
         target_chat_id = message.chat.id
         target_chat_title = message.chat.title
