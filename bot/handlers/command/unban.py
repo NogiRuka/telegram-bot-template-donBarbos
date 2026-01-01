@@ -11,43 +11,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.config import settings
 from bot.services.admin_service import unban_user_service
 from bot.utils.decorators import private_chat_only
-from bot.utils.permissions import _resolve_role
+from bot.utils.permissions import require_admin_priv
 
 router = Router(name="command_unban")
 
 
-async def check_permission(event: Message | CallbackQuery, user_id: int, session: AsyncSession) -> bool:
-    """检查权限"""
-    is_authorized = False
-    
-    # 获取 Chat 对象
-    chat = event.chat if isinstance(event, Message) else event.message.chat
-    
-    # 如果在群组中，检查是否为群管理员
-    if chat.type in ["group", "supergroup"]:
-        member = await chat.get_member(user_id)
-        if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
-            is_authorized = True
-    
-    # 全局管理员或私聊情况下的检查
-    if not is_authorized:
-        role = await _resolve_role(session, user_id)
-        if role in ["owner", "admin"]:
-            is_authorized = True
-        
-    return is_authorized
-
-
 @router.message(Command("unban"))
 @private_chat_only
+@require_admin_priv
 async def unban_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     解除封禁命令
     用法: /unban <user_id>
     """
-    if not await check_permission(message, message.from_user.id):
-        return
-
     if not command.args:
         await message.reply("⚠️ 请提供 Telegram 用户 ID\n用法: `/unban <user_id>`", parse_mode="Markdown")
         return

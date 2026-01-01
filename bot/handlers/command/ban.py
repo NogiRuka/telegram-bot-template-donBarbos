@@ -13,13 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.config import settings
 from bot.services.admin_service import ban_emby_user
 from bot.utils.decorators import private_chat_only
-from bot.utils.permissions import _resolve_role
+from bot.utils.permissions import require_admin_priv
 
 router = Router(name="command_ban")
 
 
 @router.message(Command("ban"))
 @private_chat_only
+@require_admin_priv
 async def ban_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     封禁用户命令
@@ -31,25 +32,6 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
 
     用法: /ban <telegram_user_id>
     """
-    # 权限检查
-    is_authorized = False
-    
-    # 如果在群组中，检查是否为群管理员
-    if message.chat.type in ["group", "supergroup"]:
-        member = await message.chat.get_member(message.from_user.id)
-        if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
-            is_authorized = True
-    
-    # 全局管理员或私聊情况下的检查
-    if not is_authorized:
-        role = await _resolve_role(session, message.from_user.id)
-        if role in ["owner", "admin"]:
-            is_authorized = True
-        
-    if not is_authorized:
-        await message.reply("❌ 您没有权限执行此操作")
-        return
-
     if not command.args:
         await message.reply("⚠️ 请提供 Telegram 用户 ID\n用法: `/ban <user_id>`", parse_mode="Markdown")
         return
