@@ -96,7 +96,15 @@ docker compose up -d --build
 - **查看状态**: `docker compose ps`
 - **查看日志**: `docker compose logs -f` (按 Ctrl+C 退出日志查看)
 - **停止服务**: `docker compose down`
-- **更新代码**: `git pull && docker compose up -d --build`
+
+#### 6. 更新代码
+
+当你需要更新 Bot 到最新版本时，只需在项目目录下执行：
+
+```bash
+git pull
+docker compose up -d --build
+```
 
 服务默认端口：
 - **Web 管理界面**: `http://YOUR_SERVER_IP:3000`
