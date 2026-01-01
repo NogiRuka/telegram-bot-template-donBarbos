@@ -202,7 +202,7 @@ def extract_id(callback_data: str) -> int:
 async def clear_message_list_from_state(
     state: FSMContext,
     bot: Bot,
-    chat_id: int | None,
+    chat_id: int,
     key: str
 ) -> None:
     """从状态中获取消息 ID 列表并删除这些消息，然后清空状态中的列表。
@@ -210,13 +210,13 @@ async def clear_message_list_from_state(
     功能说明:
     - 用于批量清理已发送的消息（如列表、菜单等）
     - 从 FSMContext 中读取指定 key 的消息 ID 列表
-    - 遍历并安全删除每条消息 (仅当 chat_id 有效时)
+    - 遍历并安全删除每条消息
     - 最后将状态中的该 key 重置为空列表
 
     输入参数:
     - state: FSMContext 状态上下文
     - bot: Bot 实例
-    - chat_id: 聊天 ID (若为 None 则跳过删除，仅清空状态)
+    - chat_id: 聊天 ID
     - key: 状态中存储消息 ID 列表的键名
 
     返回值:
@@ -224,10 +224,10 @@ async def clear_message_list_from_state(
     """
     data = await state.get_data()
     msg_ids = data.get(key, [])
-    
-    # 无论是否能删除消息，都要清空状态，避免数据残留
-    if msg_ids and chat_id:
-        for msg_id in msg_ids:
-            await safe_delete_message(bot, chat_id, msg_id)
+    if not msg_ids:
+        return
+
+    for msg_id in msg_ids:
+        await safe_delete_message(bot, chat_id, msg_id)
 
     await state.update_data({key: []})
