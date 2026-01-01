@@ -40,7 +40,9 @@ export default defineConfig({
     },
   },
   define: {
-    'import.meta.env.VITE_API_URL': JSON.stringify(`${apiUrl}${apiPrefix}`),
+    // 强制使用相对路径 /api，让浏览器通过当前访问的域名（前端服务器）进行代理转发
+    // 而不是直接访问后端 IP（避免 0.0.0.0 或 CORS 问题）
+    'import.meta.env.VITE_API_URL': JSON.stringify(apiPrefix),
     'import.meta.env.VITE_API_PREFIX': JSON.stringify(apiPrefix),
   },
 })
