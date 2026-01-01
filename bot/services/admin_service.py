@@ -98,6 +98,7 @@ async def ban_emby_user(
         user_id=deleted_by,
         action_type=ActionType.USER_BLOCK,  # 使用 USER_BLOCK 作为封禁/移除的操作类型
         target_id=str(target_user_id),
+        description=f"封禁用户 {target_user_id}",  # 必填字段
         details={
             "emby_user_id": emby_user_id,
             "reason": reason,
@@ -177,6 +178,7 @@ async def unban_user_service(
         user_id=operator_id,
         action_type=ActionType.USER_UNBLOCK,
         target_id=str(target_user_id),
+        description=f"解封用户 {target_user_id}",  # 必填字段
         details={
             "reason": reason,
             "source": "manual_unban"
