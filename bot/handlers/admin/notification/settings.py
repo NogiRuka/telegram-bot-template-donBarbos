@@ -10,11 +10,12 @@ from bot.keyboards.inline.constants import (
     NOTIFY_SETTINGS_TOGGLE_CALLBACK_DATA,
 )
 from bot.services.config_service import get_config, set_config
+from bot.services.main_message import MainMessageService
 
 from .router import router
 
 @router.callback_query(F.data == NOTIFY_SETTINGS_CALLBACK_DATA)
-async def notification_settings_handler(callback: CallbackQuery, session: AsyncSession):
+async def notification_settings_handler(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """处理通知设置菜单请求"""
     # 获取配置
     channels_config = await get_config(session, KEY_NOTIFICATION_CHANNELS)
@@ -30,34 +31,30 @@ async def notification_settings_handler(callback: CallbackQuery, session: AsyncS
     # 更新界面
     # 使用 Markdown 格式美化
     text = (
-        "⚙️ **通知频道设置**\n\n"
+        "⚙️ *通知频道设置*\n\n"
         "请点击下方按钮切换频道的启用/禁用状态：\n"
         "🟢 = 已启用\n"
         "🔴 = 已禁用"
     )
     
-    await callback.message.edit_text(
-        text=text,
-        reply_markup=keyboard,
-        parse_mode="Markdown"
-    )
+    await main_msg.update_on_callback(callback, text, keyboard)
     await callback.answer()
 
 
 @router.callback_query(F.data.startswith(NOTIFY_SETTINGS_TOGGLE_CALLBACK_DATA))
-async def notification_settings_toggle_handler(callback: CallbackQuery, session: AsyncSession):
+async def notification_settings_toggle_handler(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService):
     """处理频道开关切换请求"""
     # 解析 ID
     # callback data: "admin:notify_settings:toggle:{channel_id}"
     try:
         prefix = f"{NOTIFY_SETTINGS_TOGGLE_CALLBACK_DATA}:"
         if not callback.data.startswith(prefix):
-             await callback.answer("无效的请求数据", show_alert=True)
+             await callback.answer("⚠️ 无效的请求数据", show_alert=True)
              return
         
         channel_id = callback.data[len(prefix):]
     except ValueError:
-        await callback.answer("无效的请求", show_alert=True)
+        await callback.answer("⚠️ 无效的请求", show_alert=True)
         return
 
     # 获取现有配置
@@ -91,14 +88,21 @@ async def notification_settings_toggle_handler(callback: CallbackQuery, session:
         
         # 重新渲染
         keyboard = get_notification_settings_keyboard(channels_config)
+
+        text = (
+            "⚙️ *通知频道设置*\n\n"
+            "请点击下方按钮切换频道的启用/禁用状态：\n"
+            "🟢 = 已启用\n"
+            "🔴 = 已禁用"
+        )
         
         # 更新消息
         try:
-            await callback.message.edit_reply_markup(reply_markup=keyboard)
+            await main_msg.update_on_callback(callback, text, keyboard)
         except Exception:
             pass
             
         status_text = "启用" if new_status else "禁用"
-        await callback.answer(f"已{status_text}频道: {channel_name}")
+        await callback.answer(f"✅ 已{status_text}频道: {channel_name}")
     else:
-        await callback.answer("找不到该频道配置", show_alert=True)
+        await callback.answer("❌ 找不到该频道配置", show_alert=True)
