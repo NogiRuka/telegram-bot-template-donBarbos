@@ -33,7 +33,8 @@ services:
     networks:
       - app
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
   web:
     image: node:20-alpine
     container_name: ${COMPOSE_PROJECT_NAME}-web
