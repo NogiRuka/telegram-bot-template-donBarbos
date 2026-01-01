@@ -78,6 +78,31 @@ async def _resolve_role(session: AsyncSession | None, user_id: int | None) -> st
     return "user"
 
 
+async def is_group_admin(bot: Bot, user_id: int) -> bool:
+    """检查用户是否为群组管理员
+    
+    功能说明:
+    - 检查用户是否在配置的群组(settings.GROUP)中拥有管理员或创建者权限
+    
+    输入参数:
+    - bot: Bot 实例
+    - user_id: 用户 ID
+    
+    返回值:
+    - bool: 是否为管理员
+    """
+    if not settings.GROUP:
+        return False
+
+    try:
+        from aiogram.enums import ChatMemberStatus
+        member = await bot.get_chat_member(chat_id=settings.GROUP, user_id=user_id)
+        return member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR)
+    except Exception as e:
+        logger.warning(f"Failed to check group admin permission for {user_id}: {e}")
+        return False
+
+
 async def check_user_in_group(bot: Bot, user_id: int) -> bool:
     """
     检查用户是否在配置的群组中

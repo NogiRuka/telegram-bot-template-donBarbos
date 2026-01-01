@@ -11,19 +11,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.config import settings
 from bot.services.admin_service import unban_user_service
 from bot.utils.decorators import private_chat_only
-from bot.utils.permissions import require_admin_priv
+from bot.utils.permissions import is_group_admin
 
 router = Router(name="command_unban")
 
 
 @router.message(Command("unban"))
 @private_chat_only
-@require_admin_priv
 async def unban_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     解除封禁命令
     用法: /unban <user_id>
     """
+    if not await is_group_admin(message.bot, message.from_user.id):
+        await message.reply("❌ 仅限群组管理员使用")
+        return
+
     if not command.args:
         await message.reply("⚠️ 请提供 Telegram 用户 ID\n用法: `/unban <user_id>`", parse_mode="Markdown")
         return
@@ -40,7 +43,7 @@ async def unban_user_command(message: Message, command: CommandObject, session: 
 @router.callback_query(F.data.startswith("unban:"))
 async def unban_callback(query: CallbackQuery, session: AsyncSession) -> None:
     """处理解除封禁按钮点击"""
-    if not await check_permission(query, query.from_user.id):
+    if not await is_group_admin(query.bot, query.from_user.id):
         await query.answer("❌ 无权执行此操作", show_alert=True)
         return
 
@@ -57,7 +60,7 @@ async def unban_callback(query: CallbackQuery, session: AsyncSession) -> None:
 async def close_callback(query: CallbackQuery, session: AsyncSession) -> None:
     """关闭消息"""
     # 简单的权限检查：只要是群管或原触发者都可以关，这里简化为通用权限检查
-    if not await check_permission(query, query.from_user.id, session):
+    if not await is_group_admin(query.bot, query.from_user.id):
          await query.answer("❌ 无权执行此操作", show_alert=True)
          return
          
