@@ -62,7 +62,7 @@ curl -fsSL https://get.docker.com | bash
 #### 2. 获取代码
 
 ```bash
-git clone https://github.com/donBarbos/telegram-bot-template.git
+git clone https://github.com/NogiRuka/telegram-bot-template-donBarbos.git
 cd telegram-bot-template
 ```
 

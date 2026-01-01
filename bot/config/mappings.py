@@ -17,9 +17,9 @@ from bot.keyboards.inline.constants import *
 # 格式: Key -> (Value, ConfigType)
 DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     # 基础开关配置 (布尔值)
-    KEY_BOT_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
+    KEY_BOT_FEATURES_ENABLED: (False, ConfigType.BOOLEAN),
     # 用户功能开关
-    KEY_USER_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
+    KEY_USER_FEATURES_ENABLED: (False, ConfigType.BOOLEAN),
     KEY_USER_PROFILE: (True, ConfigType.BOOLEAN),
     KEY_USER_ACCOUNT: (True, ConfigType.BOOLEAN),
     KEY_USER_REGISTER: (True, ConfigType.BOOLEAN),
@@ -69,7 +69,7 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     KEY_QUIZ_TRIGGER_PROBABILITY: (0.1, ConfigType.FLOAT),
     KEY_QUIZ_DAILY_LIMIT: (10, ConfigType.INTEGER),
     KEY_QUIZ_SESSION_TIMEOUT: (10, ConfigType.INTEGER),
-    KEY_QUIZ_GLOBAL_ENABLE: (True, ConfigType.BOOLEAN),
+    KEY_QUIZ_GLOBAL_ENABLE: (False, ConfigType.BOOLEAN),
     KEY_QUIZ_SCHEDULE_ENABLE: (True, ConfigType.BOOLEAN),
     KEY_QUIZ_SCHEDULE_TIME: ("051700,171700,222222", ConfigType.STRING),
     KEY_QUIZ_SCHEDULE_TARGET_TYPE: ("fixed", ConfigType.STRING),
