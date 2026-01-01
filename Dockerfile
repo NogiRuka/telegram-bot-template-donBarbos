@@ -9,7 +9,7 @@ WORKDIR /usr/src/app
 COPY . .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project --group bot --group api --no-group admin --no-group dev \
+    uv sync --no-install-project --no-group dev \
     && adduser -D appuser \
     && chown -R appuser:appuser .
 
