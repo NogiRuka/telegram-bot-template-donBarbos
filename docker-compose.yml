@@ -38,7 +38,7 @@ services:
   web:
     image: node:20-alpine
     container_name: ${COMPOSE_PROJECT_NAME}-web
-    restart: always
+    restart: unless-stopped
     working_dir: /usr/src/app
     env_file:
       - .env
@@ -50,7 +50,7 @@ services:
       - api
     volumes:
       - ./web:/usr/src/app
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "pnpm install && pnpm run dev"
 
   mysql:
     image: mysql:8.0
@@ -71,7 +71,16 @@ services:
       - mysql-data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "127.0.0.1",
+          "-u${DB_USER}",
+          "-p${DB_PASS}"
+        ]
       interval: 5s
       timeout: 10s
       retries: 5
@@ -104,7 +113,7 @@ services:
   migrator:
     image: bot:latest
     container_name: ${COMPOSE_PROJECT_NAME}-migrator
-    restart: "on-failure"
+    restart: "no"
     command: alembic upgrade head
     env_file:
       - .env
