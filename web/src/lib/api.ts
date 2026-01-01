@@ -111,9 +111,10 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
+        // 如果是 401 且不是登录接口本身（避免登录失败时死循环跳转）
+        if (error.response?.status === 401 && !error.config.url?.includes('/auth/login')) {
           this.removeToken();
-          window.location.href = '/login';
+          window.location.href = '/sign-in';
         }
         return Promise.reject(error);
       }
