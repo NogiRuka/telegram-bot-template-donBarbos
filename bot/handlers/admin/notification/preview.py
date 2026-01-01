@@ -17,7 +17,7 @@ from bot.database.models.notification import NotificationModel
 from bot.keyboards.inline.admin import get_notification_preview_pagination_keyboard
 from bot.keyboards.inline.buttons import NOTIFY_CLOSE_PREVIEW_BUTTON
 from bot.services.main_message import MainMessageService
-from bot.utils.message import delete_message, delete_message_after_delay
+from bot.utils.message import delete_message, delete_message_after_delay, clear_message_list_from_state
 from bot.utils.notification import get_notification_content
 
 from .router import router, NotificationStates
@@ -45,15 +45,7 @@ async def handle_notify_preview(
         pass
 
     # 清理旧消息
-    data = await state.get_data()
-    preview_data = data.get("preview_data", {})
-    if preview_data:
-        for msg_id in preview_data:
-            try:
-                await callback.bot.delete_message(chat_id=callback.message.chat.id, message_id=msg_id)
-            except Exception:
-                pass
-        await state.update_data(preview_data={})
+    await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "preview_data")
 
     preview_key = case(
         (
@@ -294,19 +286,11 @@ async def handle_close_preview(
     user_id = callback.from_user.id
 
     # 从FSM状态获取预览数据
-    data = await state.get_data()
-    preview_data = data.get("preview_data", {})
-
-    if preview_data:
-        # 删除所有预览消息
-        for msg_id in preview_data:
-            try:
-                await callback.bot.delete_message(chat_id=user_id, message_id=msg_id)
-            except Exception:
-                pass # 忽略已删除或不存在的消息
-
-        # 清除预览数据
-        await state.update_data(preview_data={})
+    # 使用工具函数清理消息
+    # 这里的 chat_id 使用 user_id，因为通常是在私聊中
+    # 也可以使用 callback.message.chat.id
+    chat_id = callback.message.chat.id if callback.message else user_id
+    await clear_message_list_from_state(state, callback.bot, chat_id, "preview_data")
     
     # 同时也删除主控消息（如果它存在）或者重置它
     # 如果用户点击的是主控消息上的"关闭预览"按钮，callback.message 就是主控消息
