@@ -228,19 +228,6 @@ def get_notification_settings_keyboard(channels: list[dict]) -> InlineKeyboardMa
         callback = f"{NOTIFY_SETTINGS_TOGGLE_CALLBACK_DATA}:{ch_id}"
         
         buttons.append([InlineKeyboardButton(text=btn_text, callback_data=callback)])
-
-    # 返回按钮 (返回到通知管理面板)
-    # 注意: 这里不能直接用 BACK_TO_ADMIN_PANEL_BUTTON, 因为那是返回一级面板
-    # 我们需要返回到 NOTIFY_MENU (即通知面板)
-    # 现有的通知面板是通过 menu.py 中的 notify_menu_handler 处理的
-    # 通常我们可以复用 "admin:notify" 或者类似的 callback
-    # 查看 menu.py 发现入口 callback 是 "admin:notify" (在 buttons.py 中未定义单独常量, 但在 mapping 里有)
-    # 让我们假设通知面板的 callback 是 "admin:notify" (对应 NOTIFY_SEND_BUTTON 所在的面板)
-    # 实际上 NOTIFY_SEND_BUTTON 是在 panel 里。
-    # 让我们看 buttons.py 或 constants.py 里的定义。
-    # 刚才看 buttons.py 没看到进入 notification panel 的按钮定义 (除了 NOTIFY_SEND_BUTTON 是功能按钮)
-    # 等等，ADMIN_FEATURES_MAPPING 里有 "notify": (KEY_ADMIN_NOTIFY, "📢 上新通知")
-    # 所以 callback 是 "admin:notify"
     
     buttons.append([InlineKeyboardButton(text="🔙 返回通知面板", callback_data="admin:new_item_notification")])
     buttons.append([BACK_TO_HOME_BUTTON])
