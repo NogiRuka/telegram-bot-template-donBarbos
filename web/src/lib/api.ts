@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { getCookie, setCookie, removeCookie } from '@/lib/cookies';
 
 // 类型定义
 export interface User {
@@ -124,7 +125,7 @@ class ApiClient {
    */
   private getToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token');
+      return getCookie('auth_token') || null;
     }
     return null;
   }
@@ -134,7 +135,7 @@ class ApiClient {
    */
   private setToken(token: string): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', token);
+      setCookie('auth_token', token);
     }
   }
 
@@ -143,7 +144,7 @@ class ApiClient {
    */
   private removeToken(): void {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
+      removeCookie('auth_token');
     }
   }
 
