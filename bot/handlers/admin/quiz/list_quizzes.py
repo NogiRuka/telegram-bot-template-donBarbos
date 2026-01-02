@@ -191,6 +191,7 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
             
             # 如果没有图片或图片发送失败，发送纯文本
             if not sent:
+                logger.info(f"题目 #{question.id} 无图片或图片发送失败，发送纯文本")
                 msg = await callback.message.answer(
                     text=caption,
                     reply_markup=keyboard,

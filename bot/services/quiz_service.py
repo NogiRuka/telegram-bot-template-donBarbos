@@ -239,6 +239,7 @@ class QuizService:
         返回值:
         - Optional[QuizImageModel]: 随机匹配的图片或 None
         """
+        logger.info(f"根据标签 {tags} 随机获取图片")
         if not tags:
             return None
 

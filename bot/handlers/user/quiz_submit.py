@@ -184,7 +184,7 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
                 description=f"用户 {user_id} 投稿题目 {quiz.id}",
                 image_source=parsed["image_source"],
                 extra_caption=parsed["extra_caption"],
-                is_active=False, # 默认不启用
+                is_active=True, # 默认不启用
                 created_by=user_id,
                 extra=extra_data
             )
