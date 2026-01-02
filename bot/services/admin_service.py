@@ -78,22 +78,28 @@ async def ban_emby_user(
     api_error_msg = ""
 
     # 1. 删除 Emby 账号 (API)
+    # 如果数据库中标记为已软删除，则跳过 API 调用 (认为已经被删了)
     if emby_user_id:
-        emby_client = get_emby_client()
-        if emby_client:
-            try:
-                await emby_client.delete_user(emby_user_id)
-                api_status = "success"
-            except Exception as e:
-                error_str = str(e)
-                if "404" in error_str:
-                    api_status = "404"
-                else:
-                    api_status = "error"
-                    api_error_msg = error_str
-                    logger.error(f"❌ 删除 Emby 账号失败: {e}")
+        is_already_deleted = emby_user_db and emby_user_db.is_deleted
+        
+        if is_already_deleted:
+            api_status = "already_deleted_skip"
         else:
-            api_status = "not_configured"
+            emby_client = get_emby_client()
+            if emby_client:
+                try:
+                    await emby_client.delete_user(emby_user_id)
+                    api_status = "success"
+                except Exception as e:
+                    error_str = str(e)
+                    if "404" in error_str:
+                        api_status = "404"
+                    else:
+                        api_status = "error"
+                        api_error_msg = error_str
+                        logger.error(f"❌ 删除 Emby 账号失败: {e}")
+            else:
+                api_status = "not_configured"
 
     # 2. 软删除数据库 EmbyUserModel
     db_status = "skipped"
@@ -141,6 +147,8 @@ async def ban_emby_user(
         results.append(f"❌ Emby 账号删除失败: {safe_err}")
     elif api_status == "404":
         results.append(f"ℹ️ Emby 账号已软删除 （{fmt_name(emby_name)}）")
+    elif api_status == "already_deleted_skip":
+        results.append(f"ℹ️ Emby 账号此前已软删除，跳过 API 调用 （{fmt_name(emby_name)}）")
     elif api_status == "success":
         results.append(f"✅ Emby 账号已删除（{fmt_name(emby_name)}）")
     elif db_status == "success" or db_status == "already_deleted":
