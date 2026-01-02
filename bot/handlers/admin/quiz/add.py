@@ -188,8 +188,8 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
             if parsed["extra_caption"]:
                 success_text += f"\n📄 说明：{escape_markdown_v2(parsed['extra_caption'])}"
             
-            await main_msg.answer(success_text, parse_mode="MarkdownV2", reply_markup=get_back_to_menu_keyboard())
-            return
+            await state.clear()
+            await main_msg.render(message.from_user.id, success_text, get_quiz_add_success_keyboard())
 
         # 保存题目
         quiz = QuizQuestionModel(
