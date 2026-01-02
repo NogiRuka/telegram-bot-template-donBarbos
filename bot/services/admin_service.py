@@ -105,6 +105,23 @@ async def ban_emby_user(
             emby_user_db.deleted_by = deleted_by
             emby_user_db.remark = f"{reason} (操作者: {deleted_by})"
             db_status = "success"
+            
+            # 同时软删除该用户关联的设备
+            from bot.database.models.emby_device import EmbyDeviceModel
+            stmt_devices = select(EmbyDeviceModel).where(
+                EmbyDeviceModel.last_user_id == emby_user_db.emby_user_id,
+                EmbyDeviceModel.is_deleted == False
+            )
+            res_devices = await session.execute(stmt_devices)
+            devices = res_devices.scalars().all()
+            for device in devices:
+                device.is_deleted = True
+                device.deleted_at = now()
+                device.deleted_by = deleted_by
+                device.remark = f"用户被封禁自动删除 (操作者: {deleted_by})"
+            
+            if devices:
+                results.append(f"ℹ️ 自动软删除 {len(devices)} 个关联设备")
         else:
             db_status = "already_deleted"
 

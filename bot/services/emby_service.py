@@ -613,7 +613,7 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
             logger.info("📭 Emby 返回空设备列表")
             return 0
 
-        # logger.info(f"🔄 开始同步 Emby 设备, 共 {len(devices)} 个")
+        logger.info(f"🔄 开始同步 Emby 设备, 共 {len(devices)} 个")
 
         # 1. 获取所有现有设备 (包括已软删除的，以便恢复)
         stmt = select(EmbyDeviceModel)
@@ -769,8 +769,8 @@ async def cleanup_devices_by_policy(
         if tid:
             skips.add(tid)
 
-        # 2. 获取所有用户
-        stmt = select(EmbyUserModel)
+        # 2. 获取所有用户 (排除软删除的)
+        stmt = select(EmbyUserModel).where(EmbyUserModel.is_deleted == False)
         result = await session.execute(stmt)
         users = result.scalars().all()
 
