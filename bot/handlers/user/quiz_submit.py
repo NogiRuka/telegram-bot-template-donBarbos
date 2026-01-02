@@ -205,6 +205,31 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
 
         await session.commit()
 
+        # 通知群组
+        try:
+            from bot.core.config import settings
+            if settings.GROUP:
+                # 获取分类名称
+                cat = await session.get(QuizCategoryModel, parsed["category_id"])
+                cat_name = cat.name if cat else str(parsed["category_id"])
+                
+                user_name = message.from_user.full_name
+                
+                notify_text = (
+                    f"📝 *新问答投稿*\n"
+                    f"👤 用户：[{escape_markdown_v2(user_name)}](tg://user?id={user_id})\n"
+                    f"📂 分类：{escape_markdown_v2(cat_name)}\n"
+                    f"❓ 题目：\n*{escape_markdown_v2(parsed['question'])}*"
+                )
+                
+                await message.bot.send_message(
+                    chat_id=settings.GROUP,
+                    text=notify_text,
+                    parse_mode="MarkdownV2"
+                )
+        except Exception as e:
+            logger.warning(f"发送群组通知失败: {e}")
+
         success_text = (
             f"✅ *投稿成功\\!*\n\n"
             f"❓ 题目：{escape_markdown_v2(parsed['question'])}\n"

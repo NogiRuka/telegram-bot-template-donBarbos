@@ -106,9 +106,10 @@ async def list_questions_view(callback: CallbackQuery, session: AsyncSession, ma
         )
 
         try:
+            is_review_needed = item.extra and item.extra.get("submitted_by") and not item.extra.get("approval_rewarded")
             msg = await callback.message.answer(
                 text=caption,
-                reply_markup=get_quiz_question_item_keyboard(item.id, item.is_active),
+                reply_markup=get_quiz_question_item_keyboard(item.id, item.is_active, is_review_needed=bool(is_review_needed)),
                 parse_mode="MarkdownV2"
             )
             new_msg_ids.append(msg.message_id)
@@ -147,9 +148,12 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
 
     if action == "toggle":
         item.is_active = not item.is_active
-        
+        await session.commit()
+        await callback.answer(f"✅ 状态已切换")
+
+    elif action == "approve":
         # 检查是否为用户投稿且未发放审核奖励
-        if item.is_active and item.extra:
+        if item.extra:
             submitted_by = item.extra.get("submitted_by")
             approval_rewarded = item.extra.get("approval_rewarded")
             
@@ -170,6 +174,9 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
                     # 更新状态
                     item.extra = dict(item.extra) # 复制一份以触发更新
                     item.extra["approval_rewarded"] = True
+                    item.is_active = True # 审核通过自动启用
+                    
+                    await session.commit()
                     
                     # 通知用户
                     try:
@@ -183,12 +190,20 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
                     except Exception as e:
                          # 用户可能屏蔽了机器人
                         logger.warning(f"通知用户 {submitted_by} 失败 (可能已屏蔽机器人): {e}")
+                    
+                    await callback.answer("✅ 审核通过！奖励已发放，题目已启用。")
                         
                 except Exception as e:
                     await callback.answer(f"⚠️ 奖励发放失败: {e}", show_alert=True)
+                    return
+            else:
+                 await callback.answer("⚠️ 该题目已审核或非用户投稿", show_alert=True)
+                 return
+        else:
+            await callback.answer("⚠️ 该题目非用户投稿", show_alert=True)
+            return
 
-        await session.commit()
-
+    if action in ("toggle", "approve"):
         # 更新消息内容
         cat_name = item.category.name if item.category else "无分类"
         question_text = item.question
@@ -217,14 +232,12 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
         )
 
         with contextlib.suppress(Exception):
+            is_review_needed = item.extra and item.extra.get("submitted_by") and not item.extra.get("approval_rewarded")
             await callback.message.edit_text(
                 text=caption,
-                reply_markup=get_quiz_question_item_keyboard(item.id, item.is_active),
+                reply_markup=get_quiz_question_item_keyboard(item.id, item.is_active, is_review_needed=bool(is_review_needed)),
                 parse_mode="MarkdownV2"
             )
-
-        status_text = "🟢 启用" if item.is_active else "🔴 禁用"
-        await callback.answer(f"✅ 题目 ID `{item.id}` 已{status_text}")
 
     elif action == "delete":
         # 软删除
