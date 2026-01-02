@@ -403,10 +403,22 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
             if eid_raw is not None:
                 api_user_map[str(eid_raw)] = it
 
-        # 查询数据库中所有现有用户
-        res = await session.execute(select(EmbyUserModel))
+        # 查询数据库中所有现有用户 (排除软删除的)
+        res = await session.execute(select(EmbyUserModel).where(EmbyUserModel.is_deleted == False))
         existing_models = res.scalars().all()
         existing_map: dict[str, EmbyUserModel] = {m.emby_user_id: m for m in existing_models}
+
+        # 预先查询可能需要恢复的软删除用户 (防止重复插入导致唯一键冲突)
+        # 找出在 API 中存在但在 existing_map (活跃用户) 中不存在的用户 ID
+        potential_new_ids = [eid for eid in api_user_map if eid not in existing_map]
+        restorable_map: dict[str, EmbyUserModel] = {}
+        
+        if potential_new_ids:
+            # 批量查询这些 ID 是否存在于数据库中 (包括软删除的)
+            # 注意: 如果 ID 很多，这里可能需要分批处理，但通常 Emby 用户数不会太多
+            stmt = select(EmbyUserModel).where(EmbyUserModel.emby_user_id.in_(potential_new_ids))
+            res_deleted = await session.execute(stmt)
+            restorable_map = {m.emby_user_id: m for m in res_deleted.scalars()}
 
         deleted = 0
 
@@ -447,6 +459,18 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
         for eid, it in api_user_map.items():
 
             model = existing_map.get(eid)
+            
+            # 如果是活跃用户表中不存在，检查是否可以恢复
+            if model is None and eid in restorable_map:
+                model = restorable_map[eid]
+                # 恢复被软删除的用户
+                model.is_deleted = False
+                model.deleted_at = None
+                model.deleted_by = None
+                model.remark = "Emby 同步: 账号重新出现 (自动恢复)"
+                # 放入 existing_map 以便后续走统一的更新逻辑
+                existing_map[eid] = model
+            
             if model is None:
                 name = str(it.get("Name") or "")
                 date_created = parse_iso_datetime(it.get("DateCreated"))
