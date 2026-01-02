@@ -58,7 +58,7 @@ async def start_quiz_submit(callback: CallbackQuery, state: FSMContext, session:
     # 键盘：查看示例、取消
     builder = InlineKeyboardBuilder()
     builder.button(text="📝 查看示例", callback_data=f"{USER_QUIZ_SUBMIT_CALLBACK_DATA}:example")
-    builder.button(text="❌ 取消", callback_data="account_center") # 直接返回个人中心
+    builder.button(text="❌ 取消", callback_data="user:profile") # 直接返回个人中心
     builder.adjust(1)
 
     await main_msg.update_on_callback(callback, text, builder.as_markup())

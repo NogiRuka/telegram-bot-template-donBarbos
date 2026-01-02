@@ -1,5 +1,6 @@
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
+from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL, DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM, DISPLAY_MODE_SFW
@@ -20,21 +21,15 @@ async def user_profile(
     callback: CallbackQuery,
     session: AsyncSession,
     main_msg: MainMessageService,
+    state: FSMContext,
 ) -> None:
     """个人信息
 
     功能说明:
     - 展示用户基本资料与状态
     - 不包含 Emby 绑定信息与扩展信息
-
-    输入参数:
-    - callback: 回调对象
-    - session: 异步数据库会话
-    - main_msg: 主消息服务
-
-    返回值:
-    - None
     """
+    await state.clear() # 清除可能存在的状态
 
     uid = callback.from_user.id if callback.from_user else None
     if not uid:
