@@ -44,7 +44,7 @@ async def start_quiz_submit(callback: CallbackQuery, state: FSMContext, session:
         "✍️ 题目请写在说明中\\(纯文本直接发送即可\\)\n\n"
         "📝 *输入格式说明：*\n"
         "`第1行：题目描述\n"
-        "第2行：选项A　选项B　选项C　选项D（空格分隔）\n"
+        "第2行：选项A　选项B　选项C　选项D（空格或逗号分隔）\n"
         "第3行：正确答案序号（1-4）\n"
         "第4行：分类ID（见下方列表）\n"
         "第5行：标签1　标签2（空格或逗号分隔，必填）\n"
