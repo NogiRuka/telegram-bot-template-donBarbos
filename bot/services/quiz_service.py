@@ -462,6 +462,12 @@ class QuizService:
         # 4. 计算奖励
         reward = question.reward_bonus if is_correct else question.reward_base
 
+        # 计算耗时 (毫秒)
+        time_taken = None
+        if quiz_session.created_at:
+            delta = now() - quiz_session.created_at
+            time_taken = int(delta.total_seconds() * 1000)
+
         # 5. 记录日志
         log = QuizLogModel(
             user_id=user_id,
@@ -470,9 +476,7 @@ class QuizService:
             user_answer=answer_index,
             is_correct=is_correct,
             reward_amount=reward,
-            # time_taken 暂未精确计算，可用 now() 减去 session 创建时间估算，但 session 没有 created_at 字段(只有mixin的)
-            # 这里简单处理
-            time_taken=None,
+            time_taken=time_taken,
             extra=quiz_session.extra  # 保存 extra 数据 (包含图片信息)
         )
         session.add(log)
@@ -496,9 +500,10 @@ class QuizService:
         if is_correct:
             msg = "✅ 回答正确！"  # noqa: RUF001
         else:
-            correct_option = question.options[question.correct_index]
-            msg = f"❌ 回答错误。\n正确答案：{correct_option}"  # noqa: RUF001
-        msg += f"\n获得{CURRENCY_NAME}：+{reward} {CURRENCY_SYMBOL}"  # noqa: RUF001
+            # correct_option = question.options[question.correct_index]
+            msg = f"❌ 回答错误。\n"
+            # msg += f"正确答案：{correct_option}"
+        msg += f"\n获得{CURRENCY_NAME}：+{reward} {CURRENCY_SYMBOL}"
 
         return is_correct, reward, msg, original_caption
 
