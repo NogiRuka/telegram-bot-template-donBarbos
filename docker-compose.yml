@@ -17,6 +17,10 @@ services:
     depends_on:
       migrator:
             condition: service_completed_successfully # 等迁移成功后再启动
+    # --- 添加下面这两行 ---
+    volumes:
+      - .:/usr/src/app
+    # ----------------------
 
   api:
     build: .
