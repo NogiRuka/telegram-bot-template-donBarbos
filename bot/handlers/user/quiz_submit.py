@@ -125,12 +125,8 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
                 parse_mode="MarkdownV2",
                 reply_markup=del_btn
             )
-    except Exception:
-        logger.error("发送示例消息失败", exc_info=True)
-        await callback.message.answer(
-             "❌ 发送失败，请检查图片 ID 是否有效",
-             reply_markup=del_btn
-        )
+    except Exception as e:
+        logger.error(f"发送示例消息失败: {e}", exc_info=True)
     await callback.answer()
 
 @router.callback_query(F.data == f"{USER_QUIZ_SUBMIT_CALLBACK_DATA}:del_msg")

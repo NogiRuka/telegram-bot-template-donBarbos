@@ -368,6 +368,7 @@ class QuizService:
         if quiz_image:
             extra_data["image_source"] = quiz_image.image_source
             extra_data["extra_caption"] = quiz_image.extra_caption
+            extra_data["tags"] = quiz_image.tags
             extra_data["file_id"] = quiz_image.file_id  # 增加 file_id 记录
             extra_data["image_id"] = quiz_image.id      # 增加 image_id 记录
 
