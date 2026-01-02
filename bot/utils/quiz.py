@@ -24,7 +24,7 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
     
     格式:
     第1行：题目描述
-    第2行：选项A　选项B　选项C　选项D（空格分隔）
+    第2行：选项A　选项B　选项C　选项D（空格或逗号分隔）
     第3行：正确答案序号（1-4）
     第4行：分类ID
     第5行：标签1　标签2（空格或逗号分隔）
@@ -132,7 +132,7 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
     else:
         # 无逗号，按空格分隔（支持全角/半角空格）
         options_text = options_text.replace("　", " ")
-        options = [o.strip() for o in options_text.split(" ") if o.strip()]
+        options = [o.strip() for o in options_text.split() if o.strip()]
         
     if len(options) != 4:
         raise QuizParseError(f"选项解析失败，找到 {len(options)} 个选项，需要 4 个。")
