@@ -44,7 +44,8 @@ def get_user_router() -> Router:
     router.include_router(store_router)
     router.include_router(avatar_router)
     router.include_router(files_router)
-    router.include_router(private_message_saver_router)
     router.include_router(quiz_router)
     router.include_router(quiz_submit_router)
+    # private_message_saver_router 应该放在最后，以免拦截其他处理器的消息
+    router.include_router(private_message_saver_router)
     return router
