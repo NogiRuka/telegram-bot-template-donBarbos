@@ -19,24 +19,14 @@ async def send_group_notification(
     #GroupTitle #IDUserID #Username #Action
     📖 FullName Reason
     """
-    logger.info(f"尝试发送群组通知: group={settings.OWNER_MSG_GROUP}")
-    
+    logger.info(f"尝试发送群组通知: group={settings.OWNER_MSG_GROUP}, user_info={user_info}")
     if not bot or not settings.OWNER_MSG_GROUP or not user_info:
         return
 
     try:
-        # 优先使用 chat_username (即 @channelname)，如果没有则使用 chat_id，不再使用 group_name (Title)
-        # 注意: user_info 中需要传入 chat_username 或 chat_id
-        chat_identifier = user_info.get("chat_username")
-        if not chat_identifier:
-            chat_id = user_info.get("chat_id")
-            if chat_id:
-                # 确保是字符串，并处理可能的负号
-                chat_identifier = f"ID{str(chat_id).replace('-', 'M')}" # 替换负号避免 hashtag 问题，或者直接拼接
-            else:
-                # 如果都没有，回退到 group_name 但尽量不使用
-                chat_identifier = user_info.get("group_name", "UnknownGroup")
-
+        chat_username = user_info.get("chat_username")
+        chat_id = user_info.get("chat_id")
+        
         user_id = user_info.get("user_id", "UnknownID")
         username = user_info.get("username", "UnknownUser")
         full_name = user_info.get("full_name", "Unknown")
@@ -55,15 +45,20 @@ async def send_group_notification(
             return "@" + escape_markdown_v2(clean_s)
 
         # 构造群组标识 Tag
-        # 如果是 @channelname 格式，直接作为 Tag 或者 Mention
-        # 用户希望: 数字ID用#，或者@channelname的形式
+        # 优先使用 chat_username (即 @channelname)，如果没有则使用 chat_id
         group_tag = ""
-        if str(chat_identifier).startswith("@"):
-             # 如果已经包含 @，则当作 mention 处理 (去除 @ 后再加 @)
-             group_tag = to_mention(str(chat_identifier).lstrip("@"))
-        else:
-             # 否则作为 hashtag
+        if chat_username:
+             # 有 username，强制作为 mention (Telegram API 返回的 username 通常不带 @)
+             group_tag = to_mention(str(chat_username).lstrip("@"))
+        elif chat_id:
+             # 没有 username，使用 ID 生成 hashtag
+             # 确保是字符串，并处理可能的负号 (替换为 M 避免 hashtag 问题)
+             chat_identifier = f"ID{str(chat_id).replace('-', 'M')}" 
              group_tag = to_hashtag(chat_identifier)
+        else:
+             # 如果都没有，回退到 group_name 但尽量不使用
+             group_name = user_info.get("group_name", "UnknownGroup")
+             group_tag = to_hashtag(group_name)
 
         # Tag 格式: GroupTag #IDUserID @Username #Action
         tags = f"{group_tag} {to_hashtag('ID' + str(user_id))} {to_mention(username)} {to_hashtag(action)}"
