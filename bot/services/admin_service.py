@@ -66,37 +66,71 @@ async def ban_emby_user(
 
     deleted_by = admin_id if admin_id else 0  # 0 表示系统或未知
 
+    # 获取 Emby 账号名称
+    emby_name = "Unknown"
+    emby_user_db = None
+    if emby_user_id:
+        stmt_emby = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
+        result_emby = await session.execute(stmt_emby)
+        emby_user_db = result_emby.scalar_one_or_none()
+        if emby_user_db:
+            emby_name = emby_user_db.name
+
+    api_status = "skipped"
+    api_error_msg = ""
+
     # 1. 删除 Emby 账号 (API)
     if emby_user_id:
         emby_client = get_emby_client()
         if emby_client:
             try:
                 await emby_client.delete_user(emby_user_id)
-                results.append(f"✅ Emby 账号已删除 (ID: {emby_user_id})")
+                api_status = "success"
             except Exception as e:
-                logger.error(f"删除 Emby 账号失败: {e}")
-                results.append(f"❌ Emby 账号删除失败: {e}")
+                error_str = str(e)
+                if "404" in error_str:
+                    api_status = "404"
+                else:
+                    api_status = "error"
+                    api_error_msg = error_str
+                    logger.error(f"删除 Emby 账号失败: {e}")
         else:
-            results.append("⚠️ 未配置 Emby API，跳过账号删除")
+            api_status = "not_configured"
 
     # 2. 软删除数据库 EmbyUserModel
-    if emby_user_id:
-        stmt_emby = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
-        result_emby = await session.execute(stmt_emby)
-        emby_user = result_emby.scalar_one_or_none()
-
-        if emby_user:
-            # 如果已经被删除了，就不重复记录了，但还是要记录审计日志
-            if not emby_user.is_deleted:
-                emby_user.is_deleted = True
-                emby_user.deleted_at = now()
-                emby_user.deleted_by = deleted_by
-                emby_user.remark = f"{reason} (操作者: {deleted_by})"
-                results.append("✅ Emby 用户数据已标记为删除")
-            else:
-                 results.append("ℹ️ Emby 用户数据已是删除状态")
+    db_status = "skipped"
+    if emby_user_db:
+        # 如果已经被删除了，就不重复记录了，但还是要记录审计日志
+        if not emby_user_db.is_deleted:
+            emby_user_db.is_deleted = True
+            emby_user_db.deleted_at = now()
+            emby_user_db.deleted_by = deleted_by
+            emby_user_db.remark = f"{reason} (操作者: {deleted_by})"
+            db_status = "success"
         else:
-            results.append("⚠️ 未找到本地 Emby 用户数据")
+            db_status = "already_deleted"
+
+    # 生成结果消息 (MarkdownV2 格式)
+    from bot.utils.text import escape_markdown_v2
+    
+    def fmt_name(n: str) -> str:
+        return f"`{escape_markdown_v2(n)}`"
+
+    if not emby_user_id:
+        results.append("ℹ️ 该用户未绑定 Emby 账号")
+    elif api_status == "not_configured":
+        results.append(f"❌ Emby API 未配置 ，跳过账号删除（{fmt_name(emby_name)}）")
+    elif api_status == "error":
+        safe_err = escape_markdown_v2(api_error_msg)
+        results.append(f"❌ Emby 账号删除失败: {safe_err}")
+    elif api_status == "404":
+        results.append(f"ℹ️ Emby 账号已软删除 （{fmt_name(emby_name)}）")
+    elif api_status == "success":
+        results.append(f"✅ Emby 账号已删除（{fmt_name(emby_name)}）")
+    elif db_status == "success" or db_status == "already_deleted":
+        results.append(f"ℹ️ Emby 账号已软删除 （{fmt_name(emby_name)}）")
+    else:
+        results.append(f"ℹ️ Emby 账号状态未知 ({fmt_name(emby_name)})")
 
     # 3. 记录审计日志
     audit_log = AuditLogModel(
@@ -121,16 +155,14 @@ async def ban_emby_user(
         user_info["user_id"] = str(target_user_id)
         
         # 将处理结果加入原因中，以便在通知中显示
-        # 对 results 中的每个条目进行 MarkdownV2 转义
-        from bot.utils.text import escape_markdown_v2
-        
-        escaped_results = [escape_markdown_v2(r) for r in results]
-        results_str = "\n".join([f"  • {r}" for r in escaped_results])
+        # results 已经是 MarkdownV2 格式，直接使用
+        results_str = "\n".join([f"  • {r}" for r in results])
         
         # 对 reason 本身也进行转义（假设它是纯文本）
+        from bot.utils.text import escape_markdown_v2
         escaped_reason = escape_markdown_v2(reason)
         
-        detailed_reason = f"{escaped_reason}\n\n📝 *处理结果*:\n{results_str}"
+        detailed_reason = f"{escaped_reason}\n\n📝 *处理结果*：\n{results_str}"
         
         # 调用通用通知函数
         await send_group_notification(bot, user_info, detailed_reason)
@@ -188,8 +220,10 @@ async def unban_user_service(
         user_info["user_id"] = str(target_user_id)
         
         # 将处理结果加入原因中
-        results_str = "\n".join([f"  • {r}" for r in results])
-        detailed_reason = f"{reason}\n\n📝 *处理结果*:\n{results_str}"
+        from bot.utils.text import escape_markdown_v2
+        results_str = "\n".join([f"  • {escape_markdown_v2(r)}" for r in results])
+        escaped_reason = escape_markdown_v2(reason)
+        detailed_reason = f"{escaped_reason}\n\n📝 *处理结果*：\n{results_str}"
         
         await send_group_notification(bot, user_info, detailed_reason)
             

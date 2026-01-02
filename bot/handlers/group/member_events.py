@@ -20,6 +20,7 @@ router = Router(name="group_member_events")
 
 
 from bot.utils.msg_group import send_group_notification
+from bot.utils.text import escape_markdown_v2
 
 @router.chat_member(F.new_chat_member.status == ChatMemberStatus.MEMBER)
 async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> None:
@@ -58,10 +59,16 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
         "user_id": str(user.id)
     }
     
+    # 检查是否是被邀请加入
+    join_reason = "加入群组"
+    if event.from_user and event.from_user.id != user.id:
+        inviter_name = escape_markdown_v2(event.from_user.full_name)
+        join_reason = f"被 {inviter_name} 邀请加入群组"
+
     await send_group_notification(
         event.bot, 
         user_info, 
-        f"用户 {user.full_name} 加入了群组 {event.chat.title}"
+        join_reason
     )
 
 

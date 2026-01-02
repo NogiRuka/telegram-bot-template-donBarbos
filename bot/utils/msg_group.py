@@ -38,17 +38,8 @@ async def send_group_notification(
             clean_s = str(s).replace(" ", "").replace("#", "")
             return "\\#" + escape_markdown_v2(clean_s)
 
-        # 动作汉化映射
-        action_map = {
-            "Kick": "踢出",
-            "Leave": "离开",
-            "ManualBan": "手动封禁",
-            "Join": "加入"
-        }
-        action_cn = action_map.get(action, action)
-
         # #GroupTitle #IDUserID #Username #Action
-        tags = f"{to_hashtag(group_name)} {to_hashtag('用户' + str(user_id))} {to_hashtag(username)} {to_hashtag(action_cn)}"
+        tags = f"{to_hashtag(group_name)} {to_hashtag('用户' + str(user_id))} {to_hashtag(username)} {to_hashtag(action)}"
         
         # 📖 FullName Reason
         escaped_full_name = escape_markdown_v2(full_name)

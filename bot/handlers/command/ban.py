@@ -14,6 +14,7 @@ from bot.core.config import settings
 from bot.services.admin_service import ban_emby_user
 from bot.utils.decorators import private_chat_only
 from bot.utils.permissions import is_group_admin
+from bot.utils.text import escape_markdown_v2
 
 router = Router(name="command_ban")
 
@@ -55,7 +56,8 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
             results.append("✅ 已从群组移除并封禁")
         except Exception as e:
             logger.warning(f"无法从群组移除用户 {target_user_id}: {e}")
-            results.append(f"⚠️ 无法从群组移除: {e}")
+            safe_e = escape_markdown_v2(str(e))
+            results.append(f"⚠️ 无法从群组移除: {safe_e}")
     else:
         results.append("ℹ️ 未配置群组，跳过群组移除")
 
@@ -128,4 +130,4 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
         ]
     ])
     
-    await message.reply("\n".join(results), reply_markup=kb)
+    await message.reply("\n".join(results), reply_markup=kb, parse_mode="MarkdownV2")
