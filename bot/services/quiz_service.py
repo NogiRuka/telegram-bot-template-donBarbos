@@ -1,4 +1,5 @@
 import asyncio
+import html
 import random
 from datetime import timedelta
 
@@ -9,6 +10,7 @@ from loguru import logger
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+
 
 from bot.config.constants import (
     KEY_QUIZ_COOLDOWN_MINUTES,

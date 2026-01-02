@@ -28,7 +28,7 @@ async def on_quiz_answer(callback: CallbackQuery, session: AsyncSession) -> None
         # 如果是纯文本, 用 edit_text
         # 由于我们不知道原消息是图还是文, 可以通过 callback.message 类型判断
 
-        result_text = f"\n\n{msg}"
+        result_text = f"\n\n{html.escape(msg)}"
 
         # 关闭键盘按钮
         close_kb = InlineKeyboardBuilder()
