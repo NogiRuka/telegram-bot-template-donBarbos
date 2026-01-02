@@ -163,8 +163,8 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
                         session=session,
                         user_id=submitted_by,
                         amount=5,
-                        source_type="quiz_submit_approve",
-                        reason=f"投稿题目 #{item.id} 审核通过奖励"
+                        event_type="quiz_submit_approve",
+                        description=f"投稿题目 #{item.id} 审核通过奖励"
                     )
                     
                     # 更新状态

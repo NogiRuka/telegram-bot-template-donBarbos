@@ -199,8 +199,8 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
             session=session,
             user_id=user_id,
             amount=3,
-            source_type="quiz_submit_base",
-            reason=f"投稿问答 #{quiz.id} 奖励"
+            event_type="quiz_submit_base",
+            description=f"投稿问答 #{quiz.id} 奖励"
         )
 
         await session.commit()
