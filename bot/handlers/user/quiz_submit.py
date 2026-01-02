@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.constants import CURRENCY_SYMBOL
 from bot.database.models import QuizCategoryModel, QuizImageModel, QuizQuestionModel
-from bot.keyboards.inline.buttons import BACK_TO_ACCOUNT_BUTTON
+from bot.keyboards.inline.buttons import BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import USER_QUIZ_SUBMIT_CALLBACK_DATA
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
@@ -207,7 +207,6 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
 
         success_text = (
             f"✅ *投稿成功\\!*\n\n"
-            f"🆔 ID：`{quiz.id}`\n"
             f"❓ 题目：{escape_markdown_v2(parsed['question'])}\n"
             f"🎁 奖励：\\+3 {escape_markdown_v2(CURRENCY_SYMBOL)} 已发放\n"
         )
@@ -218,7 +217,7 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
         # 返回成功界面 (可以使用通用的返回键盘)
         builder = InlineKeyboardBuilder()
         builder.button(text="✍️ 继续投稿", callback_data=USER_QUIZ_SUBMIT_CALLBACK_DATA)
-        builder.row(BACK_TO_ACCOUNT_BUTTON)
+        builder.row(BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON)
         
         await main_msg.render(user_id, success_text, builder.as_markup())
 
