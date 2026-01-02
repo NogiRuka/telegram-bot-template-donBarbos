@@ -25,7 +25,18 @@ async def send_group_notification(
         return
 
     try:
-        group_name = user_info.get("group_name", "UnknownGroup")
+        # 优先使用 chat_username (即 @channelname)，如果没有则使用 chat_id，不再使用 group_name (Title)
+        # 注意: user_info 中需要传入 chat_username 或 chat_id
+        chat_identifier = user_info.get("chat_username")
+        if not chat_identifier:
+            chat_id = user_info.get("chat_id")
+            if chat_id:
+                # 确保是字符串，并处理可能的负号
+                chat_identifier = f"ID{str(chat_id).replace('-', 'M')}" # 替换负号避免 hashtag 问题，或者直接拼接
+            else:
+                # 如果都没有，回退到 group_name 但尽量不使用
+                chat_identifier = user_info.get("group_name", "UnknownGroup")
+
         user_id = user_info.get("user_id", "UnknownID")
         username = user_info.get("username", "UnknownUser")
         full_name = user_info.get("full_name", "Unknown")
@@ -43,8 +54,19 @@ async def send_group_notification(
             clean_s = str(s).replace(" ", "").replace("@", "")
             return "@" + escape_markdown_v2(clean_s)
 
-        # #GroupTitle #IDUserID @Username #Action
-        tags = f"{to_hashtag(group_name)} {to_hashtag('ID' + str(user_id))} {to_mention(username)} {to_hashtag(action)}"
+        # 构造群组标识 Tag
+        # 如果是 @channelname 格式，直接作为 Tag 或者 Mention
+        # 用户希望: 数字ID用#，或者@channelname的形式
+        group_tag = ""
+        if str(chat_identifier).startswith("@"):
+             # 如果已经包含 @，则当作 mention 处理 (去除 @ 后再加 @)
+             group_tag = to_mention(str(chat_identifier).lstrip("@"))
+        else:
+             # 否则作为 hashtag
+             group_tag = to_hashtag(chat_identifier)
+
+        # Tag 格式: GroupTag #IDUserID @Username #Action
+        tags = f"{group_tag} {to_hashtag('ID' + str(user_id))} {to_mention(username)} {to_hashtag(action)}"
         
         # 📖 FullName Reason
         escaped_full_name = escape_markdown_v2(full_name)
