@@ -6,6 +6,7 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, Message
 
 from bot.services.config_service import get_config
+from bot.utils.message import delete_message_after_delay
 from bot.utils.permissions import _resolve_role
 
 if TYPE_CHECKING:
@@ -80,7 +81,8 @@ class BotEnabledMiddleware(BaseMiddleware):
             if is_callback:
                 await first.answer("🔴 机器人已关闭", show_alert=True)  # type: ignore[attr-defined]
             elif is_message:
-                await first.answer("🔴 机器人已关闭")  # type: ignore[attr-defined]
+                reply_msg = await first.answer("🔴 机器人已关闭")  # type: ignore[attr-defined]
+                delete_message_after_delay(reply_msg, 3)
         except TelegramAPIError:
             pass
         return None
