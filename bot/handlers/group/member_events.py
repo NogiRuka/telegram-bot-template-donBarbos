@@ -63,7 +63,7 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
     join_reason = "用户加入群组"
     if event.from_user and event.from_user.id != user.id:
         inviter_name = escape_markdown_v2(event.from_user.full_name)
-        join_reason = f"被用户 {inviter_name} 邀请加入群组"
+        join_reason = f"用户被 {inviter_name} 邀请加入群组"
 
     await send_group_notification(
         event.bot, 
@@ -113,7 +113,7 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
         # 尝试获取执行踢出的管理员 (如果有)
         if event.from_user:
              admin_id = event.from_user.id
-             reason = f"用户被管理员 {event.from_user.full_name} ({admin_id}) 踢出/封禁"
+             reason = f"用户被管理员 {event.from_user.full_name} 踢出/封禁"
 
     # 执行清理逻辑
     try:
