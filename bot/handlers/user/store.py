@@ -104,7 +104,7 @@ async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession
                 
                 # 假设 product.price 是数值，转换为字符串
                 price_str = str(product.price)
-                reason = f"购买商品: {product.name} (花费: {price_str} {CURRENCY_SYMBOL})"
+                reason = f"购买了商品：{product.name}（花费: {price_str} {CURRENCY_SYMBOL}）"
                 
                 await send_group_notification(callback.bot, user_info, reason)
             except Exception as e:

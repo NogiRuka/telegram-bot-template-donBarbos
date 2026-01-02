@@ -60,10 +60,10 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
     }
     
     # 检查是否是被邀请加入
-    join_reason = "用户加入群组"
+    join_reason = "加入了群组"
     if event.from_user and event.from_user.id != user.id:
         inviter_name = escape_markdown_v2(event.from_user.full_name)
-        join_reason = f"用户被 {inviter_name} 邀请加入群组"
+        join_reason = f"被 {inviter_name} 邀请加入群组"
 
     await send_group_notification(
         event.bot, 
@@ -105,15 +105,15 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
     logger.info(f"监测到用户离开/被踢出: {user.id} ({user.full_name}) - 状态: {event.new_chat_member.status}")
 
     # 确定操作原因和执行者
-    reason = "用户主动离开群组"
+    reason = "主动离开了群组"
     admin_id = None
     
     if event.new_chat_member.status == ChatMemberStatus.KICKED:
-        reason = "用户被管理员踢出/封禁"
+        reason = "被管理员踢出/封禁"
         # 尝试获取执行踢出的管理员 (如果有)
         if event.from_user:
              admin_id = event.from_user.id
-             reason = f"用户被管理员 {event.from_user.full_name} 踢出/封禁"
+             reason = f"被管理员 {event.from_user.full_name} 踢出/封禁"
 
     # 执行清理逻辑
     try:

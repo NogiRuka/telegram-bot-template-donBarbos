@@ -143,8 +143,8 @@ def build_start_caption(
     # 用户名与项目名也需要转义
     user_name_esc = escape_markdown_v2(user_name)
     # project_name_esc = escape_markdown_v2(project_name)
-    # base = f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name_esc}_*\n🎐 欢迎使用{project_name_esc}\n"
-    base = f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name_esc}_*\n"
+    base = f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name_esc}_*\n🎐 很高兴见到你\n"
+    # base = f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name_esc}_*\n"
     ann = ""
     if announcement:
         ann = f"\n📢 公告：\n{escape_markdown_v2(announcement)}\n"
