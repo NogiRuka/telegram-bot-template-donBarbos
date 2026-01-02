@@ -63,10 +63,14 @@ def get_quiz_list_pagination_keyboard(page: int, total_pages: int, limit: int = 
     return builder.as_markup()
 
 
-def build_question_keyboard(options: list[str], question_id: int | None = None, is_review_needed: bool = False) -> InlineKeyboardMarkup:
+def build_question_keyboard(options: list[str], question_id: int | None = None, is_review_needed: bool = False, correct_index: int = -1) -> InlineKeyboardMarkup:
     """构建问题选项键盘 (模拟用户端)"""
     builder = InlineKeyboardBuilder()
     for i, option in enumerate(options):
+        # 标记正确答案
+        if i == correct_index:
+            option = f"{option} ✅"
+        
         # 使用特定回调以便识别，或者仅仅展示用 ignore
         # 这里为了模拟真实感，可以使用类似真实的回调，或者 dummy callback
         builder.button(text=option, callback_data=f"ignore:quiz_preview:{i}")
@@ -152,7 +156,12 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
 
             # 3. 构建键盘
             is_review_needed = question.extra and question.extra.get("submitted_by") and not question.extra.get("approval_rewarded")
-            keyboard = build_question_keyboard(question.options, question_id=question.id, is_review_needed=bool(is_review_needed))
+            keyboard = build_question_keyboard(
+                question.options,
+                question_id=question.id,
+                is_review_needed=bool(is_review_needed),
+                correct_index=question.correct_index
+            )
 
             # 4. 发送消息
             sent = False
