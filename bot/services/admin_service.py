@@ -93,7 +93,7 @@ async def ban_emby_user(
                 else:
                     api_status = "error"
                     api_error_msg = error_str
-                    logger.error(f"删除 Emby 账号失败: {e}")
+                    logger.error(f"❌ 删除 Emby 账号失败: {e}")
         else:
             api_status = "not_configured"
 
@@ -156,13 +156,13 @@ async def ban_emby_user(
         
         # 将处理结果加入原因中，以便在通知中显示
         # results 已经是 MarkdownV2 格式，直接使用
-        results_str = "\n".join([f"  • {r}" for r in results])
+        results_str = "\n".join([f"{r}" for r in results])
         
         # 对 reason 本身也进行转义（假设它是纯文本）
         from bot.utils.text import escape_markdown_v2
         escaped_reason = escape_markdown_v2(reason)
         
-        detailed_reason = f"{escaped_reason}\n\n📝 *处理结果*：\n{results_str}"
+        detailed_reason = f"{escaped_reason}\n{results_str}"
         
         # 调用通用通知函数
         await send_group_notification(bot, user_info, detailed_reason)
@@ -221,9 +221,9 @@ async def unban_user_service(
         
         # 将处理结果加入原因中
         from bot.utils.text import escape_markdown_v2
-        results_str = "\n".join([f"  • {escape_markdown_v2(r)}" for r in results])
+        results_str = "\n".join([f"{escape_markdown_v2(r)}" for r in results])
         escaped_reason = escape_markdown_v2(reason)
-        detailed_reason = f"{escaped_reason}\n\n📝 *处理结果*：\n{results_str}"
+        detailed_reason = f"{escaped_reason}\n{results_str}"
         
         await send_group_notification(bot, user_info, detailed_reason)
             

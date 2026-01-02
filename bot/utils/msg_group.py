@@ -39,7 +39,7 @@ async def send_group_notification(
             return "\\#" + escape_markdown_v2(clean_s)
 
         # #GroupTitle #IDUserID #Username #Action
-        tags = f"{to_hashtag(group_name)} {to_hashtag('用户' + str(user_id))} {to_hashtag(username)} {to_hashtag(action)}"
+        tags = f"{to_hashtag(group_name)} {to_hashtag('ID' + str(user_id))} {to_hashtag(username)} {to_hashtag(action)}"
         
         # 📖 FullName Reason
         escaped_full_name = escape_markdown_v2(full_name)

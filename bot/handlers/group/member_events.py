@@ -60,10 +60,10 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
     }
     
     # 检查是否是被邀请加入
-    join_reason = "加入群组"
+    join_reason = "用户加入群组"
     if event.from_user and event.from_user.id != user.id:
         inviter_name = escape_markdown_v2(event.from_user.full_name)
-        join_reason = f"被 {inviter_name} 邀请加入群组"
+        join_reason = f"被用户 {inviter_name} 邀请加入群组"
 
     await send_group_notification(
         event.bot, 
