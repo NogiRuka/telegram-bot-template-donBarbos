@@ -47,7 +47,7 @@ class UserHistoryModel(Base, BasicAuditMixin):
 
     # aiogram User 对应字段
     is_bot: Mapped[bool] = mapped_column(default=False, nullable=False, comment="是否机器人")
-    first_name: Mapped[str] = mapped_column(String(255), nullable=False, comment="用户名")
+    first_name: Mapped[str] = mapped_column(String(255), nullable=True, comment="用户名")
     last_name: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="姓")
     username: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="用户名")
     language_code: Mapped[str | None] = mapped_column(String(32), nullable=True, comment="语言代码")
