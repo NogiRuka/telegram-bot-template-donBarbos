@@ -289,11 +289,10 @@ class QuizService:
         extra = "无"
         if image and image.image_source:
             if image.image_source.startswith("http"):
-                link_text = image.extra_caption.strip() if image.extra_caption else "链接"
+                link_text = image.extra_caption.strip() if image.extra_caption else (image.tags[0] if image.tags else "链接")
                 extra = f"<a href='{image.image_source}'>{link_text}</a>"
             else:
                 extra = f"{image.image_source}"
-
         cat_name = question.category.name if question.category else "无分类"
 
         return (
