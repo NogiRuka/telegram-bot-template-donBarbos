@@ -655,7 +655,7 @@ def get_quiz_question_list_pagination_keyboard(page: int, total_pages: int, limi
     return builder.as_markup()
 
 
-def get_quiz_question_item_keyboard(question_id: int, is_active: bool, is_review_needed: bool = False) -> InlineKeyboardMarkup:
+def get_quiz_question_item_keyboard(question_id: int, is_active: bool) -> InlineKeyboardMarkup:
     """题目单项操作键盘"""
     buttons = [
         [
@@ -664,13 +664,6 @@ def get_quiz_question_item_keyboard(question_id: int, is_active: bool, is_review
             InlineKeyboardButton(text="❌ 关闭", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:close")
         ]
     ]
-    
-    if is_review_needed:
-        buttons.append([
-            InlineKeyboardButton(text="✅ 通过", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:approve:{question_id}"),
-            InlineKeyboardButton(text="❌ 拒绝", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:reject:{question_id}")
-        ])
-        
     keyboard = InlineKeyboardBuilder(markup=buttons)
     return keyboard.as_markup()
 

@@ -109,7 +109,8 @@ async def list_questions_view(callback: CallbackQuery, session: AsyncSession, ma
             msg = await callback.message.answer(
                 text=caption,
                 reply_markup=get_quiz_question_item_keyboard(item.id, item.is_active),
-                parse_mode="MarkdownV2"
+                parse_mode="MarkdownV2",
+                disable_web_page_preview=True
             )
             new_msg_ids.append(msg.message_id)
 
@@ -180,7 +181,8 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
             await callback.message.edit_text(
                 text=caption,
                 reply_markup=get_quiz_question_item_keyboard(item.id, item.is_active),
-                parse_mode="MarkdownV2"
+                parse_mode="MarkdownV2",
+                disable_web_page_preview=True
             )
 
         status_text = "🟢 启用" if item.is_active else "🔴 禁用"
