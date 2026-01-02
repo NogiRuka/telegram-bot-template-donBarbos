@@ -4,6 +4,7 @@ from math import ceil
 from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
+from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -175,7 +176,7 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
                         )
                     except Exception as e:
                          # 用户可能屏蔽了机器人
-                        pass
+                        logger.warning(f"通知用户 {submitted_by} 失败 (可能已屏蔽机器人): {e}")
                         
                 except Exception as e:
                     await callback.answer(f"⚠️ 奖励发放失败: {e}", show_alert=True)
