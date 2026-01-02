@@ -41,7 +41,7 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
     if not text:
         raise QuizParseError("请输入题目内容。")
 
-    lines = [l.strip() for l in text.split("\n") if l.strip()]
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
 
     # 仅添加题图模式 (行数 >= 2 且第1行是数字，且第2行不是选项格式)
     # 简单的启发式判断：如果第1行是纯数字，且行数比较少，可能是仅添加题图模式
@@ -75,7 +75,7 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
             raise QuizParseError("分类必须填写ID（数字）。")
 
         # 2. 标签 (lines[1])
-        tags_line = lines[1].strip()
+        tags_line = lines[1]
         tags = []
         tags_line = tags_line.replace("，", ",")
         if "," in tags_line:
@@ -161,7 +161,7 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
         raise QuizParseError("分类必须填写ID（数字）。")
 
     # 5. 标签 (必填)
-    tags_line = lines[4].strip()
+    tags_line = lines[4]
     tags = []
 
     # 统一中文逗号
