@@ -19,6 +19,8 @@ from bot.services.users import upsert_user_on_interaction
 router = Router(name="group_member_events")
 
 
+from bot.utils.msg_group import send_group_notification
+
 @router.chat_member(F.new_chat_member.status == ChatMemberStatus.MEMBER)
 async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> None:
     """
@@ -27,6 +29,40 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
     logger.info(f"收到成员加入事件: chat={event.chat.id}, user={event.new_chat_member.user.id}")
     # 保存用户信息
     await upsert_user_on_interaction(session, event.new_chat_member.user)
+
+    # 仅处理配置的群组
+    if settings.GROUP:
+        is_match = False
+        try:
+            if event.chat.id == int(settings.GROUP):
+                is_match = True
+        except (ValueError, TypeError):
+            pass
+        
+        if not is_match and event.chat.username:
+            config_group = settings.GROUP.lstrip("@").lower()
+            event_group = event.chat.username.lower()
+            if config_group == event_group:
+                is_match = True
+        
+        if not is_match:
+            return
+
+    # 发送加入通知到管理员群组
+    user = event.new_chat_member.user
+    user_info = {
+        "group_name": event.chat.title,
+        "username": user.username if user.username else "Unknown",
+        "full_name": user.full_name,
+        "action": "Join",
+        "user_id": str(user.id)
+    }
+    
+    await send_group_notification(
+        event.bot, 
+        user_info, 
+        f"用户 {user.full_name} 加入了群组 {event.chat.title}"
+    )
 
 
 @router.chat_member(F.old_chat_member.status.in_({ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR, ChatMemberStatus.RESTRICTED}) & F.new_chat_member.status.in_({ChatMemberStatus.LEFT, ChatMemberStatus.KICKED}))
