@@ -122,7 +122,18 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
 
     # 2. 选项
     options_text = lines[1]
-    options = [o for o in options_text.replace("　", " ").split(" ") if o]
+    
+    # 统一中文逗号
+    options_text = options_text.replace("，", ",")
+    
+    if "," in options_text:
+        # 有逗号，按逗号分隔，保留空格
+        options = [o.strip() for o in options_text.split(",") if o.strip()]
+    else:
+        # 无逗号，按空格分隔（支持全角/半角空格）
+        options_text = options_text.replace("　", " ")
+        options = [o.strip() for o in options_text.split(" ") if o.strip()]
+        
     if len(options) != 4:
         raise QuizParseError(f"选项解析失败，找到 {len(options)} 个选项，需要 4 个。")
 
