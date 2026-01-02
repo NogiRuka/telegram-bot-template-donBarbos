@@ -45,28 +45,37 @@ async def send_group_notification(
             return "@" + escape_markdown_v2(clean_s)
 
         # 构造群组标识 Tag
-        # 优先使用 chat_username (即 @channelname)，如果没有则使用 chat_id
-        group_tag = ""
+        # 需求: 同时显示 @channelname (如果有) 和 #M100xxx (chat_id)
+        # @lustfulboy #M1002216963051 #ID8134098953 #Leave
+        group_tags_parts = []
+        
+        # 1. @channelname
         if chat_username:
-             # 有 username，强制作为 mention (Telegram API 返回的 username 通常不带 @)
-             group_tag = to_mention(str(chat_username).lstrip("@"))
-        elif chat_id:
-             # 没有 username，使用 ID 生成 hashtag
-             # 确保是字符串，并处理可能的负号 (替换为 M 避免 hashtag 问题)
-             chat_identifier = f"ID{str(chat_id).replace('-', 'M')}" 
-             group_tag = to_hashtag(chat_identifier)
-        else:
-             # 如果都没有，回退到 group_name 但尽量不使用
+             group_tags_parts.append(to_mention(str(chat_username).lstrip("@")))
+        
+        # 2. #M100xxx (chat_id)
+        if chat_id:
+             # 将负号替换为 M，直接作为 ID 的一部分，前面加 #
+             # 例如 -1002216963051 -> #M1002216963051
+             chat_id_str = str(chat_id).replace('-', 'M')
+             group_tags_parts.append(to_hashtag(chat_id_str))
+        
+        # 如果两者都没有，回退到 group_name
+        if not group_tags_parts:
              group_name = user_info.get("group_name", "UnknownGroup")
-             group_tag = to_hashtag(group_name)
+             group_tags_parts.append(to_hashtag(group_name))
 
-        # Tag 格式: GroupTag #IDUserID @Username #Action
-        tags = f"{group_tag} {to_hashtag('ID' + str(user_id))} {to_mention(username)} {to_hashtag(action)}"
+        group_tag_str = " ".join(group_tags_parts)
+
+        # Tag 格式: GroupTag(s) #IDUserID #Action
+        # 注意：这里不再包含 @Username，因为它移到了正文中
+        tags = f"{group_tag_str} {to_hashtag('ID' + str(user_id))} {to_hashtag(action)}"
         
-        # 📖 FullName Reason
+        # 📖 FullName @Username Reason
         escaped_full_name = escape_markdown_v2(full_name)
+        user_mention = to_mention(username)
         
-        content = f"📖 `{escaped_full_name}` {reason}"
+        content = f"📖 `{escaped_full_name}` {user_mention} {reason}"
         msg_text = f"{tags}\n{content}"
 
         await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="MarkdownV2")
