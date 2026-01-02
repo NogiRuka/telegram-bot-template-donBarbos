@@ -190,6 +190,7 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
             
             await state.clear()
             await main_msg.render(message.from_user.id, success_text, get_quiz_add_success_keyboard())
+            return
 
         # 保存题目
         quiz = QuizQuestionModel(
