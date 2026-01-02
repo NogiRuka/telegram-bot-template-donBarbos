@@ -64,11 +64,21 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
     # 2. 调用封禁服务 (Emby 账号删除 + 软删除 + 审计日志)
     # 尝试获取群组信息
     group_name = "Private"
+    chat_id = None
+    chat_username = None
+
     if message.chat.type != "private":
         group_name = message.chat.title
+        chat_id = message.chat.id
+        chat_username = message.chat.username
     elif settings.GROUP:
         # 如果是私聊但配置了群组，尝试获取群组名称（需要API调用，暂用ID代替或标记Manual）
         group_name = f"Group{settings.GROUP}"
+        try:
+            chat_id = int(settings.GROUP)
+        except (ValueError, TypeError):
+            # 可能是 @username
+            chat_username = settings.GROUP
 
     # 尝试获取目标用户信息
     # 查询数据库获取用户信息
@@ -81,6 +91,8 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
     if db_user:
         user_info = {
             "group_name": group_name,
+            "chat_id": chat_id,
+            "chat_username": chat_username,
             "username": f"@{db_user.username}" if db_user.username else "Unknown",
             "full_name": db_user.get_full_name(),
             "action": "ManualBan"
@@ -95,6 +107,8 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
                 username = f"@{user.username}" if user.username else "Unknown"
                 user_info = {
                     "group_name": group_name,
+                    "chat_id": chat_id,
+                    "chat_username": chat_username,
                     "username": username,
                     "full_name": full_name,
                     "action": "ManualBan"
@@ -105,6 +119,8 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
             # 最后的后备方案
             user_info = {
                 "group_name": group_name,
+                "chat_id": chat_id,
+                "chat_username": chat_username,
                 "username": "Unknown",
                 "full_name": "Unknown",
                 "action": "ManualBan"

@@ -53,6 +53,8 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
     user = event.new_chat_member.user
     user_info = {
         "group_name": event.chat.title,
+        "chat_id": event.chat.id,
+        "chat_username": event.chat.username,
         "username": user.username if user.username else "Unknown",
         "full_name": user.full_name,
         "action": "Join",
@@ -123,6 +125,8 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
     try:
         user_info = {
             "group_name": event.chat.title,
+            "chat_id": event.chat.id,
+            "chat_username": event.chat.username,
             "username": user.username if user.username else "Unknown",
             "full_name": user.full_name,
             "action": "Kick" if event.new_chat_member.status == ChatMemberStatus.KICKED else "Leave"

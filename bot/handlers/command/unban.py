@@ -93,13 +93,24 @@ async def process_unban(
     # 2. 记录审计日志并通知
     # 获取群组名称
     group_name = "Private"
+    chat_id = None
+    chat_username = None
+
     if message.chat.type != "private":
         group_name = message.chat.title
+        chat_id = message.chat.id
+        chat_username = message.chat.username
     elif settings.GROUP:
         group_name = f"Group{settings.GROUP}"
+        try:
+            chat_id = int(settings.GROUP)
+        except (ValueError, TypeError):
+            chat_username = settings.GROUP
         
     user_info = {
         "group_name": group_name,
+        "chat_id": chat_id,
+        "chat_username": chat_username,
         "username": "Unknown",
         "full_name": "Unknown",
         "action": "ManualUnban"
