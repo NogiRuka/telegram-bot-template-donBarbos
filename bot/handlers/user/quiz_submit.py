@@ -195,7 +195,13 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
             session.add(img)
 
         # 发放基础奖励
-        await CurrencyService.add_balance(session, user_id, 3, f"投稿问答 #{quiz.id} 奖励")
+        await CurrencyService.add_currency(
+            session=session,
+            user_id=user_id,
+            amount=3,
+            source_type="quiz_submit_base",
+            reason=f"投稿问答 #{quiz.id} 奖励"
+        )
 
         await session.commit()
 

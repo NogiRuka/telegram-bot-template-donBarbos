@@ -159,7 +159,13 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
                 from bot.core.constants import CURRENCY_SYMBOL
                 
                 try:
-                    await CurrencyService.add_balance(session, submitted_by, 5, f"投稿题目 #{item.id} 审核通过奖励")
+                    await CurrencyService.add_currency(
+                        session=session,
+                        user_id=submitted_by,
+                        amount=5,
+                        source_type="quiz_submit_approve",
+                        reason=f"投稿题目 #{item.id} 审核通过奖励"
+                    )
                     
                     # 更新状态
                     item.extra = dict(item.extra) # 复制一份以触发更新
