@@ -1,5 +1,6 @@
 import builtins
 import contextlib
+import html
 
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
