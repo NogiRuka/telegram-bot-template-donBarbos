@@ -74,8 +74,8 @@ def build_question_keyboard(options: list[str], question_id: int | None = None, 
     # 添加审核按钮
     if is_review_needed and question_id is not None:
         builder.row(
-            InlineKeyboardButton(text="✅ 通过", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:approve:{question_id}"),
-            InlineKeyboardButton(text="❌ 拒绝", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:reject:{question_id}")
+            InlineKeyboardButton(text="❌ 拒绝", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:reject:{question_id}"),
+            InlineKeyboardButton(text="✅ 通过", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:approve:{question_id}")
         )
     
     return builder.as_markup()
@@ -194,8 +194,11 @@ async def approve_quiz(callback: CallbackQuery, session: AsyncSession) -> None:
     """审核题目"""
     try:
         parts = callback.data.split(":")
+        # 修正: 回调格式为 admin:quiz:list:view:quiz:approve:{question_id}
+        # admin(0):quiz(1):list(2):view(3):quiz(4):approve(5):{question_id}(6)
         question_id = int(parts[6])
     except (IndexError, ValueError):
+        logger.error(f"参数解析失败: {callback.data}")
         await callback.answer("❌ 参数错误", show_alert=True)
         return
 
