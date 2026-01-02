@@ -292,9 +292,8 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
                 .values(last_interaction_at=now(), updated_at=now())
             )
             await session.commit()
-    except Exception:
-        pass
-
+    except Exception as e:
+        logger.error("更新用户交互失败，user_id=%s，错误信息：%s", user.id, e, exc_info=True)
 
 async def ensure_role_by_settings(session: AsyncSession, user_id: int) -> None:
     """根据配置同步用户角色

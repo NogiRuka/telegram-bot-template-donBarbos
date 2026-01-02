@@ -119,8 +119,13 @@ async def ban_emby_user(
     if bot and user_info:
         # 确保 user_id 存在
         user_info["user_id"] = str(target_user_id)
+        
+        # 将处理结果加入原因中，以便在通知中显示
+        results_str = "\n".join([f"  • {r}" for r in results])
+        detailed_reason = f"{reason}\n\n📝 *处理结果*:\n{results_str}"
+        
         # 调用通用通知函数
-        await send_group_notification(bot, user_info, reason)
+        await send_group_notification(bot, user_info, detailed_reason)
 
     return results
 
