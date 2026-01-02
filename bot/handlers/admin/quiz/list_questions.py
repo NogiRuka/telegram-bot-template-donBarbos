@@ -3,7 +3,8 @@ from math import ceil
 
 from aiogram import F
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from bot.keyboards.inline.admin import (
 )
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
+from bot.states.admin import QuizAdminState
 from bot.utils.datetime import now
 from bot.utils.message import clear_message_list_from_state, safe_delete_message, send_toast
 from bot.utils.permissions import require_admin_feature
@@ -185,6 +187,20 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
 
         status_text = "🟢 启用" if item.is_active else "🔴 禁用"
         await callback.answer(f"✅ 题目 ID `{item.id}` 已{status_text}")
+
+    elif action == "reject":
+        # 拒绝逻辑
+        # 保存上下文
+        await state.update_data(reject_question_id=item_id, reject_msg_id=callback.message.message_id)
+        await state.set_state(QuizAdminState.waiting_for_reject_reason)
+        
+        # 提示输入原因
+        kb = InlineKeyboardBuilder()
+        kb.button(text="❌ 取消", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:reject_cancel")
+        
+        await callback.message.reply("📝 请输入拒绝原因:", reply_markup=kb.as_markup())
+        await callback.answer()
+        return
 
     elif action == "delete":
         # 软删除

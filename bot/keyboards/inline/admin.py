@@ -667,7 +667,8 @@ def get_quiz_question_item_keyboard(question_id: int, is_active: bool, is_review
     
     if is_review_needed:
         buttons.append([
-            InlineKeyboardButton(text="✅ 通过审核 (发放奖励)", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:approve:{question_id}")
+            InlineKeyboardButton(text="✅ 通过", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:approve:{question_id}"),
+            InlineKeyboardButton(text="❌ 拒绝", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:item:question:reject:{question_id}")
         ])
         
     keyboard = InlineKeyboardBuilder(markup=buttons)
