@@ -97,6 +97,7 @@ async def ban_emby_user(
 
     # 2. 软删除数据库 EmbyUserModel
     db_status = "skipped"
+    deleted_devices_count = 0
     if emby_user_db:
         # 如果已经被删除了，就不重复记录了，但还是要记录审计日志
         if not emby_user_db.is_deleted:
@@ -121,7 +122,7 @@ async def ban_emby_user(
                 device.remark = f"用户被封禁自动删除 (操作者: {deleted_by})"
             
             if devices:
-                results.append(f"ℹ️ 自动软删除 {len(devices)} 个关联设备")
+                deleted_devices_count = len(devices)
         else:
             db_status = "already_deleted"
 
@@ -146,6 +147,9 @@ async def ban_emby_user(
         results.append(f"ℹ️ Emby 账号已软删除 （{fmt_name(emby_name)}）")
     else:
         results.append(f"ℹ️ Emby 账号状态未知 ({fmt_name(emby_name)})")
+
+    if deleted_devices_count > 0:
+        results.append(f"ℹ️ 自动软删除 {deleted_devices_count} 个关联设备")
 
     # 3. 记录审计日志
     audit_log = AuditLogModel(
