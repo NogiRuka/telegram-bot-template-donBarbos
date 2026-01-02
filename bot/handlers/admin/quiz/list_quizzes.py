@@ -1,6 +1,7 @@
 from math import ceil
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -154,17 +155,33 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
             keyboard = build_question_keyboard(question.options, question_id=question.id, is_review_needed=bool(is_review_needed))
 
             # 4. 发送消息
+            sent = False
             if image:
-                msg = await callback.message.answer_photo(
-                    photo=image.file_id,
-                    caption=caption,
-                    reply_markup=keyboard,
-                    parse_mode="HTML"
-                )
-            else:
-                # 如果没有图片，尝试用 image_url (如果有扩展字段) 或者纯文本
-                # QuizQuestionModel 没有 image_url 字段，只有 extra
-                # 按照逻辑，如果没有匹配到图片，就发纯文本
+                try:
+                    msg = await callback.message.answer_photo(
+                        photo=image.file_id,
+                        caption=caption,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
+                    sent = True
+                except TelegramBadRequest as e:
+                    logger.warning(f"题目 #{question.id} 图片发送失败 (File ID: {image.file_id}): {e}")
+                    # 如果 file_id 失效，尝试使用 image_source (如果是 URL)
+                    if image.image_source and image.image_source.startswith("http"):
+                        try:
+                            msg = await callback.message.answer_photo(
+                                photo=image.image_source,
+                                caption=caption,
+                                reply_markup=keyboard,
+                                parse_mode="HTML"
+                            )
+                            sent = True
+                        except Exception as e2:
+                            logger.warning(f"题目 #{question.id} 图片 URL 发送也失败: {e2}")
+            
+            if not sent:
+                # 如果没有图片或图片发送失败，发送纯文本
                 msg = await callback.message.answer(
                     text=caption,
                     reply_markup=keyboard,
