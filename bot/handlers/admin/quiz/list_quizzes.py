@@ -74,8 +74,8 @@ def build_question_keyboard(options: list[str], question_id: int | None = None, 
     # 添加审核按钮
     if is_review_needed and question_id is not None:
         builder.row(
-            InlineKeyboardButton(text="❌ 拒绝", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:reject:{question_id}"),
-            InlineKeyboardButton(text="✅ 通过", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:approve:{question_id}")
+            InlineKeyboardButton(text="❌ 拒绝", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:reject:{question_id}"),
+            InlineKeyboardButton(text="✅ 通过", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:approve:{question_id}")
         )
     
     return builder.as_markup()
@@ -188,15 +188,15 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":list:view:quiz:approve:"))
+@router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":list:view:approve:"))
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def approve_quiz(callback: CallbackQuery, session: AsyncSession) -> None:
     """审核题目"""
     try:
         parts = callback.data.split(":")
         # 修正: 回调格式为 admin:quiz:list:view:quiz:approve:{question_id}
-        # admin(0):quiz(1):list(2):view(3):quiz(4):approve(5):{question_id}(6)
-        question_id = int(parts[6])
+        # admin(0):quiz(1):list(2):view(3):approve(4):{question_id}(5)
+        question_id = int(parts[5])
     except (IndexError, ValueError):
         logger.error(f"参数解析失败: {callback.data}")
         await callback.answer("❌ 参数错误", show_alert=True)
@@ -300,13 +300,13 @@ async def approve_quiz(callback: CallbackQuery, session: AsyncSession) -> None:
         return
 
 
-@router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":list:view:quiz:reject:"))
+@router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":list:view:reject:"))
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def reject_quiz_start(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
     """开始拒绝流程"""
     try:
         parts = callback.data.split(":")
-        question_id = int(parts[6])
+        question_id = int(parts[5])
     except (IndexError, ValueError):
         await callback.answer("❌ 参数错误", show_alert=True)
         return
@@ -322,12 +322,14 @@ async def reject_quiz_start(callback: CallbackQuery, state: FSMContext, session:
     
     # 提示输入原因
     kb = InlineKeyboardBuilder()
-    kb.button(text="❌ 取消", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:reject_cancel")
+    kb.button(text="❌ 取消", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:reject_cancel")
     
     await callback.message.reply("📝 请输入拒绝原因:", reply_markup=kb.as_markup())
     await callback.answer()
 
-@router.callback_query(F.data == f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:reject_cancel")
+
+
+@router.callback_query(F.data == f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:reject_cancel")
 async def reject_quiz_cancel(callback: CallbackQuery, state: FSMContext) -> None:
     """取消拒绝"""
     await state.set_state(None) # 清除状态但保留数据，或者全清
@@ -380,42 +382,9 @@ async def process_reject_reason(message: Message, state: FSMContext, session: As
                 parse_mode="MarkdownV2"
             )
         except Exception:
-            pass
-            
-        # 2. 通知群组
-        try:
-            from bot.utils.msg_group import send_group_notification
-            # 获取用户信息
-            from bot.database.models import UserModel
-            from bot.core.constants import CURRENCY_SYMBOL
-            user_stmt = select(UserModel).where(UserModel.id == submitted_by)
-            user_result = await session.execute(user_stmt)
-            user_obj = user_result.scalar_one_or_none()
-            
-            user_info = {
-                "user_id": str(submitted_by),
-                "username": user_obj.username if user_obj else "Unknown",
-                "full_name": user_obj.full_name if user_obj else "Unknown",
-                "group_name": "QuizApproval", 
-                "action": "Reject",
-            }
-            
-            from bot.utils.text import escape_markdown_v2
-            group_reason = (
-                f"题目审核拒绝\n"
-                f"题目: {escape_markdown_v2(item.question)}\n"
-                f"原因: {escape_markdown_v2(reason)}"
-            )
-            
-            await send_group_notification(message.bot, user_info, group_reason)
-        except Exception:
+            logger.error(f"向用户 {submitted_by} 发送拒绝通知失败: {e}")
             pass
             
         await send_toast(message, "✅ 已拒绝该投稿")
-        
-        # 尝试刷新原消息键盘
-        # 由于拿不到原 callback 对象，只能通过 edit_message_reply_markup
-        # 但我们需要 chat_id 和 message_id
-        # 这里简化：不做即时刷新，等管理员翻页或刷新页面
         
     await state.clear()
