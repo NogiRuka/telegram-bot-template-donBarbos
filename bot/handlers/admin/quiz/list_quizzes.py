@@ -239,41 +239,12 @@ async def approve_quiz(callback: CallbackQuery, session: AsyncSession) -> None:
                     await callback.bot.send_message(
                         submitted_by,
                         f"🎉 *恭喜\\!* 您投稿的题目 *{escape_markdown_v2(item.question)}* 已通过审核并启用\\!\n"
-                        f"🎁 获得奖励：\\+5 {escape_markdown_v2(CURRENCY_SYMBOL)}",
+                        f"🎁 获得额外奖励：\\+5 {escape_markdown_v2(CURRENCY_SYMBOL)}",
                         parse_mode="MarkdownV2"
                     )
                 except Exception as e:
                      # 用户可能屏蔽了机器人
                     logger.warning(f"通知用户 {submitted_by} 失败 (可能已屏蔽机器人): {e}")
-                    pass
-                
-                # 2. 通知群组 (使用工具类)
-                try:
-                    from bot.utils.msg_group import send_group_notification
-                    
-                    # 获取用户信息
-                    from bot.database.models import UserModel
-                    user_stmt = select(UserModel).where(UserModel.id == submitted_by)
-                    user_result = await session.execute(user_stmt)
-                    user_obj = user_result.scalar_one_or_none()
-                    
-                    user_info = {
-                        "user_id": str(submitted_by),
-                        "username": user_obj.username if user_obj else "Unknown",
-                        "full_name": user_obj.full_name if user_obj else "Unknown",
-                        "group_name": "QuizApproval", # 自定义标签
-                        "action": "Approve",
-                    }
-                    
-                    reason = (
-                        f"题目审核通过\n"
-                        f"题目: {escape_markdown_v2(item.question)}\n"
-                        f"奖励: 5 {escape_markdown_v2(CURRENCY_SYMBOL)}"
-                    )
-                    
-                    await send_group_notification(callback.bot, user_info, reason)
-                except Exception as e:
-                    # logger.warning(f"发送群组通知失败: {e}")
                     pass
                 
                 await callback.answer("✅ 审核通过！奖励已发放，题目已启用。")
