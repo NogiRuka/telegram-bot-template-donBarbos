@@ -2,12 +2,13 @@ from math import ceil
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import QuizImageModel, QuizQuestionModel
+from bot.states.admin import QuizAdminState
 from bot.utils.permissions import require_admin_feature
 from bot.config.constants import KEY_ADMIN_QUIZ
 from bot.keyboards.inline.admin import (
@@ -17,7 +18,8 @@ from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA, QUIZ_ADMIN_LIST_QUIZZES_LABEL
 from bot.services.main_message import MainMessageService
 from bot.services.quiz_service import QuizService
-from bot.utils.message import clear_message_list_from_state, send_toast
+from bot.utils.message import clear_message_list_from_state, safe_delete_message, send_toast
+from loguru import logger
 from .router import router
 
 def get_quiz_list_pagination_keyboard(page: int, total_pages: int, limit: int = 5) -> InlineKeyboardMarkup:
@@ -71,7 +73,10 @@ def build_question_keyboard(options: list[str], question_id: int | None = None, 
     
     # 添加审核按钮
     if is_review_needed and question_id is not None:
-        builder.row(InlineKeyboardButton(text="✅ 通过审核 (发放奖励)", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:approve:{question_id}"))
+        builder.row(
+            InlineKeyboardButton(text="✅ 通过", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:approve:{question_id}"),
+            InlineKeyboardButton(text="❌ 拒绝", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:reject:{question_id}")
+        )
     
     return builder.as_markup()
 
@@ -236,7 +241,7 @@ async def approve_quiz(callback: CallbackQuery, session: AsyncSession) -> None:
                     )
                 except Exception as e:
                      # 用户可能屏蔽了机器人
-                    # logger.warning(f"通知用户 {submitted_by} 失败 (可能已屏蔽机器人): {e}")
+                    logger.warning(f"通知用户 {submitted_by} 失败 (可能已屏蔽机器人): {e}")
                     pass
                 
                 # 2. 通知群组 (使用工具类)
@@ -290,3 +295,124 @@ async def approve_quiz(callback: CallbackQuery, session: AsyncSession) -> None:
     else:
         await callback.answer("⚠️ 该题目非用户投稿", show_alert=True)
         return
+
+
+@router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":list:view:quiz:reject:"))
+@require_admin_feature(KEY_ADMIN_QUIZ)
+async def reject_quiz_start(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
+    """开始拒绝流程"""
+    try:
+        parts = callback.data.split(":")
+        question_id = int(parts[6])
+    except (IndexError, ValueError):
+        await callback.answer("❌ 参数错误", show_alert=True)
+        return
+
+    item = await session.get(QuizQuestionModel, question_id)
+    if not item:
+        await callback.answer("❌ 题目不存在", show_alert=True)
+        return
+        
+    # 保存上下文
+    await state.update_data(reject_question_id=question_id, reject_msg_id=callback.message.message_id)
+    await state.set_state(QuizAdminState.waiting_for_reject_reason)
+    
+    # 提示输入原因
+    kb = InlineKeyboardBuilder()
+    kb.button(text="❌ 取消", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:reject_cancel")
+    
+    await callback.message.reply("📝 请输入拒绝原因:", reply_markup=kb.as_markup())
+    await callback.answer()
+
+@router.callback_query(F.data == f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:reject_cancel")
+async def reject_quiz_cancel(callback: CallbackQuery, state: FSMContext) -> None:
+    """取消拒绝"""
+    await state.set_state(None) # 清除状态但保留数据，或者全清
+    # 删除提示消息
+    await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
+    await callback.answer("已取消")
+
+@router.message(QuizAdminState.waiting_for_reject_reason)
+async def process_reject_reason(message: Message, state: FSMContext, session: AsyncSession) -> None:
+    """处理拒绝原因"""
+    reason = message.text.strip()
+    if not reason:
+        await send_toast(message, "⚠️ 原因不能为空")
+        return
+        
+    data = await state.get_data()
+    question_id = data.get("reject_question_id")
+    # msg_id = data.get("reject_msg_id") # 原消息ID，用于刷新键盘
+    
+    # 清理输入消息和提示消息
+    await safe_delete_message(message.bot, message.chat.id, message.message_id)
+    # 提示消息通常是上一条，这里简单处理，不强求删除提示消息，因为上面有取消按钮会删
+    
+    item = await session.get(QuizQuestionModel, question_id)
+    if not item:
+        await send_toast(message, "❌ 题目不存在")
+        await state.clear()
+        return
+
+    if item.extra:
+        submitted_by = item.extra.get("submitted_by")
+        
+        # 标记为已审核（虽然是被拒绝）
+        # 也可以选择删除题目，或者保留但标记为拒绝
+        # 这里逻辑：标记为已审核（不发奖励），并设为禁用（防止被误启用）
+        item.extra = dict(item.extra)
+        item.extra["approval_rewarded"] = True # 借用字段表示已处理
+        item.extra["reject_reason"] = reason
+        item.is_active = False 
+        
+        await session.commit()
+        
+        # 1. 通知用户 (私聊)
+        try:
+            from bot.utils.text import escape_markdown_v2
+            await message.bot.send_message(
+                submitted_by,
+                f"⚠️ *很遗憾*，您投稿的题目 *{escape_markdown_v2(item.question)}* 未通过审核。\n"
+                f"📝 原因：{escape_markdown_v2(reason)}",
+                parse_mode="MarkdownV2"
+            )
+        except Exception:
+            pass
+            
+        # 2. 通知群组
+        try:
+            from bot.utils.msg_group import send_group_notification
+            # 获取用户信息
+            from bot.database.models import UserModel
+            from bot.core.constants import CURRENCY_SYMBOL
+            user_stmt = select(UserModel).where(UserModel.id == submitted_by)
+            user_result = await session.execute(user_stmt)
+            user_obj = user_result.scalar_one_or_none()
+            
+            user_info = {
+                "user_id": str(submitted_by),
+                "username": user_obj.username if user_obj else "Unknown",
+                "full_name": user_obj.full_name if user_obj else "Unknown",
+                "group_name": "QuizApproval", 
+                "action": "Reject",
+            }
+            
+            from bot.utils.text import escape_markdown_v2
+            group_reason = (
+                f"题目审核拒绝\n"
+                f"题目: {escape_markdown_v2(item.question)}\n"
+                f"原因: {escape_markdown_v2(reason)}"
+            )
+            
+            await send_group_notification(message.bot, user_info, group_reason)
+        except Exception:
+            pass
+            
+        await send_toast(message, "✅ 已拒绝该投稿")
+        
+        # 尝试刷新原消息键盘
+        # 由于拿不到原 callback 对象，只能通过 edit_message_reply_markup
+        # 但我们需要 chat_id 和 message_id
+        # 这里简化：不做即时刷新，等管理员翻页或刷新页面
+        
+    await state.clear()

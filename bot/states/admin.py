@@ -56,3 +56,6 @@ class QuizAdminState(StatesGroup):
     # 分类管理
     waiting_for_category_name = State()
     waiting_for_new_category_name = State()
+    
+    # 题目审核
+    waiting_for_reject_reason = State()
