@@ -87,7 +87,13 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
         extra = "无"
         if item.image_source:
             if item.image_source.startswith("http"):
-                link_text = item.extra_caption.strip() if item.extra_caption else "链接"
+                # 如果有 extra_caption 则使用它，否则尝试使用第一个标签，最后回退到 "链接"
+                link_text = "链接"
+                if item.extra_caption:
+                    link_text = item.extra_caption.strip()
+                elif item.tags and len(item.tags) > 0:
+                    link_text = item.tags[0]
+                
                 extra = f"[{escape_markdown_v2(link_text)}]({item.image_source})"
             else:
                 extra = escape_markdown_v2(item.image_source)
@@ -153,7 +159,13 @@ async def image_item_action(callback: CallbackQuery, session: AsyncSession) -> N
         extra = "无"
         if item.image_source:
             if item.image_source.startswith("http"):
-                link_text = item.extra_caption.strip() if item.extra_caption else "链接"
+                # 如果有 extra_caption 则使用它，否则尝试使用第一个标签，最后回退到 "链接"
+                link_text = "链接"
+                if item.extra_caption:
+                    link_text = item.extra_caption.strip()
+                elif item.tags and len(item.tags) > 0:
+                    link_text = item.tags[0]
+
                 extra = f"[{escape_markdown_v2(link_text)}]({item.image_source})"
             else:
                 extra = escape_markdown_v2(item.image_source)
