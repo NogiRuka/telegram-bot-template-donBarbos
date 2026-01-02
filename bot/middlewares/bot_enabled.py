@@ -73,21 +73,13 @@ class BotEnabledMiddleware(BaseMiddleware):
                 or msg.migrate_to_chat_id
                 or msg.migrate_from_chat_id
             ):
-                # 服务消息直接放行（交给后续 handler 处理，例如 member_events）
-                # 或者直接拦截但不提示？
-                # 通常建议放行，让 member_events 决定是否处理，或者在这里拦截但不回复。
-                # 鉴于"机器人已关闭"通常是指"不响应命令/对话"，服务消息记录可能仍需进行。
-                # 但如果完全禁用，也可以拦截。
-                # 根据用户反馈 "会向群组里发送机器人已关闭的消息"，说明这里需要拦截但不提示，或者放行。
-                # 如果放行，后续 handler 可能会处理入群欢迎等，这取决于是否希望在禁用期间仍有欢迎语。
-                # 如果希望彻底静默，则拦截并 return None，且不发送提示。
-                
-                # 这里选择：服务消息不触发 "机器人已关闭" 的回复，但允许通过（以便记录日志或特定处理），
-                # 或者拦截但不回复。
-                # 考虑到用户意图是 "不要发送已关闭消息"，最安全的做法是：如果是服务消息，且机器人关闭，则静默拦截或放行。
-                # 如果放行，member_events 可能会响应。如果机器人是全局关闭，理应不响应欢迎语。
-                # 所以逻辑应为：检查是否关闭 -> 关闭 -> 检查是否服务消息 -> 是 -> 静默拦截 (return None)；否 -> 提示并拦截。
-                pass
+                # 服务消息直接放行，交给专门的 handler (如 member_events) 处理
+                # 因为 member_events 中可能包含重要的审计日志或 Emby 清理逻辑
+                # 即使机器人"功能"关闭，核心的管理功能（如踢人时的清理）通常不应受影响，或者由 handler 内部判断
+                # 但这里的 BotEnabledMiddleware 主要是控制"用户交互"功能
+                # 如果放行，member_events 会执行；如果不放行，member_events 不执行。
+                # 假设 member_events 属于核心管理功能，不受全局开关限制（或者理应不受限制），则应放行。
+                return await handler(event, data)
 
         user = event.from_user  # type: ignore[assignment]
         first = event  # Message | CallbackQuery
@@ -99,7 +91,8 @@ class BotEnabledMiddleware(BaseMiddleware):
 
         # 判断是否允许通过
         allow = True
-        if role != "owner" and session is not None:
+        # 允许所有者和管理员在维护模式下使用
+        if role not in ("owner", "admin") and session is not None:
             enabled_all = bool(await get_config(session, "bot.features.enabled") or False)
             allow = enabled_all
 
@@ -109,6 +102,7 @@ class BotEnabledMiddleware(BaseMiddleware):
         # 机器人关闭: 拦截并提示
         
         # 如果是服务消息（如成员变动），则静默拦截，不发送提示
+        # (上面的逻辑已经放行了服务消息，这里是双重保险，或者处理漏网之鱼)
         if is_message:
             msg: Message = event  # type: ignore
             if (
@@ -121,7 +115,7 @@ class BotEnabledMiddleware(BaseMiddleware):
                 or msg.migrate_to_chat_id
                 or msg.migrate_from_chat_id
             ):
-                return None
+                return await handler(event, data) # 放行
 
         try:
             if is_callback:
