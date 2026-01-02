@@ -59,9 +59,7 @@ async def ban_emby_user(
     user_extend = result.scalar_one_or_none()
 
     emby_user_id = None
-    if not user_extend or not user_extend.emby_user_id:
-        results.append("ℹ️ 该用户未绑定 Emby 账号")
-    else:
+    if user_extend and user_extend.emby_user_id:
         emby_user_id = user_extend.emby_user_id
 
     deleted_by = admin_id if admin_id else 0  # 0 表示系统或未知
