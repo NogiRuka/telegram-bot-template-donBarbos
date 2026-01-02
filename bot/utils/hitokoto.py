@@ -142,7 +142,7 @@ def build_start_caption(
     link = f"https://hitokoto.cn?uuid={uuid}" if uuid else "https://hitokoto.cn/"
     # 用户名与项目名也需要转义
     user_name_esc = escape_markdown_v2(user_name)
-    project_name_esc = escape_markdown_v2(project_name)
+    # project_name_esc = escape_markdown_v2(project_name)
     # base = f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name_esc}_*\n🎐 欢迎使用{project_name_esc}\n"
     base = f"『 [{hitokoto}]({link}) 』\n\n🍃 嗨  *_{user_name_esc}_*\n"
     ann = ""

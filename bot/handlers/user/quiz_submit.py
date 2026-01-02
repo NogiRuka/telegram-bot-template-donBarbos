@@ -38,7 +38,7 @@ async def start_quiz_submit(callback: CallbackQuery, state: FSMContext, session:
     cat_text = "\n".join(lines)
 
     text = (
-        "*✍️ 问答投稿*\n\n"
+        "*✍️ 问答投稿*\n"
         "欢迎为题库贡献题目\\!\n\n"
         "📸 可发送一张图片\\(可选\\)\n"
         "✍️ 题目请写在说明中\\(纯文本直接发送即可\\)\n\n"
@@ -51,14 +51,15 @@ async def start_quiz_submit(callback: CallbackQuery, state: FSMContext, session:
         "第6行：难度系数（1-5，可选，默认1）\n"
         "第7行：图片来源（链接或文字描述，可选）\n"
         "第8行：图片补充说明（可选）`\n\n"
-        "*可用分类：*\n"
+        "*📂 可用分类：*\n"
         f"{cat_text}"
     )
 
-    # 键盘：查看示例、返回
+    # 键盘：查看示例、取消
     builder = InlineKeyboardBuilder()
     builder.button(text="📝 查看示例", callback_data=f"{USER_QUIZ_SUBMIT_CALLBACK_DATA}:example")
-    builder.row(BACK_TO_ACCOUNT_BUTTON)
+    builder.button(text="❌ 取消", callback_data="account_center") # 直接返回个人中心
+    builder.adjust(1)
 
     await main_msg.update_on_callback(callback, text, builder.as_markup())
     await state.set_state(UserQuizSubmitState.waiting_for_input)
