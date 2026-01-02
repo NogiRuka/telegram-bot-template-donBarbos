@@ -178,6 +178,11 @@ async def unban_user_service(
     # 发送通知到管理员群组
     if bot and user_info:
         user_info["user_id"] = str(target_user_id)
-        await send_group_notification(bot, user_info, reason)
+        
+        # 将处理结果加入原因中
+        results_str = "\n".join([f"  • {r}" for r in results])
+        detailed_reason = f"{reason}\n\n📝 *处理结果*:\n{results_str}"
+        
+        await send_group_notification(bot, user_info, detailed_reason)
             
     return results
