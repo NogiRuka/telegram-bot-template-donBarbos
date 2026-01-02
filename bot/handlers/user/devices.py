@@ -106,11 +106,11 @@ async def user_devices(
     emby_user_id = res.scalar_one_or_none()
 
     # 同步最新设备状态
-    try:
-        await save_all_emby_devices(session)
-        await cleanup_devices_by_policy(session)
-    except Exception as e:
-        logger.warning(f"⚠️ 进入设备管理页面时同步失败: {e}")
+    # try:
+    #     await save_all_emby_devices(session)
+    #     await cleanup_devices_by_policy(session)
+    # except Exception as e:
+    #     logger.warning(f"⚠️ 进入设备管理页面时同步失败: {e}")
 
     # 2. 获取 Emby 用户信息 (最大设备数)
     stmt_user = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
@@ -122,7 +122,7 @@ async def user_devices(
     # 3. 获取设备列表
     stmt_devices = select(EmbyDeviceModel).where(
         EmbyDeviceModel.last_user_id == emby_user_id,
-        not EmbyDeviceModel.is_deleted
+        EmbyDeviceModel.is_deleted == False
     ).order_by(EmbyDeviceModel.date_last_activity.desc())
 
     res_devices = await session.execute(stmt_devices)
