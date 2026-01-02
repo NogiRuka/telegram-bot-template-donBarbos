@@ -529,6 +529,7 @@ message_saver = GroupMessageSaver()
 @router.message(F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]))
 async def handle_group_message(message: types.Message, session: AsyncSession) -> None:
     try:
+        logger.debug(f"收到群组消息: {message.chat.id}, msg_id: {message.message_id}")
         group_type = GroupType.SUPERGROUP if message.chat.type == "supergroup" else GroupType.GROUP
         config = await get_or_create_group_config(
             session=session,
@@ -542,6 +543,8 @@ async def handle_group_message(message: types.Message, session: AsyncSession) ->
             success = await message_saver.save_message(message, config, session)
             if success:
                 logger.debug(f"✅ 群组 {message.chat.id} 的消息已保存")
+        else:
+            logger.debug(f"ℹ️ 群组 {message.chat.id} 未启用消息保存 (Mode: {config.message_save_mode})")
     except Exception as e:
         logger.exception(f"❌ 处理群组消息时发生错误: {e}")
 
