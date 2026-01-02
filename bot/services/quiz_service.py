@@ -501,7 +501,7 @@ class QuizService:
             msg = "✅ 回答正确！"  # noqa: RUF001
         else:
             # correct_option = question.options[question.correct_index]
-            msg = f"❌ 回答错误。\n"
+            msg = f"❌ 回答错误。"
             # msg += f"正确答案：{correct_option}"
         msg += f"\n获得{CURRENCY_NAME}：+{reward} {CURRENCY_SYMBOL}"
 
