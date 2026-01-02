@@ -35,7 +35,22 @@ class QuizTriggerMiddleware(BaseMiddleware):
         chat_id = None
 
         if isinstance(event, Message):
-            if event.from_user and not event.from_user.is_bot:
+            # 排除服务消息 (进群、退群、改名、置顶等)
+            is_service_message = (
+                event.new_chat_members
+                or event.left_chat_member
+                or event.new_chat_title
+                or event.new_chat_photo
+                or event.delete_chat_photo
+                or event.group_chat_created
+                or event.supergroup_chat_created
+                or event.channel_chat_created
+                or event.migrate_to_chat_id
+                or event.migrate_from_chat_id
+                or event.pinned_message
+            )
+
+            if not is_service_message and event.from_user and not event.from_user.is_bot:
                 user_id = event.from_user.id
                 chat_id = event.chat.id
         elif isinstance(event, CallbackQuery):
