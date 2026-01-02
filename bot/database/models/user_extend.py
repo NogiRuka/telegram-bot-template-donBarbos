@@ -72,10 +72,10 @@ class UserExtendModel(Base, BasicAuditMixin):
 
     # 主图偏好
     display_mode: Mapped[str] = mapped_column(
-        String(16), default=DISPLAY_MODE_SFW, nullable=False, comment="主图展示模式: sfw/nsfw/random"
+        String(16), default=DISPLAY_MODE_SFW, nullable=True, comment="主图展示模式: sfw/nsfw/random"
     )
     nsfw_unlocked: Mapped[bool] = mapped_column(
-        default=False, nullable=False, comment="是否已解锁 NSFW 展示权限"
+        default=False, nullable=True, comment="是否已解锁 NSFW 展示权限"
     )
     last_image_id: Mapped[int | None] = mapped_column(
         Integer, nullable=True, comment="最近一次展示的主图ID"

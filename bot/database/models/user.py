@@ -43,9 +43,9 @@ class UserModel(Base, BasicAuditMixin):
 
     id: Mapped[big_int_pk] = mapped_column(comment="Telegram 用户 ID（不可为空）")
 
-    is_bot: Mapped[bool] = mapped_column(default=False, nullable=False, comment="是否为机器人，普通用户为0")
+    is_bot: Mapped[bool] = mapped_column(default=False, nullable=True, comment="是否为机器人，普通用户为0")
 
-    first_name: Mapped[str] = mapped_column(String(255), nullable=False, comment="用户名（必填）")
+    first_name: Mapped[str] = mapped_column(String(255), nullable=True, comment="用户名（必填）")
 
     last_name: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="姓（可空）")
 
