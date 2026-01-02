@@ -238,11 +238,14 @@ def require_admin_feature(feature_key: str) -> Callable[[Callable[..., Awaitable
     return decorator
 
 
+from bot.core.config import settings
+
 def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
     """用户功能开关装饰器
 
     功能说明:
     - 在处理用户功能前检查用户总开关与具体功能是否启用
+    - 所有者 (Owner) 豁免检查，直接通过
 
     输入参数:
     - feature_key: 配置键名, 例如 "user.register"、"user.info"
@@ -256,6 +259,15 @@ def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             session: AsyncSession | None = kwargs.get("session")
             first = args[0] if args else None
+            
+            # 1. 提取用户ID
+            user_id = _extract_user_id(first)
+            
+            # 2. 检查是否为所有者 (豁免检查)
+            if user_id and user_id == settings.get_owner_id():
+                return await func(*args, **kwargs)
+
+            # 3. 检查功能开关
             if session is None:
                 return await func(*args, **kwargs)
             enabled_all = bool(await get_config(session, "user.features.enabled") or False)
