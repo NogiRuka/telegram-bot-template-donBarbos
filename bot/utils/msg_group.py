@@ -38,8 +38,13 @@ async def send_group_notification(
             clean_s = str(s).replace(" ", "").replace("#", "")
             return "\\#" + escape_markdown_v2(clean_s)
 
-        # #GroupTitle #IDUserID #Username #Action
-        tags = f"{to_hashtag(group_name)} {to_hashtag('ID' + str(user_id))} {to_hashtag(username)} {to_hashtag(action)}"
+        # 处理 username 为提及 (@username)
+        def to_mention(s: str) -> str:
+            clean_s = str(s).replace(" ", "").replace("@", "")
+            return "@" + escape_markdown_v2(clean_s)
+
+        # #GroupTitle #IDUserID @Username #Action
+        tags = f"{to_hashtag(group_name)} {to_hashtag('ID' + str(user_id))} {to_mention(username)} {to_hashtag(action)}"
         
         # 📖 FullName Reason
         escaped_full_name = escape_markdown_v2(full_name)
