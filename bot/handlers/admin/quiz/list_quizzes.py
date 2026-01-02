@@ -189,8 +189,8 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
                         except Exception as e2:
                             logger.warning(f"题目 #{question.id} 图片 URL 发送也失败: {e2}")
             
+            # 如果没有图片或图片发送失败，发送纯文本
             if not sent:
-                # 如果没有图片或图片发送失败，发送纯文本
                 msg = await callback.message.answer(
                     text=caption,
                     reply_markup=keyboard,
@@ -206,7 +206,8 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
                     parse_mode="HTML"
                 )
                 new_msg_ids.append(msg.message_id)
-            except Exception:
+            except Exception as e:
+                logger.error(f"题目 #{question.id} 渲染失败并通知用户失败: {e}")
                 pass
 
     # 记录新发送的消息ID
