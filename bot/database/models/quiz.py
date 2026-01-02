@@ -113,7 +113,7 @@ class QuizLogModel(Base, BasicAuditMixin):
     user_answer: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="用户选择(NULL表示未答/超时)")
     is_correct: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否正确")
     reward_amount: Mapped[int] = mapped_column(Integer, default=0, comment="获得奖励")
-    time_taken: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="耗时(ms)")
+    time_taken: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="耗时(秒)")
     extra: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="扩展数据")
 
     # 索引

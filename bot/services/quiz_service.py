@@ -462,11 +462,11 @@ class QuizService:
         # 4. 计算奖励
         reward = question.reward_bonus if is_correct else question.reward_base
 
-        # 计算耗时 (毫秒)
+        # 计算耗时 (秒)
         time_taken = None
         if quiz_session.created_at:
             delta = now() - quiz_session.created_at
-            time_taken = int(delta.total_seconds() * 1000)
+            time_taken = int(delta.total_seconds())
 
         # 5. 记录日志
         log = QuizLogModel(
