@@ -102,10 +102,9 @@ async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession
                     "action": "BuyProduct",
                 }
                 
-                # 假设 product.price 是数值，转换为字符串
-                price_str = str(product.price)
-                reason = f"购买了商品：{product.name}（花费: {price_str} {CURRENCY_SYMBOL}）"
-                
+                # 获取最新余额并加上 emoji
+                balance = await CurrencyService.get_user_balance(session, user_id)
+                reason = f"购买了 {product.name}（剩余 {balance}{CURRENCY_SYMBOL}）"
                 await send_group_notification(callback.bot, user_info, reason)
             except Exception as e:
                 logger.error(f"发送购买通知失败: {e}")
