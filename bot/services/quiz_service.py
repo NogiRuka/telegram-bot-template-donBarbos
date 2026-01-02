@@ -291,7 +291,14 @@ class QuizService:
         extra = "无"
         if image and image.image_source:
             if image.image_source.startswith("http"):
-                link_text = image.extra_caption.strip() if image.extra_caption else (image.tags[0] if image.tags else "链接")
+                # 如果有 extra_caption 则使用它，否则尝试使用第一个标签，最后回退到 "链接"
+                link_text = "链接"
+                if image.extra_caption:
+                    link_text = image.extra_caption.strip()
+                elif image.tags and len(image.tags) > 0:
+                    link_text = image.tags[0]
+                
+                # HTML 格式的链接
                 extra = f"<a href='{image.image_source}'>{html.escape(link_text)}</a>"
             else:
                 extra = f"{html.escape(image.image_source)}"
