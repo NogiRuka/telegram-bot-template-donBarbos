@@ -532,6 +532,9 @@ class QuizService:
         """
         from bot.database.database import sessionmaker
         
+        from bot.config.constants import KEY_BOT_FEATURES_ENABLED
+        from bot.core.config import settings
+
         logger.info("⏰ [定时问答] 开始执行定时触发任务")
 
         async with sessionmaker() as session:
@@ -541,7 +544,15 @@ class QuizService:
                  logger.info("⏰ [定时问答] 总开关关闭，任务取消")
                  return
 
-            # 2. 获取目标用户
+            # 2. 检查机器人功能开关 (KEY_BOT_FEATURES_ENABLED)
+            # 如果机器人功能关闭，则只允许 Owner 接收
+            bot_enabled = await get_config(session, KEY_BOT_FEATURES_ENABLED)
+            # bot_enabled 默认为 True (None 视为开启)
+            is_bot_enabled = bot_enabled is not False
+            
+            owner_id = settings.get_owner_id()
+
+            # 3. 获取目标用户
             target_type = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET_TYPE)
             target_count = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET_COUNT)
             
@@ -553,7 +564,13 @@ class QuizService:
                 UserModel.is_deleted == False
             )
 
-            if target_type == "fixed" and target_count and target_count > 0:
+            if not is_bot_enabled:
+                logger.info("⏰ [定时问答] 机器人功能已关闭，仅向所有者发送")
+                # 仅查询 Owner
+                owner_stmt = base_stmt.where(UserModel.id == owner_id)
+                users = (await session.execute(owner_stmt)).scalars().all()
+            
+            elif target_type == "fixed" and target_count and target_count > 0:
                 # 混合模式：一半活跃，一半随机
                 half_count = target_count // 2
                 rand_count = target_count - half_count
@@ -578,7 +595,7 @@ class QuizService:
                 users = (await session.execute(base_stmt)).scalars().all()
                 logger.info(f"⏰ [定时问答] 选中全部 {len(users)} 名用户")
 
-            # 3. 发送题目
+            # 4. 发送题目
             count_sent = 0
             for user in users:
                 try:
@@ -626,7 +643,7 @@ class QuizService:
         """启动定时任务调度器"""
         logger.info("⏰ [定时问答] 调度器启动")
         
-        from bot.config.constants import KEY_QUIZ_SCHEDULE_ENABLE, KEY_QUIZ_SCHEDULE_TIME
+        from bot.config.constants import KEY_QUIZ_SCHEDULE_ENABLE, KEY_QUIZ_SCHEDULE_TIME, KEY_QUIZ_GLOBAL_ENABLE
         from bot.database.database import sessionmaker
         from bot.services.config_service import get_config
         
@@ -639,6 +656,11 @@ class QuizService:
                 curr_time_str = current.strftime("%H%M%S")
                 
                 async with sessionmaker() as session:
+                    # 检查总开关
+                    global_enabled = await get_config(session, KEY_QUIZ_GLOBAL_ENABLE)
+                    if global_enabled is False:
+                        continue
+
                     # 检查是否开启
                     enabled = await get_config(session, KEY_QUIZ_SCHEDULE_ENABLE)
                     if enabled is False: # 只有显式 False 才跳过，None 默认开启? 不，默认应该关闭或由上层决定
