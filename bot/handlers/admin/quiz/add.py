@@ -52,6 +52,11 @@ async def start_quick_add(callback: CallbackQuery, state: FSMContext, session: A
         "第6行：难度系数（1-5，可选，默认1）\n"
         "第7行：图片来源（链接或文字描述，可选）\n"
         "第8行：图片补充说明（可选）`\n\n"
+        "🖼️ *仅添加题图格式：*\n"
+        "`第1行：分类ID\n"
+        "第2行：标签1　标签2（必填）\n"
+        "第3行：图片来源（可选）\n"
+        "第4行：图片补充说明（可选）`\n\n"
         "*可用分类：*\n"
         f"{cat_text}"
     )
@@ -151,6 +156,41 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
         # 复用公共解析逻辑
         parsed = await parse_quiz_input(session, text)
         
+        # 判断是否为仅添加题图模式
+        if parsed.get("is_image_only"):
+            if not message.photo:
+                await callback.message.answer("❌ 仅添加题图模式必须发送图片")
+                return
+
+            photo = message.photo[-1]
+            img = QuizImageModel(
+                file_id=photo.file_id,
+                file_unique_id=photo.file_unique_id,
+                category_id=parsed["category_id"],
+                tags=parsed["tags"],
+                description=f"手动添加题图",
+                image_source=parsed["image_source"],
+                extra_caption=parsed["extra_caption"],
+                is_active=True,
+                created_by=message.from_user.id
+            )
+            session.add(img)
+            await session.commit()
+
+            success_text = (
+                f"✅ *题图已添加！*\n"
+                f"🆔 ID：`{img.id}`\n"
+                f"📂 分类：{escape_markdown_v2(parsed['category_name'])} \\(`{parsed['category_id']}`\\)\n"
+                f"🏷️ 标签：{escape_markdown_v2('，'.join(parsed['tags']))}"
+            )
+            if parsed["image_source"]:
+                success_text += f"\n🔗 来源：{escape_markdown_v2(parsed['image_source'])}"
+            if parsed["extra_caption"]:
+                success_text += f"\n📄 说明：{escape_markdown_v2(parsed['extra_caption'])}"
+            
+            await main_msg.answer(success_text, parse_mode="MarkdownV2", reply_markup=get_back_to_menu_keyboard())
+            return
+
         # 保存题目
         quiz = QuizQuestionModel(
             question=parsed["question"],

@@ -14,6 +14,7 @@ class ParsedQuiz(TypedDict):
     image_source: Optional[str]
     extra_caption: Optional[str]
 
+    is_image_only: Optional[bool]
 class QuizParseError(Exception):
     pass
 
@@ -30,12 +31,85 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
     第6行：难度系数（1-5，可选，默认1）
     第7行：图片来源（可选）
     第8行：图片补充说明（可选）
+
+    或者仅添加题图模式：
+    第1行：分类ID
+    第2行：标签1　标签2（空格或逗号分隔）
+    第3行：图片来源（可选）
+    第4行：图片补充说明（可选）
     """
     if not text:
         raise QuizParseError("请输入题目内容。")
 
     lines = [l.strip() for l in text.split("\n") if l.strip()]
 
+    # 仅添加题图模式 (行数 >= 2 且第1行是数字，且第2行不是选项格式)
+    # 简单的启发式判断：如果第1行是纯数字，且行数比较少，可能是仅添加题图模式
+    # 但原格式第4行才是数字。如果只有2行，肯定不够原格式。
+    is_image_only_mode = False
+    
+    if len(lines) >= 2 and lines[0].isdigit():
+        # 尝试验证是否符合仅题图模式
+        # 如果是原格式，第一行是题目，通常不是纯数字。除非题目就是个数字...
+        # 且原格式至少5行。
+        if len(lines) < 5:
+            is_image_only_mode = True
+    
+    if is_image_only_mode:
+        # 解析仅题图模式
+        # 1. 分类 (lines[0])
+        category_input = lines[0]
+        category_id = None
+        category_name = "未知"
+        if category_input.isdigit():
+            cat_id = int(category_input)
+            stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, QuizCategoryModel.is_deleted == False)
+            result = await session.execute(stmt)
+            cat = result.scalar_one_or_none()
+            if cat:
+                category_id = cat.id
+                category_name = cat.name
+            else:
+                raise QuizParseError(f"未找到ID为 {cat_id} 的分类。")
+        else:
+            raise QuizParseError("分类必须填写ID（数字）。")
+
+        # 2. 标签 (lines[1])
+        tags_line = lines[1].strip()
+        tags = []
+        tags_line = tags_line.replace("，", ",")
+        if "," in tags_line:
+            tags = [t.strip() for t in tags_line.split(",") if t.strip()]
+        else:
+            tags_line = tags_line.replace("　", " ")
+            tags = [t.strip() for t in tags_line.split() if t.strip()]
+        if not tags:
+             raise QuizParseError("标签不能为空。")
+
+        # 3. 来源 (lines[2], 可选)
+        image_source = None
+        if len(lines) > 2:
+            image_source = lines[2]
+
+        # 4. 说明 (lines[3], 可选)
+        extra_caption = None
+        if len(lines) > 3:
+            extra_caption = lines[3]
+
+        return {
+            "question": "", # 占位
+            "options": [],
+            "correct_index": -1,
+            "category_id": category_id,
+            "category_name": category_name,
+            "tags": tags,
+            "difficulty": 1,
+            "image_source": image_source,
+            "extra_caption": extra_caption,
+            "is_image_only": True # 标记
+        }
+
+    # 原有完整题目解析逻辑
     # 至少需要前5行 (题目, 选项, 答案, 分类, 标签)
     if len(lines) < 5:
         raise QuizParseError(
