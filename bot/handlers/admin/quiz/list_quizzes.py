@@ -60,7 +60,7 @@ def get_quiz_list_pagination_keyboard(page: int, total_pages: int, limit: int = 
     return builder.as_markup()
 
 
-def build_question_keyboard(options: list[str]) -> InlineKeyboardMarkup:
+def build_question_keyboard(options: list[str], question_id: int | None = None, is_review_needed: bool = False) -> InlineKeyboardMarkup:
     """构建问题选项键盘 (模拟用户端)"""
     builder = InlineKeyboardBuilder()
     for i, option in enumerate(options):
@@ -68,6 +68,11 @@ def build_question_keyboard(options: list[str]) -> InlineKeyboardMarkup:
         # 这里为了模拟真实感，可以使用类似真实的回调，或者 dummy callback
         builder.button(text=option, callback_data=f"ignore:quiz_preview:{i}")
     builder.adjust(2) # 每行2个选项，和真实答题保持一致
+    
+    # 添加审核按钮
+    if is_review_needed and question_id is not None:
+        builder.row(InlineKeyboardButton(text="✅ 通过审核 (发放奖励)", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:quiz:approve:{question_id}"))
+    
     return builder.as_markup()
 
 
@@ -140,7 +145,8 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
             )
 
             # 3. 构建键盘
-            keyboard = build_question_keyboard(question.options)
+            is_review_needed = question.extra and question.extra.get("submitted_by") and not question.extra.get("approval_rewarded")
+            keyboard = build_question_keyboard(question.options, question_id=question.id, is_review_needed=bool(is_review_needed))
 
             # 4. 发送消息
             if image:
@@ -175,3 +181,112 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
     # 记录新发送的消息ID
     await state.update_data(quiz_list_ids=new_msg_ids)
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith(QUIZ_ADMIN_CALLBACK_DATA + ":list:view:quiz:approve:"))
+@require_admin_feature(KEY_ADMIN_QUIZ)
+async def approve_quiz(callback: CallbackQuery, session: AsyncSession) -> None:
+    """审核题目"""
+    try:
+        parts = callback.data.split(":")
+        question_id = int(parts[6])
+    except (IndexError, ValueError):
+        await callback.answer("❌ 参数错误", show_alert=True)
+        return
+
+    item = await session.get(QuizQuestionModel, question_id)
+    if not item:
+        await callback.answer("❌ 题目不存在", show_alert=True)
+        return
+
+    # 检查是否为用户投稿且未发放审核奖励
+    if item.extra:
+        submitted_by = item.extra.get("submitted_by")
+        approval_rewarded = item.extra.get("approval_rewarded")
+        
+        if submitted_by and not approval_rewarded:
+            # 发放奖励
+            from bot.services.currency import CurrencyService
+            from bot.core.constants import CURRENCY_SYMBOL
+            from bot.utils.text import escape_markdown_v2
+            
+            try:
+                await CurrencyService.add_currency(
+                    session=session,
+                    user_id=submitted_by,
+                    amount=5,
+                    event_type="quiz_submit_approve",
+                    description=f"投稿题目 #{item.id} 审核通过奖励"
+                )
+                
+                # 更新状态
+                item.extra = dict(item.extra) # 复制一份以触发更新
+                item.extra["approval_rewarded"] = True
+                item.is_active = True # 审核通过自动启用
+                
+                await session.commit()
+                
+                # 1. 通知用户 (私聊)
+                try:
+                    await callback.bot.send_message(
+                        submitted_by,
+                        f"🎉 *恭喜\\!* 您投稿的题目 *{escape_markdown_v2(item.question)}* 已通过审核并启用\\!\n"
+                        f"🎁 获得奖励：\\+5 {escape_markdown_v2(CURRENCY_SYMBOL)}",
+                        parse_mode="MarkdownV2"
+                    )
+                except Exception as e:
+                     # 用户可能屏蔽了机器人
+                    # logger.warning(f"通知用户 {submitted_by} 失败 (可能已屏蔽机器人): {e}")
+                    pass
+                
+                # 2. 通知群组 (使用工具类)
+                try:
+                    from bot.utils.msg_group import send_group_notification
+                    
+                    # 获取用户信息
+                    from bot.database.models import UserModel
+                    user_stmt = select(UserModel).where(UserModel.id == submitted_by)
+                    user_result = await session.execute(user_stmt)
+                    user_obj = user_result.scalar_one_or_none()
+                    
+                    user_info = {
+                        "user_id": str(submitted_by),
+                        "username": user_obj.username if user_obj else "Unknown",
+                        "full_name": user_obj.full_name if user_obj else "Unknown",
+                        "group_name": "QuizApproval", # 自定义标签
+                        "action": "Approve",
+                    }
+                    
+                    reason = (
+                        f"题目审核通过\n"
+                        f"题目: {escape_markdown_v2(item.question)}\n"
+                        f"奖励: 5 {escape_markdown_v2(CURRENCY_SYMBOL)}"
+                    )
+                    
+                    await send_group_notification(callback.bot, user_info, reason)
+                except Exception as e:
+                    # logger.warning(f"发送群组通知失败: {e}")
+                    pass
+                
+                await callback.answer("✅ 审核通过！奖励已发放，题目已启用。")
+                
+                # 刷新键盘，移除审核按钮
+                is_review_needed = False
+                keyboard = build_question_keyboard(item.options, question_id=item.id, is_review_needed=is_review_needed)
+                with contextlib.suppress(Exception):
+                     await callback.message.edit_reply_markup(reply_markup=keyboard)
+
+            except Exception as e:
+                await callback.answer(f"⚠️ 奖励发放失败: {e}", show_alert=True)
+                return
+        else:
+             await callback.answer("⚠️ 该题目已审核或非用户投稿", show_alert=True)
+             # 尝试刷新键盘
+             is_review_needed = False
+             keyboard = build_question_keyboard(item.options, question_id=item.id, is_review_needed=is_review_needed)
+             with contextlib.suppress(Exception):
+                 await callback.message.edit_reply_markup(reply_markup=keyboard)
+             return
+    else:
+        await callback.answer("⚠️ 该题目非用户投稿", show_alert=True)
+        return
