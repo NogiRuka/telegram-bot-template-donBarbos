@@ -413,7 +413,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
         # 1. 处理删除：数据库有但接口没有的用户
         for eid, model in existing_map.items():
             if eid not in api_user_map:
-                # 软删除：写入简单历史快照，从主表删除
+                # 软删除：写入简单历史快照，更新主表状态
                 session.add(
                     EmbyUserHistoryModel(
                         emby_user_id=eid,
@@ -424,7 +424,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         last_activity_date=model.last_activity_date,
                         user_dto=model.user_dto,
                         extra_data=model.extra_data,
-                        action="delete",
+                        action="soft_delete", # 标记为软删除
                         created_at=model.created_at,
                         updated_at=model.updated_at,
                         created_by=model.created_by,
@@ -435,8 +435,13 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         remark=model.remark,
                     )
                 )
-                await session.delete(model)
-                deleted += 1
+                
+                # 不真正删除，而是标记为软删除
+                if not model.is_deleted:
+                    model.is_deleted = True
+                    model.deleted_at = now()
+                    model.remark = "Emby 同步: 账号在 API 中缺失 (软删除)"
+                    deleted += 1
 
         # 2. 处理新增和更新
         for eid, it in api_user_map.items():
