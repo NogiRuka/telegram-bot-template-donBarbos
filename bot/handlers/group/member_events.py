@@ -62,6 +62,10 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
     # 检查是否是被邀请加入
     join_reason = "加入了群组"
     if event.from_user and event.from_user.id != user.id:
+        # 如果邀请人是 nmBot，则不发送通知
+        if event.from_user.full_name == "nmBot" or event.from_user.first_name == "nmBot":
+            return
+
         inviter_name = escape_markdown_v2(event.from_user.full_name)
         join_reason = f"被 {inviter_name} 邀请加入群组"
 
