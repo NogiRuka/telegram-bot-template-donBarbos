@@ -444,7 +444,8 @@ class QuizService:
         if "image_source" in session_extra:
             fake_image = QuizImageModel(
                 image_source=session_extra.get("image_source"),
-                extra_caption=session_extra.get("extra_caption")
+                extra_caption=session_extra.get("extra_caption"),
+                tags=session_extra.get("tags")
             )
         
         original_caption = await QuizService.build_quiz_caption(
