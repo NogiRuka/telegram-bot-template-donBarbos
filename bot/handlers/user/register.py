@@ -305,7 +305,7 @@ async def handle_register_input(
                 }
                 
                 created_name = details.get("name", name)
-                reason = f"用户注册 Emby 账号: {created_name}"
+                reason = f"用户注册了 Emby 账号：{created_name}"
                 
                 await send_group_notification(message.bot, user_info, reason)
             except Exception as e:
