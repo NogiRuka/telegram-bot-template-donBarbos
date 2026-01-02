@@ -5,6 +5,7 @@ from aiogram import BaseMiddleware
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, Message
 
+from aiogram.enums import ChatType
 from bot.services.config_service import get_config
 from bot.utils.message import delete_message_after_delay
 from bot.utils.permissions import _resolve_role
@@ -126,7 +127,11 @@ class BotEnabledMiddleware(BaseMiddleware):
             if is_callback:
                 await first.answer("🔴 机器人已关闭", show_alert=True)  # type: ignore[attr-defined]
             elif is_message:
-                reply_msg = await first.answer("🔴 机器人已关闭")  # type: ignore[attr-defined]
+                msg: Message = event  # type: ignore
+                # 如果是群组，使用引用回复；如果是私聊，直接回复
+                is_group = msg.chat.type in (ChatType.GROUP, ChatType.SUPERGROUP)
+                
+                reply_msg = await msg.reply("🔴 机器人已关闭") if is_group else await msg.answer("🔴 机器人已关闭")
                 delete_message_after_delay(reply_msg, 3)
         except TelegramAPIError:
             pass
