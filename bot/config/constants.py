@@ -48,8 +48,7 @@ KEY_REGISTRATION_FREE_OPEN = "registration.free_open"
 KEY_ADMIN_OPEN_REGISTRATION_WINDOW = "admin.open_registration.window"
 KEY_ADMIN_HITOKOTO_CATEGORIES = "admin.hitokoto.categories"
 
-# 媒体库分类配置
-KEY_ADMIN_MEDIA_CATEGORIES = "admin.media.categories"
+
 
 # 问答配置
 KEY_QUIZ_COOLDOWN_MINUTES = "admin.quiz.cooldown_minutes"
