@@ -36,6 +36,8 @@ from bot.keyboards.inline.constants import (
     NOTIFY_COMPLETE_LABEL,
     NOTIFY_PREVIEW_CALLBACK_DATA,
     NOTIFY_PREVIEW_LABEL,
+    NOTIFY_PREVIEW_TO_COMPLETE_CALLBACK_DATA,
+    NOTIFY_PREVIEW_TO_COMPLETE_LABEL,
     NOTIFY_SETTINGS_TOGGLE_CALLBACK_DATA,
     QUIZ_ADMIN_ADD_QUICK_LABEL,
     QUIZ_ADMIN_CALLBACK_DATA,
@@ -188,6 +190,10 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
             InlineKeyboardButton(
                 text=f"{NOTIFY_COMPLETE_LABEL} ({pending_completion})",
                 callback_data=NOTIFY_COMPLETE_CALLBACK_DATA,
+            ),
+            InlineKeyboardButton(
+                text=f"{NOTIFY_PREVIEW_TO_COMPLETE_LABEL}",
+                callback_data=NOTIFY_PREVIEW_TO_COMPLETE_CALLBACK_DATA,
             ),
             InlineKeyboardButton(
                 text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})",

@@ -290,19 +290,22 @@ class QuizService:
                 timeout_sec = 60 # 默认值，防止 session 和 timeout_sec 都没传的情况
 
         extra = "无"
+        # 如果有 extra_caption 则使用它，否则尝试使用第一个标签，最后回退到 "链接"
+        link_text = "链接"
+        if image.extra_caption:
+            link_text = image.extra_caption.strip()
+        elif image.tags and len(image.tags) > 0:
+            link_text = image.tags[0]
+
         if image and image.image_source:
             if image.image_source.startswith("http"):
-                # 如果有 extra_caption 则使用它，否则尝试使用第一个标签，最后回退到 "链接"
-                link_text = "链接"
-                if image.extra_caption:
-                    link_text = image.extra_caption.strip()
-                elif image.tags and len(image.tags) > 0:
-                    link_text = image.tags[0]
-                
                 # HTML 格式的链接
                 extra = f"<a href='{image.image_source}'>{html.escape(link_text)}</a>"
             else:
                 extra = f"{html.escape(image.image_source)}"
+        else:
+            extra = f"{html.escape(link_text)}"
+
         cat_name = question.category.name if question.category else "无分类"
 
         return (

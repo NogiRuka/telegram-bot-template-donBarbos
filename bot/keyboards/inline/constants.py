@@ -200,6 +200,10 @@ NOTIFY_COMPLETE_CALLBACK_DATA = "admin:notify_complete"
 NOTIFY_PREVIEW_LABEL = "👀 上新预览"
 NOTIFY_PREVIEW_CALLBACK_DATA = "admin:notify_preview"
 
+# 预览转补全
+NOTIFY_PREVIEW_TO_COMPLETE_LABEL = "🔄 预览转补全"
+NOTIFY_PREVIEW_TO_COMPLETE_CALLBACK_DATA = "admin:notify_preview_to_complete"
+
 # 关闭预览
 NOTIFY_CLOSE_PREVIEW_LABEL = "❌ 关闭预览"
 NOTIFY_CLOSE_PREVIEW_CALLBACK_DATA = "delete_msg"

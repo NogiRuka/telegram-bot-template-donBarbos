@@ -11,6 +11,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 
 from bot.core.constants import EVENT_TYPE_LIBRARY_NEW
 from bot.database.database import sessionmaker
+from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
 
 try:
@@ -85,19 +86,36 @@ async def handle_emby_webhook(
 
         # 存入数据库
         async with sessionmaker() as session:
-            notification = NotificationModel(
-                title=event_title,
-                type=event_type,
-                status=event_status,  # library.new 事件有状态，其他事件状态为 None
-                item_id=item_id,
-                item_name=item_name,
-                item_type=item_type,
-                series_id=series_id,
-                series_name=series_name,
-                season_number=season_number,
-                episode_number=episode_number,
-                payload=payload
-            )
+            # library.new 事件使用专门的表
+            if event_type == EVENT_TYPE_LIBRARY_NEW:
+                notification = LibraryNewNotificationModel(
+                    title=event_title,
+                    type=event_type,
+                    status=event_status,
+                    item_id=item_id,
+                    item_name=item_name,
+                    item_type=item_type,
+                    series_id=series_id,
+                    series_name=series_name,
+                    season_number=season_number,
+                    episode_number=episode_number,
+                    payload=payload
+                )
+            else:
+                # 其他事件仍使用原来的表
+                notification = NotificationModel(
+                    title=event_title,
+                    type=event_type,
+                    status=event_status,  # library.new 事件有状态，其他事件状态为 None
+                    item_id=item_id,
+                    item_name=item_name,
+                    item_type=item_type,
+                    series_id=series_id,
+                    series_name=series_name,
+                    season_number=season_number,
+                    episode_number=episode_number,
+                    payload=payload
+                )
             session.add(notification)
             await session.commit()
             await session.refresh(notification)

@@ -9,6 +9,7 @@ from bot.core.constants import (
     NOTIFICATION_STATUS_PENDING_COMPLETION,
     NOTIFICATION_STATUS_PENDING_REVIEW,
 )
+from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
 from bot.keyboards.inline.admin import get_notification_panel_keyboard
 from bot.keyboards.inline.constants import ADMIN_NEW_ITEM_NOTIFICATION_LABEL
@@ -54,9 +55,9 @@ async def handle_notify_complete(
     fail_count = 0
 
     # 1️⃣ 获取所有待补全的 library.new 通知（行级）
-    stmt = select(NotificationModel).where(
-        NotificationModel.status == NOTIFICATION_STATUS_PENDING_COMPLETION,
-        NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
+    stmt = select(LibraryNewNotificationModel).where(
+        LibraryNewNotificationModel.status == NOTIFICATION_STATUS_PENDING_COMPLETION,
+        LibraryNewNotificationModel.type == EVENT_TYPE_LIBRARY_NEW
     )
     result = await session.execute(stmt)
     notifications = result.scalars().all()
@@ -115,6 +116,45 @@ async def handle_notify_complete(
         f"• 待补全：*{pending_completion}*\n"
         f"• 待发送：*{pending_review}*\n\n"
         f"✅ *操作完成：* 成功 {success_count}, 失败 {fail_count}\n"
+    )
+    kb = get_notification_panel_keyboard(pending_completion, pending_review)
+    await main_msg.update_on_callback(callback, text, kb)
+
+
+@router.callback_query(F.data == "admin:notify_preview_to_complete")
+async def handle_notify_preview_to_complete(
+    callback: types.CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService
+) -> None:
+    """将预览状态的通知变成补全状态"""
+    
+    # 获取所有预览状态的通知
+    stmt = select(LibraryNewNotificationModel).where(
+        LibraryNewNotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
+        LibraryNewNotificationModel.type == EVENT_TYPE_LIBRARY_NEW
+    )
+    result = await session.execute(stmt)
+    notifications = result.scalars().all()
+    
+    if not notifications:
+        await callback.answer("🈚 没有预览状态的通知", show_alert=False)
+        return
+    
+    # 将所有预览状态的通知改为补全状态
+    for notification in notifications:
+        notification.status = NOTIFICATION_STATUS_PENDING_COMPLETION
+    
+    await session.commit()
+    
+    # 刷新面板统计
+    pending_completion, pending_review, _ = await get_notification_status_counts(session)
+    text = (
+        f"*{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}*\n\n"
+        f"📊 *状态统计:*\n"
+        f"• 待补全：*{pending_completion}*\n"
+        f"• 待发送：*{pending_review}*\n\n"
+        f"✅ *操作完成：* 已将 {len(notifications)} 个预览状态通知转为补全状态\n"
     )
     kb = get_notification_panel_keyboard(pending_completion, pending_review)
     await main_msg.update_on_callback(callback, text, kb)

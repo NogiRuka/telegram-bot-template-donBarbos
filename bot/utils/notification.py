@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
     from bot.database.models.emby_item import EmbyItemModel
 
+from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
 
 if TYPE_CHECKING:
@@ -179,6 +180,7 @@ async def get_notification_status_counts(session: AsyncSession) -> tuple[int, in
     - 统计新片通知中不同状态的数量
     - 使用 case 语句对 Episode 和 Series 类型进行分组统计
     - Episode 类型且有 series_id 的按 series_id 分组, Series 类型按 item_id 分组
+    - 现在统计的是 library_new 表的数据
 
     输入参数:
     - session: AsyncSession 数据库会话
@@ -188,30 +190,30 @@ async def get_notification_status_counts(session: AsyncSession) -> tuple[int, in
     """
     count_key = case(
         (
-            (NotificationModel.item_type == "Episode")
-            & (NotificationModel.series_id.isnot(None)),
-            NotificationModel.series_id,
+            (LibraryNewNotificationModel.item_type == "Episode")
+            & (LibraryNewNotificationModel.series_id.isnot(None)),
+            LibraryNewNotificationModel.series_id,
         ),
         (
-            NotificationModel.item_type == "Series",
-            NotificationModel.item_id,
+            LibraryNewNotificationModel.item_type == "Series",
+            LibraryNewNotificationModel.item_id,
         ),
-        else_=NotificationModel.item_id,
+        else_=LibraryNewNotificationModel.item_id,
     )
     stmt = (
         select(
-            NotificationModel.status,
+            LibraryNewNotificationModel.status,
             func.count(func.distinct(count_key)).label("cnt"),
         )
         .where(
-            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
-            NotificationModel.status.in_([
+            LibraryNewNotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
+            LibraryNewNotificationModel.status.in_([
                 NOTIFICATION_STATUS_PENDING_COMPLETION,
                 NOTIFICATION_STATUS_PENDING_REVIEW,
                 NOTIFICATION_STATUS_REJECTED,
             ]),
         )
-        .group_by(NotificationModel.status)
+        .group_by(LibraryNewNotificationModel.status)
     )
     rows = await session.execute(stmt)
     counts = {row.status: row.cnt for row in rows}

@@ -13,6 +13,7 @@ from .hitokoto import HitokotoModel
 from .main_image import MainImageModel, MainImageScheduleModel
 from .media_file import MediaFileModel
 from .message import MessageModel, MessageType
+from .library_new_notification import LibraryNewNotificationModel
 from .notification import NotificationModel
 from .quiz import QuizActiveSessionModel, QuizCategoryModel, QuizImageModel, QuizLogModel, QuizQuestionModel
 from .statistics import StatisticsModel, StatisticType
@@ -40,6 +41,7 @@ __all__ = [
     "MainImageScheduleModel",
     "MediaFileModel",
     "MessageModel",
+    "LibraryNewNotificationModel",
     "MessageSaveMode",
     "MessageType",
     "NotificationModel",
