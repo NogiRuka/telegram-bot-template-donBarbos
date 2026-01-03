@@ -106,6 +106,14 @@ async def show_submissions_page(callback: CallbackQuery, session: AsyncSession, 
 
         if desc_text:
             line += f"\n📝 {desc_text}"
+        
+        # 显示审核者留言（如果有）
+        if submission.review_comment and submission.status in ["approved", "rejected"]:
+            review_comment = escape_markdown_v2(submission.review_comment[:50])
+            if len(submission.review_comment) > 50:
+                review_comment += "…"
+            line += f"\n💬 {review_comment}"
+        
         # 检查是否有图片（使用数据表字段）
         if submission.image_file_id:
             line += " · 📷"
