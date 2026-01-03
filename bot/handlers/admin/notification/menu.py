@@ -1,6 +1,6 @@
 from aiogram import F, types
 from aiogram.fsm.context import FSMContext
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.constants import (
@@ -11,6 +11,7 @@ from bot.core.constants import (
 )
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
+from bot.database.models.user_submission import UserSubmissionModel
 from bot.keyboards.inline.admin import get_notification_panel_keyboard
 from bot.keyboards.inline.constants import ADMIN_NEW_ITEM_NOTIFICATION_LABEL
 from bot.services.emby_service import fetch_and_save_item_details
@@ -29,16 +30,24 @@ async def show_notification_panel(
 ) -> None:
     """显示新片通知管理面板"""
     await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "preview_data")
+    await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "submission_review_ids")
 
     pending_completion, pending_review, _ = await get_notification_status_counts(session)
+
+    # 计算待审核投稿数量
+    submission_count_stmt = select(func.count()).select_from(UserSubmissionModel).where(
+        UserSubmissionModel.status == "pending"
+    )
+    pending_submissions = (await session.execute(submission_count_stmt)).scalar_one()
 
     text = (
         f"*{ADMIN_NEW_ITEM_NOTIFICATION_LABEL}*\n\n"
         f"📊 *状态统计:*\n"
         f"• 待补全：*{pending_completion}*\n"
         f"• 待发送：*{pending_review}*\n"
+        f"• 待审核投稿：*{pending_submissions}*\n"
     )
-    kb = get_notification_panel_keyboard(pending_completion, pending_review)
+    kb = get_notification_panel_keyboard(pending_completion, pending_review, pending_submissions)
 
     await main_msg.update_on_callback(callback, text, kb)
 

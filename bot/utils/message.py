@@ -38,19 +38,26 @@ async def safe_delete_message(bot: Any, chat_id: int, message_id: int) -> bool:
 
 async def delete_message(message: Any) -> bool:
     """安全地删除消息，失败时不会抛出异常。
+    支持 Message 与 CallbackQuery（含 message 字段）两种类型。
 
     功能说明:
     - 使用 try-except 捕获所有异常，避免删除失败影响主流程
     - 适用于需要删除消息但不希望删除失败影响主要功能的场景
 
     输入参数:
-    - message: 要删除的消息对象，需要有 delete() 方法
+    - message: 要删除的消息对象，需有 delete() 方法；
+               若为 CallbackQuery，则取其内部的 message 进行删除
 
     返回值:
     - bool: 删除是否成功
     """
     try:
-        await message.delete()
+        # 支持 CallbackQuery：优先使用其 message
+        if hasattr(message, "message") and message.message:
+            target = message.message
+        else:
+            target = message
+        await target.delete()
         return True
     except Exception:
         return False

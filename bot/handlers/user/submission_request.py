@@ -48,7 +48,7 @@ async def start_request(callback: CallbackQuery, state: FSMContext, session: Asy
         "请发送您想要的影片信息，格式如下：\n\n"
         "`第1行：影片标题（必填）\n"
         "第2行：分类ID（见下方列表）\n"
-        "第3行：详细描述（豆瓣链接）`\n\n"
+        "第3行：详细描述（豆瓣链接或其他）`\n\n"
         "*📂 可用分类：*\n"
         f"{cat_text}\n\n"
         "📷 *支持图片：* 您可以发送图片，文字放在图片说明中"

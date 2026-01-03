@@ -171,16 +171,18 @@ def get_main_image_item_keyboard(image_id: int, is_enabled: bool) -> InlineKeybo
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def get_notification_panel_keyboard(pending_completion: int, pending_review: int) -> InlineKeyboardMarkup:
+def get_notification_panel_keyboard(pending_completion: int, pending_review: int, pending_submissions: int = 0) -> InlineKeyboardMarkup:
     """获取上新通知管理面板键盘
 
     功能说明:
     - 包含 [上新补全]、[上新预览]、[一键通知] 三个主要功能按钮
+    - 新增 [投稿审核] 按钮
     - 底部包含 [返回上一级] (到管理员面板) 和 [返回主页]
 
     输入参数:
     - pending_completion: 待补全数量
     - pending_review: 待审核数量
+    - pending_submissions: 待审核投稿数量（可选）
 
     返回值:
     - InlineKeyboardMarkup: 键盘对象
@@ -194,13 +196,19 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
             InlineKeyboardButton(
                 text=f"{NOTIFY_PREVIEW_TO_COMPLETE_LABEL}",
                 callback_data=NOTIFY_PREVIEW_TO_COMPLETE_CALLBACK_DATA,
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=f"📋 投稿审核 ({pending_submissions})",
+                callback_data="admin:submission_review:list:1:5",
             ),
             InlineKeyboardButton(
                 text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})",
                 callback_data=NOTIFY_PREVIEW_CALLBACK_DATA,
-            ),
+            )
         ],
-        [NOTIFY_SETTINGS_BUTTON, NOTIFY_SEND_BUTTON],
+        [NOTIFY_SETTINGS_BUTTON,NOTIFY_SEND_BUTTON],
         [BACK_TO_ADMIN_PANEL_BUTTON, BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)

@@ -118,6 +118,9 @@ async def handle_notify_preview(
                     InlineKeyboardButton(text="👥 添加", callback_data=f"admin:notify_add_sender:{notif.id}"),
                     InlineKeyboardButton(text=status_text, callback_data=f"admin:notify_toggle_status:{notif.id}")
                 ],
+                [
+                    InlineKeyboardButton(text="📋 投稿审核", callback_data="admin:submission_review:list:1:5"),
+                ],
                 [NOTIFY_CLOSE_PREVIEW_BUTTON]
             ]
         )

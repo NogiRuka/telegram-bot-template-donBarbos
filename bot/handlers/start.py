@@ -165,6 +165,7 @@ async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, mai
     await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "quiz_list_ids")
     await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "main_image_list_ids")
     await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "preview_data")
+    await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "submission_review_ids")
 
     uid = callback.from_user.id if callback.from_user else None
     caption, kb = await build_home_view(session, uid)
