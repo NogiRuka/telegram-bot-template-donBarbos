@@ -14,6 +14,10 @@ from .profile import router as profile_router
 from .quiz_handler import router as quiz_router
 from .quiz_submit import router as quiz_submit_router
 from .register import router as register_router
+from .submission import router as submission_router
+from .submission_request import router as submission_request_router
+from .submission_submit import router as submission_submit_router
+from .submission_my import router as submission_my_router
 from .store import router as store_router
 from .tags import router as tags_router
 
@@ -46,6 +50,10 @@ def get_user_router() -> Router:
     router.include_router(files_router)
     router.include_router(quiz_router)
     router.include_router(quiz_submit_router)
+    router.include_router(submission_router)
+    router.include_router(submission_request_router)
+    router.include_router(submission_submit_router)
+    router.include_router(submission_my_router)
     # private_message_saver_router 应该放在最后，以免拦截其他处理器的消息
     router.include_router(private_message_saver_router)
     return router

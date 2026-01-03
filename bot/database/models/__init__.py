@@ -21,6 +21,7 @@ from .statistics import StatisticsModel, StatisticType
 from .user import UserModel
 from .user_extend import UserExtendModel, UserRole
 from .user_history import UserHistoryModel
+from .user_submission import UserSubmissionModel
 
 __all__ = [
     "ActionType",
@@ -58,4 +59,5 @@ __all__ = [
     "UserHistoryModel",
     "UserModel",
     "UserRole",
+    "UserSubmissionModel",
 ]

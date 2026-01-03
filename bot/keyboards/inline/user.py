@@ -165,7 +165,7 @@ def get_user_profile_keyboard() -> InlineKeyboardMarkup:
     - InlineKeyboardMarkup: 内联键盘
     """
     buttons = [
-        [PROFILE_MAIN_IMAGE_BUTTON, USER_QUIZ_SUBMIT_BUTTON],
+        [PROFILE_MAIN_IMAGE_BUTTON, USER_SUBMISSION_BUTTON],
         [BACK_TO_HOME_BUTTON],
     ]
     keyboard = InlineKeyboardBuilder(markup=buttons)

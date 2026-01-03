@@ -20,8 +20,12 @@ PROFILE_CALLBACK_DATA = "user:profile"
 PROFILE_MAIN_IMAGE_LABEL = "🖼️ 主图设置"
 PROFILE_MAIN_IMAGE_CALLBACK_DATA = "user:profile:main_image"
 
-# 问答投稿
-USER_QUIZ_SUBMIT_LABEL = "✍️ 问答投稿"
+# 求片/投稿
+USER_SUBMISSION_LABEL = "📝 求片/投稿"
+USER_SUBMISSION_CALLBACK_DATA = "user:submission"
+
+# 问答投稿（保留兼容）
+USER_QUIZ_SUBMIT_LABEL = "📝 问答投稿"
 USER_QUIZ_SUBMIT_CALLBACK_DATA = "user:quiz:submit"
 
 # 账号中心
