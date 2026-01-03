@@ -5,7 +5,7 @@ from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import UserSubmissionModel, MediaCategoryModel
-from bot.keyboards.inline.buttons import USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON
+from bot.keyboards.inline.buttons import BACK_TO_USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import USER_SUBMISSION_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.utils.text import escape_markdown_v2
@@ -62,7 +62,7 @@ async def show_submissions_page(callback: CallbackQuery, session: AsyncSession, 
         )
         
         builder = InlineKeyboardBuilder()
-        builder.row(USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON)
+        builder.row(BACK_TO_USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON)
         
         await main_msg.update_on_callback(callback, text, builder.as_markup())
         return
@@ -120,7 +120,7 @@ async def show_submissions_page(callback: CallbackQuery, session: AsyncSession, 
         
         if submission.reward_base > 0 or submission.reward_bonus > 0:
             total_reward = submission.reward_base + submission.reward_bonus
-            line += f" · 🎁 +{total_reward}"
+            line += f" · 🎁 \\+{total_reward}"
         
         lines.append(line)
         lines.append("")  # 空行分隔
@@ -158,7 +158,7 @@ async def show_submissions_page(callback: CallbackQuery, session: AsyncSession, 
         builder.row(*pagination_row)
     
     # 添加返回按钮
-    builder.row(USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON)
+    builder.row(BACK_TO_USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON)
     
     await main_msg.update_on_callback(callback, text, builder.as_markup())
     await callback.answer()
