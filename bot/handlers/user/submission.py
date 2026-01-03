@@ -8,6 +8,7 @@ from bot.keyboards.inline.buttons import BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BU
 from bot.keyboards.inline.constants import USER_SUBMISSION_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.states.user import UserSubmissionState
+from bot.utils.text import escape_markdown_v2
 
 router = Router(name="user_submission")
 
@@ -18,10 +19,10 @@ async def start_submission(callback: CallbackQuery, state: FSMContext, session: 
     text = (
         "*📝 求片/投稿中心*\n\n"
         "请选择您要进行的操作：\n\n"
-        "📥 *开始求片* - 提交您想要的影片\n"
-        "✍️ *开始投稿* - 提交您发现的优质内容\n"
-        "📝 *问答投稿* - 为题库贡献题目\n"
-        "📋 *我的求片/投稿* - 查看您的提交记录"
+        f"📥 *开始求片* {escape_markdown_v2('-')} 提交您想要的影片\n"
+        f"✍️ *开始投稿* {escape_markdown_v2('-')} 提交您发现的优质内容\n"
+        f"📝 *问答投稿* {escape_markdown_v2('-')} 为题库贡献题目\n"
+        f"📋 *我的求片/投稿* {escape_markdown_v2('-')} 查看您的提交记录"
     )
     
     # 创建键盘
