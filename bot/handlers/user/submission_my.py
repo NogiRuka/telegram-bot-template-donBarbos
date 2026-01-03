@@ -72,8 +72,8 @@ async def my_submissions(callback: CallbackQuery, session: AsyncSession, main_ms
         
         line = (
             f"{status_icon} {type_icon} **#{submission.id}** {escape_markdown_v2(submission.title)}\n"
-            f"🏷️ {escape_markdown_v2(category.name)} · {status_text}\n"
-            f"📅 {submission.created_at.strftime('%Y-%m-%d %H:%M')}"
+            f"🏷️ {escape_markdown_v2(category.name)} · {escape_markdown_v2(status_text)}\n"
+            f"📅 {escape_markdown_v2(submission.created_at.strftime('%Y-%m-%d %H:%M'))}"
         )
         
         # 检查是否有图片（使用数据表字段）
