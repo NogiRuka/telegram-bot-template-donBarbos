@@ -13,7 +13,7 @@ from bot.core.constants import (
     NOTIFICATION_STATUS_REJECTED,
 )
 from bot.database.models.emby_item import EmbyItemModel
-from bot.database.models.notification import NotificationModel
+from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.keyboards.inline.admin import get_notification_preview_pagination_keyboard
 from bot.keyboards.inline.buttons import NOTIFY_CLOSE_PREVIEW_BUTTON
 from bot.services.main_message import MainMessageService
@@ -49,25 +49,25 @@ async def handle_notify_preview(
 
     preview_key = case(
         (
-            (NotificationModel.item_type == "Episode")
-            & (NotificationModel.series_id.isnot(None)),
-            NotificationModel.series_id,
+            (LibraryNewNotificationModel.item_type == "Episode")
+            & (LibraryNewNotificationModel.series_id.isnot(None)),
+            LibraryNewNotificationModel.series_id,
         ),
         (
-            NotificationModel.item_type == "Series",
-            NotificationModel.item_id,
+            LibraryNewNotificationModel.item_type == "Series",
+            LibraryNewNotificationModel.item_id,
         ),
-        else_=NotificationModel.item_id,
+        else_=LibraryNewNotificationModel.item_id,
     )
 
     subq = (
         select(
-            func.min(NotificationModel.id).label("notif_id"),
+            func.min(LibraryNewNotificationModel.id).label("notif_id"),
             preview_key.label("biz_id"),
         )
         .where(
-            NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
-            NotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
+            LibraryNewNotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
+            LibraryNewNotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
         )
         .group_by(preview_key)
         .subquery()
@@ -82,8 +82,8 @@ async def handle_notify_preview(
 
     # 分页查询
     stmt = (
-        select(NotificationModel, EmbyItemModel)
-        .join(subq, NotificationModel.id == subq.c.notif_id)
+        select(LibraryNewNotificationModel, EmbyItemModel)
+        .join(subq, LibraryNewNotificationModel.id == subq.c.notif_id)
         .join(EmbyItemModel, EmbyItemModel.id == subq.c.biz_id)
         .offset((page - 1) * limit)
         .limit(limit)
@@ -161,9 +161,10 @@ async def handle_notify_reject(
         return
 
     # 获取指定通知
-    stmt = select(NotificationModel).where(
-        NotificationModel.id == notification_id,
-        NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW
+    stmt = select(LibraryNewNotificationModel).where(
+        LibraryNewNotificationModel.id == notification_id,
+        LibraryNewNotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
+        LibraryNewNotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
     )
     result = await session.execute(stmt)
     notification = result.scalar_one_or_none()
@@ -194,7 +195,7 @@ async def handle_item_status_toggle(
         notif_id = int(callback.data.split(":")[2])
 
         # 1. 获取 Notification
-        notif = await session.get(NotificationModel, notif_id)
+        notif = await session.get(LibraryNewNotificationModel, notif_id)
         if not notif:
             await callback.answer("❌ 通知不存在", show_alert=True)
             return
@@ -292,7 +293,7 @@ async def handle_add_sender_complete(
         return
 
     # 获取通知
-    stmt = select(NotificationModel).where(NotificationModel.id == notification_id)
+    stmt = select(LibraryNewNotificationModel).where(LibraryNewNotificationModel.id == notification_id)
     result = await session.execute(stmt)
     notification = result.scalar_one_or_none()
 
