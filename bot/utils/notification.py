@@ -10,6 +10,8 @@ from bot.core.constants import (
     NOTIFICATION_STATUS_PENDING_REVIEW,
     NOTIFICATION_STATUS_REJECTED,
 )
+from bot.config.constants import KEY_ADMIN_MEDIA_CATEGORIES
+from bot.services.config_service import get_config
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,15 +62,18 @@ def _build_item_image_url(item: EmbyItemModel) -> str | None:
     return f"{base_url.rstrip('/')}/Items/{item.id}/Images/{image_type}?tag={tag}"
 
 
-def _extract_library_tag(path: str | None) -> str:
+async def _extract_library_tag(path: str | None, session: AsyncSession | None = None) -> str:
     """从媒体路径解析分类标签。
 
     功能说明:
     - 兼容 Windows 路径分隔符
+    - 优先从数据库获取媒体库分类设置
     - 约定目录包含 "钙片/剧集/电影" 时生成对应 tag
+    - 路径包含 "钙片/其他" 时返回 "国产"
 
     输入参数:
     - path: 文件路径或 None
+    - session: 异步数据库会话（可选，用于获取数据库配置）
 
     返回值:
     - str: 标签字符串, 不存在返回空串
@@ -78,16 +83,42 @@ def _extract_library_tag(path: str | None) -> str:
         return ""
 
     parts = [p for p in path.replace("\\", "/").split("/") if p]
+    
+    # 优先从数据库获取分类设置
+    media_categories = []
+    if session:
+        try:
+            config_value = await get_config(session, KEY_ADMIN_MEDIA_CATEGORIES)
+            if config_value and isinstance(config_value, list):
+                media_categories = config_value
+        except Exception:
+            # 数据库获取失败时使用默认值
+            media_categories = ["剧集", "电影", "动漫", "国产", "日韩", "欧美"]
+    else:
+        # 没有session时使用默认值
+        media_categories = ["剧集", "电影", "动漫", "国产", "日韩", "欧美"]
+    
+    # 特殊处理：钙片/其他 -> 国产
     if "钙片" in parts:
         idx = parts.index("钙片")
         if idx + 1 < len(parts):
-            return f"#{parts[idx + 1]}"
+            next_part = parts[idx + 1]
+            if next_part == "其他":
+                return "#国产"
+            return f"#{next_part}"
         return ""
 
+    # 检查路径中是否包含数据库配置的分类
+    for category in media_categories:
+        if category in parts:
+            return f"#{category}"
+    
+    # 向后兼容：检查传统分类
     if "剧集" in parts:
         return "#剧集"
     if "电影" in parts:
         return "#电影"
+    
     return ""
 
 
@@ -140,22 +171,24 @@ def _truncate_overview(overview: str) -> str:
     return overview
 
 
-def get_notification_content(item: EmbyItemModel) -> tuple[str, str | None]:
+async def get_notification_content(item: EmbyItemModel, session: AsyncSession | None = None) -> tuple[str, str | None]:
     """生成通知消息内容和图片URL。
 
     功能说明:
     - 基于 `EmbyItemModel` 生成推送文案与图片链接
     - 图片链接使用 Emby `/Items/{Id}/Images/{Type}` 接口
+    - 支持从数据库获取媒体库分类设置
 
     输入参数:
     - item: EmbyItemModel 媒体详情
+    - session: 异步数据库会话（可选，用于获取数据库配置）
 
     返回值:
     - tuple[str, str | None]: (消息HTML文本, 图片URL或None)
     """
 
     image_url = _build_item_image_url(item)
-    library_tag = _extract_library_tag(item.path)
+    library_tag = await _extract_library_tag(item.path, session)
     series_info = _build_series_info(item)
 
     msg_parts: list[str] = [f"🎬 <b>名称：</b><code>{item.name}</code>"]

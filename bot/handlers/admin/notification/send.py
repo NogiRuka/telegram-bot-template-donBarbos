@@ -127,7 +127,7 @@ async def execute_send_all(
                 fail_count += 1
                 continue
 
-            msg_text, image_url = get_notification_content(item)
+            msg_text, image_url = await get_notification_content(item, session)
 
             # 合并目标频道：配置的频道 + 通知原有的target_channel_id
             all_target_chat_ids = list(target_chat_ids)  # 从配置获取的频道

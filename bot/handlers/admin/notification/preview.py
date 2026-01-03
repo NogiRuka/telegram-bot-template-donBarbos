@@ -107,7 +107,7 @@ async def handle_notify_preview(
     preview_data = {}
 
     for notif, item in rows:
-        msg_text, image_url = get_notification_content(item)
+        msg_text, image_url = await get_notification_content(item, session)
 
         # 创建操作键盘
         status_text = "🔄 " + ("更新中" if item.status == "Continuing" else "已完结")
@@ -225,7 +225,7 @@ async def handle_item_status_toggle(
 
         # 5. 更新界面
         # 重新生成文案
-        msg_text, _ = get_notification_content(item)
+        msg_text, _ = await get_notification_content(item, session)
 
         # 重新生成键盘
         status_text = "🔄 " + ("已完结" if item.status == "Ended" else "更新中")
