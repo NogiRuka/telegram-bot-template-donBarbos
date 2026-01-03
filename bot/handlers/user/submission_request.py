@@ -38,7 +38,7 @@ async def start_request(callback: CallbackQuery, state: FSMContext, session: Asy
     for i in range(0, len(categories), 5):
         row = categories[i:i + 5]
         line = "   ".join(
-            f"{c.id}\. {escape_markdown_v2(c.name)}"
+            f"{c.id}\\. {escape_markdown_v2(c.name)}"
             for c in row
         )
         lines.append(line)
@@ -54,7 +54,8 @@ async def start_request(callback: CallbackQuery, state: FSMContext, session: Asy
         "第4行：其他备注（可选）`\n\n"
         "*📂 可用分类：*\n"
         f"{cat_text}\n\n"
-        "💡 *提示：* 您也可以直接发送标题，系统会自动分类"
+        "💡 *提示：* 您也可以直接发送标题，系统会自动分类\n"
+        "📷 *支持图片：* 您可以发送图片，文字放在图片说明中"
     )
     
     # 创建键盘
@@ -75,7 +76,7 @@ async def process_request(message: Message, state: FSMContext, session: AsyncSes
     await main_msg.delete_input(message)
     
     # 获取文本内容
-    text = message.text
+    text = message.text or message.caption
     if not text:
         await send_toast(message, "⚠️ 请输入文本内容")
         return
@@ -92,29 +93,37 @@ async def process_request(message: Message, state: FSMContext, session: AsyncSes
             type="request",
             category_id=parsed["category_id"],
             status="pending",
-            reward_base=2,  # 求片基础奖励
+            reward_base=0,  # 求片不发放奖励
             reward_bonus=0,
             submitter_id=user_id,
             extra={
                 "submitted_by": user_id,
                 "submission_type": "request",
-                "source": "user_direct"
+                "source": "user_direct",
+                "has_image": bool(message.photo),
+                "message_type": "photo" if message.photo else "text"
             }
         )
         
         session.add(submission)
         await session.flush()  # 获取ID
         
-        # 发放基础奖励
-        await CurrencyService.add_currency(
-            session=session,
-            user_id=user_id,
-            amount=2,
-            event_type="request_submit",
-            description=f"求片提交 #{submission.id} 奖励"
-        )
-        
-        await session.commit()
+        # 如果有图片，保存图片信息
+        if message.photo:
+            photo = message.photo[-1]  # 获取最高质量图片
+            file = await message.bot.get_file(photo.file_id)
+            
+            # 更新extra字段保存图片信息
+            submission.extra.update({
+                "photo_file_id": photo.file_id,
+                "photo_file_unique_id": photo.file_unique_id,
+                "photo_width": photo.width,
+                "photo_height": photo.height,
+                "file_path": file.file_path
+            })
+            await session.commit()
+        else:
+            await session.commit()
         
         # 发送群组通知
         try:
@@ -134,15 +143,29 @@ async def process_request(message: Message, state: FSMContext, session: AsyncSes
                 f"🏷️ {escape_markdown_v2(parsed['category_name'])}"
             )
             
-            await send_group_notification(message.bot, user_info, reason)
+            # 如果有图片，发送图片通知
+            if message.photo:
+                photo = message.photo[-1]
+                try:
+                    from bot.utils.msg_group import send_group_photo_notification
+                    await send_group_photo_notification(
+                        message.bot, 
+                        photo.file_id,
+                        user_info, 
+                        reason
+                    )
+                except Exception as e:
+                    logger.warning(f"发送图片通知失败: {e}")
+                    await send_group_notification(message.bot, user_info, reason)
+            else:
+                await send_group_notification(message.bot, user_info, reason)
         except Exception as e:
             logger.warning(f"发送群组通知失败: {e}")
         
         success_text = (
             f"✅ *求片成功\\!*\n\n"
             f"📽️ 标题：{escape_markdown_v2(submission.title)}\n"
-            f"🏷️ 分类：{escape_markdown_v2(parsed['category_name'])}\n"
-            f"🎁 奖励：\\+2 {escape_markdown_v2(CURRENCY_SYMBOL)} 已发放\n\n"
+            f"🏷️ 分类：{escape_markdown_v2(parsed['category_name'])}\n\n"
             f"⏳ 请耐心等待管理员审核..."
         )
         

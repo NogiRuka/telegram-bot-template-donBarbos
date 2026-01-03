@@ -76,6 +76,11 @@ async def my_submissions(callback: CallbackQuery, session: AsyncSession, main_ms
             f"📅 {submission.created_at.strftime('%Y-%m-%d %H:%M')}"
         )
         
+        # 检查是否有图片
+        has_image = submission.extra and submission.extra.get("has_image", False)
+        if has_image:
+            line += " · 📷"
+        
         if submission.reward_base > 0 or submission.reward_bonus > 0:
             total_reward = submission.reward_base + submission.reward_bonus
             line += f" · 🎁 +{total_reward}"

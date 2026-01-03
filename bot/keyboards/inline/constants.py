@@ -25,7 +25,7 @@ USER_SUBMISSION_LABEL = "📝 求片/投稿"
 USER_SUBMISSION_CALLBACK_DATA = "user:submission"
 
 # 问答投稿（保留兼容）
-USER_QUIZ_SUBMIT_LABEL = "📝 问答投稿"
+USER_QUIZ_SUBMIT_LABEL = "✍️ 问答投稿"
 USER_QUIZ_SUBMIT_CALLBACK_DATA = "user:quiz:submit"
 
 # 账号中心

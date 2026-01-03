@@ -38,7 +38,7 @@ async def start_submit(callback: CallbackQuery, state: FSMContext, session: Asyn
     for i in range(0, len(categories), 5):
         row = categories[i:i + 5]
         line = "   ".join(
-            f"{c.id}\. {escape_markdown_v2(c.name)}"
+            f"{c.id}\\. {escape_markdown_v2(c.name)}"
             for c in row
         )
         lines.append(line)
@@ -54,7 +54,8 @@ async def start_submit(callback: CallbackQuery, state: FSMContext, session: Asyn
         "第4行：其他备注（可选）`\n\n"
         "*📂 可用分类：*\n"
         f"{cat_text}\n\n"
-        "💡 *提示：* 优质内容通过审核后可获得奖励"
+        "💡 *提示：* 优质内容通过审核后可获得奖励\n"
+        "📷 *支持图片：* 您可以发送图片，文字放在图片说明中"
     )
     
     # 创建键盘
@@ -75,7 +76,7 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
     await main_msg.delete_input(message)
     
     # 获取文本内容
-    text = message.text
+    text = message.text or message.caption
     if not text:
         await send_toast(message, "⚠️ 请输入文本内容")
         return
@@ -98,12 +99,28 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
             extra={
                 "submitted_by": user_id,
                 "submission_type": "submit",
-                "source": "user_direct"
+                "source": "user_direct",
+                "has_image": bool(message.photo),
+                "message_type": "photo" if message.photo else "text"
             }
         )
         
         session.add(submission)
         await session.flush()  # 获取ID
+        
+        # 如果有图片，保存图片信息
+        if message.photo:
+            photo = message.photo[-1]  # 获取最高质量图片
+            file = await message.bot.get_file(photo.file_id)
+            
+            # 更新extra字段保存图片信息
+            submission.extra.update({
+                "photo_file_id": photo.file_id,
+                "photo_file_unique_id": photo.file_unique_id,
+                "photo_width": photo.width,
+                "photo_height": photo.height,
+                "file_path": file.file_path
+            })
         
         # 发放基础奖励
         await CurrencyService.add_currency(
@@ -134,7 +151,22 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
                 f"🏷️ {escape_markdown_v2(parsed['category_name'])}"
             )
             
-            await send_group_notification(message.bot, user_info, reason)
+            # 如果有图片，发送图片通知
+            if message.photo:
+                photo = message.photo[-1]
+                try:
+                    from bot.utils.msg_group import send_group_photo_notification
+                    await send_group_photo_notification(
+                        message.bot, 
+                        photo.file_id,
+                        user_info, 
+                        reason
+                    )
+                except Exception as e:
+                    logger.warning(f"发送图片通知失败: {e}")
+                    await send_group_notification(message.bot, user_info, reason)
+            else:
+                await send_group_notification(message.bot, user_info, reason)
         except Exception as e:
             logger.warning(f"发送群组通知失败: {e}")
         
