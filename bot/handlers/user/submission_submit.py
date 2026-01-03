@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.constants import CURRENCY_SYMBOL
 from bot.database.models import MediaCategoryModel, UserSubmissionModel
-from bot.keyboards.inline.buttons import BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON
+from bot.keyboards.inline.buttons import BACK_TO_USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import USER_SUBMISSION_CALLBACK_DATA
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
@@ -35,8 +35,8 @@ async def start_submit(callback: CallbackQuery, state: FSMContext, session: Asyn
     
     # 构建分类列表文本
     lines = []
-    for i in range(0, len(categories), 5):
-        row = categories[i:i + 5]
+    for i in range(0, len(categories), 6):
+        row = categories[i:i + 6]
         line = "   ".join(
             f"{c.id}\\. {escape_markdown_v2(c.name)}"
             for c in row
@@ -48,13 +48,11 @@ async def start_submit(callback: CallbackQuery, state: FSMContext, session: Asyn
     text = (
         "*✍️ 开始投稿*\n\n"
         "请发送您发现的优质内容，格式如下：\n\n"
-        "`第1行：内容标题（必填）\n"
+        "`第1行：内容标题\n"
         "第2行：分类ID（见下方列表）\n"
-        "第3行：详细描述（可选）\n"
-        "第4行：其他备注（可选）`\n\n"
+        "第3行：详细描述（资源链接，文件请私信给频道）`\n\n"
         "*📂 可用分类：*\n"
         f"{cat_text}\n\n"
-        "💡 *提示：* 优质内容通过审核后可获得奖励\n"
         "📷 *支持图片：* 您可以发送图片，文字放在图片说明中"
     )
     
@@ -136,9 +134,8 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
             }
             
             reason = (
-                f"提交了优质内容投稿（#{submission.id}）\n"
-                f"📽️ {escape_markdown_v2(submission.title)}\n"
-                f"🏷️ {escape_markdown_v2(parsed['category_name'])}"
+                f"提交了优质内容投稿（\\#{submission.id}）\n"
+                f"📽️ {escape_markdown_v2(submission.title)}"
             )
             
             await send_group_notification(message.bot, user_info, reason)
@@ -150,7 +147,7 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
             f"📽️ 标题：{escape_markdown_v2(submission.title)}\n"
             f"🏷️ 分类：{escape_markdown_v2(parsed['category_name'])}\n"
             f"🎁 奖励：\\+3 {escape_markdown_v2(CURRENCY_SYMBOL)} 已发放\n\n"
-            f"⏳ 请耐心等待管理员审核...\n"
+            f"⏳ 请耐心等待管理员审核\n"
             f"💡 审核通过后还将获得额外奖励"
         )
         
@@ -160,7 +157,7 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
         # 返回成功界面
         builder = InlineKeyboardBuilder()
         builder.button(text="✍️ 继续投稿", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:submit")
-        builder.button(text="📋 查看我的投稿", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:my_submissions")
+        builder.row(BACK_TO_USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON)
         
         await main_msg.render(user_id, success_text, builder.as_markup())
         

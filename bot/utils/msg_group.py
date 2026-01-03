@@ -74,8 +74,9 @@ async def send_group_notification(
         # 📖 FullName @Username Reason
         escaped_full_name = escape_markdown_v2(full_name)
         user_mention = to_mention(username)
+        escaped_reason = escape_markdown_v2(reason)
         
-        content = f"📖 `{escaped_full_name}` {user_mention} {reason}"
+        content = f"📖 `{escaped_full_name}` {user_mention} {escaped_reason}"
         msg_text = f"{tags}\n{content}"
 
         await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="MarkdownV2")
