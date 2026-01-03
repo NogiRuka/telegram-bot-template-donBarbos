@@ -118,9 +118,20 @@ async def show_submissions_page(callback: CallbackQuery, session: AsyncSession, 
         if submission.image_file_id:
             line += " · 📷"
         
-        if submission.reward_base > 0 or submission.reward_bonus > 0:
-            total_reward = submission.reward_base + submission.reward_bonus
-            line += f" · 🎁 \\+{total_reward}"
+        # 显示奖励信息
+        if submission.status == "approved":
+            # 审核通过后显示总奖励（基础奖励 + 额外奖励）
+            if submission.reward_base > 0 or submission.reward_bonus > 0:
+                total_reward = submission.reward_base + submission.reward_bonus
+                line += f" · 🎁 \\+{total_reward}"
+        elif submission.status == "pending":
+            # 待审核状态只显示已获得的基础奖励
+            if submission.reward_base > 0:
+                line += f" · 🎁 \\+{submission.reward_base}"
+        else:
+            # 其他状态（已拒绝等）显示已获得的基础奖励
+            if submission.reward_base > 0:
+                line += f" · 🎁 \\+{submission.reward_base}"
         
         lines.append(line)
         lines.append("")  # 空行分隔
