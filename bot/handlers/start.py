@@ -121,13 +121,13 @@ async def start_handler(
     try:
         # 构建首页文案与键盘
         caption, kb = await build_home_view(session, uid)
-        logger.debug(f"首页视图构建完成: user_id={uid}")
+        # logger.debug(f"首页视图构建完成: user_id={uid}")
 
         # 🚀 首次渲染必须带图片
         img = await MainImageService.select_main_image(session, uid)
         
         if img:
-            logger.info(f"获取到自定义主图: user_id={uid}, img_id={img.id}")
+            # logger.info(f"获取到自定义主图: user_id={uid}, img_id={img.id}")
             # 记录展示历史
             await MainImageService.record_display(session, uid, img.id)
 

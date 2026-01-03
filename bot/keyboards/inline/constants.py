@@ -23,6 +23,7 @@ PROFILE_MAIN_IMAGE_CALLBACK_DATA = "user:profile:main_image"
 # 求片/投稿
 USER_SUBMISSION_LABEL = "📝 求片/投稿"
 USER_SUBMISSION_CALLBACK_DATA = "user:submission"
+BACK_TO_USER_SUBMISSION_LABEL = "↩️ 返回求片/投稿"
 
 # 问答投稿（保留兼容）
 USER_QUIZ_SUBMIT_LABEL = "✍️ 问答投稿"

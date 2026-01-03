@@ -6,11 +6,9 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.constants import CURRENCY_SYMBOL
 from bot.database.models import MediaCategoryModel, UserSubmissionModel
-from bot.keyboards.inline.buttons import BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON
+from bot.keyboards.inline.buttons import BACK_TO_USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import USER_SUBMISSION_CALLBACK_DATA
-from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.user import UserRequestState
 from bot.utils.message import send_toast
@@ -35,8 +33,8 @@ async def start_request(callback: CallbackQuery, state: FSMContext, session: Asy
     
     # 构建分类列表文本
     lines = []
-    for i in range(0, len(categories), 5):
-        row = categories[i:i + 5]
+    for i in range(0, len(categories), 6):
+        row = categories[i:i + 6]
         line = "   ".join(
             f"{c.id}\\. {escape_markdown_v2(c.name)}"
             for c in row
@@ -46,15 +44,13 @@ async def start_request(callback: CallbackQuery, state: FSMContext, session: Asy
     cat_text = "\n".join(lines)
     
     text = (
-        "*📥 开始求片*\n\n"
+        "*📥 开始求片*\n"
         "请发送您想要的影片信息，格式如下：\n\n"
         "`第1行：影片标题（必填）\n"
         "第2行：分类ID（见下方列表）\n"
-        "第3行：详细描述（可选）\n"
-        "第4行：其他备注（可选）`\n\n"
+        "第3行：详细描述（豆瓣链接）`\n\n"
         "*📂 可用分类：*\n"
         f"{cat_text}\n\n"
-        "💡 *提示：* 您也可以直接发送标题，系统会自动分类\n"
         "📷 *支持图片：* 您可以发送图片，文字放在图片说明中"
     )
     
@@ -113,33 +109,11 @@ async def process_request(message: Message, state: FSMContext, session: AsyncSes
         await session.flush()  # 获取ID
         await session.commit()
         
-        # 发送群组通知
-        try:
-            from bot.utils.msg_group import send_group_notification
-            
-            user_info = {
-                "user_id": str(user_id),
-                "username": message.from_user.username or "Unknown",
-                "full_name": message.from_user.full_name,
-                "group_name": "UserRequest",
-                "action": "Submit",
-            }
-            
-            reason = (
-                f"提交了求片请求（#{submission.id}）\n"
-                f"📽️ {escape_markdown_v2(submission.title)}\n"
-                f"🏷️ {escape_markdown_v2(parsed['category_name'])}"
-            )
-            
-            await send_group_notification(message.bot, user_info, reason)
-        except Exception as e:
-            logger.warning(f"发送群组通知失败: {e}")
-        
         success_text = (
             f"✅ *求片成功\\!*\n\n"
             f"📽️ 标题：{escape_markdown_v2(submission.title)}\n"
             f"🏷️ 分类：{escape_markdown_v2(parsed['category_name'])}\n\n"
-            f"⏳ 请耐心等待管理员审核..."
+            f"⏳ 请耐心等待管理员审核"
         )
         
         # 退出状态
@@ -148,8 +122,7 @@ async def process_request(message: Message, state: FSMContext, session: AsyncSes
         # 返回成功界面
         builder = InlineKeyboardBuilder()
         builder.button(text="📥 继续求片", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:request")
-        builder.button(text="📋 查看我的求片", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:my_submissions")
-        builder.row(BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON)
+        builder.row(BACK_TO_USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON)
         
         await main_msg.render(user_id, success_text, builder.as_markup())
         

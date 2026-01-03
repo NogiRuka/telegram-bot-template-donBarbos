@@ -99,7 +99,7 @@ async def show_submissions_page(callback: CallbackQuery, session: AsyncSession, 
                 desc_text += "…"
 
         line = (
-            f"{status_icon} {type_icon} *\\#{submission.id}* {escape_markdown_v2(submission.title)}\n"
+            f"{status_icon} {type_icon} *\\#{submission.id}* `{escape_markdown_v2(submission.title)}`\n"
             f"🏷️ {escape_markdown_v2(category.name)} · {escape_markdown_v2(status_text)}\n"
             f"📅 {escape_markdown_v2(submission.created_at.strftime('%Y-%m-%d %H:%M'))}"
         )

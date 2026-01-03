@@ -18,11 +18,7 @@ async def start_submission(callback: CallbackQuery, state: FSMContext, session: 
     
     text = (
         "*📝 求片/投稿中心*\n\n"
-        "请选择您要进行的操作：\n\n"
-        f"📥 *开始求片* {escape_markdown_v2('-')} 提交您想要的影片\n"
-        f"✍️ *开始投稿* {escape_markdown_v2('-')} 提交您发现的优质内容\n"
-        f"📝 *问答投稿* {escape_markdown_v2('-')} 为题库贡献题目\n"
-        f"📋 *我的求片/投稿* {escape_markdown_v2('-')} 查看您的提交记录"
+        "请选择您要进行的操作："
     )
     
     # 创建键盘
@@ -32,7 +28,7 @@ async def start_submission(callback: CallbackQuery, state: FSMContext, session: 
     builder.button(text="📝 问答投稿", callback_data="user:quiz:submit")  # 保留原有的问答投稿入口
     builder.button(text="📋 我的求片/投稿", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:my_submissions")
     builder.row(BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON)
-    builder.adjust(1)  # 每行一个按钮
+    builder.adjust(2)  # 每行两个按钮
     
     await main_msg.update_on_callback(callback, text, builder.as_markup())
     await callback.answer()

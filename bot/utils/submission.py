@@ -87,10 +87,6 @@ async def parse_request_input(session: AsyncSession, text: str) -> dict:
     if len(lines) >= 3:
         description = lines[2]
     
-    # 解析其他备注（可选）
-    if len(lines) >= 4:
-        description += f"\n\n备注：{lines[3]}"
-    
     return {
         "title": title,
         "category_id": category_id,
