@@ -11,6 +11,7 @@ from .emby_user_history import EmbyUserHistoryModel
 from .group_config import GroupConfigModel, GroupType, MessageSaveMode
 from .hitokoto import HitokotoModel
 from .main_image import MainImageModel, MainImageScheduleModel
+from .media_category import MediaCategoryModel
 from .media_file import MediaFileModel
 from .message import MessageModel, MessageType
 from .library_new_notification import LibraryNewNotificationModel
@@ -39,6 +40,7 @@ __all__ = [
     "HitokotoModel",
     "MainImageModel",
     "MainImageScheduleModel",
+    "MediaCategoryModel",
     "MediaFileModel",
     "MessageModel",
     "LibraryNewNotificationModel",

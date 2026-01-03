@@ -10,8 +10,7 @@ from bot.core.constants import (
     NOTIFICATION_STATUS_PENDING_REVIEW,
     NOTIFICATION_STATUS_REJECTED,
 )
-from bot.config.constants import KEY_ADMIN_MEDIA_CATEGORIES
-from bot.services.config_service import get_config
+from bot.database.seed_media_categories import get_enabled_categories
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,13 +66,13 @@ async def _extract_library_tag(path: str | None, session: AsyncSession | None = 
 
     功能说明:
     - 兼容 Windows 路径分隔符
-    - 优先从数据库获取媒体库分类设置
+    - 从媒体库分类数据表获取分类列表
     - 约定目录包含 "钙片/剧集/电影" 时生成对应 tag
     - 路径包含 "钙片/其他" 时返回 "国产"
 
     输入参数:
     - path: 文件路径或 None
-    - session: 异步数据库会话（可选，用于获取数据库配置）
+    - session: 异步数据库会话（可选，用于获取分类数据）
 
     返回值:
     - str: 标签字符串, 不存在返回空串
@@ -84,13 +83,11 @@ async def _extract_library_tag(path: str | None, session: AsyncSession | None = 
 
     parts = [p for p in path.replace("\\", "/").split("/") if p]
     
-    # 优先从数据库获取分类设置
+    # 从数据表获取启用的分类列表
     media_categories = []
     if session:
         try:
-            config_value = await get_config(session, KEY_ADMIN_MEDIA_CATEGORIES)
-            if config_value and isinstance(config_value, list):
-                media_categories = config_value
+            media_categories = await get_enabled_categories(session)
         except Exception:
             # 数据库获取失败时使用默认值
             media_categories = ["剧集", "电影", "动漫", "国产", "日韩", "欧美"]
@@ -108,7 +105,7 @@ async def _extract_library_tag(path: str | None, session: AsyncSession | None = 
             return f"#{next_part}"
         return ""
 
-    # 检查路径中是否包含数据库配置的分类
+    # 检查路径中是否包含数据表的分类
     for category in media_categories:
         if category in parts:
             return f"#{category}"
