@@ -134,7 +134,7 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
             }
             
             reason = (
-                f"提交了优质内容投稿（\\#{submission.id}）\n"
+                f"提交了优质内容投稿（{escape_markdown_v2(f'\\#{submission.id}')}）\n"
                 f"📽️ {escape_markdown_v2(submission.title)}"
             )
             
