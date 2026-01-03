@@ -99,28 +99,18 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
             extra={
                 "submitted_by": user_id,
                 "submission_type": "submit",
-                "source": "user_direct",
-                "has_image": bool(message.photo),
-                "message_type": "photo" if message.photo else "text"
+                "source": "user_direct"
             }
         )
         
-        session.add(submission)
-        await session.flush()  # 获取ID
-        
-        # 如果有图片，保存图片信息
+        # 如果有图片，保存图片信息到专用字段
         if message.photo:
             photo = message.photo[-1]  # 获取最高质量图片
-            file = await message.bot.get_file(photo.file_id)
-            
-            # 更新extra字段保存图片信息
-            submission.extra.update({
-                "photo_file_id": photo.file_id,
-                "photo_file_unique_id": photo.file_unique_id,
-                "photo_width": photo.width,
-                "photo_height": photo.height,
-                "file_path": file.file_path
-            })
+            submission.image_file_id = photo.file_id
+            submission.image_file_unique_id = photo.file_unique_id
+        
+        session.add(submission)
+        await session.flush()  # 获取ID
         
         # 发放基础奖励
         await CurrencyService.add_currency(
@@ -151,22 +141,7 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
                 f"🏷️ {escape_markdown_v2(parsed['category_name'])}"
             )
             
-            # 如果有图片，发送图片通知
-            if message.photo:
-                photo = message.photo[-1]
-                try:
-                    from bot.utils.msg_group import send_group_photo_notification
-                    await send_group_photo_notification(
-                        message.bot, 
-                        photo.file_id,
-                        user_info, 
-                        reason
-                    )
-                except Exception as e:
-                    logger.warning(f"发送图片通知失败: {e}")
-                    await send_group_notification(message.bot, user_info, reason)
-            else:
-                await send_group_notification(message.bot, user_info, reason)
+            await send_group_notification(message.bot, user_info, reason)
         except Exception as e:
             logger.warning(f"发送群组通知失败: {e}")
         
