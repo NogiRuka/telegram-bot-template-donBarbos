@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .router import router
-from bot.database.models import MediaCategoryModel, UserSubmissionModel
+from bot.database.models import MediaCategoryModel, UserSubmissionModel, UserModel
 from bot.database.models.user_submission import UserSubmissionModel
 from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, CLOSE_BUTTON
 from bot.services.main_message import MainMessageService
@@ -109,8 +109,9 @@ async def list_submissions_for_review(
 
     # 查询待审核投稿
     stmt = (
-        select(UserSubmissionModel, MediaCategoryModel)
+        select(UserSubmissionModel, MediaCategoryModel, UserModel)
         .join(MediaCategoryModel, UserSubmissionModel.category_id == MediaCategoryModel.id, isouter=True)
+        .join(UserModel, UserSubmissionModel.submitter_id == UserModel.id, isouter=True)
         .where(UserSubmissionModel.status == "pending")
         .order_by(UserSubmissionModel.created_at.desc())
         .offset((page - 1) * limit)
@@ -131,7 +132,7 @@ async def list_submissions_for_review(
         return
 
     new_msg_ids = []
-    for submission, category in submissions:
+    for submission, category, user in submissions:
         try:
             # 构建投稿内容
             category_name = category.name if category else "未分类"
@@ -140,11 +141,17 @@ async def list_submissions_for_review(
 
             # 构建标题和基本信息
             title = escape_markdown_v2(submission.title)
+            
+            # 构建用户显示字符串
+            user_display = f"`{submission.submitter_id}`"
+            if user and user.username:
+                user_display += f" @{escape_markdown_v2(user.username)}"
+
             caption = (
                 f"*{type_icon} {status_icon} 投稿审核 \\#{submission.id}*\n"
                 f"📽️ 标题：`{title}`\n"
                 f"🏷️ 分类：{escape_markdown_v2(category_name)}\n"
-                f"👤 投稿者ID：`{submission.submitter_id}`\n"
+                f"👤 投稿者ID：{user_display}\n"
             )
 
             # 添加描述（如果有）
