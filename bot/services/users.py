@@ -489,7 +489,7 @@ async def create_and_bind_emby_user(
         ext = res_ext.scalar_one_or_none()
         if ext and getattr(ext, "emby_user_id", None):
             current_emby_id = ext.emby_user_id
-            
+
             # 检查账号是否为软删除状态 (如果存在且未删除，则阻止创建)
             stmt_check = _select(EmbyUserModel).where(
                 EmbyUserModel.emby_user_id == current_emby_id,
@@ -504,13 +504,13 @@ async def create_and_bind_emby_user(
 
             # 账号已软删除或不存在，执行归档并允许重新注册
             logger.info("ℹ️ 检测到残留的软删除/无效账号，执行归档并重新注册: user_id={} old_id={}", user_id, current_emby_id)
-            
+
             extra = dict(ext.extra_data) if ext.extra_data else {}
             archived = extra.get("archived_emby_ids", [])
             if current_emby_id not in archived:
                 archived.append(current_emby_id)
             extra["archived_emby_ids"] = archived
-            
+
             ext.extra_data = extra
             ext.emby_user_id = None
 
@@ -570,10 +570,12 @@ async def has_emby_account(session: AsyncSession, user_id: int) -> bool:
     返回值:
     - bool: True 表示已绑定
     """
+    # 检查是否关联了 Emby 账号
     stmt = (
-        select(UserExtendModel.emby_user_id)
-        .join(EmbyUserModel, UserExtendModel.emby_user_id == EmbyUserModel.emby_user_id)
-        .where(UserExtendModel.user_id == user_id, EmbyUserModel.is_deleted == False)
+        select(EmbyUserModel)
+        .join(UserExtendModel, UserExtendModel.emby_user_id == EmbyUserModel.emby_user_id)
+        .where(UserExtendModel.user_id == user_id)
+        .where(EmbyUserModel.is_deleted == False)
     )
     res = await session.execute(stmt)
     emby_id = res.scalar_one_or_none()

@@ -1,11 +1,9 @@
+
 from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Union
-
-from bot.utils.message import safe_delete_message, send_toast
 
 from .router import router
 from bot.config.constants import (
@@ -29,6 +27,7 @@ from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from bot.services.config_service import get_config, set_config
 from bot.services.main_message import MainMessageService
 from bot.states.admin import QuizAdminState
+from bot.utils.message import send_toast
 from bot.utils.permissions import require_admin_feature
 
 
@@ -40,7 +39,7 @@ async def get_trigger_menu_content(session: AsyncSession):
     schedule_time = await get_config(session, KEY_QUIZ_SCHEDULE_TIME)
 
     sch_status = "🟢 开启" if schedule_enabled else "🔴 关闭"
-    
+
     sch_time_display = "未设置"
     if schedule_time:
         parts = schedule_time.split(",")
@@ -61,7 +60,7 @@ async def get_trigger_menu_content(session: AsyncSession):
         f"🕒 定时触发时间：*{sch_time_display}*\n\n"
         "💡 请选择要修改的设置项："
     ).replace(".", "\\.")
-    
+
     return text, get_quiz_trigger_keyboard()
 
 
@@ -106,7 +105,7 @@ async def show_schedule_menu(callback: CallbackQuery, session: AsyncSession, mai
 
     if enabled is None:
         enabled = False
-    
+
     if not time_str:
         time_str = "未设置"
     else:
@@ -124,13 +123,13 @@ async def show_schedule_menu(callback: CallbackQuery, session: AsyncSession, mai
                 # 长度不符或非数字，原样保留
                 formatted.append(part)
         time_str = ", ".join(formatted)
-    
+
     target_display = "全部用户"
     if target_type == "fixed" and target_count is not None:
         target_display = f"固定 {target_count} 人（活跃\\+随机）"
 
     status_text = "🟢 开启" if enabled else "🔴 关闭"
-    
+
     text = (
         "⏰ *定时触发设置*\n\n"
         f"状态：{status_text}\n"
@@ -178,10 +177,10 @@ async def ask_setting_value(callback: CallbackQuery, state: FSMContext, main_msg
     }
 
     await state.set_state(QuizAdminState.waiting_for_setting_value)
-    
+
     kb = InlineKeyboardBuilder()
     kb.button(text="❌ 取消", callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":cancel_input")
-    
+
     await main_msg.update_on_callback(callback, prompts.get(setting_type, "请输入新值"), kb.as_markup())
     await callback.answer()
 
@@ -240,7 +239,7 @@ async def toggle_schedule(callback: CallbackQuery, session: AsyncSession, main_m
     """切换定时任务开关"""
     current = await get_config(session, KEY_QUIZ_SCHEDULE_ENABLE)
     if current is None: current = False
-        
+
     new_status = not current
     await set_config(session, KEY_QUIZ_SCHEDULE_ENABLE, new_status, ConfigType.BOOLEAN, operator_id=callback.from_user.id)
     await show_schedule_menu(callback, session, main_msg)
@@ -276,7 +275,7 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
         elif setting_type == "timeout":
             val = int(value_str)
             await set_config(session, KEY_QUIZ_SESSION_TIMEOUT, val, ConfigType.INTEGER, operator_id=user_id)
-        
+
         # 定时参数
         elif setting_type == "schedule_set_time":
             # 支持多个时间，逗号分隔
@@ -294,7 +293,7 @@ async def process_setting_value(message: Message, state: FSMContext, session: As
                 if not (0 <= h < 24 and 0 <= m < 60 and 0 <= s < 60):
                     await send_toast(message, f"⚠️ 时间数值不合法: {part}")
                     return
-            
+
             # 保存处理后的字符串(去空格)
             final_value = ",".join(time_parts)
             await set_config(session, KEY_QUIZ_SCHEDULE_TIME, final_value, ConfigType.STRING, operator_id=user_id)

@@ -4,23 +4,21 @@ from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.keyboards.inline.buttons import BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON
+from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, BACK_TO_PROFILE_BUTTON
 from bot.keyboards.inline.constants import USER_SUBMISSION_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
-from bot.states.user import UserSubmissionState
-from bot.utils.text import escape_markdown_v2
 
 router = Router(name="user_submission")
 
 @router.callback_query(F.data == USER_SUBMISSION_CALLBACK_DATA)
 async def start_submission(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
     """开始求片/投稿主界面"""
-    
+
     text = (
         "*📝 求片/投稿中心*\n\n"
         "请选择您要进行的操作："
     )
-    
+
     # 创建键盘
     builder = InlineKeyboardBuilder()
     builder.button(text="🔍 开始求片", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:request")
@@ -29,6 +27,6 @@ async def start_submission(callback: CallbackQuery, state: FSMContext, session: 
     builder.button(text="📋 我的求片/投稿", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:my_submissions")
     builder.row(BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON)
     builder.adjust(2)  # 每行两个按钮
-    
+
     await main_msg.update_on_callback(callback, text, builder.as_markup())
     await callback.answer()

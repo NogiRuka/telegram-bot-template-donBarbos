@@ -58,9 +58,9 @@ async def toggle_global_enable(callback: CallbackQuery, session: AsyncSession, s
     current = await get_config(session, KEY_QUIZ_GLOBAL_ENABLE)
     if current is None:
         current = True
-    
+
     new_status = not current
     await set_config(session, KEY_QUIZ_GLOBAL_ENABLE, new_status, ConfigType.BOOLEAN, operator_id=callback.from_user.id)
-    
+
     # 刷新菜单
     await show_quiz_menu(callback, session, state, main_msg)

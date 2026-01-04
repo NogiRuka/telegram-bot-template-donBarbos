@@ -15,15 +15,15 @@ from bot.keyboards.inline.admin import (
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.states.admin import QuizAdminState
+from bot.utils.datetime import now
 from bot.utils.message import send_toast
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2
-from bot.utils.datetime import now
 
 
 async def render_category_list(session: AsyncSession, main_msg: MainMessageService, user_id: int) -> None:
     """渲染分类列表"""
-    stmt = select(QuizCategoryModel).where(QuizCategoryModel.is_deleted == False).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
+    stmt = select(QuizCategoryModel).where(not QuizCategoryModel.is_deleted).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
     categories = (await session.execute(stmt)).scalars().all()
 
     text = "*🏷️ 分类管理*\n\n点击分类进行编辑或管理。"
@@ -157,7 +157,7 @@ async def edit_category_process(message: Message, state: FSMContext, session: As
 async def toggle_category(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """切换分类状态"""
     cat_id = int(callback.data.split(":")[-1])
-    stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, QuizCategoryModel.is_deleted == False)
+    stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, not QuizCategoryModel.is_deleted)
     cat = (await session.execute(stmt)).scalar_one_or_none()
 
     if cat:

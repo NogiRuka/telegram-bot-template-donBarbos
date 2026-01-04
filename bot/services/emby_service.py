@@ -412,7 +412,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
         # 找出在 API 中存在但在 existing_map (活跃用户) 中不存在的用户 ID
         potential_new_ids = [eid for eid in api_user_map if eid not in existing_map]
         restorable_map: dict[str, EmbyUserModel] = {}
-        
+
         if potential_new_ids:
             # 批量查询这些 ID 是否存在于数据库中 (包括软删除的)
             # 注意: 如果 ID 很多，这里可能需要分批处理，但通常 Emby 用户数不会太多
@@ -447,7 +447,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                         remark=model.remark,
                     )
                 )
-                
+
                 # 不真正删除，而是标记为软删除
                 if not model.is_deleted:
                     model.is_deleted = True
@@ -459,7 +459,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
         for eid, it in api_user_map.items():
 
             model = existing_map.get(eid)
-            
+
             # 如果是活跃用户表中不存在，检查是否可以恢复
             if model is None and eid in restorable_map:
                 model = restorable_map[eid]
@@ -470,7 +470,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 model.remark = "Emby 同步: 账号重新出现 (自动恢复)"
                 # 放入 existing_map 以便后续走统一的更新逻辑
                 existing_map[eid] = model
-            
+
             if model is None:
                 name = str(it.get("Name") or "")
                 date_created = parse_iso_datetime(it.get("DateCreated"))
@@ -769,7 +769,7 @@ async def cleanup_devices_by_policy(
         if tid:
             skips.add(tid)
 
-        # 2. 获取所有用户 (排除软删除的)
+        # 获取所有非删除状态的用户映射
         stmt = select(EmbyUserModel).where(EmbyUserModel.is_deleted == False)
         result = await session.execute(stmt)
         users = result.scalars().all()
@@ -1028,7 +1028,7 @@ async def update_user_blocked_tags(
 
 async def run_emby_sync(session: AsyncSession) -> None:
     """运行 Emby 数据同步与清理
-    
+
     功能说明:
     1. 同步用户
     2. 同步设备
@@ -1048,15 +1048,15 @@ async def start_scheduler(bot: Bot) -> None:
     """启动 Emby 定时同步调度器"""
     logger.info("⏰ [Emby同步] 调度器启动")
     from bot.database.database import sessionmaker
-    
+
     while True:
         try:
             await asyncio.sleep(1)
-            
+
             # 获取当前时间 HH:MM
             now_str = now().strftime("%H:%M")
             target_time = settings.EMBY_SYNC_TIME
-            
+
             # 秒数归零时检查，避免一分钟内重复触发
             if datetime.now().second == 0 and now_str == target_time:
                 logger.info(f"⏰ [Emby同步] 时间匹配 ({now_str})，触发同步任务")
@@ -1064,7 +1064,7 @@ async def start_scheduler(bot: Bot) -> None:
                      await run_emby_sync(session)
                 # 等待一分钟跳过当前时间点
                 await asyncio.sleep(60)
-                
+
         except asyncio.CancelledError:
             break
         except Exception as e:

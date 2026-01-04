@@ -89,7 +89,7 @@ async def main() -> None:
 
     try:
         await dp.start_polling(
-            bot, 
+            bot,
             # 显式允许 chat_member 类型的更新
             allowed_updates=["message", "callback_query", "chat_member", "my_chat_member"]
         )

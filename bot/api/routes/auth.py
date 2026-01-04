@@ -4,7 +4,6 @@
 """
 
 from __future__ import annotations
-
 import base64
 import hashlib
 import hmac
@@ -53,7 +52,7 @@ def create_jwt(data: dict, secret: str) -> str:
 
     header_b64 = base64url_encode(json.dumps(header).encode("utf-8"))
     payload_b64 = base64url_encode(json.dumps(payload).encode("utf-8"))
-    
+
     signature_input = f"{header_b64}.{payload_b64}"
     signature = hmac.new(
         secret.encode("utf-8"),
@@ -61,7 +60,7 @@ def create_jwt(data: dict, secret: str) -> str:
         hashlib.sha256
     ).digest()
     signature_b64 = base64url_encode(signature)
-    
+
     return f"{signature_input}.{signature_b64}"
 
 def verify_jwt(token: str, secret: str) -> dict | None:
@@ -69,27 +68,27 @@ def verify_jwt(token: str, secret: str) -> dict | None:
         parts = token.split(".")
         if len(parts) != 3:
             return None
-            
+
         header_b64, payload_b64, signature_b64 = parts
         signature_input = f"{header_b64}.{payload_b64}"
-        
+
         expected_signature = hmac.new(
             secret.encode("utf-8"),
             signature_input.encode("utf-8"),
             hashlib.sha256
         ).digest()
-        
+
         if base64url_encode(expected_signature) != signature_b64:
             return None
-            
+
         # Decode payload
         payload_json = base64.urlsafe_b64decode(payload_b64 + "==").decode("utf-8")
         payload = json.loads(payload_json)
-        
+
         # Check expiration
         if "exp" in payload and payload["exp"] < time.time():
             return None
-            
+
         return payload
     except Exception:
         return None
@@ -99,15 +98,15 @@ async def login(form_data: LoginRequest):
     """
     用户登录
     """
-    input_identifier = form_data.email or "" 
+    input_identifier = form_data.email or ""
     input_password = form_data.password
-    
+
     # 验证逻辑：用户名或邮箱匹配，且密码正确
     is_username_match = (input_identifier == HARDCODED_USERNAME)
-    is_email_match = (input_identifier == HARDCODED_EMAIL) or (input_identifier == "admin")
-    
+    is_email_match = input_identifier in (HARDCODED_EMAIL, "admin")
+
     is_valid = (is_username_match or is_email_match) and (input_password == HARDCODED_PASSWORD)
-        
+
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -116,7 +115,7 @@ async def login(form_data: LoginRequest):
         )
 
     access_token = create_jwt({"sub": str(HARDCODED_USER_ID)}, SECRET_KEY)
-    
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -139,11 +138,11 @@ async def read_users_me(token: Annotated[str, Depends(oauth2_scheme)]):
     payload = verify_jwt(token, SECRET_KEY)
     if not payload:
         raise HTTPException(status_code=401, detail="无效的凭证")
-        
+
     user_id = payload.get("sub")
     if user_id != str(HARDCODED_USER_ID):
          raise HTTPException(status_code=401, detail="无效的凭证")
-        
+
     return {
         "id": HARDCODED_USER_ID,
         "email": HARDCODED_EMAIL,

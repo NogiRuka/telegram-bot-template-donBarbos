@@ -12,17 +12,13 @@ from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.models import UserSubmissionModel, MediaCategoryModel
+from .router import router
+from bot.database.models import MediaCategoryModel, UserSubmissionModel
 from bot.database.models.user_submission import UserSubmissionModel
 from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, CLOSE_BUTTON
-from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
-from bot.utils.message import delete_message, clear_message_list_from_state
+from bot.utils.message import clear_message_list_from_state
 from bot.utils.text import escape_markdown_v2
-from bot.core.constants import CURRENCY_SYMBOL
-
-from .router import router
-from .states import NotificationReviewStates
 
 # 回调数据前缀
 SUBMISSION_REVIEW_CALLBACK_DATA = "admin:submission_review"
@@ -46,7 +42,7 @@ def get_submission_review_pagination_keyboard(page: int, total_pages: int, limit
         )
     else:
         builder.button(text="⛔️", callback_data="ignore")
-    
+
     # 页码指示 (Toggle limit)
     next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
     builder.button(
@@ -62,15 +58,15 @@ def get_submission_review_pagination_keyboard(page: int, total_pages: int, limit
         )
     else:
         builder.button(text="⛔️", callback_data="ignore")
-    
+
     builder.adjust(3)
-    
+
     # 返回按钮
     builder.row(
         InlineKeyboardButton(text="🔙 返回通知面板", callback_data="admin:new_item_notification"),
         BACK_TO_HOME_BUTTON
     )
-    
+
     return builder.as_markup()
 
 
@@ -141,7 +137,7 @@ async def list_submissions_for_review(
             category_name = category.name if category else "未分类"
             status_icon = "⏳"  # pending
             type_icon = "📥" if submission.type == "submit" else "🔍"  # submit vs request
-            
+
             # 构建标题和基本信息
             title = escape_markdown_v2(submission.title)
             caption = (
@@ -150,23 +146,23 @@ async def list_submissions_for_review(
                 f"🏷️ 分类：{escape_markdown_v2(category_name)}\n"
                 f"👤 投稿者ID：`{submission.submitter_id}`\n"
             )
-            
+
             # 添加描述（如果有）
             if submission.description:
                 desc = escape_markdown_v2(submission.description[:200])
                 if len(submission.description) > 200:
                     desc += "…"
                 caption += f"📝 描述：{desc}\n"
-            
+
             # 添加奖励信息
             if submission.reward_base > 0 or submission.reward_bonus > 0:
                 caption += f"💰 奖励：基础\\+{submission.reward_base}"
                 if submission.reward_bonus > 0:
                     caption += f"，额外\\+{submission.reward_bonus}"
                 caption += "\n"
-            
+
             # 添加时间信息
-            date_str = escape_markdown_v2(submission.created_at.strftime('%Y-%m-%d %H:%M'))
+            date_str = escape_markdown_v2(submission.created_at.strftime("%Y-%m-%d %H:%M"))
             caption += f"📅 投稿时间：{date_str}"
 
             # 构建审核键盘
@@ -188,7 +184,7 @@ async def list_submissions_for_review(
                     reply_markup=keyboard,
                     parse_mode="MarkdownV2"
                 )
-            
+
             new_msg_ids.append(msg.message_id)
 
         except Exception as e:

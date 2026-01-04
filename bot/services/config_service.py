@@ -16,7 +16,6 @@ from bot.config import (
     USER_FEATURES_MAPPING,
 )
 from bot.core.config import settings
-from bot.database.models import QuizCategoryModel
 from bot.database.models.config import ConfigModel, ConfigType
 from bot.utils.datetime import now as get_now
 from bot.utils.datetime import parse_formatted_datetime

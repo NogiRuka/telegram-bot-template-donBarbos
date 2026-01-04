@@ -1,7 +1,7 @@
 import contextlib
 from math import ceil
 
-from aiogram import Bot, F
+from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy import func, select
@@ -18,7 +18,7 @@ from bot.keyboards.inline.admin import (
 from bot.keyboards.inline.constants import MAIN_IMAGE_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.utils.datetime import now
-from bot.utils.message import clear_message_list_from_state, safe_delete_message, send_toast
+from bot.utils.message import clear_message_list_from_state, safe_delete_message
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2, format_size
 
@@ -183,7 +183,7 @@ async def item_action(callback: CallbackQuery, session: AsyncSession) -> None:
         await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
 
 @router.callback_query(F.data == "delete_msg")
-async def handle_delete_msg_callback(callback: CallbackQuery):
+async def handle_delete_msg_callback(callback: CallbackQuery) -> None:
     """点击关闭按钮时删除提示消息"""
     try:
         await callback.message.delete()

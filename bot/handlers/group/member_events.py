@@ -22,6 +22,7 @@ router = Router(name="group_member_events")
 from bot.utils.msg_group import send_group_notification
 from bot.utils.text import escape_markdown_v2
 
+
 @router.chat_member(F.new_chat_member.status == ChatMemberStatus.MEMBER)
 async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> None:
     """
@@ -39,13 +40,13 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
                 is_match = True
         except (ValueError, TypeError):
             pass
-        
+
         if not is_match and event.chat.username:
             config_group = settings.GROUP.lstrip("@").lower()
             event_group = event.chat.username.lower()
             if config_group == event_group:
                 is_match = True
-        
+
         if not is_match:
             return
 
@@ -60,7 +61,7 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
         "action": "Join",
         "user_id": str(user.id)
     }
-    
+
     # 检查是否是被邀请加入
     join_reason = "加入了群组"
     if event.from_user and event.from_user.id != user.id:
@@ -72,8 +73,8 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
         join_reason = f"被 {inviter_name} 邀请加入群组"
 
     await send_group_notification(
-        event.bot, 
-        user_info, 
+        event.bot,
+        user_info,
         join_reason
     )
 
@@ -94,7 +95,7 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
                 is_match = True
         except (ValueError, TypeError):
             pass
-        
+
         # 2. 尝试匹配 Username (忽略大小写)
         if not is_match and event.chat.username:
             # settings.GROUP 可能是 @username，移除 @ 后对比
@@ -102,7 +103,7 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
             event_group = event.chat.username.lower()
             if config_group == event_group:
                 is_match = True
-        
+
         if not is_match:
             logger.warning(f"群组不匹配，忽略事件: config={settings.GROUP}, event_chat={event.chat.id}/{event.chat.username}")
             return
@@ -113,7 +114,7 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
     # 确定操作原因和执行者
     reason = "主动离开了群组"
     admin_id = None
-    
+
     if event.new_chat_member.status == ChatMemberStatus.KICKED:
         reason = "被管理员踢出/封禁"
         # 尝试获取执行踢出的管理员 (如果有)
@@ -131,7 +132,7 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
             "full_name": user.full_name,
             "action": "Kick" if event.new_chat_member.status == ChatMemberStatus.KICKED else "Leave"
         }
-        
+
         results = await ban_emby_user(
             session=session,
             target_user_id=user.id,
@@ -140,9 +141,9 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
             bot=event.bot,
             user_info=user_info
         )
-        
+
         logger.info(f"自动清理 Emby 账号执行结果: {user.id} - {results}")
-        
+
         await session.commit()
     except Exception as e:
         logger.error(f"自动清理 Emby 账号失败: {user.id} - {e}")

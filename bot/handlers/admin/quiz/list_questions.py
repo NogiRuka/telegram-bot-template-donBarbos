@@ -4,7 +4,6 @@ from math import ceil
 from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
-from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +17,7 @@ from bot.keyboards.inline.admin import (
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.utils.datetime import now
-from bot.utils.message import clear_message_list_from_state, safe_delete_message, send_toast
+from bot.utils.message import clear_message_list_from_state, safe_delete_message
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2
 
@@ -78,12 +77,12 @@ async def list_questions_view(callback: CallbackQuery, session: AsyncSession, ma
     new_msg_ids = []
     for item in items:
         cat_name = item.category.name if item.category else "无分类"
-        
+
         # 截取题目内容
         question_text = item.question
         if len(question_text) > 100:
             question_text = question_text[:97] + "..."
-            
+
         # 选项预览（一行显示）
         options_parts = []
         for i, opt in enumerate(item.options):
@@ -92,7 +91,7 @@ async def list_questions_view(callback: CallbackQuery, session: AsyncSession, ma
             options_parts.append(f"{prefix}{escaped_opt}")
 
         escaped_options_text = "   ".join(options_parts)
-        
+
         # 处理标签
         tags_text = ""
         if item.tags:
@@ -155,7 +154,7 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
         question_text = item.question
         if len(question_text) > 100:
             question_text = question_text[:97] + "..."
-            
+
         # 选项预览（一行显示）
         options_parts = []
         for i, opt in enumerate(item.options):
@@ -198,6 +197,6 @@ async def question_item_action(callback: CallbackQuery, session: AsyncSession) -
         await session.commit()
         await safe_delete_message(callback.bot, callback.message.chat.id, callback.message.message_id)
         await callback.answer("✅ 操作成功！\n题目已删除")
-    
+
     elif action == "edit":
          await callback.answer("🚧 编辑功能开发中...", show_alert=True)

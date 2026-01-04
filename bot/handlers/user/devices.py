@@ -11,7 +11,6 @@ from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.user_extend import UserExtendModel
 from bot.keyboards.inline.buttons import BACK_TO_ACCOUNT_BUTTON, BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import USER_DEVICES_LABEL
-from bot.services.emby_service import cleanup_devices_by_policy, save_all_emby_devices
 from bot.services.main_message import MainMessageService
 from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client

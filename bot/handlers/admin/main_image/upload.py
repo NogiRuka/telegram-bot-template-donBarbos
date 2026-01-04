@@ -1,8 +1,7 @@
-from typing import List
 
 from aiogram import F
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -68,15 +67,15 @@ async def start_upload_process(callback: CallbackQuery, state: FSMContext, main_
 
 @router.message(AdminMainImageState.waiting_for_image)
 async def handle_image_upload(
-    message: Message, 
-    session: AsyncSession, 
-    state: FSMContext, 
+    message: Message,
+    session: AsyncSession,
+    state: FSMContext,
     main_msg: MainMessageService,
-    album: List[Message] = None
+    album: list[Message] | None = None
 ) -> None:
     media_list = album if album else [message]
     is_single = len(media_list) == 1
-    
+
     photo_messages = [m for m in media_list if m.photo]
     if not photo_messages:
         await message.answer("❌ 请发送图片（Photo）")
@@ -85,7 +84,7 @@ async def handle_image_upload(
     common_caption = next((m.caption for m in photo_messages if m.caption), "")
     state_data = await state.get_data()
     is_nsfw = state_data.get("is_nsfw", False)
-    
+
     success_count = 0
     duplicate_count = 0
     last_model = None
@@ -98,7 +97,7 @@ async def handle_image_upload(
     for msg in photo_messages:
         p = msg.photo[-1]
         file_id = p.file_id
-        
+
         # 1. 查重逻辑
         exists = await session.execute(select(MainImageModel.id).where(MainImageModel.file_id == file_id))
         if exists.scalar_one_or_none():
@@ -142,19 +141,19 @@ async def handle_image_upload(
             if duplicate_count > 0:
                 text += f"⚠️ 另有 {duplicate_count} 张重复已跳过原位保留。\n"
             text += f"\n🔞 *属性*：{'🔞 NSFW' if is_nsfw else '🌿 SFW'}"
-        
+
         if common_caption:
             text += f"\n📝 {safe_caption}"
-        
+
         # 渲染主控制面板
         await main_msg.render(message.from_user.id, text, get_main_image_upload_success_keyboard(is_nsfw))
         # 如果你希望传完一批就结束状态，保留 clear；如果想连续传，建议删掉 state.clear()
-        await state.clear() 
-    
+        await state.clear()
+
     elif duplicate_count > 0:
         # 如果全是重复的，更新主面板提示一下
         await main_msg.render(
-            message.from_user.id, 
-            "⚠️ 您发送的图片均已存在，已为您在原位标注。", 
+            message.from_user.id,
+            "⚠️ 您发送的图片均已存在，已为您在原位标注。",
             get_main_image_upload_success_keyboard(is_nsfw)
         )

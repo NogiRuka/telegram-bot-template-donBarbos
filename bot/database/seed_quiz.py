@@ -1,6 +1,8 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from bot.database.models.quiz import QuizQuestionModel, QuizImageModel, QuizCategoryModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from bot.database.models.quiz import QuizCategoryModel, QuizImageModel, QuizQuestionModel
+
 
 async def seed_quiz_data(session: AsyncSession) -> None:
     """
@@ -27,13 +29,13 @@ async def seed_quiz_data(session: AsyncSession) -> None:
 
     category_id = 15
 
-    
+
     # 2. 插入题目
     question_id = 1
     stmt = select(QuizQuestionModel).where(QuizQuestionModel.id == question_id)
     result = await session.execute(stmt)
     question = result.scalar_one_or_none()
-    
+
     if not question:
         question = QuizQuestionModel(
             id=question_id,
@@ -49,13 +51,13 @@ async def seed_quiz_data(session: AsyncSession) -> None:
             is_deleted=False,
         )
         session.add(question)
-    
+
     # 3. 插入题图
     image_id = 1
     stmt = select(QuizImageModel).where(QuizImageModel.id == image_id)
     result = await session.execute(stmt)
     image = result.scalar_one_or_none()
-    
+
     if not image:
         image = QuizImageModel(
             id=image_id,
@@ -70,5 +72,5 @@ async def seed_quiz_data(session: AsyncSession) -> None:
             is_deleted=False,
         )
         session.add(image)
-        
+
     await session.commit()

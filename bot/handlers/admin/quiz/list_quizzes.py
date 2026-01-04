@@ -1,17 +1,17 @@
 from math import ceil
 
-from aiogram import F, Router
+from aiogram import F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.models import QuizImageModel, QuizQuestionModel
-from bot.states.admin import QuizAdminState
-from bot.utils.permissions import require_admin_feature
+from .router import router
 from bot.config.constants import KEY_ADMIN_QUIZ
+from bot.database.models import QuizQuestionModel
 from bot.keyboards.inline.admin import (
     QUIZ_ADMIN_CALLBACK_DATA,
 )
@@ -19,9 +19,10 @@ from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA, QUIZ_ADMIN_LIST_QUIZZES_LABEL
 from bot.services.main_message import MainMessageService
 from bot.services.quiz_service import QuizService
+from bot.states.admin import QuizAdminState
 from bot.utils.message import clear_message_list_from_state, safe_delete_message, send_toast
-from loguru import logger
-from .router import router
+from bot.utils.permissions import require_admin_feature
+
 
 def get_quiz_list_pagination_keyboard(page: int, total_pages: int, limit: int = 5) -> InlineKeyboardMarkup:
     """生成分页键盘"""
@@ -35,7 +36,7 @@ def get_quiz_list_pagination_keyboard(page: int, total_pages: int, limit: int = 
         )
     else:
         builder.button(text="⛔️", callback_data="ignore")
-    
+
     # 页码指示 (Toggle limit)
     next_limit = 10 if limit == 5 else (20 if limit == 10 else 5)
     builder.button(
@@ -51,15 +52,15 @@ def get_quiz_list_pagination_keyboard(page: int, total_pages: int, limit: int = 
         )
     else:
         builder.button(text="⛔️", callback_data="ignore")
-    
+
     builder.adjust(3)
-    
+
     # 返回按钮
     builder.row(
         InlineKeyboardButton(text="🔙 返回列表菜单", callback_data=QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA),
         BACK_TO_HOME_BUTTON
     )
-    
+
     return builder.as_markup()
 
 
@@ -70,19 +71,19 @@ def build_question_keyboard(options: list[str], question_id: int | None = None, 
         # 标记正确答案
         if i == correct_index:
             option = f"{option} ✅"
-        
+
         # 使用特定回调以便识别，或者仅仅展示用 ignore
         # 这里为了模拟真实感，可以使用类似真实的回调，或者 dummy callback
         builder.button(text=option, callback_data=f"ignore:quiz_preview:{i}")
     builder.adjust(2) # 每行2个选项，和真实答题保持一致
-    
+
     # 添加审核按钮
     if is_review_needed and question_id is not None:
         builder.row(
             InlineKeyboardButton(text="❌ 拒绝", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:reject:{question_id}"),
             InlineKeyboardButton(text="✅ 通过", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:approve:{question_id}")
         )
-    
+
     return builder.as_markup()
 
 
@@ -142,7 +143,7 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
         try:
             # 1. 尝试根据 tag 查找图片
             image = await QuizService.get_random_image_by_tags(session, question.tags)
-            
+
             # 2. 构建 Caption
             # 这里的 timeout_sec 可以取默认配置或者 question 里的配置(如果有)
             # 为了预览真实效果，从配置取默认值
@@ -188,7 +189,7 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
                             sent = True
                         except Exception as e2:
                             logger.warning(f"题目 #{question.id} 图片 URL 发送也失败: {e2}")
-            
+
             # 如果没有图片或图片发送失败，发送纯文本
             if not sent:
                 logger.info(f"题目 #{question.id} 无图片或图片发送失败，发送纯文本")
@@ -197,7 +198,7 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
                     reply_markup=keyboard,
                     parse_mode="HTML"
                 )
-            
+
             new_msg_ids.append(msg.message_id)
 
         except Exception as e:
@@ -209,7 +210,6 @@ async def list_quizzes_view(callback: CallbackQuery, session: AsyncSession, main
                 new_msg_ids.append(msg.message_id)
             except Exception as e:
                 logger.error(f"题目 #{question.id} 渲染失败并通知用户失败: {e}")
-                pass
 
     # 记录新发送的消息ID
     await state.update_data(quiz_list_ids=new_msg_ids)
@@ -239,13 +239,13 @@ async def approve_quiz(callback: CallbackQuery, session: AsyncSession) -> None:
     if item.extra:
         submitted_by = item.extra.get("submitted_by")
         approval_rewarded = item.extra.get("approval_rewarded")
-        
+
         if submitted_by and not approval_rewarded:
             # 发放奖励
-            from bot.services.currency import CurrencyService
             from bot.core.constants import CURRENCY_SYMBOL
+            from bot.services.currency import CurrencyService
             from bot.utils.text import escape_markdown_v2
-            
+
             try:
                 await CurrencyService.add_currency(
                     session=session,
@@ -254,14 +254,14 @@ async def approve_quiz(callback: CallbackQuery, session: AsyncSession) -> None:
                     event_type="quiz_submit_approve",
                     description=f"投稿题目 #{item.id} 审核通过奖励"
                 )
-                
+
                 # 更新状态
                 item.extra = dict(item.extra) # 复制一份以触发更新
                 item.extra["approval_rewarded"] = True
                 item.is_active = True # 审核通过自动启用
-                
+
                 await session.commit()
-                
+
                 # 1. 通知用户 (私聊)
                 try:
                     await callback.bot.send_message(
@@ -273,10 +273,9 @@ async def approve_quiz(callback: CallbackQuery, session: AsyncSession) -> None:
                 except Exception as e:
                      # 用户可能屏蔽了机器人
                     logger.warning(f"通知用户 {submitted_by} 失败 (可能已屏蔽机器人): {e}")
-                    pass
-                
+
                 await callback.answer("✅ 审核通过！奖励已发放，题目已启用。")
-                
+
                 # 刷新键盘，移除审核按钮
                 is_review_needed = False
                 keyboard = build_question_keyboard(item.options, question_id=item.id, is_review_needed=is_review_needed)
@@ -314,15 +313,15 @@ async def reject_quiz_start(callback: CallbackQuery, state: FSMContext, session:
     if not item:
         await callback.answer("❌ 题目不存在", show_alert=True)
         return
-        
+
     # 保存上下文
     await state.update_data(reject_question_id=question_id, reject_msg_id=callback.message.message_id)
     await state.set_state(QuizAdminState.waiting_for_reject_reason)
-    
+
     # 提示输入原因
     kb = InlineKeyboardBuilder()
     kb.button(text="❌ 取消", callback_data=f"{QUIZ_ADMIN_CALLBACK_DATA}:list:view:reject_cancel")
-    
+
     await callback.message.reply("📝 请输入拒绝原因:", reply_markup=kb.as_markup())
     await callback.answer()
 
@@ -343,15 +342,15 @@ async def process_reject_reason(message: Message, state: FSMContext, session: As
     if not reason:
         await send_toast(message, "⚠️ 原因不能为空")
         return
-        
+
     data = await state.get_data()
     question_id = data.get("reject_question_id")
     # msg_id = data.get("reject_msg_id") # 原消息ID，用于刷新键盘
-    
+
     # 清理输入消息和提示消息
     await safe_delete_message(message.bot, message.chat.id, message.message_id)
     # 提示消息通常是上一条，这里简单处理，不强求删除提示消息，因为上面有取消按钮会删
-    
+
     item = await session.get(QuizQuestionModel, question_id)
     if not item:
         await send_toast(message, "❌ 题目不存在")
@@ -360,17 +359,17 @@ async def process_reject_reason(message: Message, state: FSMContext, session: As
 
     if item.extra:
         submitted_by = item.extra.get("submitted_by")
-        
+
         # 标记为已审核（虽然是被拒绝）
         # 也可以选择删除题目，或者保留但标记为拒绝
         # 这里逻辑：标记为已审核（不发奖励），并设为禁用（防止被误启用）
         item.extra = dict(item.extra)
         item.extra["approval_rewarded"] = True # 借用字段表示已处理
         item.extra["reject_reason"] = reason
-        item.is_active = False 
-        
+        item.is_active = False
+
         await session.commit()
-        
+
         # 1. 通知用户 (私聊)
         try:
             from bot.utils.text import escape_markdown_v2
@@ -382,8 +381,7 @@ async def process_reject_reason(message: Message, state: FSMContext, session: As
             )
         except Exception:
             logger.error(f"向用户 {submitted_by} 发送拒绝通知失败: {e}")
-            pass
-            
+
         await send_toast(message, "✅ 已拒绝该投稿")
-        
+
     await state.clear()

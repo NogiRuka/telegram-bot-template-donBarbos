@@ -17,7 +17,7 @@ async def save_emby_command(message: Message, session: AsyncSession) -> None:
     手动触发 Emby 数据同步
     """
     status_msg = await message.reply("⏳ 正在同步 Emby 数据...")
-    
+
     await run_emby_sync(session)
-    
+
     await status_msg.edit_text("✅ Emby 数据同步完成")

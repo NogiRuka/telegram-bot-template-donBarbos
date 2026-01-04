@@ -1,6 +1,7 @@
 from aiogram import Dispatcher
 from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 
+from .album import AlbumMiddleware
 from .auth import AuthMiddleware
 from .bot_enabled import BotEnabledMiddleware
 from .database import DatabaseMiddleware
@@ -8,7 +9,6 @@ from .logging import LoggingMiddleware
 from .main_message import MainMessageMiddleware
 from .quiz_trigger import QuizTriggerMiddleware
 from .throttling import ThrottlingMiddleware
-from .album import AlbumMiddleware
 
 
 def register_middlewares(dp: Dispatcher) -> None:

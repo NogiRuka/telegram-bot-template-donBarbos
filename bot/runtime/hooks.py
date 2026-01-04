@@ -17,14 +17,14 @@ from bot.core.config import settings
 from bot.core.loader import bot, dp
 from bot.database.database import engine, sessionmaker
 from bot.database.models.base import Base
+from bot.database.seed_media_categories import init_media_categories
+from bot.database.seed_quiz import seed_quiz_data
 from bot.handlers import get_handlers_router
 from bot.keyboards.default_commands import remove_default_commands, set_default_commands
 from bot.services.config_service import ensure_config_defaults, sync_notification_channels
 from bot.services.currency import CurrencyService
 from bot.services.emby_service import run_emby_sync, start_scheduler
 from bot.services.quiz_service import QuizService
-from bot.database.seed_quiz import seed_quiz_data
-from bot.database.seed_media_categories import init_media_categories
 
 if TYPE_CHECKING:
     from aiogram import Bot
@@ -62,14 +62,14 @@ async def on_startup() -> None:
             await init_media_categories(session)
             await CurrencyService.ensure_products(session)
             await CurrencyService.ensure_configs(session)
-            
+
             await run_emby_sync(session)
 
         # 启动定时问答调度器
         asyncio.create_task(QuizService.start_scheduler(bot))
         # 启动 Emby 定时同步调度器
         asyncio.create_task(start_scheduler(bot))
-        
+
         await start_api_server()
     except (OSError, ValueError, RuntimeError) as err:
         logger.error("❗ API 服务启动失败: {}", err)

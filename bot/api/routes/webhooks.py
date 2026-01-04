@@ -129,7 +129,7 @@ async def handle_emby_webhook(
     else:
         logger.warning("⚠️ Webhook 载荷中缺少事件类型")
 
-    pretty = format_json_pretty(payload)
+    format_json_pretty(payload)
     # logger.debug("📥 Emby Webhook 详细载荷:\n{}", pretty)
 
     return {

@@ -6,12 +6,14 @@
 
 from __future__ import annotations
 import asyncio
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from aiogram import Bot
-from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from loguru import logger
+
+if TYPE_CHECKING:
+    from aiogram import Bot
+    from aiogram.fsm.context import FSMContext
 
 
 async def safe_delete_message(bot: Any, chat_id: int, message_id: int) -> bool:
@@ -53,10 +55,7 @@ async def delete_message(message: Any) -> bool:
     """
     try:
         # 支持 CallbackQuery：优先使用其 message
-        if hasattr(message, "message") and message.message:
-            target = message.message
-        else:
-            target = message
+        target = message.message if hasattr(message, "message") and message.message else message
         await target.delete()
         return True
     except Exception:

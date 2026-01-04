@@ -10,8 +10,8 @@
 from pathlib import Path
 from typing import IO
 
-from PIL import Image
 from loguru import logger
+from PIL import Image
 
 
 def get_image_dimensions(file: IO[bytes]) -> tuple[int, int] | None:
@@ -55,7 +55,7 @@ def get_common_image() -> str:
     # 优先检查 Docker 容器内的路径（如果当前是在容器内运行，通常是 /usr/src/app）
     # 但由于 base_dir 已经是动态计算的，只要文件确实存在于容器内的对应位置，pathlib 就能找到
     # 关键在于 assets 目录是否被正确 COPY 或 VOLUME 挂载进去了
-    
+
     # 尝试多个可能的路径（兼容 Docker 和本地开发）
     candidates = [
         base_dir / "assets/ui/start.jpg",
@@ -68,7 +68,7 @@ def get_common_image() -> str:
         if target.exists():
             logger.info(f"找到图片: {target}")
             return str(target)
-    
+
     logger.warning(f"未找到默认图片，搜索路径: {[str(p) for p in candidates]}")
     return ""
 

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.constants import CURRENCY_SYMBOL
 from bot.database.models import QuizCategoryModel, QuizImageModel, QuizQuestionModel
-from bot.keyboards.inline.buttons import BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON
+from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, BACK_TO_PROFILE_BUTTON
 from bot.keyboards.inline.constants import USER_QUIZ_SUBMIT_CALLBACK_DATA
 from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
@@ -72,7 +72,7 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
     stmt = select(QuizQuestionModel).where(QuizQuestionModel.id == 1)
     result = await session.execute(stmt)
     question = result.scalar_one_or_none()
-    
+
     del_btn = InlineKeyboardBuilder().button(
         text="🗑️ 删除示例",
         callback_data=f"{USER_QUIZ_SUBMIT_CALLBACK_DATA}:del_msg"
@@ -86,7 +86,7 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
     # 构建示例格式文本
     options_str = "　".join(question.options)
     tags_str = " ".join(question.tags or [])
-    
+
     # 获取关联的图片
     image_stmt = select(QuizImageModel).where(QuizImageModel.id == 1)
     image_result = await session.execute(image_stmt)
@@ -94,11 +94,11 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
 
     image_source = ""
     extra_caption = ""
-    
+
     if image:
         image_source = image.image_source or ""
         extra_caption = image.extra_caption or ""
-    
+
     # 格式化输出
     example_text = (
         f"`{question.question}\n"
@@ -135,7 +135,8 @@ async def delete_example_msg(callback: CallbackQuery) -> None:
     await callback.message.delete()
     await callback.answer()
 
-from bot.utils.quiz import parse_quiz_input, QuizParseError
+from bot.utils.quiz import QuizParseError, parse_quiz_input
+
 
 @router.message(UserQuizSubmitState.waiting_for_input)
 async def process_submit(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
@@ -145,11 +146,11 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
 
     # 获取文本内容
     text = message.caption or message.text
-    
+
     try:
         # 复用公共解析逻辑
         parsed = await parse_quiz_input(session, text)
-        
+
         # 保存题目 (默认不启用)
         user_id = message.from_user.id
         extra_data = {
@@ -204,7 +205,7 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
         # 通知群组 (使用工具类)
         try:
             from bot.utils.msg_group import send_group_notification
-            
+
             user_info = {
                 "user_id": str(user_id),
                 "username": message.from_user.username or "Unknown",
@@ -212,31 +213,30 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
                 "group_name": "QuizSubmit", # 自定义标签
                 "action": "Submit",
             }
-            
+
             reason = (
                 f"投稿了桜之问答（{quiz.id}）\n"
                 f"💭 {escape_markdown_v2(parsed['question'])}"
             )
-            
+
             await send_group_notification(message.bot, user_info, reason)
         except Exception as e:
             logger.warning(f"发送群组通知失败: {e}")
-            pass
 
         success_text = (
             f"✅ *投稿成功\\!*\n\n"
             f"❓ 题目：{escape_markdown_v2(parsed['question'])}\n"
             f"🎁 奖励：\\+3 {escape_markdown_v2(CURRENCY_SYMBOL)} 已发放\n"
         )
-        
+
         # 退出状态
         await state.clear()
-        
+
         # 返回成功界面 (可以使用通用的返回键盘)
         builder = InlineKeyboardBuilder()
         builder.button(text="✍️ 继续投稿", callback_data=USER_QUIZ_SUBMIT_CALLBACK_DATA)
         builder.row(BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON)
-        
+
         await main_msg.render(user_id, success_text, builder.as_markup())
 
     except QuizParseError as e:

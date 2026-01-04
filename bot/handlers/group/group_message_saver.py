@@ -57,7 +57,7 @@ class GroupMessageSaver:
             result = await session.execute(
                 select(GroupConfigModel).where(
                     GroupConfigModel.chat_id == chat_id,
-                    not GroupConfigModel.is_deleted,
+                    GroupConfigModel.is_deleted == False,
                 )
             )
             return result.scalar_one_or_none()
@@ -556,7 +556,7 @@ async def handle_chat_member_update(event: types.ChatMemberUpdated, session: Asy
         result = await session.execute(
             select(GroupConfigModel).where(
                 GroupConfigModel.chat_id == event.chat.id,
-                not GroupConfigModel.is_deleted,
+                GroupConfigModel.is_deleted == False,
             )
         )
         config = result.scalar_one_or_none()

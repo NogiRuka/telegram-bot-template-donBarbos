@@ -14,11 +14,11 @@ from .profile import router as profile_router
 from .quiz_handler import router as quiz_router
 from .quiz_submit import router as quiz_submit_router
 from .register import router as register_router
+from .store import router as store_router
 from .submission import router as submission_router
+from .submission_my import router as submission_my_router
 from .submission_request import router as submission_request_router
 from .submission_submit import router as submission_submit_router
-from .submission_my import router as submission_my_router
-from .store import router as store_router
 from .tags import router as tags_router
 
 

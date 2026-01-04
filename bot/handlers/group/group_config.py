@@ -16,7 +16,7 @@ from contextlib import suppress
 from aiogram import F, Router, types
 from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import Command, CommandObject, or_f
+from aiogram.filters import Command, CommandObject
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,6 +50,7 @@ class GroupConfigStates(StatesGroup):
 
 
 from bot.utils.text import escape_markdown_v2
+
 
 async def _get_group_config_content(session: AsyncSession, config: GroupConfigModel) -> tuple[str, types.InlineKeyboardMarkup]:
     """
@@ -117,11 +118,11 @@ async def cmd_group_config(message: types.Message, command: CommandObject, sessi
     user_id = message.from_user.id
     is_global_admin = await AdminFilter()(message, session)
     is_group_admin = False
-    
+
     # 检查群组管理员权限 (如果不是全局管理员)
     if not is_global_admin:
         is_group_admin = await GroupAdminFilter()(message)
-    
+
     # 如果两者都不是，拒绝访问
     if not is_global_admin and not is_group_admin:
         # 仅在群组中忽略（避免干扰聊天），私聊可以提示
@@ -434,7 +435,7 @@ async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None
     try:
         # 获取或创建群组配置
         result = await session.execute(
-            select(GroupConfigModel).where(GroupConfigModel.chat_id == message.chat.id, not GroupConfigModel.is_deleted)
+            select(GroupConfigModel).where(GroupConfigModel.chat_id == message.chat.id, GroupConfigModel.is_deleted == False)
         )
         config = result.scalar_one_or_none()
 
@@ -477,7 +478,7 @@ async def cmd_save_disable(message: types.Message, session: AsyncSession) -> Non
     try:
         # 获取群组配置
         result = await session.execute(
-            select(GroupConfigModel).where(GroupConfigModel.chat_id == message.chat.id, not GroupConfigModel.is_deleted)
+            select(GroupConfigModel).where(GroupConfigModel.chat_id == message.chat.id, GroupConfigModel.is_deleted == False)
         )
         config = result.scalar_one_or_none()
 

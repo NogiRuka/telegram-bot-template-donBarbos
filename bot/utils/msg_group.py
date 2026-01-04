@@ -1,4 +1,3 @@
-import html
 
 from aiogram import Bot
 from loguru import logger
@@ -14,7 +13,7 @@ async def send_group_notification(
 ) -> None:
     """
     发送群组通知（通用版）
-    
+
     格式:
     #GroupTitle #IDUserID #Username #Action
     📖 FullName Reason
@@ -26,7 +25,7 @@ async def send_group_notification(
     try:
         chat_username = user_info.get("chat_username")
         chat_id = user_info.get("chat_id")
-        
+
         user_id = user_info.get("user_id", "UnknownID")
         username = user_info.get("username", "UnknownUser")
         full_name = user_info.get("full_name", "Unknown")
@@ -48,18 +47,18 @@ async def send_group_notification(
         # 需求: 同时显示 @channelname (如果有) 和 #M100xxx (chat_id)
         # @lustfulboy #M1002216963051 #ID8134098953 #Leave
         group_tags_parts = []
-        
+
         # 1. @channelname
         if chat_username:
              group_tags_parts.append(to_mention(str(chat_username).lstrip("@")))
-        
+
         # 2. #M100xxx (chat_id)
         if chat_id:
              # 将负号替换为 M，直接作为 ID 的一部分，前面加 #
              # 例如 -1002216963051 -> #M1002216963051
-             chat_id_str = str(chat_id).replace('-', 'M')
+             chat_id_str = str(chat_id).replace("-", "M")
              group_tags_parts.append(to_hashtag(chat_id_str))
-        
+
         # 如果两者都没有，回退到 group_name
         if not group_tags_parts:
              group_name = user_info.get("group_name", "UnknownGroup")
@@ -70,12 +69,12 @@ async def send_group_notification(
         # Tag 格式: GroupTag(s) #IDUserID #Action
         # 注意：这里不再包含 @Username，因为它移到了正文中
         tags = f"{group_tag_str} {to_hashtag('ID' + str(user_id))} {to_hashtag(action)}"
-        
+
         # 📖 FullName @Username Reason
         escaped_full_name = escape_markdown_v2(full_name)
         user_mention = to_mention(username)
         escaped_reason = escape_markdown_v2(reason)
-        
+
         content = f"📖 `{escaped_full_name}` {user_mention} {escaped_reason}"
         msg_text = f"{tags}\n{content}"
 

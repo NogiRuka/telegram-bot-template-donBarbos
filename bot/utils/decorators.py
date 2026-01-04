@@ -1,6 +1,8 @@
 from functools import wraps
-from aiogram.types import Message
+
 from aiogram.enums import ChatType
+from aiogram.types import Message
+
 
 def private_chat_only(func):
     """
@@ -10,6 +12,6 @@ def private_chat_only(func):
     @wraps(func)
     async def wrapper(message: Message, *args, **kwargs):
         if message.chat.type != ChatType.PRIVATE:
-            return
+            return None
         return await func(message, *args, **kwargs)
     return wrapper

@@ -1,7 +1,10 @@
-from typing import TypedDict, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import TypedDict
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from bot.database.models import QuizCategoryModel
+
 
 class ParsedQuiz(TypedDict):
     question: str
@@ -11,17 +14,17 @@ class ParsedQuiz(TypedDict):
     category_name: str
     tags: list[str]
     difficulty: int
-    image_source: Optional[str]
-    extra_caption: Optional[str]
+    image_source: str | None
+    extra_caption: str | None
 
-    is_image_only: Optional[bool]
+    is_image_only: bool | None
 class QuizParseError(Exception):
     pass
 
 async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
     """
     解析题目输入文本
-    
+
     格式:
     第1行：题目描述
     第2行：选项A　选项B　选项C　选项D（空格或逗号分隔）
@@ -39,7 +42,8 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
     第4行：图片补充说明（可选）
     """
     if not text:
-        raise QuizParseError("请输入题目内容。")
+        msg = "请输入题目内容。"
+        raise QuizParseError(msg)
 
     lines = [l.strip() for l in text.splitlines() if l.strip()]
 
@@ -47,14 +51,14 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
     # 简单的启发式判断：如果第1行是纯数字，且行数比较少，可能是仅添加题图模式
     # 但原格式第4行才是数字。如果只有2行，肯定不够原格式。
     is_image_only_mode = False
-    
+
     if len(lines) >= 2 and lines[0].isdigit():
         # 尝试验证是否符合仅题图模式
         # 如果是原格式，第一行是题目，通常不是纯数字。除非题目就是个数字...
         # 且原格式至少5行。
         if len(lines) < 5:
             is_image_only_mode = True
-    
+
     if is_image_only_mode:
         # 解析仅题图模式
         # 1. 分类 (lines[0])
@@ -70,9 +74,11 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
                 category_id = cat.id
                 category_name = cat.name
             else:
-                raise QuizParseError(f"未找到ID为 {cat_id} 的分类。")
+                msg = f"未找到ID为 {cat_id} 的分类。"
+                raise QuizParseError(msg)
         else:
-            raise QuizParseError("分类必须填写ID（数字）。")
+            msg = "分类必须填写ID（数字）。"
+            raise QuizParseError(msg)
 
         # 2. 标签 (lines[1])
         tags_line = lines[1]
@@ -84,7 +90,8 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
             tags_line = tags_line.replace("　", " ")
             tags = [t.strip() for t in tags_line.split() if t.strip()]
         if not tags:
-             raise QuizParseError("标签不能为空。")
+             msg = "标签不能为空。"
+             raise QuizParseError(msg)
 
         # 3. 来源 (lines[2], 可选)
         image_source = None
@@ -112,9 +119,12 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
     # 原有完整题目解析逻辑
     # 至少需要前5行 (题目, 选项, 答案, 分类, 标签)
     if len(lines) < 5:
-        raise QuizParseError(
+        msg = (
             "格式错误，行数不足。\n"
             "请确保至少包含：题目、选项、答案序号、分类、标签。"
+        )
+        raise QuizParseError(
+            msg
         )
 
     # 1. 题目
@@ -122,10 +132,10 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
 
     # 2. 选项
     options_text = lines[1]
-    
+
     # 统一中文逗号
     options_text = options_text.replace("，", ",")
-    
+
     if "," in options_text:
         # 有逗号，按逗号分隔，保留空格
         options = [o.strip() for o in options_text.split(",") if o.strip()]
@@ -133,14 +143,16 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
         # 无逗号，按空格分隔（支持全角/半角空格）
         options_text = options_text.replace("　", " ")
         options = [o.strip() for o in options_text.split() if o.strip()]
-        
+
     if len(options) != 4:
-        raise QuizParseError(f"选项解析失败，找到 {len(options)} 个选项，需要 4 个。")
+        msg = f"选项解析失败，找到 {len(options)} 个选项，需要 4 个。"
+        raise QuizParseError(msg)
 
     # 3. 答案
     correct_idx_raw = lines[2]
     if not correct_idx_raw.isdigit() or not (1 <= int(correct_idx_raw) <= 4):
-        raise QuizParseError("正确答案序号必须是 1-4 的数字。")
+        msg = "正确答案序号必须是 1-4 的数字。"
+        raise QuizParseError(msg)
     correct_index = int(correct_idx_raw) - 1
 
     # 4. 分类
@@ -156,9 +168,11 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
             category_id = cat.id
             category_name = cat.name
         else:
-            raise QuizParseError(f"未找到ID为 {cat_id} 的分类。")
+            msg = f"未找到ID为 {cat_id} 的分类。"
+            raise QuizParseError(msg)
     else:
-        raise QuizParseError("分类必须填写ID（数字）。")
+        msg = "分类必须填写ID（数字）。"
+        raise QuizParseError(msg)
 
     # 5. 标签 (必填)
     tags_line = lines[4]
@@ -176,7 +190,8 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
         tags = [t.strip() for t in tags_line.split() if t.strip()]
 
     if not tags:
-         raise QuizParseError("标签不能为空。")
+         msg = "标签不能为空。"
+         raise QuizParseError(msg)
 
     # 6. 难度 (可选)
     difficulty = 1

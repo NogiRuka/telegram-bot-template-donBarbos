@@ -101,7 +101,7 @@ async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession
                     "full_name": user.full_name or "Unknown",
                     "action": "BuyProduct",
                 }
-                
+
                 # 获取最新余额并加上 emoji
                 balance = await CurrencyService.get_user_balance(session, user_id)
                 reason = f"购买了 {product.name}（剩余 {balance}{CURRENCY_SYMBOL}）"

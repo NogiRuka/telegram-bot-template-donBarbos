@@ -50,12 +50,11 @@ from bot.keyboards.inline.constants import (
     QUIZ_ADMIN_SCHEDULE_MENU_LABEL,
     QUIZ_ADMIN_SCHEDULE_SET_TARGET_LABEL,
     QUIZ_ADMIN_SCHEDULE_SET_TIME_LABEL,
-    QUIZ_ADMIN_SCHEDULE_TOGGLE_LABEL,
-    QUIZ_ADMIN_SETTINGS_MENU_LABEL,
     QUIZ_ADMIN_SET_COOLDOWN_LABEL,
     QUIZ_ADMIN_SET_DAILY_LIMIT_LABEL,
     QUIZ_ADMIN_SET_PROBABILITY_LABEL,
     QUIZ_ADMIN_SET_TIMEOUT_LABEL,
+    QUIZ_ADMIN_SETTINGS_MENU_LABEL,
     QUIZ_ADMIN_TEST_TRIGGER_LABEL,
     QUIZ_ADMIN_TRIGGER_LABEL,
 )
@@ -230,19 +229,19 @@ def get_notification_settings_keyboard(channels: list[dict]) -> InlineKeyboardMa
     - InlineKeyboardMarkup: 键盘对象
     """
     buttons = []
-    
+
     # 频道列表
     for ch in channels:
         name = ch.get("name", "未知频道")
         ch_id = ch.get("id")
         is_enabled = ch.get("enabled", True)
         status_icon = "🟢" if is_enabled else "🔴"
-        
+
         btn_text = f"{status_icon} {name}"
         callback = f"{NOTIFY_SETTINGS_TOGGLE_CALLBACK_DATA}:{ch_id}"
-        
+
         buttons.append([InlineKeyboardButton(text=btn_text, callback_data=callback)])
-    
+
     buttons.append([InlineKeyboardButton(text="🔙 返回通知面板", callback_data="admin:new_item_notification")])
     buttons.append([BACK_TO_HOME_BUTTON])
 
@@ -273,7 +272,7 @@ def get_notification_preview_pagination_keyboard(page: int, total_pages: int, li
         builder.button(text="下一页 ➡️", callback_data=f"{base_callback}:{page + 1}:{limit}")
     else:
         builder.button(text="⛔️", callback_data="ignore")
-    
+
     builder.adjust(3)
 
     # 关闭与返回
@@ -281,7 +280,7 @@ def get_notification_preview_pagination_keyboard(page: int, total_pages: int, li
         InlineKeyboardButton(text="🔙 返回新片通知", callback_data="admin:new_item_notification"),
         BACK_TO_HOME_BUTTON
     )
-    
+
     return builder.as_markup()
 
 
@@ -306,7 +305,7 @@ def get_quiz_image_list_pagination_keyboard(page: int, total_pages: int, limit: 
         builder.button(text="⛔️", callback_data="ignore")
 
     builder.adjust(3)
-    
+
     # 返回按钮
     builder.row(
         InlineKeyboardButton(text="🔙 返回列表菜单", callback_data=QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA),
@@ -604,7 +603,7 @@ def get_files_item_keyboard(file_record_id: int) -> InlineKeyboardMarkup:
 def get_quiz_admin_keyboard(is_global_enabled: bool = True) -> InlineKeyboardMarkup:
     """问答管理菜单键盘"""
     toggle_text = "🟢 总开关: 开启" if is_global_enabled else "🔴 总开关: 关闭"
-    
+
     buttons = [
         [
             InlineKeyboardButton(text=QUIZ_ADMIN_ADD_QUICK_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":add"),
@@ -659,7 +658,7 @@ def get_quiz_question_list_pagination_keyboard(page: int, total_pages: int, limi
         builder.button(text="⛔️", callback_data="ignore")
 
     builder.adjust(3)
-    
+
     # 返回按钮
     builder.row(
         InlineKeyboardButton(text="🔙 返回列表菜单", callback_data=QUIZ_ADMIN_LIST_MENU_CALLBACK_DATA),
@@ -718,7 +717,7 @@ def get_quiz_settings_selection_keyboard() -> InlineKeyboardMarkup:
 def get_quiz_schedule_keyboard(is_enabled: bool = False) -> InlineKeyboardMarkup:
     """问答定时触发设置键盘"""
     toggle_text = "🟢 定时开关: 开启" if is_enabled else "🔴 定时开关: 关闭"
-    
+
     buttons = [
         [
             InlineKeyboardButton(text=QUIZ_ADMIN_SCHEDULE_SET_TIME_LABEL, callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":schedule:set_time"),

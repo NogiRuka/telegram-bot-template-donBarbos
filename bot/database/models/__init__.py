@@ -10,11 +10,11 @@ from .emby_user import EmbyUserModel
 from .emby_user_history import EmbyUserHistoryModel
 from .group_config import GroupConfigModel, GroupType, MessageSaveMode
 from .hitokoto import HitokotoModel
+from .library_new_notification import LibraryNewNotificationModel
 from .main_image import MainImageModel, MainImageScheduleModel
 from .media_category import MediaCategoryModel
 from .media_file import MediaFileModel
 from .message import MessageModel, MessageType
-from .library_new_notification import LibraryNewNotificationModel
 from .notification import NotificationModel
 from .quiz import QuizActiveSessionModel, QuizCategoryModel, QuizImageModel, QuizLogModel, QuizQuestionModel
 from .statistics import StatisticsModel, StatisticType
@@ -39,12 +39,12 @@ __all__ = [
     "GroupConfigModel",
     "GroupType",
     "HitokotoModel",
+    "LibraryNewNotificationModel",
     "MainImageModel",
     "MainImageScheduleModel",
     "MediaCategoryModel",
     "MediaFileModel",
     "MessageModel",
-    "LibraryNewNotificationModel",
     "MessageSaveMode",
     "MessageType",
     "NotificationModel",

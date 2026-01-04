@@ -108,7 +108,7 @@ async def start_handler(
         # 简单的展示处理
         if not str(target_group).lstrip("-").isdigit() and not target_group.startswith("@"):
             target_group = f"@{target_group}"
-            
+
         await message.answer(
             f"🚫 您必须先加入群组 {target_group} 才能和我对话哦。",
         )
@@ -125,7 +125,7 @@ async def start_handler(
 
         # 🚀 首次渲染必须带图片
         img = await MainImageService.select_main_image(session, uid)
-        
+
         if img:
             # logger.info(f"获取到自定义主图: user_id={uid}, img_id={img.id}")
             # 记录展示历史
@@ -141,7 +141,7 @@ async def start_handler(
         else:
             fallback_img = get_common_image()
             logger.info(f"无自定义主图，使用默认图片: user_id={uid}, path='{fallback_img}'")
-            
+
             result = await main_msg.render(
                 user_id=uid,
                 caption=caption,

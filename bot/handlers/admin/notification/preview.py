@@ -7,6 +7,7 @@ from loguru import logger
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .router import NotificationStates, router
 from bot.core.constants import (
     EVENT_TYPE_LIBRARY_NEW,
     NOTIFICATION_STATUS_PENDING_REVIEW,
@@ -17,10 +18,8 @@ from bot.database.models.library_new_notification import LibraryNewNotificationM
 from bot.keyboards.inline.admin import get_notification_preview_pagination_keyboard
 from bot.keyboards.inline.buttons import NOTIFY_CLOSE_PREVIEW_BUTTON
 from bot.services.main_message import MainMessageService
-from bot.utils.message import delete_message, delete_message_after_delay, clear_message_list_from_state
+from bot.utils.message import clear_message_list_from_state, delete_message, delete_message_after_delay
 from bot.utils.notification import get_notification_content
-
-from .router import router, NotificationStates
 
 
 @router.callback_query(F.data.startswith("admin:notify_preview"))
@@ -35,7 +34,7 @@ async def handle_notify_preview(
     # 或者旧入口: admin:notify_preview
     page = 1
     limit = 5
-    
+
     try:
         parts = callback.data.split(":")
         if len(parts) >= 5 and parts[2] == "list":
@@ -285,16 +284,16 @@ async def handle_add_sender_complete(
     state: FSMContext
 ) -> None:
     """处理添加通知者的输入
-    
+
     功能说明:
     - 将管理员输入的用户标识保存到 LibraryNewNotificationModel.target_user__id
     - 支持追加多个用户ID，使用逗号分隔
-    
+
     输入参数:
     - message: 当前消息对象
     - session: 异步数据库会话
     - state: FSM 状态上下文
-    
+
     返回值:
     - None
     """

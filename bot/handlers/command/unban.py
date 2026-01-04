@@ -2,7 +2,6 @@
 解除封禁命令模块
 """
 from aiogram import F, Router
-from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
 from loguru import logger
@@ -48,10 +47,10 @@ async def unban_callback(query: CallbackQuery, session: AsyncSession) -> None:
         return
 
     target_user_id = int(query.data.split(":")[1])
-    
+
     # 修改原消息，避免重复点击
     await query.message.edit_reply_markup(reply_markup=None)
-    
+
     await process_unban(query.message, target_user_id, session, query.from_user.id, is_callback=True)
     await query.answer("已解除封禁")
 
@@ -63,20 +62,20 @@ async def close_callback(query: CallbackQuery, session: AsyncSession) -> None:
     if not await is_group_admin(query.bot, query.from_user.id):
          await query.answer("❌ 无权执行此操作", show_alert=True)
          return
-         
+
     await query.message.delete()
 
 
 async def process_unban(
-    message: Message, 
-    target_user_id: int, 
-    session: AsyncSession, 
+    message: Message,
+    target_user_id: int,
+    session: AsyncSession,
     admin_id: int,
     is_callback: bool = False
 ) -> None:
     """处理解封核心逻辑"""
     results = []
-    
+
     # 1. Telegram 解封
     if settings.GROUP:
         try:
@@ -106,7 +105,7 @@ async def process_unban(
             chat_id = int(settings.GROUP)
         except (ValueError, TypeError):
             chat_username = settings.GROUP
-        
+
     user_info = {
         "group_name": group_name,
         "chat_id": chat_id,
@@ -125,9 +124,9 @@ async def process_unban(
         user_info=user_info
     )
     results.extend(service_results)
-    
+
     await session.commit()
-    
+
     text = "\n".join(results)
     if is_callback:
         await message.reply(text)

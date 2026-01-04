@@ -12,7 +12,6 @@ from bot.database.models import QuizCategoryModel, QuizImageModel, QuizQuestionM
 from bot.keyboards.inline.admin import get_quiz_add_cancel_keyboard, get_quiz_add_success_keyboard
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
-from bot.services.quiz_service import QuizService
 from bot.states.admin import QuizAdminState
 from bot.utils.message import send_toast
 from bot.utils.permissions import require_admin_feature
@@ -71,7 +70,7 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
     stmt = select(QuizQuestionModel).where(QuizQuestionModel.id == 1)
     result = await session.execute(stmt)
     question = result.scalar_one_or_none()
-    
+
     del_btn = InlineKeyboardBuilder().button(
         text="🗑️ 删除示例",
         callback_data=QUIZ_ADMIN_CALLBACK_DATA + ":del_msg"
@@ -86,7 +85,7 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
     # 注意：选项之间使用全角空格
     options_str = "　".join(question.options)
     tags_str = " ".join(question.tags or [])
-    
+
     # 获取关联的图片
     # 尝试查找 ID 为 1 的图片，或者通过 tags 查找
     image_stmt = select(QuizImageModel).where(QuizImageModel.id == 1)
@@ -95,11 +94,11 @@ async def send_example(callback: CallbackQuery, session: AsyncSession) -> None:
 
     image_source = ""
     extra_caption = ""
-    
+
     if image:
         image_source = image.image_source or ""
         extra_caption = image.extra_caption or ""
-    
+
     # 格式化输出
     example_text = (
         f"`{question.question}\n"
@@ -140,7 +139,8 @@ async def delete_example_msg(callback: CallbackQuery) -> None:
     await callback.message.delete()
     await callback.answer()
 
-from bot.utils.quiz import parse_quiz_input, QuizParseError
+from bot.utils.quiz import QuizParseError, parse_quiz_input
+
 
 @router.message(QuizAdminState.waiting_for_quick_add)
 @require_admin_feature(KEY_ADMIN_QUIZ)
@@ -151,11 +151,11 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
 
     # 获取文本内容
     text = message.caption or message.text
-    
+
     try:
         # 复用公共解析逻辑
         parsed = await parse_quiz_input(session, text)
-        
+
         # 判断是否为仅添加题图模式
         if parsed.get("is_image_only"):
             if not message.photo:
@@ -168,7 +168,7 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
                 file_unique_id=photo.file_unique_id,
                 category_id=parsed["category_id"],
                 tags=parsed["tags"],
-                description=f"手动添加题图",
+                description="手动添加题图",
                 image_source=parsed["image_source"],
                 extra_caption=parsed["extra_caption"],
                 is_active=True,
@@ -187,7 +187,7 @@ async def process_quick_add(message: Message, state: FSMContext, session: AsyncS
                 success_text += f"\n🔗 来源：{escape_markdown_v2(parsed['image_source'])}"
             if parsed["extra_caption"]:
                 success_text += f"\n📄 说明：{escape_markdown_v2(parsed['extra_caption'])}"
-            
+
             await state.clear()
             await main_msg.render(message.from_user.id, success_text, get_quiz_add_success_keyboard())
             return

@@ -1,6 +1,6 @@
 from aiogram import F, Router
-from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.constants import CURRENCY_NAME, CURRENCY_SYMBOL, DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM, DISPLAY_MODE_SFW

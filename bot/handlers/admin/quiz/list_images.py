@@ -11,13 +11,13 @@ from .router import router
 from bot.config.constants import KEY_ADMIN_QUIZ
 from bot.database.models import QuizImageModel
 from bot.keyboards.inline.admin import (
-    get_quiz_image_list_pagination_keyboard,
     get_quiz_image_item_keyboard,
+    get_quiz_image_list_pagination_keyboard,
 )
 from bot.keyboards.inline.constants import QUIZ_ADMIN_CALLBACK_DATA
 from bot.services.main_message import MainMessageService
 from bot.utils.datetime import now
-from bot.utils.message import clear_message_list_from_state, safe_delete_message, send_toast
+from bot.utils.message import clear_message_list_from_state, safe_delete_message
 from bot.utils.permissions import require_admin_feature
 from bot.utils.text import escape_markdown_v2
 
@@ -77,7 +77,7 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
     new_msg_ids = []
     for item in items:
         cat_name = item.category.name if item.category else "无分类"
-        
+
         # 处理标签
         tags_text = ""
         if item.tags:
@@ -93,11 +93,11 @@ async def list_images_view(callback: CallbackQuery, session: AsyncSession, main_
                     link_text = item.extra_caption.strip()
                 elif item.tags and len(item.tags) > 0:
                     link_text = item.tags[0]
-                
+
                 extra = f"[{escape_markdown_v2(link_text)}]({item.image_source})"
             else:
                 extra = escape_markdown_v2(item.image_source)
-        
+
         caption = (
             f"🆔 `{item.id}` ｜ 🗂️ `{escape_markdown_v2(cat_name)}`｜ 🏷️ {tags_text} ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n\n"
             f"🖼️ {extra}\n"
@@ -150,12 +150,12 @@ async def image_item_action(callback: CallbackQuery, session: AsyncSession) -> N
 
         # 更新消息内容
         cat_name = item.category.name if item.category else "无分类"
-        
+
         tags_text = ""
         if item.tags:
             escaped_tags = [escape_markdown_v2(tag) for tag in item.tags]
             tags_text = " \\| ".join(escaped_tags)
-            
+
         extra = "无"
         if item.image_source:
             if item.image_source.startswith("http"):
@@ -169,7 +169,7 @@ async def image_item_action(callback: CallbackQuery, session: AsyncSession) -> N
                 extra = f"[{escape_markdown_v2(link_text)}]({item.image_source})"
             else:
                 extra = escape_markdown_v2(item.image_source)
-        
+
         caption = (
             f"🆔 `{item.id}` ｜ 🗂️ `{escape_markdown_v2(cat_name)}`｜ 🏷️ {tags_text} ｜ {'🟢 启用' if item.is_active else '🔴 禁用'}\n\n"
             f"🖼️ {extra}\n"

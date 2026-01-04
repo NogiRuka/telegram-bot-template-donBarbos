@@ -4,6 +4,8 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .menu import show_notification_panel
+from .router import router
 from bot.config.constants import KEY_NOTIFICATION_CHANNELS
 from bot.core.config import settings
 from bot.core.constants import (
@@ -14,14 +16,12 @@ from bot.core.constants import (
 )
 from bot.database.models.emby_item import EmbyItemModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
-from bot.database.models.user_submission import UserSubmissionModel
 from bot.keyboards.inline.admin import get_notification_panel_keyboard
 from bot.keyboards.inline.buttons import (
     NOTIFY_CONFIRM_SEND_BUTTON,
     NOTIFY_CONFIRM_SEND_CANCEL_BUTTON,
 )
 from bot.keyboards.inline.constants import ADMIN_NEW_ITEM_NOTIFICATION_LABEL
-from bot.core.constants import CURRENCY_SYMBOL
 from bot.services.config_service import get_config
 from bot.services.main_message import MainMessageService
 from bot.utils.notification import (
@@ -29,9 +29,6 @@ from bot.utils.notification import (
     get_notification_content,
     get_notification_status_counts,
 )
-
-from .router import router
-from .menu import show_notification_panel
 
 
 @router.callback_query(F.data == "admin:notify_send")
@@ -61,17 +58,17 @@ async def execute_send_all(
     main_msg: MainMessageService
 ) -> None:
     """执行批量发送
-    
+
     功能说明:
     - 将所有待发送的通知推送到配置的频道/群组
     - 如果存在 LibraryNewNotificationModel.target_user__id，则对这些用户发送差异化通知
       内容包含“求片/投稿通过提示”以及“获得的奖励”信息（若可查到）
-    
+
     输入参数:
     - callback: 回调对象
     - session: 异步数据库会话
     - main_msg: 主控消息服务
-    
+
     返回值:
     - None
     """
@@ -96,7 +93,7 @@ async def execute_send_all(
 
     # 获取目标频道ID列表
     target_chat_ids = []
-    
+
     # 从数据库读取配置
     # 结构: [{"id": "123", "name": "foo", "enabled": True}, ...]
     channels_config = await get_config(session, KEY_NOTIFICATION_CHANNELS)
@@ -104,7 +101,7 @@ async def execute_send_all(
         for ch in channels_config:
             if isinstance(ch, dict) and ch.get("enabled"):
                 target_chat_ids.append(ch["id"])
-    
+
     # 兼容旧代码：如果数据库没配置，尝试从 settings 获取 (虽然启动时已经 sync 了，但为了双重保险)
     if not target_chat_ids:
          target_chat_ids = settings.get_notification_channel_ids()

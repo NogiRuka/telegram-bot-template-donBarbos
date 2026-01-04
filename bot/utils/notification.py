@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from bot.database.models.emby_item import EmbyItemModel
 
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
-from bot.database.models.notification import NotificationModel
 
 if TYPE_CHECKING:
     from bot.database.models.notification import NotificationModel as NotificationModelType
@@ -82,7 +81,7 @@ async def _extract_library_tag(path: str | None, session: AsyncSession | None = 
         return ""
 
     parts = [p for p in path.replace("\\", "/").split("/") if p]
-    
+
     # 从数据表获取启用的分类列表
     media_categories = []
     if session:
@@ -94,7 +93,7 @@ async def _extract_library_tag(path: str | None, session: AsyncSession | None = 
     else:
         # 没有session时使用默认值
         media_categories = ["剧集", "电影", "动漫", "国产", "日韩", "欧美"]
-    
+
     # 特殊处理：钙片/其他 -> 国产
     if "钙片" in parts:
         idx = parts.index("钙片")
@@ -109,13 +108,13 @@ async def _extract_library_tag(path: str | None, session: AsyncSession | None = 
     for category in media_categories:
         if category in parts:
             return f"#{category}"
-    
+
     # 向后兼容：检查传统分类
     if "剧集" in parts:
         return "#剧集"
     if "电影" in parts:
         return "#电影"
-    
+
     return ""
 
 

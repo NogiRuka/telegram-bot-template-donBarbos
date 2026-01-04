@@ -79,7 +79,7 @@ class BotSettings(EnvBaseSettings):
     @classmethod
     def validate_group(cls, v: str | None) -> str | None:
         """校验并格式化群组配置
-        
+
         - 如果是数字 ID (如 -100xxx)，保持原样
         - 如果是用户名 (如 username)，自动添加 @ 前缀
         """
@@ -104,7 +104,7 @@ class BotSettings(EnvBaseSettings):
             return v
         if isinstance(v, str) and not v.strip():
             return None
-            
+
         # 如果是字符串
         s = str(v).strip()
         # 尝试转为 int

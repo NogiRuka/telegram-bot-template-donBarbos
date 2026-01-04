@@ -1,8 +1,11 @@
+from typing import TYPE_CHECKING
+
 from aiogram import F, types
 from aiogram.fsm.context import FSMContext
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .router import router
 from bot.core.constants import (
     EVENT_TYPE_LIBRARY_NEW,
     NOTIFICATION_STATUS_FAILED,
@@ -10,16 +13,17 @@ from bot.core.constants import (
     NOTIFICATION_STATUS_PENDING_REVIEW,
 )
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
-from bot.database.models.notification import NotificationModel
 from bot.database.models.user_submission import UserSubmissionModel
 from bot.keyboards.inline.admin import get_notification_panel_keyboard
 from bot.keyboards.inline.constants import ADMIN_NEW_ITEM_NOTIFICATION_LABEL
 from bot.services.emby_service import fetch_and_save_item_details
 from bot.services.main_message import MainMessageService
-from bot.utils.notification import get_notification_status_counts
 from bot.utils.message import clear_message_list_from_state
+from bot.utils.notification import get_notification_status_counts
 
-from .router import router
+if TYPE_CHECKING:
+    from bot.database.models.notification import NotificationModel
+
 
 @router.callback_query(F.data == "admin:new_item_notification")
 async def show_notification_panel(
@@ -137,7 +141,7 @@ async def handle_notify_preview_to_complete(
     main_msg: MainMessageService
 ) -> None:
     """将预览状态的通知变成补全状态"""
-    
+
     # 获取所有预览状态的通知
     stmt = select(LibraryNewNotificationModel).where(
         LibraryNewNotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
@@ -145,17 +149,17 @@ async def handle_notify_preview_to_complete(
     )
     result = await session.execute(stmt)
     notifications = result.scalars().all()
-    
+
     if not notifications:
         await callback.answer("🈚 没有预览状态的通知", show_alert=False)
         return
-    
+
     # 将所有预览状态的通知改为补全状态
     for notification in notifications:
         notification.status = NOTIFICATION_STATUS_PENDING_COMPLETION
-    
+
     await session.commit()
-    
+
     # 刷新面板统计
     pending_completion, pending_review, _ = await get_notification_status_counts(session)
     text = (

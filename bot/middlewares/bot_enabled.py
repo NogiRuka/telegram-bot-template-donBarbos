@@ -2,10 +2,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from aiogram import BaseMiddleware
+from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, Message
 
-from aiogram.enums import ChatType
 from bot.services.config_service import get_config
 from bot.utils.message import delete_message_after_delay
 from bot.utils.permissions import _resolve_role
@@ -100,7 +100,7 @@ class BotEnabledMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         # 机器人关闭: 拦截并提示
-        
+
         # 如果是服务消息（如成员变动），则静默拦截，不发送提示
         # (上面的逻辑已经放行了服务消息，这里是双重保险，或者处理漏网之鱼)
         if is_message:
@@ -124,7 +124,7 @@ class BotEnabledMiddleware(BaseMiddleware):
                 msg: Message = event  # type: ignore
                 # 如果是群组，使用引用回复；如果是私聊，直接回复
                 is_group = msg.chat.type in (ChatType.GROUP, ChatType.SUPERGROUP)
-                
+
                 reply_msg = await msg.reply("🔴 机器人已关闭") if is_group else await msg.answer("🔴 机器人已关闭")
                 delete_message_after_delay(reply_msg, 3)
         except TelegramAPIError:

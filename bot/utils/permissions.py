@@ -3,10 +3,9 @@ import contextlib
 import functools
 from typing import TYPE_CHECKING, Any
 
-from aiogram import Bot
 from aiogram.types import CallbackQuery, Message
-from sqlalchemy import select
 from loguru import logger
+from sqlalchemy import select
 
 from bot.core.config import settings
 from bot.database.models import UserExtendModel, UserRole
@@ -15,6 +14,7 @@ from bot.services.config_service import get_config
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
+    from aiogram import Bot
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -67,7 +67,7 @@ async def _resolve_role(session: AsyncSession | None, user_id: int | None) -> st
                 return "admin"
             # 数据库为普通用户，继续检查是否为配置文件中的 admin
             if r == UserRole.user:
-                pass 
+                pass
             else:
                 return "user" # 默认
 
@@ -80,14 +80,14 @@ async def _resolve_role(session: AsyncSession | None, user_id: int | None) -> st
 
 async def is_group_admin(bot: Bot, user_id: int) -> bool:
     """检查用户是否为群组管理员
-    
+
     功能说明:
     - 检查用户是否在配置的群组(settings.GROUP)中拥有管理员或创建者权限
-    
+
     输入参数:
     - bot: Bot 实例
     - user_id: 用户 ID
-    
+
     返回值:
     - bool: 是否为管理员
     """
@@ -238,7 +238,6 @@ def require_admin_feature(feature_key: str) -> Callable[[Callable[..., Awaitable
     return decorator
 
 
-from bot.core.config import settings
 
 def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
     """用户功能开关装饰器
@@ -259,10 +258,10 @@ def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             session: AsyncSession | None = kwargs.get("session")
             first = args[0] if args else None
-            
+
             # 1. 提取用户ID
             user_id = _extract_user_id(first)
-            
+
             # 2. 检查是否为所有者 (豁免检查)
             if user_id and user_id == settings.get_owner_id():
                 return await func(*args, **kwargs)

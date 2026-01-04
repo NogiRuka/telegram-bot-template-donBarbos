@@ -121,7 +121,7 @@ async def sync_all_users_configuration(
                 # 查询用户设备
                 stmt = select(EmbyDeviceModel).where(
                     EmbyDeviceModel.last_user_id == uid,
-                    not EmbyDeviceModel.is_deleted
+                    EmbyDeviceModel.is_deleted == False
                 )
                 res = await session.execute(stmt)
                 devices = res.scalars().all()

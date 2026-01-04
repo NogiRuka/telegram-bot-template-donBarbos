@@ -1,10 +1,8 @@
 """
 封禁用户命令模块
 """
-from datetime import datetime
 
 from aiogram import Router
-from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandObject
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from loguru import logger
@@ -82,8 +80,9 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
 
     # 尝试获取目标用户信息
     # 查询数据库获取用户信息
-    from bot.database.models import UserModel
     from sqlalchemy import select
+
+    from bot.database.models import UserModel
 
     db_user_result = await session.execute(select(UserModel).where(UserModel.id == target_user_id))
     db_user = db_user_result.scalar_one_or_none()
@@ -114,7 +113,8 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
                     "action": "ManualBan"
                 }
             else:
-                raise Exception("No group configured")
+                msg = "No group configured"
+                raise Exception(msg)
         except Exception:
             # 最后的后备方案
             user_info = {
@@ -137,7 +137,7 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
     results.extend(emby_results)
 
     await session.commit()
-    
+
     # 构建按钮
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -145,5 +145,5 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
             InlineKeyboardButton(text="❌ 关闭", callback_data="close_message")
         ]
     ])
-    
+
     await message.reply("\n".join(results), reply_markup=kb, parse_mode="MarkdownV2")

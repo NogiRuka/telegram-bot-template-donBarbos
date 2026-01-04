@@ -1,19 +1,17 @@
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardMarkup, Message
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.constants import CURRENCY_SYMBOL
 from bot.database.models import UserSubmissionModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
+from bot.keyboards.inline.buttons import CLOSE_BUTTON
 from bot.services.currency import CurrencyService
+from bot.utils.datetime import now
 from bot.utils.message import send_toast
 from bot.utils.permissions import require_admin_priv
-from bot.core.constants import CURRENCY_SYMBOL
-from aiogram.types import InlineKeyboardMarkup
-from bot.keyboards.inline.buttons import CLOSE_BUTTON
-from bot.utils.datetime import now
-
 
 router = Router(name="command_submission_review")
 
@@ -22,7 +20,7 @@ router = Router(name="command_submission_review")
 @require_admin_priv
 async def cmd_submission_review(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """命令式投稿审批（/sr, /submission_review）
-    
+
     功能说明:
     - 通过命令快速审批用户求片/投稿，并可附带留言
     - 命令格式: /sr <submission_id> <a/r> [notif_id] [comment...]
@@ -32,15 +30,15 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
       - comment: 审批留言（可选，支持空格；当未提供notif_id时，如第三参数非纯数字则视为comment）
     - 审批通过时若 reward_bonus>0，将发放奖励
     - 将投稿者ID追加到对应通知的 target_user_id（逗号分隔，去重）
-    
+
     输入参数:
     - message: 文本消息对象
     - command: 命令对象（包含原始参数）
     - session: 异步数据库会话
-    
+
     返回值:
     - None
-    
+
     Telegram API 说明与限制:
     - 单条消息长度建议不超过 4096 字符
     - 发送速率受限于 Telegram（约每秒 30 次），出现429需重试
