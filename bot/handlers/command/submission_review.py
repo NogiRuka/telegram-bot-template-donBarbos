@@ -143,17 +143,19 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
         if notification is not None:
             await message.reply(
                 f"{result_text}。\n"
-                f"📄 投稿ID: {submission.id}\n"
-                f"🔗 通知ID: {notification.id}\n"
-                f"👤 已记录需额外通知的用户ID: {notification.target_user_id or '无'}",
-                reply_markup=kb
+                f"📄 投稿ID：{submission.id}\n"
+                f"🔗 通知ID：{notification.id}\n"
+                f"👤 已记录需额外通知的用户ID：`{notification.target_user_id or '无'}`",
+                reply_markup=kb,
+            parse_mode="MarkdownV2"
             )
         else:
             await message.reply(
                 f"{result_text}。\n"
-                f"📄 投稿ID: {submission.id}\n"
-                f"🔗 通知ID: 未提供（未追加通知用户）",
-                reply_markup=kb
+                f"📄 投稿ID：{submission.id}\n"
+                f"🔗 通知ID：未提供（未追加通知用户）",
+                reply_markup=kb,
+            parse_mode="MarkdownV2"
             )
 
     except Exception as e:

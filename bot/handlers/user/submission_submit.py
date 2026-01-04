@@ -156,7 +156,7 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
         
         # 返回成功界面
         builder = InlineKeyboardBuilder()
-        builder.button(text="✍️ 继续投稿", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:submit")
+        builder.button(text="📥 继续投稿", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:submit")
         builder.row(BACK_TO_USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON)
         
         await main_msg.render(user_id, success_text, builder.as_markup())

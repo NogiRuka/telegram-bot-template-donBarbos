@@ -121,7 +121,7 @@ async def process_request(message: Message, state: FSMContext, session: AsyncSes
         
         # 返回成功界面
         builder = InlineKeyboardBuilder()
-        builder.button(text="📥 继续求片", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:request")
+        builder.button(text="🔍 继续求片", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:request")
         builder.row(BACK_TO_USER_SUBMISSION_BUTTON, BACK_TO_HOME_BUTTON)
         
         await main_msg.render(user_id, success_text, builder.as_markup())

@@ -76,28 +76,8 @@ def get_submission_review_pagination_keyboard(page: int, total_pages: int, limit
 
 def build_submission_review_keyboard(submission_id: int, status: str, is_review_needed: bool = True) -> InlineKeyboardMarkup:
     """构建投稿审核键盘"""
-    if not is_review_needed:
-        return InlineKeyboardMarkup(inline_keyboard=[[CLOSE_BUTTON]])
-    
-    buttons = []
-    
-    # 第一行：基本审核操作
-    if status == "pending":
-        buttons.append([
-            InlineKeyboardButton(text="✅ 通过", callback_data=f"{SUBMISSION_REVIEW_APPROVE_CALLBACK_DATA}:{submission_id}"),
-            InlineKeyboardButton(text="❌ 拒绝", callback_data=f"{SUBMISSION_REVIEW_REJECT_CALLBACK_DATA}:{submission_id}"),
-        ])
-        
-        # 第二行：带留言的审核操作
-        buttons.append([
-            InlineKeyboardButton(text="✅ 通过并留言", callback_data=f"{SUBMISSION_REVIEW_APPROVE_WITH_COMMENT_CALLBACK_DATA}:{submission_id}"),
-            InlineKeyboardButton(text="❌ 拒绝并留言", callback_data=f"{SUBMISSION_REVIEW_REJECT_WITH_COMMENT_CALLBACK_DATA}:{submission_id}"),
-        ])
-    
-    # 关闭按钮
-    buttons.append([CLOSE_BUTTON])
-    
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+    # 审核操作改为使用命令进行，此处仅保留关闭按钮
+    return InlineKeyboardMarkup(inline_keyboard=[[CLOSE_BUTTON]])
 
 
 @router.callback_query(F.data == "admin:submission_review")
