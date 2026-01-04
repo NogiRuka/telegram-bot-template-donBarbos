@@ -14,6 +14,12 @@
   <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="Package manager"></a>
 <p>
 
+
+- python -m alembic revision --autogenerate -m "描述你的修改"
+- python -m alembic upgrade head
+
+
+
 ## ✨ 功能特性
 
 ### 🤖 Telegram Bot
