@@ -128,9 +128,7 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
             )
         except Exception as e:
             logger.warning(f"通知投稿者 {submission.submitter_id} 失败: {e}")
-        kb = InlineKeyboardMarkup(
-            inline_keyboard=[CLOSE_BUTTON]
-        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[[CLOSE_BUTTON]])
         await message.reply(
             f"{result_text}。\n"
             f"📄 投稿ID: {submission.id}\n"
