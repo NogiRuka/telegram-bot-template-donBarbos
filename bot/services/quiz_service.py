@@ -88,7 +88,9 @@ class QuizService:
                     QuizActiveSessionModel.id == session_id,
                     QuizActiveSessionModel.is_deleted == False
                 )
-                quiz_session = (await session.execute(stmt)).scalar_one_or_none()
+                # 使用 unique() 防止可能的笛卡尔积（尽管 ID 查询理论上不需要，但防御性编程）
+                # 使用 scalars().first() 替代 scalar_one_or_none() 以避免多行错误导致任务崩溃
+                quiz_session = (await session.execute(stmt)).unique().scalars().first()
 
                 if quiz_session:
                     logger.info(f"⏰ [问答] 会话 {session_id} 已超时。正在删除消息 {message_id}")
