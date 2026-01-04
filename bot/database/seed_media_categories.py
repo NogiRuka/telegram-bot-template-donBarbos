@@ -36,12 +36,12 @@ async def init_media_categories(session: AsyncSession) -> None:
     
     # 默认分类数据
     default_categories = [
-        {"name": "剧集", "description": "电视剧、网剧等剧集内容", "sort_order": 1},
-        {"name": "电影", "description": "电影、院线大片", "sort_order": 2},
-        {"name": "动漫", "description": "动画、漫画改编作品", "sort_order": 3},
-        {"name": "国产", "description": "国产影视作品", "sort_order": 4},
-        {"name": "日韩", "description": "日本、韩国影视作品", "sort_order": 5},
-        {"name": "欧美", "description": "欧洲、美国影视作品", "sort_order": 6},
+        {"name": "电影", "description": "院线电影、网络电影等", "sort_order": 1},
+        {"name": "剧集", "description": "电视剧、网剧等连续剧集", "sort_order": 2},
+        {"name": "动漫", "description": "动画片、动漫剧集等", "sort_order": 3},
+        {"name": "国产", "description": "国产成人内容", "sort_order": 4},
+        {"name": "日韩", "description": "日韩成人内容", "sort_order": 5},
+        {"name": "欧美", "description": "欧美成人内容", "sort_order": 6},
     ]
     
     # 创建分类数据

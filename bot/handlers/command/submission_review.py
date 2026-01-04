@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.database.models import UserSubmissionModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.services.currency import CurrencyService
+from bot.utils.message import send_toast
 from bot.utils.permissions import require_admin_priv
 from bot.core.constants import CURRENCY_SYMBOL
 from aiogram.types import InlineKeyboardMarkup
@@ -48,7 +49,7 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
         args_raw = (command.args or "").strip()
         parts = args_raw.split()
         if len(parts) < 2:
-            await message.answer("❌ 参数不足\n正确格式：/sr <投稿ID> <a/r> [notif_id] [留言]")
+            await send_toast(message, "❌ 参数不足\n正确格式：/sr <投稿ID> <a/r> [notif_id] [留言]")
             return
 
         submission_id_str, action_str = parts[0], parts[1]
@@ -66,27 +67,27 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
         try:
             submission_id = int(submission_id_str)
         except ValueError:
-            await message.answer("❌ 投稿ID或通知ID必须为整数")
+            await send_toast(message, "❌ 投稿ID或通知ID必须为整数")
             return
 
         action = action_str.lower()
         if action not in ("a", "approve", "r", "reject"):
-            await message.answer("❌ 操作类型无效，应为 a/approve 或 r/reject")
+            await send_toast(message, "❌ 操作类型无效，应为 a/approve 或 r/reject")
             return
 
         submission = await session.get(UserSubmissionModel, submission_id)
         if not submission:
-            await message.answer(f"❌ 投稿不存在：#{submission_id}")
+            await send_toast(message, f"❌ 投稿不存在：#{submission_id}")
             return
         if submission.status != "pending":
-            await message.answer(f"⚠️ 投稿状态已改变，当前为：{submission.status}")
+            await send_toast(message, f"⚠️ 投稿状态已改变，当前为：{submission.status}")
             return
 
         notification: LibraryNewNotificationModel | None = None
         if notif_id is not None:
             notification = await session.get(LibraryNewNotificationModel, notif_id)
             if not notification:
-                await message.answer(f"❌ 通知不存在：#{notif_id}")
+                await send_toast(message, f"❌ 通知不存在：#{notif_id}")
                 return
 
         now_text = message.date.strftime("%Y-%m-%d %H:%M:%S")
@@ -107,7 +108,7 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
                         description=f"投稿 #{submission.id} 审核通过奖励"
                     )
                 except Exception as e:
-                    logger.warning(f"发放奖励失败: {e}")
+                    logger.warning(f"❌ 发放奖励失败: {e}")
             result_text = "✅ 审核通过"
         else:
             submission.status = "rejected"
@@ -121,7 +122,7 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
                 notification.target_user_id = ",".join(str(x) for x in sorted(existing_ids))
                 notification.updated_by = message.from_user.id if message.from_user else None
         except Exception as e:
-            logger.warning(f"更新通知 target_user_id 失败: {e}")
+            logger.warning(f"❌ 更新通知 target_user_id 失败: {e}")
 
         await session.commit()
 
@@ -138,7 +139,7 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
                 parse_mode="Markdown"
             )
         except Exception as e:
-            logger.warning(f"通知投稿者 {submission.submitter_id} 失败: {e}")
+            logger.warning(f"❌ 通知投稿者 {submission.submitter_id} 失败: {e}")
         kb = InlineKeyboardMarkup(inline_keyboard=[[CLOSE_BUTTON]])
         if notification is not None:
             await message.reply(
@@ -159,5 +160,5 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
             )
 
     except Exception as e:
-        logger.exception(f"/sr 命令处理失败: {e}")
+        logger.exception(f"❌ /sr 命令处理失败: {e}")
         await message.answer(f"❌ 处理失败：{e}")
