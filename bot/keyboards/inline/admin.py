@@ -194,14 +194,14 @@ def get_notification_panel_keyboard(pending_completion: int, pending_review: int
                 callback_data=NOTIFY_COMPLETE_CALLBACK_DATA,
             ),
             InlineKeyboardButton(
-                text=f"{NOTIFY_PREVIEW_TO_COMPLETE_LABEL}",
-                callback_data=NOTIFY_PREVIEW_TO_COMPLETE_CALLBACK_DATA,
+                text=f"📋 投稿审核 ({pending_submissions})",
+                callback_data="admin:submission_review:list:1:5",
             )
         ],
         [
             InlineKeyboardButton(
-                text=f"📋 投稿审核 ({pending_submissions})",
-                callback_data="admin:submission_review:list:1:5",
+                text=f"{NOTIFY_PREVIEW_TO_COMPLETE_LABEL}",
+                callback_data=NOTIFY_PREVIEW_TO_COMPLETE_CALLBACK_DATA,
             ),
             InlineKeyboardButton(
                 text=f"{NOTIFY_PREVIEW_LABEL} ({pending_review})",

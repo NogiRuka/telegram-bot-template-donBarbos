@@ -25,7 +25,7 @@ class LibraryNewNotificationModel(Base, BasicAuditMixin):
     - item_name: 关联的媒体名称
     - payload: 原始 Webhook JSON 数据
     - target_channel_id: 发送到的频道ID
-    - target_group_id: 发送到的群组ID
+    - target_user_id: 需要额外通知的用户ID（求片/投稿通过后需通知的用户）
     """
 
     __tablename__ = "emby_library_new_notifications"
@@ -53,7 +53,7 @@ class LibraryNewNotificationModel(Base, BasicAuditMixin):
     episode_number: Mapped[int | None] = mapped_column(nullable=True, comment="集号 (IndexNumber)")
 
     target_channel_id: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="目标频道ID")
-    target_group_id: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="目标群组ID")
+    target_user_id: Mapped[str | None] = mapped_column("target_user_id", String(64), nullable=True, comment="需要额外通知的用户ID")
 
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, comment="原始 Webhook 数据")
 

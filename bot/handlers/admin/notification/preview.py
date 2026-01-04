@@ -283,7 +283,20 @@ async def handle_add_sender_complete(
     session: AsyncSession,
     state: FSMContext
 ) -> None:
-    """处理添加通知者的输入"""
+    """处理添加通知者的输入
+    
+    功能说明:
+    - 将管理员输入的用户标识保存到 LibraryNewNotificationModel.target_user__id
+    - 支持追加多个用户ID，使用逗号分隔
+    
+    输入参数:
+    - message: 当前消息对象
+    - session: 异步数据库会话
+    - state: FSM 状态上下文
+    
+    返回值:
+    - None
+    """
     data = await state.get_data()
     notification_id = data.get("notification_id")
 
@@ -313,13 +326,13 @@ async def handle_add_sender_complete(
 
     sender_info = message.text.strip()
 
-    # 获取当前的发送者信息
-    current_senders = notification.target_channel_id or ""
+    # 获取当前的目标用户ID列表
+    current_senders = notification.target_user_id or ""
 
-    # 添加新的通知者
+    # 添加新的目标用户ID
     new_senders = f"{current_senders},{sender_info}" if current_senders else sender_info
 
-    notification.target_channel_id = new_senders
+    notification.target_user_id = new_senders
     if message.from_user:
         notification.updated_by = message.from_user.id
 
