@@ -1,5 +1,7 @@
 from aiogram import F, types
 from aiogram.types import InlineKeyboardMarkup
+from aiogram.exceptions import TelegramRetryAfter
+import asyncio
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -166,6 +168,20 @@ async def execute_send_all(
                     else:
                         await callback.bot.send_message(chat_id=chat_id, text=msg_text)
                     send_success = True
+                    # 主动等待3秒，避免触发速率限制
+                    await asyncio.sleep(3)
+                except TelegramRetryAfter as e:
+                    logger.warning(f"⏳ 触发速率限制，等待 {e.retry_after} 秒后重试...")
+                    await asyncio.sleep(e.retry_after + 1)
+                    try:
+                        if image_url:
+                            await callback.bot.send_photo(chat_id=chat_id, photo=image_url, caption=msg_text)
+                        else:
+                            await callback.bot.send_message(chat_id=chat_id, text=msg_text)
+                        send_success = True
+                        await asyncio.sleep(3)
+                    except Exception as retry_e:
+                        logger.error(f"❌ 重试发送通知到 {chat_id} 失败: {item.name} -> {retry_e}")
                 except Exception as e:
                     logger.error(f"❌ 发送通知到 {chat_id} 失败: {item.name} -> {e}")
 
