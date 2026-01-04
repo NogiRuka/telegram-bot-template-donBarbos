@@ -107,7 +107,7 @@ def get_main_image_settings_keyboard(current_mode: str, nsfw_unlocked: bool) -> 
     keyboard.adjust(1)
 
     # 返回按钮
-    keyboard.row(PROFILE_BUTTON, BACK_TO_HOME_BUTTON)
+    keyboard.row(BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON)
 
     return keyboard.as_markup()
 

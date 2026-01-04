@@ -8,6 +8,10 @@ from bot.database.models import UserSubmissionModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.services.currency import CurrencyService
 from bot.utils.permissions import require_admin_priv
+from bot.core.constants import CURRENCY_SYMBOL
+from aiogram.types import InlineKeyboardMarkup
+from bot.keyboards.inline.buttons import CLOSE_BUTTON
+
 
 router = Router(name="command_submission_review")
 
@@ -116,7 +120,7 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
             if comment:
                 base_text += f"📝 管理员留言：{comment}\n"
             if submission.status == "approved" and submission.reward_bonus and submission.reward_bonus > 0:
-                base_text += f"🎁 奖励：+{submission.reward_bonus}\n"
+                base_text += f"🎁 奖励：+{submission.reward_bonus} {CURRENCY_SYMBOL}\n"
             await message.bot.send_message(
                 submission.submitter_id,
                 base_text,
@@ -124,12 +128,15 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
             )
         except Exception as e:
             logger.warning(f"通知投稿者 {submission.submitter_id} 失败: {e}")
-
-        await message.answer(
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[CLOSE_BUTTON]
+        )
+        await message.reply(
             f"{result_text}。\n"
             f"📄 投稿ID: {submission.id}\n"
             f"🔗 通知ID: {notification.id}\n"
-            f"👤 已记录需额外通知的用户ID: {notification.target_user_id or '无'}"
+            f"👤 已记录需额外通知的用户ID: {notification.target_user_id or '无'}",
+            reply_markup=kb
         )
 
     except Exception as e:

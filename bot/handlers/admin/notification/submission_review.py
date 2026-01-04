@@ -203,9 +203,9 @@ async def list_submissions_for_review(
             title = escape_markdown_v2(submission.title)
             caption = (
                 f"*{type_icon} {status_icon} 投稿审核 \\#{submission.id}*\n"
-                f"📽️ 标题：{title}\n"
+                f"📽️ 标题：`{title}`\n"
                 f"🏷️ 分类：{escape_markdown_v2(category_name)}\n"
-                f"👤 投稿者：ID{submission.submitter_id}\n"
+                f"👤 投稿者ID：`{submission.submitter_id}`\n"
             )
             
             # 添加描述（如果有）

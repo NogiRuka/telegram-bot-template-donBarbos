@@ -80,8 +80,8 @@ async def show_submissions_page(callback: CallbackQuery, session: AsyncSession, 
         
         # 类型图标
         type_icon = {
-            "request": "📥",
-            "submit": "✍️"
+            "request": "🔍",
+            "submit": "📥"
         }.get(submission.type, "📝")
         
         # 状态文本

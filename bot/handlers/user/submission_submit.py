@@ -46,7 +46,7 @@ async def start_submit(callback: CallbackQuery, state: FSMContext, session: Asyn
     cat_text = "\n".join(lines)
     
     text = (
-        "*✍️ 开始投稿*\n\n"
+        "*📥 开始投稿*\n\n"
         "请发送您发现的优质内容，格式如下：\n\n"
         "`第1行：内容标题\n"
         "第2行：分类ID（见下方列表）\n"

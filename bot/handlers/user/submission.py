@@ -23,8 +23,8 @@ async def start_submission(callback: CallbackQuery, state: FSMContext, session: 
     
     # 创建键盘
     builder = InlineKeyboardBuilder()
-    builder.button(text="📥 开始求片", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:request")
-    builder.button(text="✍️ 开始投稿", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:submit")
+    builder.button(text="🔍 开始求片", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:request")
+    builder.button(text="📥 开始投稿", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:submit")
     builder.button(text="📝 问答投稿", callback_data="user:quiz:submit")  # 保留原有的问答投稿入口
     builder.button(text="📋 我的求片/投稿", callback_data=f"{USER_SUBMISSION_CALLBACK_DATA}:my_submissions")
     builder.row(BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON)
