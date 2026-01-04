@@ -197,6 +197,9 @@ async def get_notification_content(item: EmbyItemModel, session: AsyncSession | 
 
     overview = item.overview or ""
     if overview:
+        # 如果包含分隔符，只取前面的内容
+        if "---" in overview:
+            overview = overview.split("---")[0].strip()
         msg_parts.append(f"📝 <b>简介：</b>{_truncate_overview(overview)}")
 
     return "\n".join(msg_parts), image_url
