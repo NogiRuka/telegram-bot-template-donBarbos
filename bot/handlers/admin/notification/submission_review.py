@@ -74,47 +74,10 @@ def get_submission_review_pagination_keyboard(page: int, total_pages: int, limit
     return builder.as_markup()
 
 
-def build_submission_review_keyboard(submission_id: int, status: str, is_review_needed: bool = True) -> InlineKeyboardMarkup:
+def build_submission_review_keyboard() -> InlineKeyboardMarkup:
     """构建投稿审核键盘"""
     # 审核操作改为使用命令进行，此处仅保留关闭按钮
     return InlineKeyboardMarkup(inline_keyboard=[[CLOSE_BUTTON]])
-
-
-@router.callback_query(F.data == "admin:submission_review")
-async def show_submission_review_panel(
-    callback: types.CallbackQuery,
-    session: AsyncSession,
-    main_msg: MainMessageService,
-    state: FSMContext
-) -> None:
-    """显示投稿审核面板"""
-    await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "submission_review_ids")
-
-    # 计算待审核数量
-    count_stmt = select(func.count()).select_from(UserSubmissionModel).where(
-        UserSubmissionModel.status == "pending"
-    )
-    pending_count = (await session.execute(count_stmt)).scalar_one()
-
-    text = (
-        f"*🎬 求片/投稿审核*\n\n"
-        f"📊 *统计信息:*\n"
-        f"• 待审核投稿：*{pending_count}*"
-    )
-    
-    # 创建审核键盘
-    builder = InlineKeyboardBuilder()
-    if pending_count > 0:
-        builder.button(text=f"📋 开始审核 ({pending_count})", callback_data=f"{SUBMISSION_REVIEW_LIST_CALLBACK_DATA}:1:5")
-    else:
-        builder.button(text="✅ 暂无待审核", callback_data="ignore")
-    
-    builder.row(
-        InlineKeyboardButton(text="🔙 返回通知面板", callback_data="admin:new_item_notification"),
-        BACK_TO_HOME_BUTTON
-    )
-    
-    await main_msg.update_on_callback(callback, text, builder.as_markup())
 
 
 @router.callback_query(F.data.startswith(SUBMISSION_REVIEW_LIST_CALLBACK_DATA + ":"))
@@ -207,7 +170,7 @@ async def list_submissions_for_review(
             caption += f"📅 投稿时间：{date_str}"
 
             # 构建审核键盘
-            keyboard = build_submission_review_keyboard(submission.id, submission.status)
+            keyboard = build_submission_review_keyboard()
 
             # 发送消息
             if submission.image_file_id:
@@ -229,7 +192,7 @@ async def list_submissions_for_review(
             new_msg_ids.append(msg.message_id)
 
         except Exception as e:
-            logger.error(f"投稿 #{submission.id} 渲染失败: {e}")
+            logger.error(f"❌ 投稿 #{submission.id} 渲染失败: {e}")
             try:
                 error_msg = await callback.message.answer(
                     text=f"⚠️ 投稿 \\#{submission.id} 渲染失败: {escape_markdown_v2(str(e))}",
@@ -237,7 +200,7 @@ async def list_submissions_for_review(
                 )
                 new_msg_ids.append(error_msg.message_id)
             except Exception as e2:
-                logger.error(f"发送错误通知也失败: {e2}")
+                logger.error(f"❌ 发送错误通知也失败: {e2}")
 
     # 记录新发送的消息ID
     await state.update_data(submission_review_ids=new_msg_ids)
