@@ -24,6 +24,7 @@ from bot.services.currency import CurrencyService
 from bot.services.emby_service import run_emby_sync, start_scheduler
 from bot.services.quiz_service import QuizService
 from bot.database.seed_quiz import seed_quiz_data
+from bot.database.seed_media_categories import init_media_categories
 
 if TYPE_CHECKING:
     from aiogram import Bot
@@ -58,6 +59,7 @@ async def on_startup() -> None:
             await ensure_config_defaults(session)
             await sync_notification_channels(session)
             await seed_quiz_data(session)
+            await init_media_categories(session)
             await CurrencyService.ensure_products(session)
             await CurrencyService.ensure_configs(session)
             

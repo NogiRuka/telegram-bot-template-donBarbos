@@ -12,6 +12,7 @@ from bot.utils.permissions import require_admin_priv
 from bot.core.constants import CURRENCY_SYMBOL
 from aiogram.types import InlineKeyboardMarkup
 from bot.keyboards.inline.buttons import CLOSE_BUTTON
+from bot.utils.datetime import now
 
 
 router = Router(name="command_submission_review")
@@ -90,9 +91,8 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
                 await send_toast(message, f"❌ 通知不存在：#{notif_id}")
                 return
 
-        now_text = message.date.strftime("%Y-%m-%d %H:%M:%S")
         submission.reviewer_id = message.from_user.id if message.from_user else None
-        submission.review_time = now_text
+        submission.review_time = now()
         if comment:
             submission.review_comment = comment
 

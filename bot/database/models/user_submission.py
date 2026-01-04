@@ -1,7 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Index, Integer, String, Text, BigInteger
+import datetime
+from sqlalchemy import JSON, Index, Integer, String, Text, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
@@ -58,7 +59,7 @@ class UserSubmissionModel(Base, BasicAuditMixin):
     
     # 审核信息
     reviewer_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, comment="审核者用户ID")
-    review_time: Mapped[str | None] = mapped_column(String(50), nullable=True, comment="审核时间")
+    review_time: Mapped[str | None] = mapped_column(datetime.datetime, nullable=True, comment="审核时间")
     review_comment: Mapped[str | None] = mapped_column(Text, nullable=True, comment="审核评论")
     
     # 投稿者信息
