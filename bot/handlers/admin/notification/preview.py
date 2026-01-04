@@ -98,7 +98,8 @@ async def handle_notify_preview(
     text = (
         f"👀 *通知预览*\n\n"
         f"共 {total_count} 条待处理通知\n"
-        f"当前第 {page}/{total_pages} 页"
+        f"当前第 {page}/{total_pages} 页\n\n"
+        f"💡 使用 `/sr` 命令审核"
     )
     kb = get_notification_preview_pagination_keyboard(page, total_pages, limit)
     await main_msg.update_on_callback(callback, text, kb)
@@ -228,7 +229,7 @@ async def handle_item_status_toggle(
         msg_text, _ = await get_notification_content(item, session)
 
         # 重新生成键盘
-        status_text = "🔄 " + ("已完结" if item.status == "Ended" else "更新中")
+        status_text = "🔄 " + ("已完结" if item.status == "Ended" else "更新中") + f"（{notif.id}）"
         new_kb = InlineKeyboardMarkup(
             inline_keyboard=[
                 [

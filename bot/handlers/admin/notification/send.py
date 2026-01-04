@@ -13,7 +13,6 @@ from bot.core.constants import (
     NOTIFICATION_STATUS_SENT,
 )
 from bot.database.models.emby_item import EmbyItemModel
-from bot.database.models.notification import NotificationModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.user_submission import UserSubmissionModel
 from bot.keyboards.inline.admin import get_notification_panel_keyboard
@@ -82,9 +81,9 @@ async def execute_send_all(
     fail_count = 0
 
     # 获取所有待发送的通知
-    stmt = select(NotificationModel).where(
-        NotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
-        NotificationModel.type == EVENT_TYPE_LIBRARY_NEW
+    stmt = select(LibraryNewNotificationModel).where(
+        LibraryNewNotificationModel.status == NOTIFICATION_STATUS_PENDING_REVIEW,
+        LibraryNewNotificationModel.type == EVENT_TYPE_LIBRARY_NEW
     )
     result = await session.execute(stmt)
     notifications = result.scalars().all()
@@ -149,17 +148,17 @@ async def execute_send_all(
             # 合并目标频道：配置的频道 + 通知原有的target_channel_id
             all_target_chat_ids = list(target_chat_ids)  # 从配置获取的频道
 
-            # 如果通知本身有target_channel_id，也要发送给这些人
-            if notif.target_channel_id:
+            # 如果通知本身有target_user_id，也要发送给这些人
+            if notif.target_user_id:
                 try:
-                    # 解析原有的target_channel_id（逗号分隔的字符串）
-                    existing_targets = [int(x.strip()) for x in notif.target_channel_id.split(",") if x.strip()]
+                    # 解析原有的target_user_id（逗号分隔的字符串）
+                    existing_targets = [int(x.strip()) for x in notif.target_user_id.split(",") if x.strip()]
                     # 添加到目标列表中，避免重复
                     for target in existing_targets:
                         if target not in all_target_chat_ids:
                             all_target_chat_ids.append(target)
                 except ValueError as e:
-                    logger.warning(f"⚠️ 解析通知的target_channel_id失败: {notif.target_channel_id} -> {e}")
+                    logger.warning(f"⚠️ 解析通知的target_user_id失败: {notif.target_user_id} -> {e}")
 
             # 发送给所有目标频道（配置频道 + 原有目标）
             send_success = False
@@ -184,73 +183,6 @@ async def execute_send_all(
             else:
                 notif.status = NOTIFICATION_STATUS_FAILED
                 fail_count += 1
-
-            # 追加对 target_user_id 的差异化通知（求片/投稿通过 + 奖励）
-            try:
-                # 查找 LibraryNewNotificationModel 中同一作品的记录，提取 target_user_id
-                if notif.item_type == "Episode" and notif.series_id:
-                    ln_stmt = select(LibraryNewNotificationModel).where(
-                        LibraryNewNotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
-                        LibraryNewNotificationModel.series_id == notif.series_id,
-                    )
-                else:
-                    ln_stmt = select(LibraryNewNotificationModel).where(
-                        LibraryNewNotificationModel.type == EVENT_TYPE_LIBRARY_NEW,
-                        LibraryNewNotificationModel.item_id == notif.item_id,
-                    )
-                ln_result = await session.execute(ln_stmt)
-                ln_rows = ln_result.scalars().all()
-
-                # 汇总用户ID
-                special_user_ids: set[int] = set()
-                for ln in ln_rows:
-                    if ln.target_user_id:
-                        for part in ln.target_user_id.split(","):
-                            part = part.strip()
-                            if not part:
-                                continue
-                            try:
-                                special_user_ids.add(int(part))
-                            except ValueError:
-                                logger.warning(f"⚠️ 非法的 target_user_id: {part}")
-
-                # 为每个用户发送差异化通知
-                for uid in special_user_ids:
-                    # 查询该用户的最近一次通过的投稿/求片（按标题匹配）
-                    reward_text = ""
-                    try:
-                        sub_stmt = (
-                            select(UserSubmissionModel)
-                            .where(
-                                UserSubmissionModel.submitter_id == uid,
-                                UserSubmissionModel.status == "approved",
-                                UserSubmissionModel.title == item.name,
-                            )
-                            .order_by(UserSubmissionModel.review_time.desc())
-                            .limit(1)
-                        )
-                        sub_result = await session.execute(sub_stmt)
-                        submission = sub_result.scalar_one_or_none()
-                        if submission:
-                            total_reward = (submission.reward_base or 0) + (submission.reward_bonus or 0)
-                            reward_text = f"\n🎁 奖励：+{total_reward} {CURRENCY_SYMBOL}"
-                    except Exception as e:
-                        logger.warning(f"查询奖励信息失败: user={uid}, item={item.name} -> {e}")
-
-                    # 发送差异化通知
-                    try:
-                        text = (
-                            f"🎉 您的求片/投稿已通过并已上新\n"
-                            f"📽️ 作品：{item.name}"
-                            f"{reward_text}\n"
-                            f"💡 感谢您的贡献！"
-                        )
-                        await callback.bot.send_message(chat_id=uid, text=text)
-                    except Exception as e:
-                        logger.error(f"❌ 向用户 {uid} 发送差异化通知失败: {item.name} -> {e}")
-
-            except Exception as e:
-                logger.error(f"❌ 处理 target_user__id 差异化通知失败: {item.name} -> {e}")
 
         except Exception as e:
             logger.error(f"❌ 处理通知失败: {notif.item_id} -> {e}")
