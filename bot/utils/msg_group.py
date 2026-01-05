@@ -6,6 +6,36 @@ from bot.core.config import settings
 from bot.utils.text import escape_markdown_v2
 
 
+def escape_markdown_v2_preserve_code(text: str) -> str:
+    """
+    功能说明:
+    - 对输入文本按 MarkdownV2 规则进行转义, 但保留由反引号 ` 包裹的代码片段不转义
+    - 用于避免像 `Unknown` 这样的片段被错误转义从而无法渲染成代码样式
+
+    输入参数:
+    - text: 原始文本
+
+    返回值:
+    - str: 处理后的文本, 代码片段保留, 其它内容按 MarkdownV2 转义
+    """
+    try:
+        if not text:
+            return ""
+        parts = text.split("`")
+        result: list[str] = []
+        for idx, part in enumerate(parts):
+            if idx % 2 == 0:
+                # 代码片段之外: 做 MarkdownV2 转义
+                result.append(escape_markdown_v2(part))
+            else:
+                # 代码片段之内: 保留原样, 并重新包裹反引号
+                result.append(f"`{part}`")
+        return "".join(result)
+    except Exception:
+        # 兜底: 出错时退回整体转义
+        return escape_markdown_v2(text)
+
+
 async def send_group_notification(
     bot: Bot,
     user_info: dict[str, str],
@@ -73,7 +103,7 @@ async def send_group_notification(
         # 📖 FullName @Username Reason
         escaped_full_name = escape_markdown_v2(full_name)
         user_mention = to_mention(username)
-        escaped_reason = escape_markdown_v2(reason)
+        escaped_reason = escape_markdown_v2_preserve_code(reason)
 
         content = f"📖 `{escaped_full_name}` {user_mention} {escaped_reason}"
         msg_text = f"{tags}\n{content}"
