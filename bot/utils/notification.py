@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import case, func, select
 
 from bot.core.config import settings
+from loguru import logger
 from bot.core.constants import (
     EVENT_TYPE_LIBRARY_NEW,
     NOTIFICATION_STATUS_PENDING_COMPLETION,
@@ -62,7 +63,8 @@ def _build_item_image_url(item: EmbyItemModel) -> str | None:
     # 拼接 API Key 以允许 Telegram 服务器访问图片（绕过登录）
     if settings.EMBY_API_KEY:
         url += f"&api_key={settings.EMBY_API_KEY}"
-        
+    
+    logger.debug(f"Generated Image URL: {url}")
     return url
 
 
