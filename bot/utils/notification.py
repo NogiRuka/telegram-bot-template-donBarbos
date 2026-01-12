@@ -57,7 +57,13 @@ def _build_item_image_url(item: EmbyItemModel) -> str | None:
     if not base_url:
         return None
 
-    return f"{base_url.rstrip('/')}/Items/{item.id}/Images/{image_type}?tag={tag}"
+    url = f"{base_url.rstrip('/')}/Items/{item.id}/Images/{image_type}?tag={tag}"
+    
+    # 拼接 API Key 以允许 Telegram 服务器访问图片（绕过登录）
+    if settings.EMBY_API_KEY:
+        url += f"&api_key={settings.EMBY_API_KEY}"
+        
+    return url
 
 
 async def _extract_library_tag(path: str | None, session: AsyncSession | None = None) -> str:

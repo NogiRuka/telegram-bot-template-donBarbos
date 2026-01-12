@@ -123,14 +123,20 @@ async def handle_notify_preview(
         )
 
         try:
+            msg = None
             if image_url:
-                msg = await callback.bot.send_photo(
-                    callback.from_user.id,
-                    photo=image_url,
-                    caption=msg_text,
-                    reply_markup=reject_kb,
-                )
-            else:
+                try:
+                    msg = await callback.bot.send_photo(
+                        callback.from_user.id,
+                        photo=image_url,
+                        caption=msg_text,
+                        reply_markup=reject_kb,
+                    )
+                except Exception as e:
+                    logger.warning(f"图片发送失败，尝试转为纯文本发送: {e}")
+                    # 图片发送失败（如 wrong type of the web page content），回退到发送纯文本
+
+            if not msg:
                 msg = await callback.bot.send_message(
                     callback.from_user.id,
                     msg_text,
