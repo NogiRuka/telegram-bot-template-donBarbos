@@ -64,7 +64,7 @@ def _build_item_image_url(item: EmbyItemModel) -> str | None:
     if settings.EMBY_API_KEY:
         url += f"&api_key={settings.EMBY_API_KEY}"
     
-    logger.debug(f"Generated Image URL: {url}")
+    logger.info(f"Generated Image URL: {url}")
     return url
 
 
