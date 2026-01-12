@@ -125,6 +125,7 @@ async def handle_notify_preview(
         try:
             msg = None
             if image_url:
+                logger.debug(f"正在发送图片预览: {image_url}")
                 try:
                     msg = await callback.bot.send_photo(
                         callback.from_user.id,
