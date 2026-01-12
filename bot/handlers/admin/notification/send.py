@@ -1,6 +1,6 @@
 from aiogram import F, types
 from aiogram.types import InlineKeyboardMarkup
-from aiogram.exceptions import TelegramRetryAfter
+from aiogram.exceptions import TelegramRetryAfter, TelegramBadRequest
 import asyncio
 from loguru import logger
 from sqlalchemy import select
@@ -159,14 +159,28 @@ async def execute_send_all(
                 except ValueError as e:
                     logger.warning(f"⚠️ 解析通知的target_user_id失败: {notif.target_user_id} -> {e}")
 
+            # 定义发送辅助函数
+            async def _send_notification(target_id: int | str):
+                if image_url:
+                    try:
+                        await callback.bot.send_photo(chat_id=target_id, photo=image_url, caption=msg_text)
+                        return
+                    except TelegramBadRequest as e:
+                        err_str = str(e)
+                        # 如果是图片相关错误，降级为纯文本
+                        if "wrong type of the web page content" in err_str or "failed to get HTTP URL content" in err_str:
+                            logger.warning(f"⚠️ 图片发送失败 (Bad Request)，尝试发送纯文本: {image_url} -> {e}")
+                        else:
+                            raise e  # 其他错误（如被封锁、群组不存在）直接抛出
+                
+                # 发送纯文本
+                await callback.bot.send_message(chat_id=target_id, text=msg_text)
+
             # 发送给所有目标频道（配置频道 + 原有目标）
             send_success = False
             for chat_id in all_target_chat_ids:
                 try:
-                    if image_url:
-                        await callback.bot.send_photo(chat_id=chat_id, photo=image_url, caption=msg_text)
-                    else:
-                        await callback.bot.send_message(chat_id=chat_id, text=msg_text)
+                    await _send_notification(chat_id)
                     send_success = True
                     # 主动等待3秒，避免触发速率限制
                     await asyncio.sleep(3)
@@ -174,10 +188,7 @@ async def execute_send_all(
                     logger.warning(f"⏳ 触发速率限制，等待 {e.retry_after} 秒后重试...")
                     await asyncio.sleep(e.retry_after + 1)
                     try:
-                        if image_url:
-                            await callback.bot.send_photo(chat_id=chat_id, photo=image_url, caption=msg_text)
-                        else:
-                            await callback.bot.send_message(chat_id=chat_id, text=msg_text)
+                        await _send_notification(chat_id)
                         send_success = True
                         await asyncio.sleep(3)
                     except Exception as retry_e:
