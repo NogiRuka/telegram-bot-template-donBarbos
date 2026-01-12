@@ -134,7 +134,7 @@ async def handle_notify_preview(
                         reply_markup=reject_kb,
                     )
                 except Exception as e:
-                    logger.warning(f"图片发送失败，尝试转为纯文本发送: {e}")
+                    logger.warning(f"图片发送失败，尝试转为纯文本发送 | URL: {image_url} | Error: {e}")
                     # 图片发送失败（如 wrong type of the web page content），回退到发送纯文本
 
             if not msg:
