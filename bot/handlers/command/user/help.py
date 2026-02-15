@@ -1,14 +1,11 @@
-import importlib
-import pkgutil
-from typing import Iterable
-
 from aiogram import Router, types
 from aiogram.filters import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.services.users import is_admin
 from bot.core.config import settings
+from bot.handlers.command._meta import collect_command_meta
 from bot.services.config_service import is_command_enabled
+from bot.services.users import is_admin
 
 router = Router(name="help")
 
@@ -20,25 +17,11 @@ COMMAND_META = {
 }
 
 
-def _collect_command_meta(package: str) -> list[dict]:
-    metas: list[dict] = []
-    try:
-        pkg = importlib.import_module(package)
-        for m in pkgutil.iter_modules(pkg.__path__, package + "."):
-            mod = importlib.import_module(m.name)
-            meta = getattr(mod, "COMMAND_META", None)
-            if isinstance(meta, dict):
-                metas.append(meta)
-    except Exception:
-        pass
-    return metas
-
-
 @router.message(Command("help", "h"))
 async def help_command(message: types.Message, session: AsyncSession) -> None:
-    user_cmds = _collect_command_meta("bot.handlers.command.user")
-    admin_cmds = _collect_command_meta("bot.handlers.command.admin")
-    owner_cmds = _collect_command_meta("bot.handlers.command.owner")
+    user_cmds = collect_command_meta("bot.handlers.command.user")
+    admin_cmds = collect_command_meta("bot.handlers.command.admin")
+    owner_cmds = collect_command_meta("bot.handlers.command.owner")
 
     text = "📜 可用命令列表\n\n👤 用户命令\n"
 

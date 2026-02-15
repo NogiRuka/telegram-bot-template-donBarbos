@@ -3,9 +3,9 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.handlers.command._meta import collect_command_names
 from bot.services.config_service import (
     get_disabled_commands,
-    is_command_enabled,
     toggle_command_access,
 )
 from bot.utils.permissions import require_owner
@@ -18,6 +18,12 @@ COMMAND_META = {
     "usage": "/command [user|admin] [name]",
     "desc": "查看或切换用户/管理员命令权限",
 }
+def _collect_command_names_by_scope(scope: str) -> list[str]:
+    if scope == "user":
+        package = "bot.handlers.command.user"
+    else:
+        package = "bot.handlers.command.admin"
+    return collect_command_names(package)
 
 
 async def _format_commands_status(
@@ -40,8 +46,8 @@ async def _format_commands_status(
 @require_owner
 async def owner_command_control(message: Message, command: CommandObject, session: AsyncSession) -> None:
     args_raw = (command.args or "").strip()
-    user_commands = ["get_file"]
-    admin_commands = ["ban", "unban", "save_emby", "group", "stats", "sr"]
+    user_commands = _collect_command_names_by_scope("user")
+    admin_commands = _collect_command_names_by_scope("admin")
 
     if not args_raw:
         parts: list[str] = []
@@ -76,4 +82,3 @@ async def owner_command_control(message: Message, command: CommandObject, sessio
     scope_label = "用户" if scope == "user" else "管理员"
     status = "🟢 启用" if enabled else "🔴 禁用"
     await message.reply(f"{status} {scope_label}命令: {name}", parse_mode=None)
-
