@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.config import settings
 from bot.services.admin_service import ban_emby_user
 from bot.utils.decorators import private_chat_only
-from bot.utils.permissions import is_group_admin
+from bot.utils.permissions import require_admin_priv
 from bot.utils.text import escape_markdown_v2
 
 router = Router(name="command_ban")
@@ -19,6 +19,7 @@ router = Router(name="command_ban")
 
 @router.message(Command("ban"))
 @private_chat_only
+@require_admin_priv
 async def ban_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     封禁用户命令
@@ -30,10 +31,6 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
 
     用法: /ban <telegram_user_id>
     """
-    if not await is_group_admin(message.bot, message.from_user.id):
-        await message.reply("❌ 仅限群组管理员使用")
-        return
-
     if not command.args:
         await message.reply("⚠️ 请提供 Telegram 用户 ID\n用法: `/ban <user_id>`", parse_mode="Markdown")
         return
@@ -49,7 +46,6 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
     # 1. 从群组移除
     if settings.GROUP:
         try:
-            # 尝试踢出成员 (ban_chat_member 会踢出并拉黑)
             await message.bot.ban_chat_member(chat_id=settings.GROUP, user_id=target_user_id)
             results.append("✅ 已从群组移除并封禁")
         except Exception as e:
@@ -59,8 +55,7 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
     else:
         results.append("ℹ️ 未配置群组，跳过群组移除")
 
-    # 2. 调用封禁服务 (Emby 账号删除 + 软删除 + 审计日志)
-    # 尝试获取群组信息
+    # 2. 调用封禁服务
     group_name = "Private"
     chat_id = None
     chat_username = None
@@ -70,16 +65,12 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
         chat_id = message.chat.id
         chat_username = message.chat.username
     elif settings.GROUP:
-        # 如果是私聊但配置了群组，尝试获取群组名称（需要API调用，暂用ID代替或标记Manual）
         group_name = f"Group{settings.GROUP}"
         try:
             chat_id = int(settings.GROUP)
         except (ValueError, TypeError):
-            # 可能是 @username
             chat_username = settings.GROUP
 
-    # 尝试获取目标用户信息
-    # 查询数据库获取用户信息
     from sqlalchemy import select
 
     from bot.database.models import UserModel
@@ -97,7 +88,6 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
             "action": "ManualBan"
         }
     else:
-        # 如果数据库中没有，尝试通过 get_chat_member 获取（如果机器人在该群组）
         try:
             if settings.GROUP:
                 chat_member = await message.bot.get_chat_member(chat_id=settings.GROUP, user_id=target_user_id)
@@ -116,7 +106,6 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
                 msg = "No group configured"
                 raise Exception(msg)
         except Exception:
-            # 最后的后备方案
             user_info = {
                 "group_name": group_name,
                 "chat_id": chat_id,
@@ -138,7 +127,6 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
 
     await session.commit()
 
-    # 构建按钮
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="🔓 解除封禁", callback_data=f"unban:{target_user_id}"),

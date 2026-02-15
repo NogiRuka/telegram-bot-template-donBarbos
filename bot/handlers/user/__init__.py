@@ -3,9 +3,7 @@ from aiogram import Router
 from .account import router as account_router
 from .avatar import router as avatar_router
 from .checkin import router as checkin_router
-from .commands import router as commands_router
 from .devices import router as devices_router
-from .files import router as files_router
 from .info import router as info_router
 from .lines import router as lines_router
 from .password import router as password_router
@@ -44,10 +42,8 @@ def get_user_router() -> Router:
     router.include_router(profile_router)
     router.include_router(tags_router)
     router.include_router(checkin_router)
-    router.include_router(commands_router)
     router.include_router(store_router)
     router.include_router(avatar_router)
-    router.include_router(files_router)
     router.include_router(quiz_router)
     router.include_router(quiz_submit_router)
     router.include_router(submission_router)

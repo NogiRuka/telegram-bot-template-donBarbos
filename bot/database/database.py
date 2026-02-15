@@ -10,18 +10,14 @@ if TYPE_CHECKING:
 
 
 def get_engine(url: URL | str = settings.database_url, echo: bool = False) -> AsyncEngine:
-    """
-    创建异步数据库引擎
+    """创建异步数据库引擎。
 
-    功能说明:
-    - 创建并返回 SQLAlchemy 异步引擎
+    Args:
+        url: 数据库连接 URL。
+        echo: 是否在控制台打印执行的 SQL 语句，默认为 False。
 
-    输入参数:
-    - url: 数据库连接URL
-    - echo: 是否回显执行的SQL语句 (默认 False)
-
-    返回值:
-    - AsyncEngine: 异步数据库引擎
+    Returns:
+        AsyncEngine: SQLAlchemy 异步数据库引擎实例。
     """
     return create_async_engine(
         url=url,
@@ -33,17 +29,17 @@ def get_engine(url: URL | str = settings.database_url, echo: bool = False) -> As
 
 
 def get_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
-    """
-    创建异步会话工厂
+    """创建异步会话工厂。
 
-    功能说明:
-    - 使用指定引擎创建会话工厂, 关闭自动刷新与提交过期
+    配置说明:
+    - autoflush=False: 关闭自动刷新，避免不必要的数据库写入。
+    - expire_on_commit=False: 提交后不立即使对象过期，便于在会话关闭后继续访问对象属性。
 
-    输入参数:
-    - engine: 异步数据库引擎
+    Args:
+        engine: 异步数据库引擎实例。
 
-    返回值:
-    - async_sessionmaker[AsyncSession]: 异步会话工厂
+    Returns:
+        async_sessionmaker[AsyncSession]: 用于创建数据库会话的工厂对象。
     """
     return async_sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 

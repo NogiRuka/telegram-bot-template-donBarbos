@@ -78,10 +78,17 @@ class BotSettings(EnvBaseSettings):
     @field_validator("GROUP")
     @classmethod
     def validate_group(cls, v: str | None) -> str | None:
-        """校验并格式化群组配置
+        """校验并格式化群组配置。
 
-        - 如果是数字 ID (如 -100xxx)，保持原样
-        - 如果是用户名 (如 username)，自动添加 @ 前缀
+        规则:
+        1. 如果是数字 ID (如 -100xxx)，保持原样。
+        2. 如果是用户名 (如 username)，自动添加 @ 前缀。
+
+        Args:
+            v: 原始群组 ID 或用户名。
+
+        Returns:
+            str | None: 格式化后的群组 ID 或 @用户名。
         """
         if v is None or not v.strip():
             return None
@@ -97,7 +104,16 @@ class BotSettings(EnvBaseSettings):
     @field_validator("OWNER_MSG_GROUP")
     @classmethod
     def validate_owner_msg_group(cls, v: int | str | None) -> int | str | None:
-        """校验并格式化管理员通知群组配置"""
+        """校验并格式化管理员通知群组配置。
+
+        支持整数 ID、字符串 ID 或用户名。自动处理格式兼容性。
+
+        Args:
+            v: 原始群组配置值。
+
+        Returns:
+            int | str | None: 格式化后的群组 ID 或用户名。
+        """
         if v is None:
             return None
         if isinstance(v, int):
@@ -118,16 +134,18 @@ class BotSettings(EnvBaseSettings):
     @field_validator("EMBY_BASE_URL")
     @classmethod
     def validate_emby_base_url(cls, v: str | None) -> str | None:
-        """校验 Emby 基础地址
+        """校验 Emby 基础地址。
 
-        功能说明:
-        - 确保 `EMBY_BASE_URL` 以 http/https 开头, 为空时允许
+        确保地址以 http:// 或 https:// 开头，并自动去除末尾的斜杠。
 
-        输入参数:
-        - v: 环境变量读取到的字符串或 None
+        Args:
+            v: 环境变量中读取的 URL 字符串。
 
-        返回值:
-        - str | None: 合法的地址或 None
+        Returns:
+            str | None: 格式化后的有效 URL，若输入为空则返回 None。
+
+        Raises:
+            ValueError: 当 URL 格式不符合要求时。
         """
         if v is None or not v.strip():
             return None
@@ -138,46 +156,31 @@ class BotSettings(EnvBaseSettings):
         return s.rstrip("/")
 
     def get_emby_base_url(self) -> str | None:
-        """获取 Emby 基础地址
+        """获取 Emby 基础地址。
 
-        功能说明:
-        - 返回配置中的 `EMBY_BASE_URL`, 若未设置返回 None
-
-        输入参数:
-        - 无
-
-        返回值:
-        - str | None: Emby 服务地址
+        Returns:
+            str | None: 配置中的 Emby 服务地址，若未设置则返回 None。
         """
         return self.EMBY_BASE_URL
 
     def get_emby_api_key(self) -> str | None:
-        """获取 Emby API Key
+        """获取 Emby API Key。
 
-        功能说明:
-        - 返回配置中的 `EMBY_API_KEY`, 若未设置返回 None
-
-        输入参数:
-        - 无
-
-        返回值:
-        - str | None: Emby API Key
+        Returns:
+            str | None: 配置中的 Emby API Key，若未设置则返回 None。
         """
         return self.EMBY_API_KEY
 
     @field_validator("EMBY_API_PREFIX")
     @classmethod
     def validate_emby_api_prefix(cls, v: str | None) -> str | None:
-        """校验 Emby API 路径前缀
+        """校验 Emby API 路径前缀。
 
-        功能说明:
-        - 允许为空或以 `/` 开头的简短路径, 自动去除末尾的 `/`
+        Args:
+            v: 原始前缀字符串。
 
-        输入参数:
-        - v: 环境变量读取到的字符串或 None
-
-        返回值:
-        - str | None: 规范化后的前缀或 None
+        Returns:
+            str | None: 格式化后的前缀（确保以 / 开头，不以 / 结尾），或默认值。
         """
         if v is None:
             return None
@@ -189,16 +192,10 @@ class BotSettings(EnvBaseSettings):
         return s.rstrip("/")
 
     def get_emby_api_prefix(self) -> str | None:
-        """获取 Emby API 路径前缀
+        """获取 Emby API 路径前缀。
 
-        功能说明:
-        - 返回配置中的 `EMBY_API_PREFIX`, 若为空返回 None
-
-        输入参数:
-        - 无
-
-        返回值:
-        - str | None: 路径前缀, 例如 "/emby" 或 None
+        Returns:
+            str | None: 配置中的路径前缀（如 "/emby"），若为空则返回 None。
         """
         return self.EMBY_API_PREFIX
 

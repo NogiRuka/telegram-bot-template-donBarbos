@@ -1,6 +1,5 @@
 from aiogram import Router
 
-from .admin_commands import router as admin_commands_router
 from .copywriting import router as admin_copywriting_router
 from .currency_admin import router as admin_currency_router
 from .files import router as admin_files_router
@@ -29,7 +28,6 @@ def get_admin_router() -> Router:
     - Router: 管理员聚合路由
     """
     router = Router(name="admin")
-    router.include_router(admin_commands_router)
     router.include_router(admin_home_router)
     router.include_router(admin_groups_router)
     router.include_router(admin_stats_router)

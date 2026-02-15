@@ -10,22 +10,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.config import settings
 from bot.services.admin_service import unban_user_service
 from bot.utils.decorators import private_chat_only
-from bot.utils.permissions import is_group_admin
+from bot.utils.permissions import require_admin_priv
 
 router = Router(name="command_unban")
 
 
 @router.message(Command("unban"))
 @private_chat_only
+@require_admin_priv
 async def unban_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     解除封禁命令
     用法: /unban <user_id>
     """
-    if not await is_group_admin(message.bot, message.from_user.id):
-        await message.reply("❌ 仅限群组管理员使用")
-        return
-
     if not command.args:
         await message.reply("⚠️ 请提供 Telegram 用户 ID\n用法: `/unban <user_id>`", parse_mode="Markdown")
         return
@@ -40,15 +37,11 @@ async def unban_user_command(message: Message, command: CommandObject, session: 
 
 
 @router.callback_query(F.data.startswith("unban:"))
+@require_admin_priv
 async def unban_callback(query: CallbackQuery, session: AsyncSession) -> None:
     """处理解除封禁按钮点击"""
-    if not await is_group_admin(query.bot, query.from_user.id):
-        await query.answer("❌ 无权执行此操作", show_alert=True)
-        return
-
     target_user_id = int(query.data.split(":")[1])
 
-    # 修改原消息，避免重复点击
     await query.message.edit_reply_markup(reply_markup=None)
 
     await process_unban(query.message, target_user_id, session, query.from_user.id, is_callback=True)
@@ -56,13 +49,9 @@ async def unban_callback(query: CallbackQuery, session: AsyncSession) -> None:
 
 
 @router.callback_query(F.data == "close_message")
+@require_admin_priv
 async def close_callback(query: CallbackQuery, session: AsyncSession) -> None:
     """关闭消息"""
-    # 简单的权限检查：只要是群管或原触发者都可以关，这里简化为通用权限检查
-    if not await is_group_admin(query.bot, query.from_user.id):
-         await query.answer("❌ 无权执行此操作", show_alert=True)
-         return
-
     await query.message.delete()
 
 
@@ -79,8 +68,6 @@ async def process_unban(
     # 1. Telegram 解封
     if settings.GROUP:
         try:
-            # only_if_banned=True: 如果用户没被封，不报错 (但在 aiogram 3.x 某些版本可能不支持此参数，需注意)
-            # 查阅 aiogram 3.x 文档，unban_chat_member 支持 only_if_banned
             await message.bot.unban_chat_member(chat_id=settings.GROUP, user_id=target_user_id, only_if_banned=True)
             results.append("✅ 已解除群组封禁")
         except Exception as e:
@@ -90,7 +77,6 @@ async def process_unban(
         results.append("ℹ️ 未配置群组，跳过群组解封")
 
     # 2. 记录审计日志并通知
-    # 获取群组名称
     group_name = "Private"
     chat_id = None
     chat_username = None
@@ -128,7 +114,4 @@ async def process_unban(
     await session.commit()
 
     text = "\n".join(results)
-    if is_callback:
-        await message.reply(text)
-    else:
-        await message.reply(text)
+    await message.reply(text)

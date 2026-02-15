@@ -15,16 +15,19 @@ router = Router(name="user_files")
 async def search_and_send_file(message: Message, session: AsyncSession, search_term: str) -> None:
     """搜索并发送文件通用逻辑"""
     if not search_term:
-        await message.reply("⚠️ 请提供文件名或ID\n用法: `/get_file <unique_name>` 或 `/gf <unique_name>`", parse_mode="MarkdownV2")
+        await message.reply(
+            "⚠️ 请提供文件名或ID\n用法: `/get_file <unique_name>` 或 `/gf <unique_name>`",
+            parse_mode="MarkdownV2",
+        )
         return
 
-    # 优先搜索 unique_name
     stmt = select(MediaFileModel).where(MediaFileModel.unique_name == search_term, MediaFileModel.is_deleted.is_(False))
     file_record = (await session.execute(stmt)).scalar_one_or_none()
 
-    # 如果没找到，尝试搜索 file_unique_id
     if not file_record:
-        stmt = select(MediaFileModel).where(MediaFileModel.file_unique_id == search_term, MediaFileModel.is_deleted.is_(False))
+        stmt = select(MediaFileModel).where(
+            MediaFileModel.file_unique_id == search_term, MediaFileModel.is_deleted.is_(False)
+        )
         file_record = (await session.execute(stmt)).scalar_one_or_none()
 
     if not file_record:

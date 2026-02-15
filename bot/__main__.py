@@ -14,18 +14,19 @@ from bot.utils.banner import print_boot_banner
 
 
 async def main() -> None:
-    """主入口函数
+    """机器人主入口函数。
 
-    功能说明:
-    - 初始化本地日志
-    - 注册启动与关闭钩子
-    - 以轮询模式启动机器人
+    执行以下初始化操作：
+    1. 初始化本地日志目录
+    2. 配置 Loguru 日志系统
+    3. 注册全局异常处理钩子
+    4. 验证 Bot Token 有效性
+    5. 注册中间件和生命周期钩子
+    6. 启动长轮询 (Polling)
 
-    输入参数:
-    - 无
-
-    返回值:
-    - None
+    Raises:
+        asyncio.CancelledError: 当程序接收到停止信号时
+        Exception: 启动过程中发生的其他未捕获异常
     """
     Path("logs/bot").mkdir(parents=True, exist_ok=True)
 
@@ -62,18 +63,14 @@ async def main() -> None:
     )
 
     def _excepthook(exc_type, exc_value, exc_traceback) -> None:
-        """全局异常钩子，记录未捕获异常到日志文件
+        """全局异常捕获钩子。
 
-        功能说明:
-        - 捕获未处理异常并使用 loguru 记录到错误日志
+        捕获未处理的异常并记录到日志文件中，防止程序意外崩溃时无日志可查。
 
-        输入参数:
-        - exc_type: 异常类型
-        - exc_value: 异常实例
-        - exc_traceback: 堆栈信息
-
-        返回值:
-        - None
+        Args:
+            exc_type: 异常类型
+            exc_value: 异常实例
+            exc_traceback: 异常堆栈回溯对象
         """
         if issubclass(exc_type, KeyboardInterrupt):
             return

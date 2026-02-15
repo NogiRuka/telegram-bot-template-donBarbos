@@ -52,7 +52,38 @@
 
 ## 🚀 快速开始
 
-### 🐳 Docker 部署 (推荐 - Linux 服务器)
+### � 本地开发 (Windows/macOS/Linux)
+
+推荐使用 `uv` 进行依赖管理和运行。
+
+#### 1. 安装 uv
+
+```bash
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# macOS/Linux
+curl -lsSf https://astral.sh/uv/install.sh | sh
+```
+
+#### 2. 安装依赖
+
+```bash
+# 同步依赖环境
+uv sync
+```
+
+#### 3. 运行 Bot
+
+```bash
+uv run python -m bot
+```
+
+#### 4. 运行 Web UI (可选)
+
+请参考 `web/README.md` 启动前端开发服务器。
+
+### �🐳 Docker 部署 (推荐 - Linux 服务器)
 
 本项目提供了完整的 Docker 支持，这是在 Linux 服务器上部署最简单、最稳定的方式。
 
@@ -68,8 +99,8 @@ curl -fsSL https://get.docker.com | bash
 #### 2. 获取代码
 
 ```bash
-git clone https://github.com/NogiRuka/telegram-bot-template-donBarbos.git
-cd telegram-bot-template-donBarbos
+git clone https://github.com/donBarbos/telegram-bot-template.git
+cd telegram-bot-template
 ```
 
 #### 3. 配置文件
