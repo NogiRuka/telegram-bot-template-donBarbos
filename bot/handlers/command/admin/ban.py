@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.config import settings
 from bot.services.admin_service import ban_emby_user
 from bot.utils.decorators import private_chat_only
-from bot.utils.permissions import require_admin_priv
+from bot.utils.permissions import require_admin_priv, require_admin_command_access
 from bot.utils.text import escape_markdown_v2
 
 router = Router(name="command_ban")
@@ -27,6 +27,7 @@ COMMAND_META = {
 @router.message(Command("ban"))
 @private_chat_only
 @require_admin_priv
+@require_admin_command_access(COMMAND_META["name"])
 async def ban_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     封禁用户命令

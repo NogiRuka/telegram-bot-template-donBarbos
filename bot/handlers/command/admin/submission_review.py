@@ -11,7 +11,7 @@ from bot.keyboards.inline.buttons import CLOSE_BUTTON
 from bot.services.currency import CurrencyService
 from bot.utils.datetime import now
 from bot.utils.message import send_toast
-from bot.utils.permissions import require_admin_priv
+from bot.utils.permissions import require_admin_priv, require_admin_command_access
 
 router = Router(name="command_submission_review")
 
@@ -25,6 +25,7 @@ COMMAND_META = {
 
 @router.message(Command(commands=["sr", "submission_review"]))
 @require_admin_priv
+@require_admin_command_access(COMMAND_META["name"])
 async def cmd_submission_review(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """命令式投稿审批（/sr, /submission_review）
 

@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from bot.core.config import settings
 from bot.database.models import UserExtendModel, UserRole
-from bot.services.config_service import get_config
+from bot.services.config_service import get_config, is_command_enabled
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -324,3 +324,35 @@ def require_emby_account(func: Callable[..., Awaitable[Any]]) -> Callable[..., A
         return await func(*args, **kwargs)
 
     return wrapper
+
+
+def require_command_access(scope: str, name: str) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
+    def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+        @functools.wraps(func)
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            session: AsyncSession | None = kwargs.get("session")
+            first = args[0] if args else None
+            if session is None:
+                return await func(*args, **kwargs)
+            enabled = await is_command_enabled(session, scope, name)
+            if enabled:
+                return await func(*args, **kwargs)
+            if isinstance(first, CallbackQuery):
+                await first.answer("🔴 此命令已关闭", show_alert=True)
+                return None
+            if isinstance(first, Message):
+                await first.answer("🔴 此命令已关闭")
+                return None
+            return None
+
+        return wrapper
+
+    return decorator
+
+
+def require_user_command_access(name: str) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
+    return require_command_access("user", name)
+
+
+def require_admin_command_access(name: str) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
+    return require_command_access("admin", name)

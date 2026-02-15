@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.services.emby_service import run_emby_sync
 from bot.utils.decorators import private_chat_only
-from bot.utils.permissions import require_admin_priv
+from bot.utils.permissions import require_admin_priv, require_admin_command_access
 
 router = Router(name="command_save_emby")
 
@@ -19,6 +19,7 @@ COMMAND_META = {
 @router.message(Command("save_emby", "se"))
 @private_chat_only
 @require_admin_priv
+@require_admin_command_access(COMMAND_META["name"])
 async def save_emby_command(message: Message, session: AsyncSession) -> None:
     """
     手动触发 Emby 数据同步

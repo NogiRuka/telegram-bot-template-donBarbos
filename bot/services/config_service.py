@@ -10,8 +10,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from bot.config import (
     ADMIN_FEATURES_MAPPING,
     DEFAULT_CONFIGS,
+    KEY_ADMIN_COMMANDS_DISABLED,
     KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
     KEY_REGISTRATION_FREE_OPEN,
+    KEY_USER_COMMANDS_DISABLED,
     KEY_USER_LINES_INFO,
     USER_FEATURES_MAPPING,
 )
@@ -223,6 +225,65 @@ async def list_user_features(session: AsyncSession) -> dict[str, bool]:
         val = await get_config(session, k)
         out[k] = bool(val) if val is not None else False
     return out
+
+
+async def _get_disabled_commands_raw(session: AsyncSession, key: str) -> set[str]:
+    val = await get_config(session, key)
+    if isinstance(val, list):
+        return {str(x) for x in val}
+    return set()
+
+
+async def get_disabled_commands(session: AsyncSession, scope: str) -> set[str]:
+    if scope == "user":
+        key = KEY_USER_COMMANDS_DISABLED
+    else:
+        key = KEY_ADMIN_COMMANDS_DISABLED
+    return await _get_disabled_commands_raw(session, key)
+
+
+async def _set_disabled_commands_raw(
+    session: AsyncSession,
+    key: str,
+    values: set[str],
+    operator_id: int | None = None,
+) -> None:
+    await set_config(session, key, sorted(values), ConfigType.LIST, operator_id=operator_id)
+
+
+async def set_disabled_commands(
+    session: AsyncSession,
+    scope: str,
+    values: set[str],
+    operator_id: int | None = None,
+) -> None:
+    if scope == "user":
+        key = KEY_USER_COMMANDS_DISABLED
+    else:
+        key = KEY_ADMIN_COMMANDS_DISABLED
+    await _set_disabled_commands_raw(session, key, values, operator_id=operator_id)
+
+
+async def is_command_enabled(session: AsyncSession, scope: str, name: str) -> bool:
+    disabled = await get_disabled_commands(session, scope)
+    return name not in disabled
+
+
+async def toggle_command_access(
+    session: AsyncSession,
+    scope: str,
+    name: str,
+    operator_id: int | None = None,
+) -> bool:
+    disabled = await get_disabled_commands(session, scope)
+    if name in disabled:
+        disabled.remove(name)
+        enabled = True
+    else:
+        disabled.add(name)
+        enabled = False
+    await set_disabled_commands(session, scope, disabled, operator_id=operator_id)
+    return enabled
 
 
 async def ensure_config_defaults(session: AsyncSession) -> None:

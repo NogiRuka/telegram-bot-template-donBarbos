@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import GroupConfigModel, GroupType, MessageSaveMode
 from bot.services.message_export import MessageExportService
-from bot.utils.permissions import require_admin_feature, require_admin_priv
+from bot.utils.permissions import require_admin_priv, require_admin_command_access
 
 router = Router(name="admin_group")
 
@@ -25,6 +25,7 @@ SUMMARY_LIMIT = 20
 
 @router.message(Command("groups"))
 @require_admin_priv
+@require_admin_command_access(COMMAND_META["name"])
 async def admin_groups_command(message: Message, session: AsyncSession) -> None:
     """
     查看所有群组配置
@@ -69,6 +70,7 @@ async def admin_groups_command(message: Message, session: AsyncSession) -> None:
 
 @router.message(Command("enable_group"))
 @require_admin_priv
+@require_admin_command_access(COMMAND_META["name"])
 async def admin_enable_group_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     启用群组消息保存
@@ -100,6 +102,7 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
 
 @router.message(Command("disable_group"))
 @require_admin_priv
+@require_admin_command_access(COMMAND_META["name"])
 async def admin_disable_group_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     禁用群组消息保存
@@ -125,7 +128,7 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
 
 @router.message(Command("group_info"))
 @require_admin_priv
-
+@require_admin_command_access(COMMAND_META["name"])
 async def admin_group_info_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """
     查看群组详细信息

@@ -26,6 +26,9 @@ KEY_USER_PASSWORD = "user.password"
 KEY_USER_STORE = "user.store"
 KEY_USER_CHECKIN = "user.checkin"
 
+# 用户命令配置
+KEY_USER_COMMANDS_DISABLED = "user.commands.disabled"
+
 # 管理员功能配置
 KEY_ADMIN_FEATURES_ENABLED = "admin.features.enabled"
 KEY_ADMIN_GROUPS = "admin.groups"
@@ -42,6 +45,9 @@ KEY_ADMIN_MAIN_IMAGE = "admin.main_image"
 KEY_ADMIN_MAIN_IMAGE_NSFW_ENABLED = "admin.main_image.nsfw_enabled"
 KEY_ADMIN_FILES = "admin.files"
 KEY_ADMIN_QUIZ = "admin.quiz"
+
+# 管理员命令配置
+KEY_ADMIN_COMMANDS_DISABLED = "admin.commands.disabled"
 
 # 注册相关配置
 KEY_REGISTRATION_FREE_OPEN = "registration.free_open"

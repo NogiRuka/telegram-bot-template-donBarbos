@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import GroupConfigModel, MessageModel
-from bot.utils.permissions import require_owner
+from bot.utils.permissions import require_admin_priv, require_admin_command_access
 
 router = Router(name="admin_stats")
 
@@ -23,6 +23,7 @@ COMMAND_META = {
 
 @router.message(Command("stats"))
 @require_admin_priv
+@require_admin_command_access(COMMAND_META["name"])
 async def admin_stats_command(message: Message, session: AsyncSession) -> None:
     try:
         group_query = select(func.count(GroupConfigModel.chat_id))

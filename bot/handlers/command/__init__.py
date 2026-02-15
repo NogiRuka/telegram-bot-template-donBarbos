@@ -8,6 +8,7 @@ from .admin.submission_review import router as submission_review_router
 from .admin.unban import router as unban_router
 from .user.files import router as user_files_router
 from .user.help import router as help_router
+from .owner import get_owner_command_router
 
 
 def get_command_router() -> Router:
@@ -26,4 +27,6 @@ def get_command_router() -> Router:
     router.include_router(user_files_router)
     # 帮助命令
     router.include_router(help_router)
+    # 所有者命令
+    router.include_router(get_owner_command_router())
     return router

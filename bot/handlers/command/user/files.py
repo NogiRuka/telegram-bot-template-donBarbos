@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models.media_file import MediaFileModel
+from bot.utils.permissions import require_user_command_access
 from bot.utils.text import escape_markdown_v2
 
 router = Router(name="user_files")
@@ -75,6 +76,7 @@ async def search_and_send_file(message: Message, session: AsyncSession, search_t
 
 
 @router.message(Command(commands=["get_file", "gf"]))
+@require_user_command_access(COMMAND_META["name"])
 async def get_file_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """获取文件命令 (标准格式)
 

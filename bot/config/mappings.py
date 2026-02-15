@@ -47,6 +47,10 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     KEY_ADMIN_FILES: (True, ConfigType.BOOLEAN),
     KEY_ADMIN_QUIZ: (True, ConfigType.BOOLEAN),
 
+    # 命令开关配置
+    KEY_USER_COMMANDS_DISABLED: ([], ConfigType.LIST),
+    KEY_ADMIN_COMMANDS_DISABLED: ([], ConfigType.LIST),
+
     # 复杂类型配置
     KEY_ADMIN_HITOKOTO_CATEGORIES: (["d", "i"], ConfigType.LIST),
     # KEY_USER_LINES_INFO 的初始化逻辑比较特殊（依赖环境变量），保留在 config_service 中处理，或可在此定义空值
