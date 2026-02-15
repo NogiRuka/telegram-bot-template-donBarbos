@@ -9,6 +9,13 @@ from bot.utils.permissions import require_admin_priv
 
 router = Router(name="command_save_emby")
 
+COMMAND_META = {
+    "name": "save_emby",
+    "alias": "se",
+    "usage": "/save_emby 或 /se",
+    "desc": "手动触发 Emby 数据同步"
+}
+
 @router.message(Command("save_emby", "se"))
 @private_chat_only
 @require_admin_priv

@@ -12,6 +12,13 @@ from bot.utils.permissions import require_admin_feature, require_admin_priv
 
 router = Router(name="admin_group")
 
+COMMAND_META = {
+    "name": "group",
+    "alias": None,
+    "usage": "/groups, /enable_group <chat_id>, /disable_group <chat_id>, /group_info <chat_id>",
+    "desc": "群组消息保存配置管理"
+}
+
 MAX_MESSAGE_LENGTH = 4000
 SUMMARY_LIMIT = 20
 

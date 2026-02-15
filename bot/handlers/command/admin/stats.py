@@ -13,6 +13,13 @@ from bot.utils.permissions import require_admin_feature, require_owner
 
 router = Router(name="admin_stats")
 
+COMMAND_META = {
+    "name": "stats",
+    "alias": None,
+    "usage": "/stats",
+    "desc": "查看全局统计信息"
+}
+
 
 @router.message(Command("stats"))
 @require_owner

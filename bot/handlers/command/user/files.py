@@ -11,6 +11,13 @@ from bot.utils.text import escape_markdown_v2
 
 router = Router(name="user_files")
 
+COMMAND_META = {
+    "name": "get_file",
+    "alias": "gf",
+    "usage": "/get_file <唯一名> 或 /gf <唯一名>",
+    "desc": "根据唯一名或文件ID获取文件"
+}
+
 
 async def search_and_send_file(message: Message, session: AsyncSession, search_term: str) -> None:
     """搜索并发送文件通用逻辑"""

@@ -15,6 +15,13 @@ from bot.utils.permissions import require_admin_priv
 
 router = Router(name="command_submission_review")
 
+COMMAND_META = {
+    "name": "sr",
+    "alias": "submission_review",
+    "usage": "/sr <投稿ID> <a/r> [notif_id] [留言]",
+    "desc": "命令式投稿审批"
+}
+
 
 @router.message(Command(commands=["sr", "submission_review"]))
 @require_admin_priv

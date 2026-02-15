@@ -16,6 +16,13 @@ from bot.utils.text import escape_markdown_v2
 
 router = Router(name="command_ban")
 
+COMMAND_META = {
+    "name": "ban",
+    "alias": None,
+    "usage": "/ban <user_id>",
+    "desc": "封禁用户"
+}
+
 
 @router.message(Command("ban"))
 @private_chat_only

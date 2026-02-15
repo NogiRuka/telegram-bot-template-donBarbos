@@ -14,6 +14,13 @@ from bot.utils.permissions import require_admin_priv
 
 router = Router(name="command_unban")
 
+COMMAND_META = {
+    "name": "unban",
+    "alias": None,
+    "usage": "/unban <user_id>",
+    "desc": "解除封禁"
+}
+
 
 @router.message(Command("unban"))
 @private_chat_only
