@@ -12,7 +12,7 @@ router = Router(name="command_save_emby")
 COMMAND_META = {
     "name": "save_emby",
     "alias": "se",
-    "usage": "/save_emby 或 /se",
+    "usage": "",
     "desc": "手动触发 Emby 数据同步"
 }
 
