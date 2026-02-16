@@ -89,6 +89,8 @@ class MainImageService:
         prefs = await MainImageService.get_user_prefs(session, user_id)
         last_id = prefs.get("last_image_id")
         nsfw_enabled = bool(await get_config(session, KEY_ADMIN_MAIN_IMAGE_NSFW_ENABLED) or False)
+        mode = prefs["display_mode"]
+        allow_nsfw = nsfw_enabled and prefs["nsfw_unlocked"] and mode in (DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM)
 
         # 1. 节日主图优先
         # 获取当前时间段内的所有有效投放（过滤软删除），按优先级排序
@@ -115,11 +117,34 @@ class MainImageService:
             # 筛选出最高优先级的投放（可能存在多个）
             candidates = [(s, i) for s, i in schedules if s.priority == best_priority]
 
-            # 过滤不符合 NSFW 约束的图片
-            valid_candidates = []
-            for _s, img in candidates:
-                if img.is_nsfw and not (nsfw_enabled and prefs["nsfw_unlocked"] and prefs["display_mode"] in (DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM)):
+            # 先判断这一优先级里是否存在可用的 NSFW 候选
+            has_nsfw_candidate = False
+            for sched, img in candidates:
+                if not img.is_nsfw:
                     continue
+                if not allow_nsfw:
+                    continue
+                if not sched.allow_nsfw:
+                    continue
+                has_nsfw_candidate = True
+                break
+
+            # 过滤不符合 NSFW 与投放计划约束的图片
+            valid_candidates = []
+            for sched, img in candidates:
+                if img.is_nsfw:
+                    # 只有在允许 NSFW 且计划允许时才可用
+                    if not allow_nsfw:
+                        continue
+                    if not sched.allow_nsfw:
+                        continue
+                else:
+                    # 如果当前优先级存在合法的 NSFW 候选，NSFW 模式下优先使用 NSFW，跳过 SFW
+                    if mode == DISPLAY_MODE_NSFW and has_nsfw_candidate:
+                        continue
+                    # 计划标记为仅 SFW 时，只在 SFW 模式下生效
+                    if sched.only_sfw and mode != DISPLAY_MODE_SFW:
+                        continue
                 valid_candidates.append(img)
 
             if valid_candidates:
@@ -130,9 +155,6 @@ class MainImageService:
                 return random.choice(valid_candidates)
 
         # 2. 根据用户模式选择池
-        mode = prefs["display_mode"]
-        allow_nsfw = nsfw_enabled and prefs["nsfw_unlocked"] and mode in (DISPLAY_MODE_NSFW, DISPLAY_MODE_RANDOM)
-
         # 优先选择符合模式的图片
         cond_stmt = select(MainImageModel).where(
             MainImageModel.is_enabled.is_(True),
