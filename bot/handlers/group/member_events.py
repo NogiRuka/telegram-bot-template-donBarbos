@@ -7,50 +7,58 @@
 - 记录审计日志
 """
 from aiogram import F, Router
-from aiogram.enums import ChatMemberStatus
-from aiogram.types import ChatMemberUpdated
+from aiogram.enums import ChatMemberStatus, ChatType
+from aiogram.types import Chat, ChatMemberUpdated, Message
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
 from bot.services.admin_service import ban_emby_user
 from bot.services.users import upsert_user_on_interaction
+from bot.utils.msg_group import send_group_notification
+from bot.utils.text import escape_markdown_v2
 
 router = Router(name="group_member_events")
 
 
-from bot.utils.msg_group import send_group_notification
-from bot.utils.text import escape_markdown_v2
+def _is_config_group(chat: Chat) -> bool:
+    if not settings.GROUP:
+        return True
+    try:
+        if chat.id == int(settings.GROUP):
+            return True
+    except (ValueError, TypeError):
+        pass
+    if chat.username:
+        config_group = settings.GROUP.lstrip("@").lower()
+        event_group = chat.username.lower()
+        if config_group == event_group:
+            return True
+    return False
 
+
+@router.message(F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP]) & F.new_chat_members)
+async def delete_join_message(message: Message) -> None:
+    try:
+        await message.delete()
+        logger.info(
+            f"🧹 已删除入群提示消息: chat={message.chat.id}, "
+            f"message_id={message.message_id}, "
+            f"new_chat_members={[u.id for u in message.new_chat_members]}, "
+            f"text={message.text}"
+        )
+    except Exception as e:
+        logger.warning(f"⚠️ 删除入群提示消息失败: chat={message.chat.id}, message_id={message.message_id}, error={e}")
 
 @router.chat_member(F.new_chat_member.status == ChatMemberStatus.MEMBER)
 async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> None:
     """
     监听群成员加入事件
     """
-    logger.info(f"收到成员加入事件: chat={event.chat.id}, user={event.new_chat_member.user.id}")
-    # 保存用户信息
+    logger.info(f"👤 成员加入事件: chat={event.chat.id}, user={event.new_chat_member.user.id}")
     await upsert_user_on_interaction(session, event.new_chat_member.user)
-
-    # 仅处理配置的群组
-    if settings.GROUP:
-        is_match = False
-        try:
-            if event.chat.id == int(settings.GROUP):
-                is_match = True
-        except (ValueError, TypeError):
-            pass
-
-        if not is_match and event.chat.username:
-            config_group = settings.GROUP.lstrip("@").lower()
-            event_group = event.chat.username.lower()
-            if config_group == event_group:
-                is_match = True
-
-        if not is_match:
-            return
-
-    # 发送加入通知到管理员群组
+    if not _is_config_group(event.chat):
+        return
     user = event.new_chat_member.user
     user_info = {
         "group_name": event.chat.title,
@@ -62,7 +70,6 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
         "user_id": str(user.id)
     }
 
-    # 检查是否是被邀请加入
     join_reason = "加入了群组"
     if event.from_user and event.from_user.id != user.id:
         # 如果邀请人是 nmBot，则不发送通知
@@ -79,37 +86,29 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
     )
 
 
-@router.chat_member(F.old_chat_member.status.in_({ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR, ChatMemberStatus.RESTRICTED}) & F.new_chat_member.status.in_({ChatMemberStatus.LEFT, ChatMemberStatus.KICKED}))
+@router.chat_member(
+    F.old_chat_member.status.in_(
+        {
+            ChatMemberStatus.MEMBER,
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.CREATOR,
+            ChatMemberStatus.RESTRICTED,
+        }
+    )
+    & F.new_chat_member.status.in_({ChatMemberStatus.LEFT, ChatMemberStatus.KICKED})
+)
 async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSession) -> None:
     """
     监听群成员离开或被踢出事件
     """
-    logger.info(f"收到成员变动事件: chat={event.chat.id}, user={event.new_chat_member.user.id}, old={event.old_chat_member.status}, new={event.new_chat_member.status}")
+    logger.info(f"🔄 成员变动事件: chat={event.chat.id}, user={event.new_chat_member.user.id}, old={event.old_chat_member.status}, new={event.new_chat_member.status}")
 
-    # 仅处理配置的群组
-    if settings.GROUP:
-        is_match = False
-        # 1. 尝试匹配 Chat ID
-        try:
-            if event.chat.id == int(settings.GROUP):
-                is_match = True
-        except (ValueError, TypeError):
-            pass
-
-        # 2. 尝试匹配 Username (忽略大小写)
-        if not is_match and event.chat.username:
-            # settings.GROUP 可能是 @username，移除 @ 后对比
-            config_group = settings.GROUP.lstrip("@").lower()
-            event_group = event.chat.username.lower()
-            if config_group == event_group:
-                is_match = True
-
-        if not is_match:
-            logger.warning(f"群组不匹配，忽略事件: config={settings.GROUP}, event_chat={event.chat.id}/{event.chat.username}")
-            return
+    if settings.GROUP and not _is_config_group(event.chat):
+        logger.warning(f"⚠️ 群组不匹配，忽略事件: config={settings.GROUP}, event_chat={event.chat.id}/{event.chat.username}")
+        return
 
     user = event.new_chat_member.user
-    logger.info(f"监测到用户离开/被踢出: {user.id} ({user.full_name}) - 状态: {event.new_chat_member.status}")
+    logger.info(f"🚪 用户离开/被踢出: {user.id} ({user.full_name}) - 状态: {event.new_chat_member.status}")
 
     # 确定操作原因和执行者
     reason = "主动离开了群组"
@@ -142,8 +141,8 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
             user_info=user_info
         )
 
-        logger.info(f"自动清理 Emby 账号执行结果: {user.id} - {results}")
+        logger.info(f"🧼 自动清理 Emby 账号执行结果: {user.id} - {results}")
 
         await session.commit()
     except Exception as e:
-        logger.error(f"自动清理 Emby 账号失败: {user.id} - {e}")
+        logger.error(f"❌ 自动清理 Emby 账号失败: {user.id} - {e}")

@@ -6,11 +6,11 @@
 """
 
 import json
-import logging
 from typing import Any
 
 from aiogram import F, Router, types
-from aiogram.enums import ChatType
+from aiogram.enums import ChatMemberStatus, ChatType
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +23,6 @@ from bot.database.models import (
 )
 from bot.services.group_config_service import get_or_create_group_config
 
-logger = logging.getLogger(__name__)
 router = Router()
 
 
@@ -361,23 +360,6 @@ class GroupMessageSaver:
             logger.exception(f"❌ 提取实体信息失败: {e}")
             return None
 
-    def is_admin_bot_notification(self, text: str) -> bool:
-        """检查是否为管理类机器人的通知消息"""
-        if not text:
-            return False
-
-        keywords = [
-            "通过入群验证",
-            "永久封禁",
-            "解除封禁",
-            "被管理员",
-            "移除了",
-            "禁言",
-            "解除禁言",
-        ]
-
-        return any(keyword in text for keyword in keywords)
-
     async def save_message(self, message: types.Message, config: GroupConfigModel, session: AsyncSession) -> bool:
         try:
             message_type = self.get_message_type(message)
@@ -392,9 +374,8 @@ class GroupMessageSaver:
                 if service_text:
                     text_content = service_text
                     is_service_message = True
-
-            # 检查是否为管理机器人的通知消息（即使配置了不保存机器人消息，这些也应该保存）
-            is_admin_notification = self.is_admin_bot_notification(text_content)
+                    if message_type == MessageType.OTHER:
+                        message_type = MessageType.TEXT
 
             # 如果是服务消息或管理通知，不视为机器人消息（确保系统通知能被保存）
             is_from_bot = message.from_user and message.from_user.is_bot and not is_service_message and not is_admin_notification
@@ -452,7 +433,7 @@ class GroupMessageSaver:
             session.add(message_record)
             config.increment_message_count(message_record.created_at)
             await session.commit()
-            logger.debug(
+            logger.info(
                 f"✅ 成功保存消息: 群组={message.chat.id}, 消息ID={message.message_id}, 类型={message_type.value}"
             )
             return True
@@ -461,29 +442,48 @@ class GroupMessageSaver:
             await session.rollback()
             return False
 
-
     async def save_chat_member_event(self, event: types.ChatMemberUpdated, config: GroupConfigModel, session: AsyncSession) -> bool:
-        try:
-            # 仅处理机器人触发的事件（因为用户触发的通常会有服务消息）
-            if not event.from_user.is_bot:
-                return False
 
+        try:
+            # 先看看 event 里有什么
+            logger.info(f"👥 ChatMemberUpdated 事件: {event}")
             text_content = None
             old = event.old_chat_member
             new = event.new_chat_member
 
+            if new.status == ChatMemberStatus.MEMBER and old.status in {
+                ChatMemberStatus.LEFT,
+                ChatMemberStatus.KICKED,
+            }:
+                actor = event.from_user
+                member = new.user
+                if actor and actor.id != member.id:
+                    text_content = f"👋 {actor.full_name} 邀请加入群组: {member.full_name}"
+                else:
+                    text_content = f"👋 成员加入: {member.full_name}"
+
+            if not text_content and not event.from_user.is_bot:
+                return False
+
             # 成员被移除/封禁
-            if new.status in ["kicked", "left"] and old.status in ["member", "administrator", "restricted"]:
+            if new.status in {ChatMemberStatus.KICKED, ChatMemberStatus.LEFT} and old.status in {
+                ChatMemberStatus.MEMBER,
+                ChatMemberStatus.ADMINISTRATOR,
+                ChatMemberStatus.RESTRICTED,
+            }:
                 action = "永久封禁" if new.status == "kicked" else "移除"
-                text_content = f"{event.from_user.full_name} {action}了成员: {new.user.full_name}"
+                text_content = f"🚫 {event.from_user.full_name} {action}了成员: {new.user.full_name}"
 
             # 成员权限变更（禁言等）
-            elif new.status == "restricted" and old.status in ["member", "administrator"]:
-                text_content = f"{event.from_user.full_name} 限制了成员: {new.user.full_name}"
+            elif new.status == ChatMemberStatus.RESTRICTED and old.status in {
+                ChatMemberStatus.MEMBER,
+                ChatMemberStatus.ADMINISTRATOR,
+            }:
+                text_content = f"🔇 {event.from_user.full_name} 限制了成员: {new.user.full_name}"
 
             # 成员被提升为管理员
-            elif new.status == "administrator" and old.status != "administrator":
-                 text_content = f"{event.from_user.full_name} 将成员提升为管理员: {new.user.full_name}"
+            elif new.status == ChatMemberStatus.ADMINISTRATOR and old.status != ChatMemberStatus.ADMINISTRATOR:
+                 text_content = f"🛡 {event.from_user.full_name} 将成员提升为管理员: {new.user.full_name}"
 
             if not text_content:
                 return False
@@ -513,7 +513,7 @@ class GroupMessageSaver:
             session.add(message_record)
             config.increment_message_count(message_record.created_at)
             await session.commit()
-            logger.debug(
+            logger.info(
                 f"✅ 成功保存事件消息: 群组={event.chat.id}, 虚拟ID={virtual_message_id}, 内容={text_content}"
             )
             return True
@@ -529,7 +529,7 @@ message_saver = GroupMessageSaver()
 @router.message(F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]))
 async def handle_group_message(message: types.Message, session: AsyncSession) -> None:
     try:
-        logger.debug(f"收到群组消息: {message.chat.id}, msg_id: {message.message_id}")
+        logger.info(f"💬 收到群组消息: chat={message.chat.id}, text={message.text}")
         group_type = GroupType.SUPERGROUP if message.chat.type == "supergroup" else GroupType.GROUP
         config = await get_or_create_group_config(
             session=session,
@@ -542,9 +542,9 @@ async def handle_group_message(message: types.Message, session: AsyncSession) ->
         if config.is_save_enabled():
             success = await message_saver.save_message(message, config, session)
             if success:
-                logger.debug(f"✅ 群组 {message.chat.id} 的消息已保存")
+                logger.info(f"✅ 群组 {message.chat.id} 的消息已保存")
         else:
-            logger.debug(f"ℹ️ 群组 {message.chat.id} 未启用消息保存 (Mode: {config.message_save_mode})")
+            logger.info(f"ℹ️ 群组 {message.chat.id} 未启用消息保存 (Mode: {config.message_save_mode})")
     except Exception as e:
         logger.exception(f"❌ 处理群组消息时发生错误: {e}")
 
@@ -561,8 +561,12 @@ async def handle_chat_member_update(event: types.ChatMemberUpdated, session: Asy
         )
         config = result.scalar_one_or_none()
 
-        # 如果没有配置或未启用保存，跳过
-        if not config or not config.is_save_enabled():
+        if not config:
+            logger.info(f"ℹ️ 未找到群组配置，跳过成员事件保存: chat={event.chat.id}")
+            return
+
+        if not config.is_save_enabled():
+            logger.info(f"ℹ️ 群组未启用消息保存，跳过成员事件保存: chat={event.chat.id}")
             return
 
         # 尝试保存事件
@@ -588,7 +592,7 @@ async def handle_edited_group_message(message: types.Message, session: AsyncSess
             existing_message.caption = message.caption[:1000] if message.caption else None
             existing_message.mark_as_edited(message.edit_date)
             await session.commit()
-            logger.debug(f"✅ 更新了编辑消息: 群组={message.chat.id}, 消息ID={message.message_id}")
+            logger.info(f"✅ 更新了编辑消息: 群组={message.chat.id}, 消息ID={message.message_id}")
     except Exception as e:
         logger.exception(f"❌ 处理编辑消息时发生错误: {e}")
         await session.rollback()
