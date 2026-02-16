@@ -17,9 +17,9 @@ from bot.keyboards.inline.constants import *
 # 格式: Key -> (Value, ConfigType)
 DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     # 基础开关配置 (布尔值)
-    KEY_BOT_FEATURES_ENABLED: (False, ConfigType.BOOLEAN),
+    KEY_BOT_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
     # 用户功能开关
-    KEY_USER_FEATURES_ENABLED: (False, ConfigType.BOOLEAN),
+    KEY_USER_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),
     KEY_USER_PROFILE: (True, ConfigType.BOOLEAN),
     KEY_USER_ACCOUNT: (True, ConfigType.BOOLEAN),
     KEY_USER_REGISTER: (True, ConfigType.BOOLEAN),

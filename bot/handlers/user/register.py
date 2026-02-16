@@ -66,10 +66,30 @@ async def user_register(
 
             hint = "🚫 暂未开放注册"
             start_time = window.get("start_time")
-            dur = window.get("duration_minutes")
+            duration_minutes = window.get("duration_minutes")
+            duration_seconds = window.get("duration_seconds")
 
             # 获取当前时间用于判断时间是否已经过去（使用应用时区）
             current_time = now()
+
+            total_seconds = None
+            if duration_seconds is not None:
+                total_seconds = int(duration_seconds)
+            elif duration_minutes is not None:
+                total_seconds = int(duration_minutes) * 60
+
+            # 构造可读时长
+            readable_duration = None
+            if total_seconds is not None:
+                mins, secs = divmod(total_seconds, 60)
+                if mins and secs:
+                    readable_duration = f"{mins} 分钟 {secs} 秒"
+                elif mins:
+                    readable_duration = f"{mins} 分钟"
+                elif secs:
+                    readable_duration = f"{secs} 秒"
+                else:
+                    readable_duration = "0 秒"
 
             if start_time:
                 dt_start = parse_formatted_datetime(start_time)
@@ -79,25 +99,27 @@ async def user_register(
                         formatted_start = format_datetime(dt_start)
                         hint += f"\n\n开始: {formatted_start}"
 
-                        if dur:
-                            end_dt = dt_start + timedelta(minutes=int(dur))
+                        if total_seconds is not None:
+                            end_dt = dt_start + timedelta(seconds=total_seconds)
 
                             # 检查结束时间是否已经过去
                             if end_dt > current_time:
                                 formatted_end = format_datetime(end_dt)
                                 hint += f"\n结束: {formatted_end}"
-                            hint += f"\n时长: {dur} 分钟"
+
+                        if readable_duration:
+                            hint += f"\n时长: {readable_duration}"
 
                         # 提示时区（使用友好名称）
                         hint += f" ({get_friendly_timezone_name(settings.TIMEZONE)})"
                 else:
                     # 无法解析时间，直接显示原始字符串
                     hint += f"\n\n开始: {start_time}"
-                    if dur:
-                        hint += f"\n时长: {dur} 分钟"
-            elif dur:
+                    if readable_duration:
+                        hint += f"\n时长: {readable_duration}"
+            elif readable_duration:
                 # 只有持续时间，没有开始时间
-                hint += f"\n\n时长: {dur} 分钟"
+                hint += f"\n\n时长: {readable_duration}"
 
             return await callback.answer(safe_alert_text(hint), show_alert=True)
 

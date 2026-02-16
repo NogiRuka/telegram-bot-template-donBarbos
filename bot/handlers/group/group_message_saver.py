@@ -377,7 +377,7 @@ class GroupMessageSaver:
                     if message_type == MessageType.OTHER:
                         message_type = MessageType.TEXT
 
-            # 如果是服务消息或管理通知，不视为机器人消息（确保系统通知能被保存）
+            is_admin_notification = False
             is_from_bot = message.from_user and message.from_user.is_bot and not is_service_message and not is_admin_notification
 
             if not config.should_save_message(
@@ -529,6 +529,12 @@ message_saver = GroupMessageSaver()
 @router.message(F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]))
 async def handle_group_message(message: types.Message, session: AsyncSession) -> None:
     try:
+        if message.new_chat_members:
+            logger.info(
+                f"ℹ️ 入群服务消息由 member_events 处理保存，跳过通用保存: "
+                f"chat={message.chat.id}, message_id={message.message_id}"
+            )
+            return
         logger.info(f"💬 收到群组消息: chat={message.chat.id}, text={message.text}")
         group_type = GroupType.SUPERGROUP if message.chat.type == "supergroup" else GroupType.GROUP
         config = await get_or_create_group_config(

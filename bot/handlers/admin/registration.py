@@ -119,7 +119,11 @@ async def set_registration_preset(callback: CallbackQuery, session: AsyncSession
     start_dt = now()
     formatted_start = start_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    payload = {"start_time": formatted_start, "duration_minutes": duration}
+    payload = {
+        "start_time": formatted_start,
+        "duration_minutes": duration,
+        "duration_seconds": duration * 60,
+    }
     await set_config(
         session,
         KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
@@ -166,14 +170,19 @@ async def clear_registration_window(
     await callback.answer("🟢 已清除时间窗设置")
 
 
-@router.message(F.text.regexp(r"^\d{8}\.\d{4}\.\d{1,4}$"))
+@router.message(F.text.regexp(r"^\d{8}\.(\d{4}|\d{6})\.\d{1,4}(?:\.\d{1,2})?$"))
 @require_admin_priv
 @require_admin_feature("admin.open_registration")
 async def input_registration_window(message: Message, session: AsyncSession, main_msg: MainMessageService) -> None:
     """解析管理员输入的时间窗并应用
 
     功能说明:
-    - 输入格式 `YYYYMMDD.HHmm.DUR` (例如 20251130.2300.10), 默认为北京时间
+    - 输入格式 `YYYYMMDD.HHmm[ss].MM[.SS]`，其中秒数可省略
+      例如 `20251130.2300.10`、`20251130.230011.10` 或 `20251130.230011.10.11`
+      上述分别表示:
+      - 23:00:00 开始, 持续 10 分钟
+      - 23:00:11 开始, 持续 10 分钟
+      - 23:00:11 开始, 持续 10 分钟 11 秒
     - 应用后删除管理员输入消息, 保持对话整洁, 并编辑原面板消息显示状态
 
     输入参数:
@@ -185,22 +194,37 @@ async def input_registration_window(message: Message, session: AsyncSession, mai
     """
     try:
         text = (message.text or "").strip()
-        date_part, time_part, dur_part = text.split(".")
+        parts = text.split(".")
+        if len(parts) == 3:
+            date_part, time_part, dur_min_part = parts
+            dur_sec_part = None
+        elif len(parts) == 4:
+            date_part, time_part, dur_min_part, dur_sec_part = parts
+        else:
+            raise ValueError("invalid parts length")
+
         year = int(date_part[0:4])
         month = int(date_part[4:6])
         day = int(date_part[6:8])
         hour = int(time_part[0:2])
         minute = int(time_part[2:4])
-        duration = int(dur_part)
+        second = int(time_part[4:6]) if len(time_part) == 6 else 0
+
+        dur_minutes = int(dur_min_part)
+        dur_seconds = int(dur_sec_part) if dur_sec_part is not None else 0
+
+        if not (0 <= dur_seconds < 60):
+            raise ValueError("invalid seconds")
     except ValueError:
         await message.answer("🔴 输入格式错误, 示例: 20251130.2300.10")
         return
 
     # 输入时间已经是配置时区的时间，直接使用统一格式存储
-    start_dt = datetime(year, month, day, hour, minute)
+    start_dt = datetime(year, month, day, hour, minute, second)
     formatted_start = start_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    payload = {"start_time": formatted_start, "duration_minutes": duration}
+    total_seconds = dur_minutes * 60 + dur_seconds
+    payload = {"start_time": formatted_start, "duration_seconds": total_seconds}
     await set_config(
         session,
         KEY_ADMIN_OPEN_REGISTRATION_WINDOW,
@@ -237,36 +261,67 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
     window = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW) or {}
 
     start_time = window.get("start_time")
-    duration = window.get("duration_minutes")
+    duration_minutes = window.get("duration_minutes")
+    duration_seconds = window.get("duration_seconds")
 
     # 计算结束时间
     end_str = "未设置"
     formatted_start = "未设置"
+    readable_duration = "不限"
+
     if start_time:
         dt = parse_formatted_datetime(start_time)
         if dt:
             formatted_start = format_datetime(dt)
-            if duration is not None:
-                end_dt = dt + timedelta(minutes=int(duration))
+            total_seconds = None
+            if duration_seconds is not None:
+                total_seconds = int(duration_seconds)
+            elif duration_minutes is not None:
+                total_seconds = int(duration_minutes) * 60
+
+            if total_seconds is not None:
+                # 计算结束时间
+                end_dt = dt + timedelta(seconds=total_seconds)
                 end_str = format_datetime(end_dt)
                 logger.debug(f"✅ [_build_reg_kb] 计算结束时间成功: {end_str}")
+
+                # 构造可读的持续时长
+                mins, secs = divmod(total_seconds, 60)
+                if mins and secs:
+                    readable_duration = f"{mins} 分钟 {secs} 秒"
+                elif mins:
+                    readable_duration = f"{mins} 分钟"
+                elif secs:
+                    readable_duration = f"{secs} 秒"
+                else:
+                    readable_duration = "0 秒"
         else:
             formatted_start = start_time
             logger.warning(f"❌ [_build_reg_kb] 无法解析时间: {start_time}")
 
+    # 如果没有秒级配置但有分钟配置，仍然给出可读时长
+    if readable_duration == "不限" and duration_minutes is not None and duration_seconds is None:
+        try:
+            m = int(duration_minutes)
+            readable_duration = f"{m} 分钟" if m > 0 else "不限"
+        except Exception:
+            pass
+
     # 转义 MarkdownV2 特殊字符
     formatted_start = escape_markdown_v2(formatted_start)
     end_str = escape_markdown_v2(end_str)
+    readable_duration = escape_markdown_v2(readable_duration)
     tz_name = escape_markdown_v2(get_friendly_timezone_name(settings.TIMEZONE))
 
     status_line = f"注册状态：{'🟢 开启' if free_open else '🔴 关闭'}\n"
+    example_base = now().strftime("%Y%m%d.%H%M")
     caption = (
         f"*{OPEN_REGISTRATION_LABEL}*\n\n"
         + status_line
         + f"开始时间：{formatted_start}\n"
         + f"结束时间：{end_str}\n"
-        + f"持续分钟：{duration if duration is not None else '不限'}\n\n"
-        + f"输入格式示例：`{now().strftime('%Y%m%d.%H%M').replace(' ', '')}.10`\n"
+        + f"持续时长：{readable_duration}\n\n"
+        + f"输入格式示例：`{example_base}.10` 或 `YYYYMMDD.HHmmss.MM.SS`\n"
         + f"时区：{tz_name}"
     )
     logger.debug("✅ [_build_reg_kb] 生成 caption 成功")
@@ -285,7 +340,7 @@ async def _build_reg_kb(session: AsyncSession) -> tuple[str, InlineKeyboardMarku
         InlineKeyboardButton(text="60分钟", callback_data="admin:open_registration:set:60"),
     ])
 
-    if start_time or duration is not None:
+    if start_time or duration_minutes is not None or duration_seconds is not None:
         rows.append([
             InlineKeyboardButton(text="❌ 清除时间窗设置", callback_data="admin:open_registration:clear")
         ])

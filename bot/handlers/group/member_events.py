@@ -13,7 +13,10 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
+from bot.database.models import GroupType
+from bot.handlers.group.group_message_saver import message_saver
 from bot.services.admin_service import ban_emby_user
+from bot.services.group_config_service import get_or_create_group_config
 from bot.services.users import upsert_user_on_interaction
 from bot.utils.msg_group import send_group_notification
 from bot.utils.text import escape_markdown_v2
@@ -38,8 +41,24 @@ def _is_config_group(chat: Chat) -> bool:
 
 
 @router.message(F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP]) & F.new_chat_members)
-async def delete_join_message(message: Message) -> None:
+async def delete_join_message(message: Message, session: AsyncSession) -> None:
     try:
+        group_type = GroupType.SUPERGROUP if message.chat.type == ChatType.SUPERGROUP else GroupType.GROUP
+        config = await get_or_create_group_config(
+            session=session,
+            chat_id=message.chat.id,
+            chat_title=message.chat.title,
+            chat_username=message.chat.username,
+            group_type=group_type,
+            configured_by_user_id=message.from_user.id if message.from_user else 0,
+        )
+        if config.is_save_enabled():
+            saved = await message_saver.save_message(message, config, session)
+            if saved:
+                logger.info(
+                    f"💾 入群服务消息已保存: chat={message.chat.id}, "
+                    f"message_id={message.message_id}"
+                )
         await message.delete()
         logger.info(
             f"🧹 已删除入群提示消息: chat={message.chat.id}, "
