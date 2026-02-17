@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .router import router
-from bot.database.models import MediaCategoryModel, UserSubmissionModel, UserModel
+from bot.database.models import MediaCategoryModel, UserModel, UserSubmissionModel
 from bot.database.models.user_submission import UserSubmissionModel
 from bot.keyboards.inline.buttons import BACK_TO_HOME_BUTTON, CLOSE_BUTTON
 from bot.services.main_message import MainMessageService
@@ -141,7 +141,7 @@ async def list_submissions_for_review(
 
             # 构建标题和基本信息
             title = escape_markdown_v2(submission.title)
-            
+
             # 构建用户显示字符串
             user_display = f"`{submission.submitter_id}`"
             if user and user.username:

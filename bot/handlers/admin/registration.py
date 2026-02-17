@@ -201,7 +201,8 @@ async def input_registration_window(message: Message, session: AsyncSession, mai
         elif len(parts) == 4:
             date_part, time_part, dur_min_part, dur_sec_part = parts
         else:
-            raise ValueError("invalid parts length")
+            msg = "invalid parts length"
+            raise ValueError(msg)
 
         year = int(date_part[0:4])
         month = int(date_part[4:6])
@@ -214,7 +215,8 @@ async def input_registration_window(message: Message, session: AsyncSession, mai
         dur_seconds = int(dur_sec_part) if dur_sec_part is not None else 0
 
         if not (0 <= dur_seconds < 60):
-            raise ValueError("invalid seconds")
+            msg = "invalid seconds"
+            raise ValueError(msg)
     except ValueError:
         await message.answer("🔴 输入格式错误, 示例: 20251130.2300.10")
         return

@@ -51,10 +51,13 @@ async def parse_request_input(session: AsyncSession, text: str) -> dict:
         try:
             category_id = int(lines[1])
             # 验证分类是否存在且启用
-            stmt = select(MediaCategoryModel).where(
-                MediaCategoryModel.id == category_id,
-                MediaCategoryModel.is_enabled,
-                MediaCategoryModel.is_deleted == False
+            stmt = (
+                select(MediaCategoryModel)
+                .where(
+                    MediaCategoryModel.id == category_id,
+                    MediaCategoryModel.is_enabled,
+                    MediaCategoryModel.is_deleted.is_(False),
+                )
             )
             result = await session.execute(stmt)
             category = result.scalar_one_or_none()
@@ -70,10 +73,14 @@ async def parse_request_input(session: AsyncSession, text: str) -> dict:
             raise SubmissionParseError(msg)
     else:
         # 如果没有提供分类ID，使用默认分类
-        stmt = select(MediaCategoryModel).where(
-            MediaCategoryModel.is_enabled,
-            not MediaCategoryModel.is_deleted
-        ).order_by(MediaCategoryModel.sort_order.asc())
+        stmt = (
+            select(MediaCategoryModel)
+            .where(
+                MediaCategoryModel.is_enabled,
+                MediaCategoryModel.is_deleted.is_(False),
+            )
+            .order_by(MediaCategoryModel.sort_order.asc())
+        )
 
         result = await session.execute(stmt)
         category = result.scalar_one_or_none()

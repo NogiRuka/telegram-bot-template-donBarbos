@@ -404,7 +404,9 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                 api_user_map[str(eid_raw)] = it
 
         # 查询数据库中所有现有用户 (排除软删除的)
-        res = await session.execute(select(EmbyUserModel).where(EmbyUserModel.is_deleted == False))
+        res = await session.execute(
+            select(EmbyUserModel).where(EmbyUserModel.is_deleted.is_(False))
+        )
         existing_models = res.scalars().all()
         existing_map: dict[str, EmbyUserModel] = {m.emby_user_id: m for m in existing_models}
 
@@ -770,7 +772,7 @@ async def cleanup_devices_by_policy(
             skips.add(tid)
 
         # 获取所有非删除状态的用户映射
-        stmt = select(EmbyUserModel).where(EmbyUserModel.is_deleted == False)
+        stmt = select(EmbyUserModel).where(not EmbyUserModel.is_deleted)
         result = await session.execute(stmt)
         users = result.scalars().all()
 

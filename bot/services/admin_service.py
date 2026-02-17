@@ -112,9 +112,12 @@ async def ban_emby_user(
 
             # 同时软删除该用户关联的设备
             from bot.database.models.emby_device import EmbyDeviceModel
-            stmt_devices = select(EmbyDeviceModel).where(
-                EmbyDeviceModel.last_user_id == emby_user_db.emby_user_id,
-                EmbyDeviceModel.is_deleted == False
+            stmt_devices = (
+                select(EmbyDeviceModel)
+                .where(
+                    EmbyDeviceModel.last_user_id == emby_user_db.emby_user_id,
+                    EmbyDeviceModel.is_deleted.is_(False),
+                )
             )
             res_devices = await session.execute(stmt_devices)
             devices = res_devices.scalars().all()

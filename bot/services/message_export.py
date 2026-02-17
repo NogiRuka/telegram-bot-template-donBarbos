@@ -97,7 +97,7 @@ class MessageExportService:
 
             # 转发消息过滤
             if not include_forwarded:
-                conditions.append(not MessageModel.is_forwarded)
+                conditions.append(MessageModel.is_forwarded.is_(False))
 
             # 回复消息过滤
             if not include_replies:
@@ -105,7 +105,7 @@ class MessageExportService:
 
             # 机器人消息过滤
             if not include_bot_messages:
-                conditions.append(not MessageModel.is_bot)
+                conditions.append(MessageModel.is_bot.is_(False))
 
             # 查询总数
             count_query = func.count(MessageModel.id).filter(and_(*conditions))

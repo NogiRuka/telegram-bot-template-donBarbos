@@ -35,10 +35,7 @@ async def help_command(message: types.Message, session: AsyncSession) -> None:
         if not await is_command_enabled(session, "user", name or alias):
             continue
         main_cmd = name or alias
-        if alias and alias != name:
-            display = f"/{main_cmd} (/{alias})"
-        else:
-            display = f"/{main_cmd}"
+        display = f"/{main_cmd} (/{alias})" if alias and alias != name else f"/{main_cmd}"
         text += f"• {display} - {desc}\n"
         if usage:
             text += f"  用法: {usage}\n"
@@ -55,10 +52,7 @@ async def help_command(message: types.Message, session: AsyncSession) -> None:
             if not await is_command_enabled(session, "admin", name or alias):
                 continue
             main_cmd = name or alias
-            if alias and alias != name:
-                display = f"/{main_cmd} (/{alias})"
-            else:
-                display = f"/{main_cmd}"
+            display = f"/{main_cmd} (/{alias})" if alias and alias != name else f"/{main_cmd}"
             text += f"• {display} - {desc}\n"
             if usage:
                 text += f"  用法: {usage}\n"
@@ -73,10 +67,7 @@ async def help_command(message: types.Message, session: AsyncSession) -> None:
             if not name and not alias:
                 continue
             main_cmd = name or alias
-            if alias and alias != name:
-                display = f"/{main_cmd} (/{alias})"
-            else:
-                display = f"/{main_cmd}"
+            display = f"/{main_cmd} (/{alias})" if alias and alias != name else f"/{main_cmd}"
             text += f"• {display} - {desc}\n"
             if usage:
                 text += f"  用法: {usage}\n"

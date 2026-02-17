@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.services.emby_service import run_emby_sync
 from bot.utils.decorators import private_chat_only
-from bot.utils.permissions import require_admin_priv, require_admin_command_access
+from bot.utils.permissions import require_admin_command_access, require_admin_priv
 
 router = Router(name="command_save_emby")
 

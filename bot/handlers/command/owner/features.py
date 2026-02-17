@@ -58,10 +58,7 @@ async def feature_command(message: Message, command: CommandObject, session: Asy
         await message.reply("用法: /feature [user|admin] <code>", parse_mode=None)
         return
 
-    if scope == "user":
-        mapping = USER_FEATURES_MAPPING
-    else:
-        mapping = ADMIN_FEATURES_MAPPING
+    mapping = USER_FEATURES_MAPPING if scope == "user" else ADMIN_FEATURES_MAPPING
 
     if short_code not in mapping:
         await message.reply(f"无效的 code: {short_code}", parse_mode=None)

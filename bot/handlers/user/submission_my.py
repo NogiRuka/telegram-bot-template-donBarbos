@@ -36,7 +36,7 @@ async def show_submissions_page(callback: CallbackQuery, session: AsyncSession, 
     count_stmt = (
         select(UserSubmissionModel)
         .where(UserSubmissionModel.submitter_id == user_id)
-        .where(UserSubmissionModel.is_deleted == False)
+        .where(not UserSubmissionModel.is_deleted)
     )
     total_count = len((await session.execute(count_stmt)).scalars().all())
     total_pages = (total_count + items_per_page - 1) // items_per_page
@@ -45,8 +45,10 @@ async def show_submissions_page(callback: CallbackQuery, session: AsyncSession, 
     stmt = (
         select(UserSubmissionModel, MediaCategoryModel)
         .join(MediaCategoryModel, UserSubmissionModel.category_id == MediaCategoryModel.id)
-        .where(UserSubmissionModel.submitter_id == user_id)
-        .where(UserSubmissionModel.is_deleted == False)
+        .where(
+            UserSubmissionModel.submitter_id == user_id,
+            UserSubmissionModel.is_deleted.is_(False),
+        )
         .order_by(desc(UserSubmissionModel.created_at))
         .offset(offset)
         .limit(items_per_page)

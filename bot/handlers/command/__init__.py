@@ -6,9 +6,10 @@ from .admin.save_emby import router as save_emby_router
 from .admin.stats import router as admin_stats_router
 from .admin.submission_review import router as submission_review_router
 from .admin.unban import router as unban_router
+from .owner import get_owner_command_router
 from .user.files import router as user_files_router
 from .user.help import router as help_router
-from .owner import get_owner_command_router
+from .user.red_packet import router as user_red_packet_router
 
 
 def get_command_router() -> Router:
@@ -23,8 +24,8 @@ def get_command_router() -> Router:
     router.include_router(submission_review_router)
     router.include_router(admin_group_router)
     router.include_router(admin_stats_router)
-    # 用户命令
     router.include_router(user_files_router)
+    router.include_router(user_red_packet_router)
     # 帮助命令
     router.include_router(help_router)
     # 所有者命令

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import GroupConfigModel, GroupType, MessageSaveMode
 from bot.services.message_export import MessageExportService
-from bot.utils.permissions import require_admin_priv, require_admin_command_access
+from bot.utils.permissions import require_admin_command_access, require_admin_priv
 
 router = Router(name="admin_group")
 

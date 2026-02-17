@@ -1,7 +1,7 @@
 from aiogram import Router
 
-from .features import router as owner_features_router
 from .commands import router as owner_commands_router
+from .features import router as owner_features_router
 
 
 def get_owner_command_router() -> Router:

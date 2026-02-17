@@ -38,9 +38,12 @@ async def _update_emby_policy(session: AsyncSession, emby_user_id: str, max_devi
 
     try:
         # 1. 获取当前有效设备
-        stmt = select(EmbyDeviceModel).where(
-            EmbyDeviceModel.last_user_id == emby_user_id,
-            not EmbyDeviceModel.is_deleted
+        stmt = (
+            select(EmbyDeviceModel)
+            .where(
+                EmbyDeviceModel.last_user_id == emby_user_id,
+                EmbyDeviceModel.is_deleted.is_(False),
+            )
         )
         res = await session.execute(stmt)
         devices = res.scalars().all()
@@ -119,10 +122,14 @@ async def user_devices(
     max_devices = emby_user.max_devices if emby_user else 3
 
     # 3. 获取设备列表
-    stmt_devices = select(EmbyDeviceModel).where(
-        EmbyDeviceModel.last_user_id == emby_user_id,
-        EmbyDeviceModel.is_deleted == False
-    ).order_by(EmbyDeviceModel.date_last_activity.desc())
+    stmt_devices = (
+        select(EmbyDeviceModel)
+        .where(
+            EmbyDeviceModel.last_user_id == emby_user_id,
+            EmbyDeviceModel.is_deleted.is_(False),
+        )
+        .order_by(EmbyDeviceModel.date_last_activity.desc())
+    )
 
     res_devices = await session.execute(stmt_devices)
     devices = res_devices.scalars().all()

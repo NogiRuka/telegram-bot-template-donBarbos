@@ -235,10 +235,7 @@ async def _get_disabled_commands_raw(session: AsyncSession, key: str) -> set[str
 
 
 async def get_disabled_commands(session: AsyncSession, scope: str) -> set[str]:
-    if scope == "user":
-        key = KEY_USER_COMMANDS_DISABLED
-    else:
-        key = KEY_ADMIN_COMMANDS_DISABLED
+    key = KEY_USER_COMMANDS_DISABLED if scope == "user" else KEY_ADMIN_COMMANDS_DISABLED
     return await _get_disabled_commands_raw(session, key)
 
 
@@ -257,10 +254,7 @@ async def set_disabled_commands(
     values: set[str],
     operator_id: int | None = None,
 ) -> None:
-    if scope == "user":
-        key = KEY_USER_COMMANDS_DISABLED
-    else:
-        key = KEY_ADMIN_COMMANDS_DISABLED
+    key = KEY_USER_COMMANDS_DISABLED if scope == "user" else KEY_ADMIN_COMMANDS_DISABLED
     await _set_disabled_commands_raw(session, key, values, operator_id=operator_id)
 
 

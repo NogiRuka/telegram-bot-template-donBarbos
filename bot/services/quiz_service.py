@@ -86,7 +86,7 @@ class QuizService:
             async with sessionmaker() as session:
                 stmt = select(QuizActiveSessionModel).where(
                     QuizActiveSessionModel.id == session_id,
-                    QuizActiveSessionModel.is_deleted == False
+                    not QuizActiveSessionModel.is_deleted
                 )
                 # 使用 unique() 防止可能的笛卡尔积（尽管 ID 查询理论上不需要，但防御性编程）
                 # 使用 scalars().first() 替代 scalar_one_or_none() 以避免多行错误导致任务崩溃
@@ -246,7 +246,7 @@ class QuizService:
 
         img_stmt = select(QuizImageModel).where(
             QuizImageModel.is_active,
-            QuizImageModel.is_deleted == False
+            not QuizImageModel.is_deleted
         )
         imgs = (await session.execute(img_stmt)).scalars().all()
 
@@ -410,7 +410,7 @@ class QuizService:
         """更新会话的消息ID"""
         stmt = select(QuizActiveSessionModel).where(
                 QuizActiveSessionModel.id == session_id,
-                QuizActiveSessionModel.is_deleted == False
+                not QuizActiveSessionModel.is_deleted
             )
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
         if quiz_session:
@@ -426,7 +426,7 @@ class QuizService:
         # 1. 获取 Session
         stmt = select(QuizActiveSessionModel).where(
             QuizActiveSessionModel.user_id == user_id,
-            QuizActiveSessionModel.is_deleted == False
+            not QuizActiveSessionModel.is_deleted
         )
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
 
@@ -526,7 +526,7 @@ class QuizService:
         """
         stmt = select(QuizActiveSessionModel).where(
             QuizActiveSessionModel.user_id == user_id,
-            QuizActiveSessionModel.is_deleted == False
+            not QuizActiveSessionModel.is_deleted
         )
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
 
@@ -580,8 +580,8 @@ class QuizService:
 
             # 基础查询条件：非机器人、未删除
             base_stmt = select(UserModel).where(
-                not UserModel.is_bot,
-                UserModel.is_deleted == False
+                UserModel.is_bot.is_(False),
+                UserModel.is_deleted.is_(False),
             )
 
             if not is_bot_enabled:
@@ -622,7 +622,7 @@ class QuizService:
                     # 检查是否有活跃会话，有则跳过
                     active_stmt = select(QuizActiveSessionModel).where(
                         QuizActiveSessionModel.user_id == user.id,
-                        QuizActiveSessionModel.is_deleted == False
+                        QuizActiveSessionModel.is_deleted.is_(False),
                     )
                     if (await session.execute(active_stmt)).scalar_one_or_none():
                          continue

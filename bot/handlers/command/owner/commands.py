@@ -19,10 +19,7 @@ COMMAND_META = {
     "desc": "查看或切换用户/管理员命令权限",
 }
 def _collect_command_names_by_scope(scope: str) -> list[str]:
-    if scope == "user":
-        package = "bot.handlers.command.user"
-    else:
-        package = "bot.handlers.command.admin"
+    package = "bot.handlers.command.user" if scope == "user" else "bot.handlers.command.admin"
     return collect_command_names(package)
 
 
@@ -67,10 +64,7 @@ async def owner_command_control(message: Message, command: CommandObject, sessio
         await message.reply("用法: /command [user|admin] [name]", parse_mode=None)
         return
 
-    if scope == "user":
-        valid = name in user_commands
-    else:
-        valid = name in admin_commands
+    valid = name in user_commands if scope == "user" else name in admin_commands
 
     if not valid:
         await message.reply("无效的命令名", parse_mode=None)

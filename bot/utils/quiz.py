@@ -67,7 +67,7 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
         category_name = "未知"
         if category_input.isdigit():
             cat_id = int(category_input)
-            stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, QuizCategoryModel.is_deleted == False)
+            stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, not QuizCategoryModel.is_deleted)
             result = await session.execute(stmt)
             cat = result.scalar_one_or_none()
             if cat:
@@ -161,7 +161,7 @@ async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
     category_name = "未知"
     if category_input.isdigit():
         cat_id = int(category_input)
-        stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, QuizCategoryModel.is_deleted == False)
+        stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, not QuizCategoryModel.is_deleted)
         result = await session.execute(stmt)
         cat = result.scalar_one_or_none()
         if cat:

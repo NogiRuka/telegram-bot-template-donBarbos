@@ -5,7 +5,9 @@ from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Index, Integer, Stri
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
-import datetime as dt
+
+if TYPE_CHECKING:
+    import datetime as dt
 
 
 class QuizQuestionModel(Base, BasicAuditMixin):

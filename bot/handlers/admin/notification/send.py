@@ -1,7 +1,8 @@
-from aiogram import F, types
-from aiogram.types import InlineKeyboardMarkup
-from aiogram.exceptions import TelegramRetryAfter, TelegramBadRequest
 import asyncio
+
+from aiogram import F, types
+from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter
+from aiogram.types import InlineKeyboardMarkup
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -160,7 +161,7 @@ async def execute_send_all(
                     logger.warning(f"⚠️ 解析通知的target_user_id失败: {notif.target_user_id} -> {e}")
 
             # 定义发送辅助函数
-            async def _send_notification(target_id: int | str):
+            async def _send_notification(target_id: int | str) -> None:
                 if image_url:
                     try:
                         await callback.bot.send_photo(chat_id=target_id, photo=image_url, caption=msg_text)
@@ -171,8 +172,8 @@ async def execute_send_all(
                         if "wrong type of the web page content" in err_str or "failed to get HTTP URL content" in err_str:
                             logger.warning(f"⚠️ 图片发送失败 (Bad Request)，尝试发送纯文本: {image_url} -> {e}")
                         else:
-                            raise e  # 其他错误（如被封锁、群组不存在）直接抛出
-                
+                            raise  # 其他错误（如被封锁、群组不存在）直接抛出
+
                 # 发送纯文本
                 await callback.bot.send_message(chat_id=target_id, text=msg_text)
 

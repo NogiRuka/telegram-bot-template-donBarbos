@@ -493,7 +493,7 @@ async def create_and_bind_emby_user(
             # 检查账号是否为软删除状态 (如果存在且未删除，则阻止创建)
             stmt_check = _select(EmbyUserModel).where(
                 EmbyUserModel.emby_user_id == current_emby_id,
-                EmbyUserModel.is_deleted == False
+                not EmbyUserModel.is_deleted
             )
             res_check = await session.execute(stmt_check)
             active_account = res_check.scalar_one_or_none()
@@ -574,8 +574,10 @@ async def has_emby_account(session: AsyncSession, user_id: int) -> bool:
     stmt = (
         select(EmbyUserModel)
         .join(UserExtendModel, UserExtendModel.emby_user_id == EmbyUserModel.emby_user_id)
-        .where(UserExtendModel.user_id == user_id)
-        .where(EmbyUserModel.is_deleted == False)
+        .where(
+            UserExtendModel.user_id == user_id,
+            EmbyUserModel.is_deleted.is_(False),
+        )
     )
     res = await session.execute(stmt)
     emby_id = res.scalar_one_or_none()

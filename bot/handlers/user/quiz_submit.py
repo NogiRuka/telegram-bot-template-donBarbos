@@ -22,7 +22,7 @@ router = Router(name="user_quiz_submit")
 async def start_quiz_submit(callback: CallbackQuery, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
     """开始投稿"""
     # 获取可显示的分类列表
-    stmt = select(QuizCategoryModel).where(QuizCategoryModel.is_deleted == False).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
+    stmt = select(QuizCategoryModel).where(not QuizCategoryModel.is_deleted).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
     categories = (await session.execute(stmt)).scalars().all()
 
     # 每行 5 个

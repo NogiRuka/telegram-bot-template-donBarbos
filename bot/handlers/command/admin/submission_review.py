@@ -11,7 +11,7 @@ from bot.keyboards.inline.buttons import CLOSE_BUTTON
 from bot.services.currency import CurrencyService
 from bot.utils.datetime import now
 from bot.utils.message import send_toast
-from bot.utils.permissions import require_admin_priv, require_admin_command_access
+from bot.utils.permissions import require_admin_command_access, require_admin_priv
 
 router = Router(name="command_submission_review")
 

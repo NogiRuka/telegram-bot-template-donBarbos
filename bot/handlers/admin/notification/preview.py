@@ -1,3 +1,4 @@
+import contextlib
 from math import ceil
 
 from aiogram import F, types
@@ -157,13 +158,11 @@ async def handle_notify_preview(
             )
             logger.error(error_info)
             # 发送错误提示给用户，方便定位问题
-            try:
+            with contextlib.suppress(Exception):
                 await callback.bot.send_message(
                     callback.from_user.id,
                     f"⚠️ 预览发送出错:\nID: {notif.id}\nName: {notif.item_name or notif.series_name}\nError: {str(e)[:100]}"
                 )
-            except Exception:
-                pass
 
     # 存储预览数据到FSM状态
     await state.update_data(preview_data=preview_data)

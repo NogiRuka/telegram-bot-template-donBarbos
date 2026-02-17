@@ -1,10 +1,10 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from loguru import logger
 from sqlalchemy import case, func, select
 
 from bot.core.config import settings
-from loguru import logger
 from bot.core.constants import (
     EVENT_TYPE_LIBRARY_NEW,
     NOTIFICATION_STATUS_PENDING_COMPLETION,
@@ -59,11 +59,11 @@ def _build_item_image_url(item: EmbyItemModel) -> str | None:
         return None
 
     url = f"{base_url.rstrip('/')}/Items/{item.id}/Images/{image_type}?tag={tag}"
-    
+
     # 拼接 API Key 以允许 Telegram 服务器访问图片（绕过登录）
     if settings.EMBY_API_KEY:
         url += f"&api_key={settings.EMBY_API_KEY}"
-    
+
     logger.info(f"生产图片 URL: {url}")
     return url
 
@@ -208,7 +208,7 @@ async def get_notification_content(item: EmbyItemModel, session: AsyncSession | 
         # 如果包含分隔符，只取前面的内容
         if "---" in overview:
             overview = overview.split("---")[0].strip()
-        
+
         if overview:
             msg_parts.append(f"📝 <b>简介：</b>{_truncate_overview(overview)}")
 
