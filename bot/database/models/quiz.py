@@ -5,9 +5,7 @@ from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Index, Integer, Stri
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
-
-if TYPE_CHECKING:
-    import datetime as dt
+import datetime as dt
 
 
 class QuizQuestionModel(Base, BasicAuditMixin):
@@ -84,7 +82,7 @@ class QuizActiveSessionModel(Base, BasicAuditMixin):
     message_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="题目消息ID")
     question_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="题目ID")
     correct_index: Mapped[int] = mapped_column(Integer, nullable=False, comment="正确选项缓存")
-    expire_at: Mapped[dt.datetime] = mapped_column(DateTime, nullable=False, comment="过期时间（精确到秒）")
+    expire_at: Mapped[dt] = mapped_column(DateTime, nullable=False, comment="过期时间（精确到秒）")
     extra: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="扩展数据")
 
     # 关联

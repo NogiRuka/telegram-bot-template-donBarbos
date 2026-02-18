@@ -153,31 +153,33 @@ async def is_registration_open(session: AsyncSession, now_ts: float | None = Non
         if free_open:
             return True
 
-        # 无自由开关则按时间窗判断
         window = await get_config(session, KEY_ADMIN_OPEN_REGISTRATION_WINDOW)
         if not isinstance(window, dict):
             return False
 
-        # 使用统一的工具函数处理时间
-        _now = get_now()  # 获取当前应用时区时间 (无时区信息)
+        _now = get_now()
         if now_ts is not None:
-            # 如果有提供时间戳, 转换为datetime
             _now = datetime.fromtimestamp(now_ts).replace(microsecond=0)
 
         start_time = window.get("start_time")
-        duration = window.get("duration_minutes")
-        if not start_time and duration is None:
+        duration_minutes = window.get("duration_minutes")
+        duration_seconds = window.get("duration_seconds")
+        if not start_time and duration_minutes is None and duration_seconds is None:
             return False
 
-        # 使用统一的格式化时间解析函数
         start = parse_formatted_datetime(start_time) if start_time else _now
         if start is None:
             return False
-
-        if duration is None:
+        if duration_minutes is None and duration_seconds is None:
             return _now >= start
-
-        end = start + timedelta(minutes=int(duration))
+        total_seconds = 0
+        if duration_minutes is not None:
+            total_seconds += int(duration_minutes) * 60
+        if duration_seconds is not None:
+            total_seconds += int(duration_seconds)
+        if total_seconds <= 0:
+            return _now >= start
+        end = start + timedelta(seconds=total_seconds)
         return start <= _now <= end
     except SQLAlchemyError:
         return False

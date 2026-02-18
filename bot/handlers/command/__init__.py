@@ -10,6 +10,8 @@ from .owner import get_owner_command_router
 from .user.files import router as user_files_router
 from .user.help import router as help_router
 from .user.red_packet import router as user_red_packet_router
+from bot.core.config import settings
+from bot.handlers.command.test.dynamic_redpacket_preview import router as test_dynamic_redpacket_preview_router
 
 
 def get_command_router() -> Router:
@@ -30,4 +32,7 @@ def get_command_router() -> Router:
     router.include_router(help_router)
     # 所有者命令
     router.include_router(get_owner_command_router())
+    # 测试命令仅在开发模式下启用
+    if getattr(settings, "DEBUG", False):
+        router.include_router(test_dynamic_redpacket_preview_router)
     return router

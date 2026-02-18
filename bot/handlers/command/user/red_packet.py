@@ -4,11 +4,13 @@ from typing import TYPE_CHECKING, Any
 
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from loguru import logger
 from sqlalchemy import select
 
 from bot.core.constants import CURRENCY_NAME
 from bot.database.models import UserModel
+from bot.services.red_packet_cover_service import RedPacketCoverService
 from bot.services.red_packet_service import RedPacketService
 from bot.utils.permissions import require_user_command_access
 
@@ -136,6 +138,13 @@ async def create_red_packet_command(
     if not message_text:
         message_text = random.choice(DEFAULT_REDPACKET_MESSAGES)
     try:
+        cover_buf, cover_path, cover_template_id = RedPacketCoverService.generate_cover_image(
+            user=message.from_user,
+            total_amount=total_amount,
+            packet_count=packet_count,
+            packet_type=packet_type,
+            message_text=message_text,
+        )
         packet = await RedPacketService.create_red_packet(
             session=session,
             creator_id=int(message.from_user.id),
@@ -146,12 +155,20 @@ async def create_red_packet_command(
             expire_minutes=10,
             target_user_id=target_user_id,
             message_text=message_text,
-            cover_template_id=None,
+            cover_template_id=cover_template_id,
         )
     except ValueError as exc:
         await message.reply(str(exc), parse_mode=None)
         return
-    except Exception:
+    except Exception as exc:
+        logger.exception(
+            "创建红包失败: user_id=%s chat_id=%s total_amount=%s count=%s packet_type=%s",
+            message.from_user.id if message.from_user else None,
+            message.chat.id if message.chat else None,
+            total_amount,
+            packet_count,
+            packet_type,
+        )
         await session.rollback()
         await message.reply("发送红包失败，请稍后重试", parse_mode=None)
         return
@@ -179,15 +196,26 @@ async def create_red_packet_command(
         ]
     )
     try:
-        sent = await message.answer(caption, reply_markup=keyboard)
-    except Exception:
+        photo_input = FSInputFile(path=str(cover_path))
+        sent = await message.answer_photo(photo=photo_input, caption=caption, reply_markup=keyboard)
+    except Exception as exc:
+        logger.exception(
+            "发送红包消息失败: user_id=%s chat_id=%s packet_id=%s cover_path=%s",
+            message.from_user.id if message.from_user else None,
+            message.chat.id if message.chat else None,
+            getattr(packet, "id", None),
+            cover_path,
+        )
         await session.rollback()
         await message.reply("发送红包消息失败，请稍后重试", parse_mode=None)
         return
+    cover_file_id = None
+    if sent.photo:
+        cover_file_id = sent.photo[-1].file_id
     await RedPacketService.attach_message(
         session=session,
         packet_id=int(packet.id),
         chat_id=int(message.chat.id),
         message_id=int(sent.message_id),
-        cover_image_file_id=None,
+        cover_image_file_id=cover_file_id,
     )
