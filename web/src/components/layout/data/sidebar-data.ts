@@ -57,6 +57,11 @@ export const sidebarData: SidebarData = {
           icon: LayoutDashboard,
         },
         {
+          title: '红包预览',
+          url: '/redpacket-preview',
+          icon: Bug,
+        },
+        {
           title: '任务',
           url: '/tasks',
           icon: ListTodo,
