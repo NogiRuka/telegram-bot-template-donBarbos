@@ -91,9 +91,10 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
             "group_name": group_name,
             "chat_id": chat_id,
             "chat_username": chat_username,
-            "username": f"@{db_user.username}" if db_user.username else "Unknown",
+            "username": db_user.username or "",
             "full_name": db_user.get_full_name(),
-            "action": "ManualBan"
+            "action": "ManualBan",
+            "user_id": str(target_user_id),
         }
     else:
         try:
@@ -101,14 +102,15 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
                 chat_member = await message.bot.get_chat_member(chat_id=settings.GROUP, user_id=target_user_id)
                 user = chat_member.user
                 full_name = user.full_name
-                username = f"@{user.username}" if user.username else "Unknown"
+                username = user.username or ""
                 user_info = {
                     "group_name": group_name,
                     "chat_id": chat_id,
                     "chat_username": chat_username,
                     "username": username,
                     "full_name": full_name,
-                    "action": "ManualBan"
+                    "action": "ManualBan",
+                    "user_id": str(target_user_id),
                 }
             else:
                 msg = "No group configured"
@@ -118,9 +120,10 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
                 "group_name": group_name,
                 "chat_id": chat_id,
                 "chat_username": chat_username,
-                "username": "Unknown",
+                "username": "",
                 "full_name": "Unknown",
-                "action": "ManualBan"
+                "action": "ManualBan",
+                "user_id": str(target_user_id),
             }
 
     emby_results = await ban_emby_user(

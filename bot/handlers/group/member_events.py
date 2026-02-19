@@ -83,10 +83,10 @@ async def on_member_join(event: ChatMemberUpdated, session: AsyncSession) -> Non
         "group_name": event.chat.title,
         "chat_id": event.chat.id,
         "chat_username": event.chat.username,
-        "username": user.username if user.username else "Unknown",
+        "username": user.username if user.username else "",
         "full_name": user.full_name,
         "action": "Join",
-        "user_id": str(user.id)
+        "user_id": str(user.id),
     }
 
     join_reason = "加入了群组"
@@ -146,9 +146,10 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
             "group_name": event.chat.title,
             "chat_id": event.chat.id,
             "chat_username": event.chat.username,
-            "username": user.username if user.username else "Unknown",
+            "username": user.username if user.username else "",
             "full_name": user.full_name,
-            "action": "Kick" if event.new_chat_member.status == ChatMemberStatus.KICKED else "Leave"
+            "action": "Kick" if event.new_chat_member.status == ChatMemberStatus.KICKED else "Leave",
+            "user_id": str(user.id),
         }
 
         results = await ban_emby_user(

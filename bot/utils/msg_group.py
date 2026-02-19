@@ -32,8 +32,21 @@ def escape_markdown_v2_preserve_code(text: str) -> str:
                 result.append(f"`{part}`")
         return "".join(result)
     except Exception:
-        # 兜底: 出错时退回整体转义
         return escape_markdown_v2(text)
+
+
+def _build_user_mention(full_name: str | None, user_id: str | None, username: str | None) -> str:
+    uid = user_id or ""
+    if username:
+        visible = f"@{username}"
+    else:
+        name = (full_name or "").strip()
+        visible = f"@{name}" if name else "@Unknown"
+    text = visible
+    escaped_text = escape_markdown_v2(text)
+    if uid.isdigit():
+        return f"[{escaped_text}](tg://user?id={uid})"
+    return escaped_text
 
 
 async def send_group_notification(
@@ -68,11 +81,6 @@ async def send_group_notification(
             clean_s = str(s).replace(" ", "").replace("#", "")
             return "\\#" + escape_markdown_v2(clean_s)
 
-        # 处理 username 为提及 (@username)
-        def to_mention(s: str) -> str:
-            clean_s = str(s).replace(" ", "").replace("@", "")
-            return "@" + escape_markdown_v2(clean_s)
-
         # 构造群组标识 Tag
         # 需求: 同时显示 @channelname (如果有) 和 #M100xxx (chat_id)
         # @lustfulboy #M1002216963051 #ID8134098953 #Leave
@@ -80,7 +88,8 @@ async def send_group_notification(
 
         # 1. @channelname
         if chat_username:
-             group_tags_parts.append(to_mention(str(chat_username).lstrip("@")))
+             clean_chat_username = str(chat_username).lstrip("@").replace(" ", "")
+             group_tags_parts.append("@" + escape_markdown_v2(clean_chat_username))
 
         # 2. #M100xxx (chat_id)
         if chat_id:
@@ -102,7 +111,7 @@ async def send_group_notification(
 
         # 📖 FullName @Username Reason
         escaped_full_name = escape_markdown_v2(full_name)
-        user_mention = to_mention(username)
+        user_mention = _build_user_mention(full_name, str(user_id), username)
         escaped_reason = escape_markdown_v2_preserve_code(reason)
 
         content = f"📖 `{escaped_full_name}` {user_mention} {escaped_reason}"

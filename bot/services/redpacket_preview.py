@@ -8,8 +8,18 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 def _get_assets_dir() -> Path:
-    base_dir = Path(__file__).resolve().parent.parent.parent
-    return base_dir / "assets" / "redpacket"
+    current_dir = Path(__file__).resolve().parent  # bot/services
+    bot_root = current_dir.parent  # bot
+    project_root = bot_root.parent
+
+    candidates = [
+        bot_root / "assets" / "redpacket",
+        project_root / "assets" / "redpacket",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return candidates[0]
 
 
 def _ensure_output_dir() -> Path:
@@ -71,7 +81,18 @@ def generate_dynamic_redpacket_preview(name: str, amount: str) -> str:
 
 
 def _get_root_assets_dir() -> Path:
-    return Path(__file__).resolve().parent.parent.parent / "assets"
+    current_dir = Path(__file__).resolve().parent
+    bot_root = current_dir.parent
+    project_root = bot_root.parent
+
+    candidates = [
+        bot_root / "assets",
+        project_root / "assets",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return candidates[0]
 
 
 def _load_font(size: int) -> ImageFont.FreeTypeFont:

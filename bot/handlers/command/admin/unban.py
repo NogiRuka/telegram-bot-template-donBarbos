@@ -104,9 +104,10 @@ async def process_unban(
         "group_name": group_name,
         "chat_id": chat_id,
         "chat_username": chat_username,
-        "username": "Unknown",
+        "username": "",
         "full_name": "Unknown",
-        "action": "ManualUnban"
+        "action": "ManualUnban",
+        "user_id": str(target_user_id),
     }
 
     service_results = await unban_user_service(
