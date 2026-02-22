@@ -9,7 +9,7 @@ from loguru import logger
 from sqlalchemy import select
 
 from bot.core.constants import CURRENCY_NAME
-from bot.database.models import UserModel
+from bot.database.models import MediaFileModel, UserModel
 from bot.services.red_packet_cover_service import RedPacketCoverService
 from bot.services.red_packet_service import RedPacketService
 from bot.utils.permissions import require_user_command_access
@@ -211,7 +211,20 @@ async def create_red_packet_command(
         return
     cover_file_id = None
     if sent.photo:
-        cover_file_id = sent.photo[-1].file_id
+        p = sent.photo[-1]
+        cover_file_id = p.file_id
+        media = MediaFileModel(
+            file_id=p.file_id,
+            file_unique_id=p.file_unique_id,
+            file_size=p.file_size,
+            file_name=cover_path.name,
+            unique_name=cover_path.name,
+            mime_type="image/jpeg",
+            media_type="photo",
+            width=p.width,
+            height=p.height,
+        )
+        session.add(media)
     await RedPacketService.attach_message(
         session=session,
         packet_id=int(packet.id),
