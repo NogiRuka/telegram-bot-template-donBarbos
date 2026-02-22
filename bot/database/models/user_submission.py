@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+import datetime
 
 from sqlalchemy import JSON, BigInteger, DateTime, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -7,8 +8,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from bot.database.models.base import Base, BasicAuditMixin, auto_int_pk
 
 if TYPE_CHECKING:
-    import datetime
-
     from bot.database.models.media_category import MediaCategoryModel
 
 
