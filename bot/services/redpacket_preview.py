@@ -1,5 +1,7 @@
 from __future__ import annotations
+import os
 import random
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,7 +24,11 @@ def _get_assets_dir() -> Path:
 
 
 def _ensure_output_dir() -> Path:
-    out_dir = _get_assets_dir() / "preview"
+    env_dir = os.getenv("REDPACKET_PREVIEW_DIR")
+    if env_dir:
+        out_dir = Path(env_dir)
+    else:
+        out_dir = Path(tempfile.gettempdir()) / "redpacket_preview"
     out_dir.mkdir(parents=True, exist_ok=True)
     return out_dir
 
