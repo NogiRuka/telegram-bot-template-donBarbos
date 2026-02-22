@@ -89,20 +89,30 @@ async def handle_product_purchase(callback: CallbackQuery, session: AsyncSession
         product = await CurrencyService.get_product(session, product_id)
 
         if product:
-            # 发送群组通知
             try:
                 from bot.utils.msg_group import send_group_notification
 
+                chat = callback.message.chat if callback.message else None
+                group_name = "StorePurchase"
+                chat_id = None
+                chat_username = None
+
+                if chat and chat.type != "private":
+                    group_name = chat.title or group_name
+                    chat_id = chat.id
+                    chat_username = chat.username
+
                 user = callback.from_user
                 user_info = {
-                    "group_name": "StorePurchase",
+                    "group_name": group_name,
+                    "chat_id": chat_id,
+                    "chat_username": chat_username,
                     "user_id": str(user_id),
                     "username": user.username or "NoUsername",
                     "full_name": user.full_name or "Unknown",
                     "action": "BuyProduct",
                 }
 
-                # 获取最新余额并加上 emoji
                 balance = await CurrencyService.get_user_balance(session, user_id)
                 reason = f"购买了 {product.name}（剩余 {balance}{CURRENCY_SYMBOL}）"
                 await send_group_notification(callback.bot, user_info, reason)
