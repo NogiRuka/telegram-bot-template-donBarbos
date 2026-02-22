@@ -27,10 +27,24 @@ def _ensure_output_dir() -> Path:
     env_dir = os.getenv("REDPACKET_PREVIEW_DIR")
     if env_dir:
         out_dir = Path(env_dir)
-    else:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return out_dir
+
+    try:
+        out_dir = _get_assets_dir() / "preview"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        test_file = out_dir / ".write_test"
+        with test_file.open("wb") as f:
+            f.write(b"ok")
+        try:
+            test_file.unlink()
+        except FileNotFoundError:
+            pass
+        return out_dir
+    except Exception:
         out_dir = Path(tempfile.gettempdir()) / "redpacket_preview"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    return out_dir
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return out_dir
 
 
 def _open_image(path: Path) -> Image.Image:
