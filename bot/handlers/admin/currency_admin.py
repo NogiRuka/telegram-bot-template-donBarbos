@@ -166,6 +166,7 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
     user_id = data["target_user_id"]
     amount = data["amount"]
     prompt_message_id = data.get("prompt_message_id")
+    old_balance = data.get("current_balance")
 
     try:
         new_balance = await CurrencyService.add_currency(
@@ -201,6 +202,27 @@ async def process_reason(message: Message, state: FSMContext, session: AsyncSess
                 await send_toast(message, text, delay=5)
         else:
              await send_toast(message, text, delay=5)
+
+        try:
+            user_delta_text = (
+                f"💰 *精粹余额变动通知*\n\n"
+                f"变动: {action} {abs(amount)} {CURRENCY_SYMBOL}\n"
+            )
+            if old_balance is not None:
+                user_delta_text += (
+                    f"原余额: {old_balance} {CURRENCY_SYMBOL}\n"
+                    f"新余额: {new_balance} {CURRENCY_SYMBOL}\n"
+                )
+            else:
+                user_delta_text += f"当前余额: {new_balance} {CURRENCY_SYMBOL}\n"
+            user_delta_text += f"原因: {escape_markdown_v2(reason)}"
+            await message.bot.send_message(
+                chat_id=user_id,
+                text=user_delta_text,
+                parse_mode="MarkdownV2",
+            )
+        except Exception as e:
+            logger.error(f"❌ 发送用户余额变动通知失败: {e}")
 
     except Exception as e:
         await send_toast(message, f"❌ 操作失败: {escape_markdown_v2(str(e))}", delay = 5)
