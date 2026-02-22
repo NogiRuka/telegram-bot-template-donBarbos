@@ -86,7 +86,7 @@ class QuizService:
             async with sessionmaker() as session:
                 stmt = select(QuizActiveSessionModel).where(
                     QuizActiveSessionModel.id == session_id,
-                    not QuizActiveSessionModel.is_deleted
+                    QuizActiveSessionModel.is_deleted.is_(False),
                 )
                 # 使用 unique() 防止可能的笛卡尔积（尽管 ID 查询理论上不需要，但防御性编程）
                 # 使用 scalars().first() 替代 scalar_one_or_none() 以避免多行错误导致任务崩溃
@@ -174,7 +174,7 @@ class QuizService:
         # 1. 检查是否存在活跃会话
         active_stmt = select(QuizActiveSessionModel).where(
             QuizActiveSessionModel.user_id == user_id,
-            not QuizActiveSessionModel.is_deleted
+            QuizActiveSessionModel.is_deleted.is_(False),
         )
         active_result = await session.execute(active_stmt)
         active_session = active_result.scalar_one_or_none()
@@ -246,7 +246,7 @@ class QuizService:
 
         img_stmt = select(QuizImageModel).where(
             QuizImageModel.is_active,
-            not QuizImageModel.is_deleted
+            QuizImageModel.is_deleted.is_(False),
         )
         imgs = (await session.execute(img_stmt)).scalars().all()
 
@@ -329,7 +329,7 @@ class QuizService:
         # 若已有活跃会话，直接返回 None 或清理过期
         active_stmt = select(QuizActiveSessionModel).where(
             QuizActiveSessionModel.user_id == user_id,
-            not QuizActiveSessionModel.is_deleted
+            QuizActiveSessionModel.is_deleted.is_(False),
         )
         active_session = (await session.execute(active_stmt)).scalar_one_or_none()
         if active_session:
@@ -409,9 +409,9 @@ class QuizService:
     async def update_session_message_id(session: AsyncSession, session_id: int, message_id: int) -> None:
         """更新会话的消息ID"""
         stmt = select(QuizActiveSessionModel).where(
-                QuizActiveSessionModel.id == session_id,
-                not QuizActiveSessionModel.is_deleted
-            )
+            QuizActiveSessionModel.id == session_id,
+            QuizActiveSessionModel.is_deleted.is_(False),
+        )
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
         if quiz_session:
             quiz_session.message_id = message_id
@@ -426,7 +426,7 @@ class QuizService:
         # 1. 获取 Session
         stmt = select(QuizActiveSessionModel).where(
             QuizActiveSessionModel.user_id == user_id,
-            not QuizActiveSessionModel.is_deleted
+            QuizActiveSessionModel.is_deleted.is_(False),
         )
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
 
@@ -526,7 +526,7 @@ class QuizService:
         """
         stmt = select(QuizActiveSessionModel).where(
             QuizActiveSessionModel.user_id == user_id,
-            not QuizActiveSessionModel.is_deleted
+            QuizActiveSessionModel.is_deleted.is_(False),
         )
         quiz_session = (await session.execute(stmt)).scalar_one_or_none()
 

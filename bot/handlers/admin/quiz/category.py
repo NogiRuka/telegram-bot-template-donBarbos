@@ -23,7 +23,7 @@ from bot.utils.text import escape_markdown_v2
 
 async def render_category_list(session: AsyncSession, main_msg: MainMessageService, user_id: int) -> None:
     """渲染分类列表"""
-    stmt = select(QuizCategoryModel).where(not QuizCategoryModel.is_deleted).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
+    stmt = select(QuizCategoryModel).where(QuizCategoryModel.is_deleted.is_(False)).order_by(QuizCategoryModel.sort_order.asc(), QuizCategoryModel.id.asc())
     categories = (await session.execute(stmt)).scalars().all()
 
     text = "*🏷️ 分类管理*\n\n点击分类进行编辑或管理。"
@@ -80,7 +80,10 @@ async def add_category_process(message: Message, state: FSMContext, session: Asy
 async def view_category(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """查看分类详情"""
     cat_id = int(callback.data.split(":")[-1])
-    stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, not QuizCategoryModel.is_deleted)
+    stmt = select(QuizCategoryModel).where(
+        QuizCategoryModel.id == cat_id,
+        QuizCategoryModel.is_deleted.is_(False),
+    )
     cat = (await session.execute(stmt)).scalar_one_or_none()
 
     if not cat:
@@ -157,7 +160,10 @@ async def edit_category_process(message: Message, state: FSMContext, session: As
 async def toggle_category(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """切换分类状态"""
     cat_id = int(callback.data.split(":")[-1])
-    stmt = select(QuizCategoryModel).where(QuizCategoryModel.id == cat_id, not QuizCategoryModel.is_deleted)
+    stmt = select(QuizCategoryModel).where(
+        QuizCategoryModel.id == cat_id,
+        QuizCategoryModel.is_deleted.is_(False),
+    )
     cat = (await session.execute(stmt)).scalar_one_or_none()
 
     if cat:

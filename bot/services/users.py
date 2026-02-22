@@ -493,7 +493,7 @@ async def create_and_bind_emby_user(
             # 检查账号是否为软删除状态 (如果存在且未删除，则阻止创建)
             stmt_check = _select(EmbyUserModel).where(
                 EmbyUserModel.emby_user_id == current_emby_id,
-                not EmbyUserModel.is_deleted
+                EmbyUserModel.is_deleted.is_(False),
             )
             res_check = await session.execute(stmt_check)
             active_account = res_check.scalar_one_or_none()

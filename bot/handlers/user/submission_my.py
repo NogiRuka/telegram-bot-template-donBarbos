@@ -36,7 +36,7 @@ async def show_submissions_page(callback: CallbackQuery, session: AsyncSession, 
     count_stmt = (
         select(UserSubmissionModel)
         .where(UserSubmissionModel.submitter_id == user_id)
-        .where(not UserSubmissionModel.is_deleted)
+        .where(UserSubmissionModel.is_deleted.is_(False))
     )
     total_count = len((await session.execute(count_stmt)).scalars().all())
     total_pages = (total_count + items_per_page - 1) // items_per_page

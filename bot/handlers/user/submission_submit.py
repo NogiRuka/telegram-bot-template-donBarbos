@@ -25,7 +25,7 @@ async def start_submit(callback: CallbackQuery, state: FSMContext, session: Asyn
     # 获取可用的媒体分类
     stmt = select(MediaCategoryModel).where(
         MediaCategoryModel.is_enabled,
-        not MediaCategoryModel.is_deleted
+        MediaCategoryModel.is_deleted.is_(False),
     ).order_by(MediaCategoryModel.sort_order.asc(), MediaCategoryModel.id.asc())
     categories = (await session.execute(stmt)).scalars().all()
 

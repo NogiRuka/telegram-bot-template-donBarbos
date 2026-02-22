@@ -16,7 +16,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from bot.api.routes import admins, auth, dashboard, users, webhooks, redpacket
+from bot.api.routes import admins, auth, dashboard, redpacket, users, webhooks
 from bot.core.config import settings
 
 if TYPE_CHECKING:

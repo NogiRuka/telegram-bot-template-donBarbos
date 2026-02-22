@@ -1,8 +1,7 @@
 from __future__ import annotations
-
-from pathlib import Path
-from dataclasses import dataclass
 import random
+from dataclasses import dataclass
+from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -95,7 +94,7 @@ def _get_root_assets_dir() -> Path:
     return candidates[0]
 
 
-def _load_font(size: int) -> ImageFont.FreeTypeFont:
+def _load_font(size: int, font_name: str | None = None) -> ImageFont.FreeTypeFont:
     assets_root = _get_root_assets_dir()
     fonts_dir = assets_root / "fonts"
     candidates: list[Path] = []
@@ -104,17 +103,29 @@ def _load_font(size: int) -> ImageFont.FreeTypeFont:
             p for p in fonts_dir.iterdir()
             if p.is_file() and p.suffix.lower() in (".ttf", ".otf", ".ttc")
         ]
-    system_candidates = [
-        Path(r"C:\Windows\Fonts\msyh.ttc"),
-        Path(r"C:\Windows\Fonts\msyh.ttf"),
-        Path(r"C:\Windows\Fonts\Microsoft YaHei.ttf"),
-        Path(r"C:\Windows\Fonts\simhei.ttf"),
-        Path(r"C:\Windows\Fonts\simsun.ttc"),
-    ]
-    available: list[Path] = [p for p in candidates + system_candidates if p.exists()]
-    if available:
-        chosen = random.choice(available)
-        return ImageFont.truetype(str(chosen), size=size)
+    selected: Path | None = None
+    if font_name and candidates:
+        target = font_name.lower().strip()
+        base_target = target.rsplit(".", 1)[0] if target.endswith((".ttf", ".otf", ".ttc")) else target
+        for p in candidates:
+            name_lower = p.name.lower()
+            stem_lower = p.stem.lower()
+            if name_lower == target or stem_lower == base_target:
+                selected = p
+                break
+    if not selected:
+        system_candidates = [
+            Path(r"C:\Windows\Fonts\msyh.ttc"),
+            Path(r"C:\Windows\Fonts\msyh.ttf"),
+            Path(r"C:\Windows\Fonts\Microsoft YaHei.ttf"),
+            Path(r"C:\Windows\Fonts\simhei.ttf"),
+            Path(r"C:\Windows\Fonts\simsun.ttc"),
+        ]
+        available: list[Path] = [p for p in candidates + system_candidates if p.exists()]
+        if available:
+            selected = random.choice(available)
+    if selected:
+        return ImageFont.truetype(str(selected), size=size)
     return ImageFont.load_default()
 
 
@@ -122,7 +133,8 @@ def _random_asset_file(subdir: str, exts: tuple[str, ...]) -> str:
     base = _get_assets_dir() / subdir
     files = [p for p in base.iterdir() if p.is_file() and p.suffix.lower() in exts]
     if not files:
-        raise FileNotFoundError(f"no asset files in {base}")
+        msg = f"no asset files in {base}"
+        raise FileNotFoundError(msg)
     return random.choice(files).name
 
 
@@ -134,6 +146,62 @@ class RedpacketLayout:
     watermark_font_size: int = 52
     avatar_size: int = 200
     amount_from_bottom: int = 260
+    title_align: str = "left"
+    message_align: str = "center"
+    amount_align: str = "center"
+    title_dx: int = 0
+    title_dy: int = 0
+    message_dx: int = 0
+    message_dy: int = 0
+    amount_dx: int = 0
+    amount_dy: int = 0
+    watermark_dx: int = 0
+    watermark_dy: int = 0
+    title_color: tuple[int, int, int] = (255, 255, 255)
+    message_color: tuple[int, int, int] = (255, 255, 255)
+    amount_color: tuple[int, int, int] = (255, 255, 255)
+    watermark_color: tuple[int, int, int] = (255, 255, 255)
+    shadow_enabled: bool = True
+    shadow_offset_x: int = 2
+    shadow_offset_y: int = 2
+    shadow_color: tuple[int, int, int] = (0, 0, 0)
+    font_name: str | None = None
+
+
+def _resolve_anchor(horizontal: str, base_anchor: str) -> str:
+    if not base_anchor:
+        base_anchor = "mm"
+    v = base_anchor[1] if len(base_anchor) > 1 else "m"
+    h = horizontal.lower()
+    if h == "left":
+        h_char = "l"
+    elif h == "right":
+        h_char = "r"
+    else:
+        h_char = "m"
+    return f"{h_char}{v}"
+
+
+def _draw_text_with_layout(
+    draw: ImageDraw.ImageDraw,
+    position: tuple[float, float],
+    text: str,
+    font: ImageFont.FreeTypeFont,
+    color: tuple[int, int, int],
+    base_anchor: str,
+    align: str,
+    dx: int,
+    dy: int,
+    layout: RedpacketLayout,
+) -> None:
+    x = position[0] + dx
+    y = position[1] + dy
+    anchor = _resolve_anchor(align, base_anchor)
+    if layout.shadow_enabled:
+        sx = x + layout.shadow_offset_x
+        sy = y + layout.shadow_offset_y
+        draw.text((sx, sy), text, font=font, fill=layout.shadow_color, anchor=anchor)
+    draw.text((x, y), text, font=font, fill=color, anchor=anchor)
 
 
 def compose_redpacket_with_info(
@@ -161,10 +229,10 @@ def compose_redpacket_with_info(
 
     layout = layout or RedpacketLayout()
 
-    title_font = _load_font(layout.title_font_size)
-    message_font = _load_font(layout.message_font_size)
-    amount_font = _load_font(layout.amount_font_size)
-    watermark_font = _load_font(layout.watermark_font_size)
+    title_font = _load_font(layout.title_font_size, layout.font_name)
+    message_font = _load_font(layout.message_font_size, layout.font_name)
+    amount_font = _load_font(layout.amount_font_size, layout.font_name)
+    watermark_font = _load_font(layout.watermark_font_size, layout.font_name)
 
     if watermark_image_name:
         wm_path = _get_root_assets_dir() / watermark_image_name
@@ -176,7 +244,19 @@ def compose_redpacket_with_info(
             wm_img = wm_img.resize(new_size, Image.Resampling.LANCZOS)
             img.paste(wm_img, (60, 96), wm_img)
     if watermark_text:
-        draw.text((60, 96), watermark_text, font=watermark_font, fill=(255, 255, 255))
+        wm_pos = (60.0, 96.0)
+        _draw_text_with_layout(
+            draw,
+            wm_pos,
+            watermark_text,
+            watermark_font,
+            layout.watermark_color,
+            "lm",
+            "left",
+            layout.watermark_dx,
+            layout.watermark_dy,
+            layout,
+        )
 
     avatar_size = layout.avatar_size
     avatar_x = center_x - avatar_size - 32
@@ -189,29 +269,47 @@ def compose_redpacket_with_info(
             img.paste(av_img, (avatar_x, avatar_y), av_img)
 
     sender_text = f"{sender_name}的红包"
-    draw.text(
-        (center_x + 60, avatar_y + avatar_size / 2),
+    sender_pos = (float(center_x + 60), float(avatar_y + avatar_size / 2))
+    _draw_text_with_layout(
+        draw,
+        sender_pos,
         sender_text,
-        font=title_font,
-        fill=(255, 255, 255),
-        anchor="lm",
+        title_font,
+        layout.title_color,
+        "lm",
+        layout.title_align,
+        layout.title_dx,
+        layout.title_dy,
+        layout,
     )
 
-    draw.text(
-        (center_x, avatar_y + avatar_size + 120),
+    message_pos = (float(center_x), float(avatar_y + avatar_size + 120))
+    _draw_text_with_layout(
+        draw,
+        message_pos,
         message,
-        font=message_font,
-        fill=(255, 255, 255),
-        anchor="mm",
+        message_font,
+        layout.message_color,
+        "mm",
+        layout.message_align,
+        layout.message_dx,
+        layout.message_dy,
+        layout,
     )
 
     amount_text = f"{amount:.0f} 💧 / {count}"
-    draw.text(
-        (center_x, height - layout.amount_from_bottom),
+    amount_pos = (float(center_x), float(height - layout.amount_from_bottom))
+    _draw_text_with_layout(
+        draw,
+        amount_pos,
         amount_text,
-        font=amount_font,
-        fill=(255, 255, 255),
-        anchor="mm",
+        amount_font,
+        layout.amount_color,
+        "mm",
+        layout.amount_align,
+        layout.amount_dx,
+        layout.amount_dy,
+        layout,
     )
 
     output_dir = _ensure_output_dir()

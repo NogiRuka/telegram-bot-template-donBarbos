@@ -138,7 +138,7 @@ async def create_red_packet_command(
     if not message_text:
         message_text = random.choice(DEFAULT_REDPACKET_MESSAGES)
     try:
-        cover_buf, cover_path, cover_template_id = RedPacketCoverService.generate_cover_image(
+        _cover_buf, cover_path, cover_template_id = RedPacketCoverService.generate_cover_image(
             user=message.from_user,
             total_amount=total_amount,
             packet_count=packet_count,
@@ -160,7 +160,7 @@ async def create_red_packet_command(
     except ValueError as exc:
         await message.reply(str(exc), parse_mode=None)
         return
-    except Exception as exc:
+    except Exception:
         logger.exception(
             "创建红包失败: user_id=%s chat_id=%s total_amount=%s count=%s packet_type=%s",
             message.from_user.id if message.from_user else None,
@@ -198,7 +198,7 @@ async def create_red_packet_command(
     try:
         photo_input = FSInputFile(path=str(cover_path))
         sent = await message.answer_photo(photo=photo_input, caption=caption, reply_markup=keyboard)
-    except Exception as exc:
+    except Exception:
         logger.exception(
             "发送红包消息失败: user_id=%s chat_id=%s packet_id=%s cover_path=%s",
             message.from_user.id if message.from_user else None,

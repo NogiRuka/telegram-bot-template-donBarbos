@@ -772,7 +772,7 @@ async def cleanup_devices_by_policy(
             skips.add(tid)
 
         # 获取所有非删除状态的用户映射
-        stmt = select(EmbyUserModel).where(not EmbyUserModel.is_deleted)
+        stmt = select(EmbyUserModel).where(EmbyUserModel.is_deleted.is_(False))
         result = await session.execute(stmt)
         users = result.scalars().all()
 

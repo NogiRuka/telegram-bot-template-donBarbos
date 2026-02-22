@@ -107,7 +107,7 @@ async def get_group_message_stats(session: AsyncSession, chat_id: int) -> int:
     stats_result = await session.execute(
         select(func.count(MessageModel.id)).where(
             MessageModel.chat_id == chat_id,
-            not MessageModel.is_deleted,
+            MessageModel.is_deleted.is_(False),
         )
     )
     return int(stats_result.scalar() or 0)
@@ -178,7 +178,7 @@ async def soft_delete_messages_by_chat(session: AsyncSession, chat_id: int) -> i
     messages_result = await session.execute(
         select(MessageModel).where(
             MessageModel.chat_id == chat_id,
-            not MessageModel.is_deleted,
+            MessageModel.is_deleted.is_(False),
         )
     )
     messages = messages_result.scalars().all()

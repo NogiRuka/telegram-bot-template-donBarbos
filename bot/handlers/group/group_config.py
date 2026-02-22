@@ -435,7 +435,10 @@ async def cmd_save_enable(message: types.Message, session: AsyncSession) -> None
     try:
         # 获取或创建群组配置
         result = await session.execute(
-            select(GroupConfigModel).where(GroupConfigModel.chat_id == message.chat.id, not GroupConfigModel.is_deleted)
+            select(GroupConfigModel).where(
+                GroupConfigModel.chat_id == message.chat.id,
+                GroupConfigModel.is_deleted.is_(False),
+            )
         )
         config = result.scalar_one_or_none()
 
@@ -478,7 +481,10 @@ async def cmd_save_disable(message: types.Message, session: AsyncSession) -> Non
     try:
         # 获取群组配置
         result = await session.execute(
-            select(GroupConfigModel).where(GroupConfigModel.chat_id == message.chat.id, not GroupConfigModel.is_deleted)
+            select(GroupConfigModel).where(
+                GroupConfigModel.chat_id == message.chat.id,
+                GroupConfigModel.is_deleted.is_(False),
+            )
         )
         config = result.scalar_one_or_none()
 

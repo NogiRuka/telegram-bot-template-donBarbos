@@ -279,7 +279,7 @@ async def handle_edited_private_message(message: types.Message, session: AsyncSe
             select(MessageModel).where(
                 MessageModel.message_id == message.message_id,
                 MessageModel.chat_id == message.chat.id,
-                not MessageModel.is_deleted,
+                MessageModel.is_deleted.is_(False),
             )
         )
 
