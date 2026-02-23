@@ -325,6 +325,8 @@ def compose_redpacket_with_info(
 
     amount_text = f"{amount:.0f}/{count}"
     amount_pos = (float(center_x), float(height - layout.amount_from_bottom))
+    original_shadow = layout.shadow_enabled
+    layout.shadow_enabled = False
     _draw_text_with_layout(
         draw,
         amount_pos,
@@ -337,6 +339,7 @@ def compose_redpacket_with_info(
         layout.amount_dy,
         layout,
     )
+    layout.shadow_enabled = original_shadow
 
     if not group_text:
         group_text = GROUP_WATERMARK_TEXT
@@ -344,10 +347,6 @@ def compose_redpacket_with_info(
     margin_y = 10.0
     group_pos = (float(width) - margin_x, float(height) - margin_y)
     anchor = "rb"
-    if layout.shadow_enabled:
-        sx = group_pos[0] + layout.shadow_offset_x
-        sy = group_pos[1] + layout.shadow_offset_y
-        draw.text((sx, sy), group_text, font=group_font, fill=layout.shadow_color, anchor=anchor)
     draw.text(group_pos, group_text, font=group_font, fill=layout.watermark_color, anchor=anchor)
 
     output_dir = _ensure_output_dir()
