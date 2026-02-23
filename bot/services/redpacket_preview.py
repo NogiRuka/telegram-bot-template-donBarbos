@@ -189,12 +189,12 @@ def _random_asset_file(subdir: str, exts: tuple[str, ...]) -> str:
 
 @dataclass
 class RedpacketLayout:
-    title_font_size: int = 88
+    title_font_size: int = 60
     message_font_size: int = 96
     amount_font_size: int = 100
-    watermark_font_size: int = 52
-    avatar_size: int = 180
-    amount_from_bottom: int = 220
+    watermark_font_size: int = 30
+    avatar_size: int = 210
+    amount_from_bottom: int = 80
     title_align: str = "center"
     message_align: str = "center"
     amount_align: str = "center"
@@ -309,7 +309,7 @@ def compose_redpacket_with_info(
         img.paste(av_img, (avatar_x, avatar_y), av_img)
 
     sender_text = f"{sender_name}的红包"
-    sender_pos = (float(center_x), float(avatar_y + avatar_size + 120))
+    sender_pos = (float(center_x), float(avatar_y + avatar_size + 60))
     _draw_text_with_layout(
         draw,
         sender_pos,
@@ -340,8 +340,8 @@ def compose_redpacket_with_info(
 
     if not group_text:
         group_text = GROUP_WATERMARK_TEXT
-    margin_x = 60.0
-    margin_y = 60.0
+    margin_x = 10.0
+    margin_y = 10.0
     group_pos = (float(width) - margin_x, float(height) - margin_y)
     anchor = "rb"
     if layout.shadow_enabled:
