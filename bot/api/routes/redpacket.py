@@ -5,6 +5,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse
 
 from bot.services.redpacket_preview import (
+    GROUP_WATERMARK_TEXT,
     RedpacketLayout,
     compose_redpacket_with_info,
 )
@@ -34,13 +35,12 @@ router = APIRouter()
 @router.get("/redpacket/preview")
 async def preview_redpacket(
     sender_name: Annotated[str, Query(description="红包发送者名称")] = "测试用户",
-    message: Annotated[str, Query(description="红包留言")] = "恭喜发财，大吉大利",
     amount: Annotated[float, Query(ge=0, description="红包总金额")] = 100.0,
     count: Annotated[int, Query(ge=1, description="红包份数")] = 5,
     cover_name: Annotated[str | None, Query(description="封面文件名(可选，默认随机)")] = None,
     body_name: Annotated[str | None, Query(description="袋身文件名(可选，默认随机)")] = None,
-    watermark_text: Annotated[str | None, Query(description="左上角文字水印")] = "WeChat Team",
-    avatar_image_name: Annotated[str | None, Query(description="头像图片文件名")] = "sakura.png",
+    group_text: Annotated[str | None, Query(description="右下角群组文字水印")] = GROUP_WATERMARK_TEXT,
+    avatar_image_name: Annotated[str | None, Query(description="头像图片文件名")] = None,
     title_font_size: Annotated[int, Query(ge=10, le=200, description="标题字体大小")] = 88,
     message_font_size: Annotated[int, Query(ge=10, le=200, description="留言字体大小")] = 96,
     amount_font_size: Annotated[int, Query(ge=10, le=240, description="金额字体大小")] = 110,
@@ -101,10 +101,9 @@ async def preview_redpacket(
         cover_name=cover_name,
         body_name=body_name,
         sender_name=sender_name,
-        message=message,
         amount=amount,
         count=count,
-        watermark_text=watermark_text,
+        group_text=group_text,
         watermark_image_name=None,
         avatar_image_name=avatar_image_name,
         layout=layout,

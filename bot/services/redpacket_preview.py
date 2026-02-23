@@ -83,7 +83,7 @@ def _load_fixed_font(rel_path: str, size: int) -> ImageFont.FreeTypeFont:
 def _load_avatar_image(avatar_image_name: str | None, size: int) -> Image.Image | None:
     assets_root = _get_root_assets_dir()
     if avatar_image_name:
-        av_path = assets_root / avatar_image_name
+        av_path = assets_root / "redpacket" / "avatar" / avatar_image_name
     else:
         av_path = assets_root / "redpacket" / "avatar" / "lustfulboy.png"
     if not av_path.exists():
@@ -257,10 +257,9 @@ def compose_redpacket_with_info(
     cover_name: str | None,
     body_name: str | None,
     sender_name: str,
-    message: str,
     amount: float,
     count: int,
-    watermark_text: str | None = None,
+    group_text: str | None = GROUP_WATERMARK_TEXT,
     watermark_image_name: str | None = None,
     avatar_image_name: str | None = None,
     layout: RedpacketLayout | None = None,
@@ -280,8 +279,6 @@ def compose_redpacket_with_info(
 
     if watermark_image_name is None:
         watermark_image_name = "redpacket/watermark/lustfulboy.png"
-    if avatar_image_name is None:
-        avatar_image_name = "redpacket/avatar/lustfulboy.png"
 
     if layout.font_name:
         title_font = _load_font(layout.title_font_size, layout.font_name)
@@ -305,20 +302,6 @@ def compose_redpacket_with_info(
             new_size = (int(wm_img.width * scale), int(wm_img.height * scale))
             wm_img = wm_img.resize(new_size, Image.Resampling.LANCZOS)
             img.paste(wm_img, (60, 96), wm_img)
-    if watermark_text:
-        wm_pos = (60.0, 96.0)
-        _draw_text_with_layout(
-            draw,
-            wm_pos,
-            watermark_text,
-            watermark_font,
-            layout.watermark_color,
-            "lm",
-            "left",
-            layout.watermark_dx,
-            layout.watermark_dy,
-            layout,
-        )
 
     avatar_size = layout.avatar_size
     avatar_x = center_x - avatar_size - 32
@@ -342,21 +325,7 @@ def compose_redpacket_with_info(
         layout,
     )
 
-    message_pos = (float(center_x), float(avatar_y + avatar_size + 120))
-    _draw_text_with_layout(
-        draw,
-        message_pos,
-        message,
-        message_font,
-        layout.message_color,
-        "mm",
-        layout.message_align,
-        layout.message_dx,
-        layout.message_dy,
-        layout,
-    )
-
-    amount_text = f"{amount:.0f} 💧 / {count}"
+    amount_text = f"{amount}/{count}"
     amount_pos = (float(center_x), float(height - layout.amount_from_bottom))
     _draw_text_with_layout(
         draw,
@@ -371,7 +340,8 @@ def compose_redpacket_with_info(
         layout,
     )
 
-    group_text = GROUP_WATERMARK_TEXT
+    if not group_text:
+        group_text = GROUP_WATERMARK_TEXT
     margin_x = 60.0
     margin_y = 60.0
     group_pos = (float(width) - margin_x, float(height) - margin_y)

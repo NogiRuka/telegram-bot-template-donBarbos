@@ -41,12 +41,11 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
             cover_name=None,
             body_name=None,
             sender_name=sender_name,
-            message="恭喜发财，大吉大利",
             amount=amount,
             count=count,
-            watermark_text="WeChat Team",
+            group_text=None,
             watermark_image_name=None,
-            avatar_image_name="sakura.png",
+            avatar_image_name=None,
         )
     except Exception:
         logger.exception("生成红包模板预览失败: sender=%s amount=%s count=%s", sender_name, amount, count)
