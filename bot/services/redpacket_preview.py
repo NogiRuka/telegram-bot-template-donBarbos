@@ -8,7 +8,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 
-GROUP_WATERMARK_TEXT = "@lustfulboy"
+GROUP_WATERMARK_TEXT = "@lustfulboy_group"
 
 
 def _get_assets_dir() -> Path:
