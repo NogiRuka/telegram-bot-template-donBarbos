@@ -191,10 +191,10 @@ def _random_asset_file(subdir: str, exts: tuple[str, ...]) -> str:
 class RedpacketLayout:
     title_font_size: int = 88
     message_font_size: int = 96
-    amount_font_size: int = 110
+    amount_font_size: int = 100
     watermark_font_size: int = 52
-    avatar_size: int = 200
-    amount_from_bottom: int = 260
+    avatar_size: int = 180
+    amount_from_bottom: int = 220
     title_align: str = "left"
     message_align: str = "center"
     amount_align: str = "center"
@@ -304,14 +304,14 @@ def compose_redpacket_with_info(
             img.paste(wm_img, (60, 96), wm_img)
 
     avatar_size = layout.avatar_size
-    avatar_x = center_x - avatar_size - 32
-    avatar_y = 360
+    avatar_y = 420
+    avatar_x = center_x - avatar_size // 2 - 140
     av_img = _load_avatar_image(avatar_image_name, avatar_size)
     if av_img is not None:
         img.paste(av_img, (avatar_x, avatar_y), av_img)
 
     sender_text = f"{sender_name}的红包"
-    sender_pos = (float(center_x + 60), float(avatar_y + avatar_size / 2))
+    sender_pos = (float(avatar_x + avatar_size + 40), float(avatar_y + avatar_size / 2))
     _draw_text_with_layout(
         draw,
         sender_pos,
@@ -325,7 +325,7 @@ def compose_redpacket_with_info(
         layout,
     )
 
-    amount_text = f"{amount}/{count}"
+    amount_text = f"{amount:.1f}/{count}"
     amount_pos = (float(center_x), float(height - layout.amount_from_bottom))
     _draw_text_with_layout(
         draw,
@@ -342,10 +342,9 @@ def compose_redpacket_with_info(
 
     if not group_text:
         group_text = GROUP_WATERMARK_TEXT
-    margin_x = 60.0
-    margin_y = 60.0
-    group_pos = (float(width) - margin_x, float(height) - margin_y)
-    anchor = "rb"
+    margin_y = 80.0
+    group_pos = (float(width) / 2.0, float(height) - margin_y)
+    anchor = "mb"
     if layout.shadow_enabled:
         sx = group_pos[0] + layout.shadow_offset_x
         sy = group_pos[1] + layout.shadow_offset_y
