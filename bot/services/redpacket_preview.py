@@ -195,7 +195,7 @@ class RedpacketLayout:
     watermark_font_size: int = 52
     avatar_size: int = 180
     amount_from_bottom: int = 220
-    title_align: str = "left"
+    title_align: str = "center"
     message_align: str = "center"
     amount_align: str = "center"
     title_dx: int = 0
@@ -304,21 +304,21 @@ def compose_redpacket_with_info(
             img.paste(wm_img, (60, 96), wm_img)
 
     avatar_size = layout.avatar_size
-    avatar_y = 420
-    avatar_x = center_x - avatar_size // 2 - 140
+    avatar_y = 260
+    avatar_x = center_x - avatar_size // 2
     av_img = _load_avatar_image(avatar_image_name, avatar_size)
     if av_img is not None:
         img.paste(av_img, (avatar_x, avatar_y), av_img)
 
     sender_text = f"{sender_name}的红包"
-    sender_pos = (float(avatar_x + avatar_size + 40), float(avatar_y + avatar_size / 2))
+    sender_pos = (float(center_x), float(avatar_y + avatar_size + 60))
     _draw_text_with_layout(
         draw,
         sender_pos,
         sender_text,
         title_font,
         layout.title_color,
-        "lm",
+        "mm",
         layout.title_align,
         layout.title_dx,
         layout.title_dy,
@@ -342,9 +342,10 @@ def compose_redpacket_with_info(
 
     if not group_text:
         group_text = GROUP_WATERMARK_TEXT
-    margin_y = 80.0
-    group_pos = (float(width) / 2.0, float(height) - margin_y)
-    anchor = "mb"
+    margin_x = 60.0
+    margin_y = 60.0
+    group_pos = (float(width) - margin_x, float(height) - margin_y)
+    anchor = "rb"
     if layout.shadow_enabled:
         sx = group_pos[0] + layout.shadow_offset_x
         sy = group_pos[1] + layout.shadow_offset_y
