@@ -325,7 +325,7 @@ def compose_redpacket_with_info(
         layout,
     )
 
-    amount_text = f"{amount:.1f}/{count}"
+    amount_text = f"{amount:.0f}/{count}"
     amount_pos = (float(center_x), float(height - layout.amount_from_bottom))
     _draw_text_with_layout(
         draw,
