@@ -223,6 +223,7 @@ async def create_red_packet_command(
             media_type="photo",
             width=p.width,
             height=p.height,
+            description="红包封面图（/rp 命令自动生成）",
         )
         session.add(media)
     await RedPacketService.attach_message(

@@ -8,6 +8,9 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 
+GROUP_WATERMARK_TEXT = "@lustfulboy"
+
+
 def _get_assets_dir() -> Path:
     current_dir = Path(__file__).resolve().parent  # bot/services
     bot_root = current_dir.parent  # bot
@@ -54,6 +57,47 @@ def _open_image(path: Path) -> Image.Image:
     return img
 
 
+def _get_root_assets_dir() -> Path:
+    current_dir = Path(__file__).resolve().parent
+    bot_root = current_dir.parent
+    project_root = bot_root.parent
+
+    candidates = [
+        bot_root / "assets",
+        project_root / "assets",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return candidates[0]
+
+
+def _load_fixed_font(rel_path: str, size: int) -> ImageFont.FreeTypeFont:
+    assets_root = _get_root_assets_dir()
+    font_path = assets_root / rel_path
+    if font_path.exists():
+        return ImageFont.truetype(str(font_path), size=size)
+    return _load_font(size, None)
+
+
+def _load_avatar_image(avatar_image_name: str | None, size: int) -> Image.Image | None:
+    assets_root = _get_root_assets_dir()
+    if avatar_image_name:
+        av_path = assets_root / avatar_image_name
+    else:
+        av_path = assets_root / "redpacket" / "avatar" / "lustfulboy.png"
+    if not av_path.exists():
+        return None
+    av_img = Image.open(av_path).convert("RGBA")
+    av_img = av_img.resize((size, size), Image.Resampling.LANCZOS)
+    mask_path = assets_root / "redpacket" / "mask" / "avatar.png"
+    if mask_path.exists():
+        mask_img = Image.open(mask_path).convert("L")
+        mask_img = mask_img.resize((size, size), Image.Resampling.LANCZOS)
+        av_img.putalpha(mask_img)
+    return av_img
+
+
 def compose_redpacket(cover_name: str, body_name: str) -> str:
     assets_dir = _get_assets_dir()
     cover_path = assets_dir / "cover" / cover_name
@@ -97,21 +141,6 @@ def compose_redpacket(cover_name: str, body_name: str) -> str:
 
 def generate_dynamic_redpacket_preview(name: str, amount: str) -> str:
     return compose_redpacket("C01.jpg", "B01.png")
-
-
-def _get_root_assets_dir() -> Path:
-    current_dir = Path(__file__).resolve().parent
-    bot_root = current_dir.parent
-    project_root = bot_root.parent
-
-    candidates = [
-        bot_root / "assets",
-        project_root / "assets",
-    ]
-    for path in candidates:
-        if path.exists():
-            return path
-    return candidates[0]
 
 
 def _load_font(size: int, font_name: str | None = None) -> ImageFont.FreeTypeFont:
@@ -249,10 +278,23 @@ def compose_redpacket_with_info(
 
     layout = layout or RedpacketLayout()
 
-    title_font = _load_font(layout.title_font_size, layout.font_name)
-    message_font = _load_font(layout.message_font_size, layout.font_name)
-    amount_font = _load_font(layout.amount_font_size, layout.font_name)
-    watermark_font = _load_font(layout.watermark_font_size, layout.font_name)
+    if watermark_image_name is None:
+        watermark_image_name = "redpacket/watermark/lustfulboy.png"
+    if avatar_image_name is None:
+        avatar_image_name = "redpacket/avatar/lustfulboy.png"
+
+    if layout.font_name:
+        title_font = _load_font(layout.title_font_size, layout.font_name)
+        message_font = _load_font(layout.message_font_size, layout.font_name)
+        amount_font = _load_font(layout.amount_font_size, layout.font_name)
+        watermark_font = _load_font(layout.watermark_font_size, layout.font_name)
+        group_font = watermark_font
+    else:
+        title_font = _load_fixed_font("fonts/redpacket/simhei.ttf", layout.title_font_size)
+        message_font = _load_fixed_font("fonts/redpacket/simhei.ttf", layout.message_font_size)
+        amount_font = _load_fixed_font("fonts/redpacket/方正喵呜体.ttf", layout.amount_font_size)
+        watermark_font = _load_fixed_font("fonts/redpacket/segoepr.ttf", layout.watermark_font_size)
+        group_font = _load_fixed_font("fonts/redpacket/segoepr.ttf", layout.watermark_font_size)
 
     if watermark_image_name:
         wm_path = _get_root_assets_dir() / watermark_image_name
@@ -281,12 +323,9 @@ def compose_redpacket_with_info(
     avatar_size = layout.avatar_size
     avatar_x = center_x - avatar_size - 32
     avatar_y = 360
-    if avatar_image_name:
-        av_path = _get_root_assets_dir() / avatar_image_name
-        if av_path.exists():
-            av_img = Image.open(av_path).convert("RGBA")
-            av_img = av_img.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
-            img.paste(av_img, (avatar_x, avatar_y), av_img)
+    av_img = _load_avatar_image(avatar_image_name, avatar_size)
+    if av_img is not None:
+        img.paste(av_img, (avatar_x, avatar_y), av_img)
 
     sender_text = f"{sender_name}的红包"
     sender_pos = (float(center_x + 60), float(avatar_y + avatar_size / 2))
@@ -331,6 +370,17 @@ def compose_redpacket_with_info(
         layout.amount_dy,
         layout,
     )
+
+    group_text = GROUP_WATERMARK_TEXT
+    margin_x = 60.0
+    margin_y = 60.0
+    group_pos = (float(width) - margin_x, float(height) - margin_y)
+    anchor = "rb"
+    if layout.shadow_enabled:
+        sx = group_pos[0] + layout.shadow_offset_x
+        sy = group_pos[1] + layout.shadow_offset_y
+        draw.text((sx, sy), group_text, font=group_font, fill=layout.shadow_color, anchor=anchor)
+    draw.text(group_pos, group_text, font=group_font, fill=layout.watermark_color, anchor=anchor)
 
     output_dir = _ensure_output_dir()
     cover_base = cover_name.rsplit(".", 1)[0]
