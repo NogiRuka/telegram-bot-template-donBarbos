@@ -206,10 +206,10 @@ class RedpacketLayout:
     amount_dy: int = 0
     watermark_dx: int = 0
     watermark_dy: int = 0
-    title_color: tuple[int, int, int] = (255, 255, 255)
-    message_color: tuple[int, int, int] = (255, 255, 255)
-    amount_color: tuple[int, int, int] = (255, 255, 255)
-    watermark_color: tuple[int, int, int] = (255, 255, 255)
+    title_color: tuple[int, int, int] = (235, 205, 154)
+    message_color: tuple[int, int, int] = (235, 205, 154)
+    amount_color: tuple[int, int, int] = (235, 205, 154)
+    watermark_color: tuple[int, int, int] = (235, 205, 154)
     shadow_enabled: bool = True
     shadow_offset_x: int = 2
     shadow_offset_y: int = 2
@@ -297,21 +297,19 @@ def compose_redpacket_with_info(
         wm_path = _get_root_assets_dir() / watermark_image_name
         if wm_path.exists():
             wm_img = Image.open(wm_path).convert("RGBA")
-            max_w = 260
-            scale = min(1.0, max_w / wm_img.width)
-            new_size = (int(wm_img.width * scale), int(wm_img.height * scale))
-            wm_img = wm_img.resize(new_size, Image.Resampling.LANCZOS)
-            img.paste(wm_img, (60, 96), wm_img)
+            size = 80
+            wm_img = wm_img.resize((size, size), Image.Resampling.LANCZOS)
+            img.paste(wm_img, (11, 11), wm_img)
 
     avatar_size = layout.avatar_size
-    avatar_y = 260
+    avatar_y = 130
     avatar_x = center_x - avatar_size // 2
     av_img = _load_avatar_image(avatar_image_name, avatar_size)
     if av_img is not None:
         img.paste(av_img, (avatar_x, avatar_y), av_img)
 
     sender_text = f"{sender_name}的红包"
-    sender_pos = (float(center_x), float(avatar_y + avatar_size + 60))
+    sender_pos = (float(center_x), float(avatar_y + avatar_size + 120))
     _draw_text_with_layout(
         draw,
         sender_pos,
