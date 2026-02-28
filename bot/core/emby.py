@@ -355,6 +355,35 @@ class EmbyClient:
 
         return items, total
 
+    async def send_session_message(
+        self,
+        session_id: str,
+        header: str,
+        text: str,
+        timeout_ms: int | None = None,
+    ) -> Any:
+        """发送会话消息
+
+        功能说明:
+        - 调用 `POST /Sessions/{Id}/Message` 向客户端发送消息
+
+        输入参数:
+        - session_id: 会话ID
+        - header: 消息标题
+        - text: 消息内容
+        - timeout_ms: 超时时间(毫秒), 可选
+
+        返回值:
+        - Any: 响应结果(通常为空)
+        """
+        params: dict[str, Any] = {"Header": header, "Text": text}
+        if timeout_ms is not None:
+            params["TimeoutMs"] = int(timeout_ms)
+
+        return await self.http.request(
+            "POST", f"/Sessions/{session_id}/Message", params=params
+        )
+
     async def get_sessions(
         self,
         controllable_by_user_id: str | None = None,

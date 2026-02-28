@@ -5,14 +5,23 @@ Webhooks 路由
 
 from __future__ import annotations
 import json
+from datetime import datetime, timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
+from sqlalchemy import select
 
-from bot.core.constants import EVENT_TYPE_LIBRARY_NEW
+from bot.core.constants import (
+    CONFIG_KEY_EMBY_WHITELIST_USER_IDS,
+    EVENT_TYPE_LIBRARY_NEW,
+    EVENT_TYPE_PLAYBACK_START,
+)
 from bot.database.database import sessionmaker
+from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
+from bot.services.config_service import ConfigService
+from bot.utils.emby import get_emby_client
 
 try:
     import orjson
@@ -84,6 +93,10 @@ async def handle_emby_webhook(
             event_status = "pending_completion"
             logger.info("🆕 收到新媒体入库通知")
 
+        # 处理网页端播放警告
+        if event_type == EVENT_TYPE_PLAYBACK_START:
+            await _process_playback_start(payload)
+
         # 存入数据库
         async with sessionmaker() as session:
             # library.new 事件使用专门的表
@@ -137,6 +150,137 @@ async def handle_emby_webhook(
         "x_emby_event": x_emby_event,
         "processed": bool(event_type)  # 只要有事件类型就认为是已处理
     }
+
+
+async def _process_playback_start(payload: dict[str, Any]) -> None:
+    """处理播放开始事件，检测网页端播放并警告"""
+    # 1. 检查是否为网页端
+    session_info = payload.get("Session", {})
+    client = session_info.get("Client", "")
+    device_name = session_info.get("DeviceName", "")
+
+    # 简单的网页端检测逻辑: Client 通常是 "Emby Web", DeviceName 可能包含 "Web"
+    is_web = "Emby Web" in client or "Web" in device_name
+    if not is_web:
+        return
+
+    user_info = payload.get("User", {})
+    user_id = user_info.get("Id")
+    if not user_id:
+        return
+
+    logger.info(f"检测到用户 {user_id} 使用网页端播放 (Client: {client}, Device: {device_name})")
+
+    async with sessionmaker() as session:
+        # 2. 检查白名单
+        whitelist_val = await ConfigService.get_config(session, CONFIG_KEY_EMBY_WHITELIST_USER_IDS)
+        whitelist: list[str] = []
+        if isinstance(whitelist_val, list):
+            whitelist = [str(x) for x in whitelist_val]
+        elif isinstance(whitelist_val, str):
+            try:
+                loaded = json.loads(whitelist_val)
+                if isinstance(loaded, list):
+                    whitelist = [str(x) for x in loaded]
+                else:
+                    whitelist = [x.strip() for x in whitelist_val.split(",") if x.strip()]
+            except Exception:
+                whitelist = [x.strip() for x in whitelist_val.split(",") if x.strip()]
+
+        if str(user_id) in whitelist:
+            logger.info(f"用户 {user_id} 在白名单中，跳过网页端播放警告")
+            return
+
+        # 3. 获取用户数据
+        result = await session.execute(select(EmbyUserModel).where(EmbyUserModel.emby_user_id == str(user_id)))
+        emby_user = result.scalar_one_or_none()
+
+        if not emby_user:
+            logger.warning(f"用户 {user_id} 不在本地数据库中，无法记录警告")
+            return
+
+        # 4. 检查冷却时间和更新警告
+        extra_data = dict(emby_user.extra_data) if emby_user.extra_data else {}
+        web_warning = extra_data.get("web_playback_warning", {})
+
+        last_warning_time_str = web_warning.get("last_warning_time")
+        if last_warning_time_str:
+            try:
+                last_time = datetime.fromisoformat(last_warning_time_str)
+                if datetime.now() - last_time < timedelta(minutes=10):
+                    logger.info(f"用户 {user_id} 处于警告冷却期，跳过")
+                    return
+            except ValueError:
+                pass  # 格式错误则忽略冷却
+
+        # 更新计数
+        count = web_warning.get("count", 0) + 1
+        web_warning["count"] = count
+        web_warning["last_warning_time"] = datetime.now().isoformat()
+
+        # 记录历史
+        history = web_warning.get("history", [])
+        item = payload.get("Item", {})
+        history.append({
+            "time": datetime.now().isoformat(),
+            "item_name": item.get("Name"),
+            "item_id": item.get("Id"),
+            "client": client,
+            "device": device_name,
+        })
+        # 限制历史记录数量，保留最近 20 条
+        web_warning["history"] = history[-20:]
+
+        extra_data["web_playback_warning"] = web_warning
+
+        # 显式赋值以触发更新
+        emby_user.extra_data = extra_data
+        session.add(emby_user)
+        await session.commit()
+
+        # 5. 发送警告和执行封禁
+        emby_client = get_emby_client()
+        if not emby_client:
+            logger.error("Emby 客户端未配置，无法发送警告")
+            return
+
+        session_id = session_info.get("Id")
+        if session_id:
+            msg_data = _get_warning_message(count)
+            try:
+                await emby_client.send_session_message(
+                    session_id,
+                    msg_data["Header"],
+                    msg_data["Text"]
+                )
+                logger.info(f"已向用户 {user_id} 发送第 {count} 次网页播放警告")
+            except Exception as e:
+                logger.error(f"发送警告消息失败: {e}")
+
+        if count >= 3:
+            logger.info(f"用户 {user_id} 达到警告上限，执行封禁")
+            try:
+                await emby_client.update_user_policy(str(user_id), {"IsDisabled": True})
+            except Exception as e:
+                logger.error(f"封禁用户失败: {e}")
+
+
+def _get_warning_message(count: int) -> dict[str, str]:
+    if count == 1:
+        return {
+            "Header": "桜色男孩⚣｜网页播放小侦测 🤖",
+            "Text": "哎呀～被我发现啦 👀\n\n你正在用【网页端播放】。\n这里暂时不支持这种打开方式哦～\n\n换成客户端继续看吧！\n这次我就当没看见 😉"
+        }
+    elif count == 2:
+        return {
+            "Header": "桜色男孩⚣｜你又来了嘛 😳",
+            "Text": "嗯？怎么还是【网页端播放】呀～\n\n我已经提醒过一次啦。\n再继续这样看下去，账号可能会被关进“小黑屋”哦…\n\n快换客户端吧，别让我难做 🥺"
+        }
+    else:
+        return {
+            "Header": "桜色男孩⚣｜我真的要动手了 🚨",
+            "Text": "第三次检测到【网页端播放】。\n\n规则说话，我也没办法啦。\n你的账号已被自动禁用。\n\n需要解封的话，请联系管理员～"
+        }
 
 
 def format_json_pretty(data: Any) -> str:
