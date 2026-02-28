@@ -21,7 +21,7 @@ from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
 from bot.services.config_service import get_config
-from bot.utils.datetime import now, parse_iso_datetime
+from bot.utils.datetime import format_datetime, now, parse_formatted_datetime
 from bot.utils.emby import get_emby_client
 
 try:
@@ -206,7 +206,7 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
 
         last_warning_time_str = web_warning.get("last_warning_time")
         if last_warning_time_str:
-            last_time = parse_iso_datetime(last_warning_time_str)
+            last_time = parse_formatted_datetime(last_warning_time_str)
             if last_time and (now() - last_time < timedelta(minutes=10)):
                 logger.info(f"⏳ 用户 {user_id} 处于警告冷却期，跳过")
                 return
@@ -214,13 +214,13 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
         # 更新计数
         count = web_warning.get("count", 0) + 1
         web_warning["count"] = count
-        web_warning["last_warning_time"] = now().isoformat()
+        web_warning["last_warning_time"] = format_datetime(now())
 
         # 记录历史
         history = web_warning.get("history", [])
         item = payload.get("Item", {})
         history.append({
-            "time": now().isoformat(),
+            "time": format_datetime(now()),
             "item_name": item.get("Name"),
             "item_id": item.get("Id"),
             "client": client,
