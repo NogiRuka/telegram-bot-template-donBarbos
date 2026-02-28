@@ -33,8 +33,10 @@ from bot.utils.text import escape_markdown_v2
 router = Router(name="store_admin")
 
 @router.callback_query(F.data == STORE_ADMIN_CALLBACK_DATA)
-async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
+async def handle_store_admin_list(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
     """商店管理 - 商品列表"""
+    # 清理可能存在的状态
+    await state.clear()
     products = await CurrencyService.get_products(session, only_active=False)
 
     kb = InlineKeyboardBuilder()
@@ -86,8 +88,9 @@ async def _refresh_product_view(user_id: int, product_id: int, session: AsyncSes
         await main_msg.render(user_id, text, markup)
 
 @router.callback_query(F.data.startswith(STORE_ADMIN_PRODUCT_PREFIX))
-async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
+async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
     """商品详情与管理"""
+    await state.clear()
     try:
         product_id = extract_id(callback.data)
     except ValueError:
@@ -105,8 +108,9 @@ async def handle_product_detail(callback: CallbackQuery, session: AsyncSession, 
     await main_msg.update_on_callback(callback, text, markup)
 
 @router.callback_query(F.data.startswith(STORE_ADMIN_TOGGLE_PREFIX))
-async def handle_toggle_active(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
+async def handle_toggle_active(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
     """切换上下架状态"""
+    await state.clear()
     try:
         product_id = extract_id(callback.data)
     except ValueError:
@@ -128,6 +132,7 @@ async def handle_toggle_active(callback: CallbackQuery, session: AsyncSession, m
 async def handle_edit_start(callback: CallbackQuery, state: FSMContext) -> None:
     """开始修改信息"""
     await callback.answer()
+    await state.clear()
     parts = callback.data.split(":")
     action = parts[-2]
     product_id = int(parts[-1])
@@ -170,8 +175,9 @@ async def process_price_update(message: Message, state: FSMContext, session: Asy
     await _refresh_product_view(message.from_user.id, product_id, session, main_msg)
 
 @router.callback_query(F.data == STORE_ADMIN_HISTORY_CALLBACK_DATA)
-async def handle_purchase_history(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
+async def handle_purchase_history(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
     """查看购买记录"""
+    await state.clear()
     # 仅显示最近 20 条
     history = await CurrencyService.get_purchase_history(session, limit=20)
 
@@ -199,6 +205,7 @@ async def handle_purchase_history(callback: CallbackQuery, session: AsyncSession
 async def handle_add_product_start(callback: CallbackQuery, state: FSMContext) -> None:
     """开始添加商品"""
     await callback.answer()
+    await state.clear()
     await send_toast(callback, "📦 请输入商品名称:")
     await state.set_state(StoreAddProductState.waiting_for_name)
 
