@@ -5,14 +5,14 @@ Webhooks 路由
 
 from __future__ import annotations
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from sqlalchemy import select
 
+from bot.config.constants import CONFIG_KEY_EMBY_WHITELIST_USER_IDS
 from bot.core.constants import (
-    CONFIG_KEY_EMBY_WHITELIST_USER_IDS,
     EVENT_TYPE_LIBRARY_NEW,
     EVENT_TYPE_PLAYBACK_START,
 )
@@ -21,6 +21,7 @@ from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
 from bot.services.config_service import ConfigService
+from bot.utils.datetime import now, parse_iso_datetime
 from bot.utils.emby import get_emby_client
 
 try:
@@ -169,7 +170,7 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
     if not user_id:
         return
 
-    logger.info(f"检测到用户 {user_id} 使用网页端播放 (Client: {client}, Device: {device_name})")
+    logger.info(f"🔍 检测到用户 {user_id} 使用网页端播放 (Client: {client}, Device: {device_name})")
 
     async with sessionmaker() as session:
         # 2. 检查白名单
@@ -188,7 +189,7 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
                 whitelist = [x.strip() for x in whitelist_val.split(",") if x.strip()]
 
         if str(user_id) in whitelist:
-            logger.info(f"用户 {user_id} 在白名单中，跳过网页端播放警告")
+            logger.info(f"✅ 用户 {user_id} 在白名单中，跳过网页端播放警告")
             return
 
         # 3. 获取用户数据
@@ -196,7 +197,7 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
         emby_user = result.scalar_one_or_none()
 
         if not emby_user:
-            logger.warning(f"用户 {user_id} 不在本地数据库中，无法记录警告")
+            logger.warning(f"⚠️ 用户 {user_id} 不在本地数据库中，无法记录警告")
             return
 
         # 4. 检查冷却时间和更新警告
@@ -205,31 +206,27 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
 
         last_warning_time_str = web_warning.get("last_warning_time")
         if last_warning_time_str:
-            try:
-                last_time = datetime.fromisoformat(last_warning_time_str)
-                if datetime.now() - last_time < timedelta(minutes=10):
-                    logger.info(f"用户 {user_id} 处于警告冷却期，跳过")
-                    return
-            except ValueError:
-                pass  # 格式错误则忽略冷却
+            last_time = parse_iso_datetime(last_warning_time_str)
+            if last_time and (now() - last_time < timedelta(minutes=10)):
+                logger.info(f"⏳ 用户 {user_id} 处于警告冷却期，跳过")
+                return
 
         # 更新计数
         count = web_warning.get("count", 0) + 1
         web_warning["count"] = count
-        web_warning["last_warning_time"] = datetime.now().isoformat()
+        web_warning["last_warning_time"] = now().isoformat()
 
         # 记录历史
         history = web_warning.get("history", [])
         item = payload.get("Item", {})
         history.append({
-            "time": datetime.now().isoformat(),
+            "time": now().isoformat(),
             "item_name": item.get("Name"),
             "item_id": item.get("Id"),
             "client": client,
             "device": device_name,
         })
-        # 限制历史记录数量，保留最近 20 条
-        web_warning["history"] = history[-20:]
+        web_warning["history"] = history
 
         extra_data["web_playback_warning"] = web_warning
 
@@ -241,7 +238,7 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
         # 5. 发送警告和执行封禁
         emby_client = get_emby_client()
         if not emby_client:
-            logger.error("Emby 客户端未配置，无法发送警告")
+            logger.error("❌ Emby 客户端未配置，无法发送警告")
             return
 
         session_id = session_info.get("Id")
@@ -253,16 +250,21 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
                     msg_data["Header"],
                     msg_data["Text"]
                 )
-                logger.info(f"已向用户 {user_id} 发送第 {count} 次网页播放警告")
+                logger.info(f"🔔 已向用户 {user_id} 发送第 {count} 次网页播放警告")
             except Exception as e:
-                logger.error(f"发送警告消息失败: {e}")
+                logger.error(f"❌ 发送警告消息失败: {e}")
 
         if count >= 3:
-            logger.info(f"用户 {user_id} 达到警告上限，执行封禁")
+            logger.info(f"🚨 用户 {user_id} 达到警告上限，执行封禁")
             try:
-                await emby_client.update_user_policy(str(user_id), {"IsDisabled": True})
+                # 获取完整的 Policy 并修改 IsDisabled
+                policy = await emby_client.get_user_policy(str(user_id))
+                if policy:
+                    policy["IsDisabled"] = True
+                    await emby_client.update_user_policy(str(user_id), policy)
+                    logger.info(f"🚫 用户 {user_id} 已成功封禁")
             except Exception as e:
-                logger.error(f"封禁用户失败: {e}")
+                logger.error(f"❌ 封禁用户失败: {e}")
 
 
 def _get_warning_message(count: int) -> dict[str, str]:

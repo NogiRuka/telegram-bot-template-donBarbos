@@ -185,6 +185,36 @@ class EmbyClient:
         data = await self.http.request("GET", f"/Users/{user_id}")
         return cast("dict[str, Any]", data) if isinstance(data, dict) else {}
 
+    async def get_user_configuration(self, user_id: str) -> dict[str, Any]:
+        """获取用户配置
+
+        功能说明:
+        - 获取用户的 Configuration 对象
+
+        输入参数:
+        - user_id: 用户ID
+
+        返回值:
+        - dict[str, Any]: UserConfiguration 对象
+        """
+        user = await self.get_user(user_id)
+        return user.get("Configuration", {})
+
+    async def get_user_policy(self, user_id: str) -> dict[str, Any]:
+        """获取用户策略
+
+        功能说明:
+        - 获取用户的 Policy 对象
+
+        输入参数:
+        - user_id: 用户ID
+
+        返回值:
+        - dict[str, Any]: UserPolicy 对象
+        """
+        user = await self.get_user(user_id)
+        return user.get("Policy", {})
+
     async def update_user_configuration(
         self, user_id: str, configuration: dict[str, Any]
     ) -> Any:

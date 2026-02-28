@@ -69,3 +69,6 @@ KEY_QUIZ_SCHEDULE_ENABLE = "admin.quiz.schedule.enable"
 
 # 通知配置
 KEY_NOTIFICATION_CHANNELS = "notification.channels"
+
+# Emby 配置
+CONFIG_KEY_EMBY_WHITELIST_USER_IDS = "emby.whitelist_user_ids"

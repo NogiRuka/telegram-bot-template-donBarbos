@@ -40,6 +40,3 @@ PRODUCT_ACTION_EMBY_IMAGE = "emby_image"
 PRODUCT_ACTION_EMBY_PASSWORD = "emby_password"
 PRODUCT_ACTION_CUSTOM_TITLE = "custom_title"
 PRODUCT_ACTION_MAIN_IMAGE_UNLOCK_NSFW = "main_image_unlock_nsfw"
-
-# 配置键常量
-CONFIG_KEY_EMBY_WHITELIST_USER_IDS = "emby_whitelist_user_ids"
