@@ -78,6 +78,9 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     KEY_QUIZ_SCHEDULE_TIME: ("051700,171700,222222", ConfigType.STRING),
     KEY_QUIZ_SCHEDULE_TARGET_TYPE: ("fixed", ConfigType.STRING),
     KEY_QUIZ_SCHEDULE_TARGET_COUNT: (20, ConfigType.INTEGER),
+
+    # Emby 配置
+    CONFIG_KEY_EMBY_WHITELIST_USER_IDS: (["52588e7dbcbe4ea7a575dfe86a7f4a28"], ConfigType.LIST),
 }
 
 # 用户功能开关映射 - 用于用户功能管理
