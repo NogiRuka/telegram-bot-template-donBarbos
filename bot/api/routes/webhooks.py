@@ -20,7 +20,7 @@ from bot.database.database import sessionmaker
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
-from bot.services.config_service import ConfigService
+from bot.services.config_service import get_config
 from bot.utils.datetime import now, parse_iso_datetime
 from bot.utils.emby import get_emby_client
 
@@ -174,7 +174,7 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
 
     async with sessionmaker() as session:
         # 2. 检查白名单
-        whitelist_val = await ConfigService.get_config(session, CONFIG_KEY_EMBY_WHITELIST_USER_IDS)
+        whitelist_val = await get_config(session, CONFIG_KEY_EMBY_WHITELIST_USER_IDS)
         whitelist: list[str] = []
         if isinstance(whitelist_val, list):
             whitelist = [str(x) for x in whitelist_val]
