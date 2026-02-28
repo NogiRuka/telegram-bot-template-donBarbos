@@ -80,7 +80,7 @@ DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     KEY_QUIZ_SCHEDULE_TARGET_COUNT: (20, ConfigType.INTEGER),
 
     # Emby 配置
-    CONFIG_KEY_EMBY_WHITELIST_USER_IDS: (["52588e7dbcbe4ea7a575dfe86a7f4a28"], ConfigType.LIST),
+    CONFIG_KEY_EMBY_WHITELIST_USER_IDS: (["52588e7dbcbe4ea7a575dfe86a7f4a28", "945e1aa74d964da183b3e6a0f0075d6f"], ConfigType.LIST),
 }
 
 # 用户功能开关映射 - 用于用户功能管理
