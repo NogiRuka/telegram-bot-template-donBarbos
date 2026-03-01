@@ -249,6 +249,44 @@ class EmbyClient:
         """
         return await self.http.request("POST", f"/Users/{user_id}/Policy", json=policy)
 
+    async def disable_user(self, user_id: str) -> bool:
+        """禁用用户
+
+        功能说明:
+        - 获取当前策略 -> 设置 IsDisabled=True -> 更新策略
+
+        输入参数:
+        - user_id: 用户ID
+
+        返回值:
+        - bool: 是否成功
+        """
+        policy = await self.get_user_policy(user_id)
+        if policy:
+            policy["IsDisabled"] = True
+            await self.update_user_policy(user_id, policy)
+            return True
+        return False
+
+    async def enable_user(self, user_id: str) -> bool:
+        """启用(解封)用户
+
+        功能说明:
+        - 获取当前策略 -> 设置 IsDisabled=False -> 更新策略
+
+        输入参数:
+        - user_id: 用户ID
+
+        返回值:
+        - bool: 是否成功
+        """
+        policy = await self.get_user_policy(user_id)
+        if policy:
+            policy["IsDisabled"] = False
+            await self.update_user_policy(user_id, policy)
+            return True
+        return False
+
     async def update_user_password(
         self, user_id: str, new_password: str, reset_password: bool = False
     ) -> Any:

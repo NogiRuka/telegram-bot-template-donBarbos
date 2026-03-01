@@ -262,11 +262,9 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
             logger.info(f"🚨 用户 {user_id} 达到警告上限，执行封禁")
             try:
                 # 获取完整的 Policy 并修改 IsDisabled
-                policy = await emby_client.get_user_policy(str(user_id))
-                if policy:
-                    policy["IsDisabled"] = True
-                    await emby_client.update_user_policy(str(user_id), policy)
-
+                success = await emby_client.disable_user(str(user_id))
+                
+                if success:
                     # 更新数据库状态
                     async with sessionmaker() as session:
                         result = await session.execute(
