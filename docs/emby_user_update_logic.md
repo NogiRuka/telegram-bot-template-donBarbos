@@ -1,75 +1,93 @@
-# Emby 用户表更新逻辑
+# Emby 用户更新逻辑文档
+
+本文档详细说明了本项目中 Emby 用户数据的更新逻辑，特别是涉及主表 `emby_users` 和历史表 `emby_user_history` 的交互流程。
 
 ## 核心原则
 
-在更新 `EmbyUserModel` 主表之前，**必须先将当前（旧的）状态保存到 `EmbyUserHistoryModel` 历史表中**。
+1.  **快照优先 (Snapshot-First)**: 在更新主表数据之前，必须先将当前的（旧的）状态保存到历史表中。
+2.  **完整性 (Completeness)**: 历史记录必须包含更新前的所有关键字段，以便回溯。
+3.  **原子性 (Atomicity)**: 历史记录的插入和主表的更新必须在同一个数据库事务中完成。
 
-这意味着历史表记录的是数据变更**之前**的快照，用于审计和回溯。
+## 数据模型
 
-## 逻辑步骤
+-   **主表 (`EmbyUserModel`)**: 存储当前最新的 Emby 用户状态。
+-   **历史表 (`EmbyUserHistoryModel`)**: 存储 Emby 用户状态变更的历史快照。
 
-1.  **检测变更**：首先对比新数据与当前数据库中的数据，确定是否发生了实质性变更。
-2.  **生成备注 (Remark)**：
-    *   **历史表备注 (`old_remark`)**：保存当前主表中已有的 `remark`。
-    *   **主表备注 (`new_remark`)**：生成本次变更的说明（例如："name 从 A 更新为 B" 或 "系统自动封禁：网页端播放违规"）。
-3.  **保存历史快照**：
-    *   创建一个新的 `EmbyUserHistoryModel` 实例。
-    *   将 `EmbyUserModel` 中的当前字段值（更新前的）复制到历史记录中。
-    *   **关键字段映射**：
-        *   `user_dto`: 保存旧的 `user_dto`。
-        *   `extra_data`: 保存旧的 `extra_data`（建议使用 `copy.deepcopy` 以防引用问题，虽然 JSON 序列化通常是新的对象）。
-        *   `remark`: 保存旧的 `remark`。
-        *   `action`: 描述本次操作类型（如 `update`, `ban`, `delete`）。
-    *   `session.add(history_entry)`
-4.  **更新主表**：
-    *   修改 `EmbyUserModel` 实例的字段为新值。
-    *   `remark` 更新为本次变更说明。
-    *   如果修改了 JSON 字段（如 `extra_data`），必须调用 `flag_modified(model, "field_name")`。
-    *   `session.add(model)`
-5.  **提交事务**：`await session.commit()`
+## 更新流程
+
+更新逻辑封装在 `bot.services.emby_update_helper.detect_and_update_emby_user` 函数中。
+
+### 1. 检测变更
+
+首先比较新传入的 `UserDto` (来自 Emby API) 和数据库中现有的 `user_dto` 字段。
+
+-   如果两者一致且未指定 `force_update=True`，则跳过更新。
+-   如果两者不一致，或者指定了 `force_update=True`，则执行更新流程。
+
+### 2. 创建历史快照
+
+在修改主表之前，创建一个 `EmbyUserHistoryModel` 实例，记录以下信息：
+
+-   `emby_user_id`: 关联的 Emby 用户 ID
+-   `name`: 更新前的用户名
+-   `user_dto`: 更新前的完整 UserDto JSON
+-   `date_created`, `last_login_date`, `last_activity_date`: 更新前的时间字段
+-   `remark`: 更新前的备注
+-   `action`: 操作类型（默认为 "update"，如果有 `extra_remark` 则可能为 "system_update" 等）
+
+### 3. 更新主表
+
+在历史记录保存后，更新主表 `EmbyUserModel` 的字段：
+
+-   `user_dto`: 更新为新的 UserDto
+-   `name`: 从新 UserDto 中提取
+-   `date_created`, `last_login_date`, `last_activity_date`: 从新 UserDto 中提取并格式化
+-   `remark`: 更新为新的备注（如果有）
+
+### 4. 提交事务
+
+将历史记录的插入和主表的更新作为一个事务提交到数据库。
 
 ## 代码示例
 
 ```python
-# 假设 model 是已查询到的 EmbyUserModel 实例
+from bot.services.emby_update_helper import detect_and_update_emby_user
 
-# 1. 保存旧数据快照
-history_entry = EmbyUserHistoryModel(
-    emby_user_id=model.emby_user_id,
-    name=model.name,
-    password_hash=model.password_hash,
-    date_created=model.date_created,
-    last_login_date=model.last_login_date,
-    last_activity_date=model.last_activity_date,
-    user_dto=model.user_dto,          # 旧的 DTO
-    extra_data=model.extra_data,      # 旧的 extra_data
-    action="update",                  # 或 "ban"
-    remark=model.remark,              # 旧的备注
-    # 复制审计字段
-    created_at=model.created_at,
-    updated_at=model.updated_at,
-    created_by=model.created_by,
-    updated_by=model.updated_by,
-    is_deleted=model.is_deleted,
-    deleted_at=model.deleted_at,
-    deleted_by=model.deleted_by,
+# 假设 session, emby_user (Model), new_user_dto (Dict) 已存在
+
+# 调用通用更新函数
+detect_and_update_emby_user(
+    model=emby_user,
+    new_user_dto=new_user_dto,
+    session=session,
+    force_update=False,  # 可选：强制更新
+    extra_remark="管理员手动更新"  # 可选：附加说明
 )
-session.add(history_entry)
 
-# 2. 更新主表
-model.remark = "系统自动封禁：网页端播放违规"
-# 确保 extra_data 是字典
-if not model.extra_data:
-    model.extra_data = {}
-# 修改数据
-model.extra_data["is_disabled"] = True
-# 标记修改
-flag_modified(model, "extra_data")
-
-session.add(model)
+# 提交事务
 await session.commit()
 ```
 
-## 参考实现
+## 特殊场景：封禁用户
 
-请参考 `bot/services/emby_service.py` 中的 `sync_emby_users` 方法逻辑。
+当封禁用户时，流程如下：
+
+1.  调用 Emby API 禁用用户 (`emby_client.disable_user`).
+2.  获取最新的 UserDto (包含 `IsDisabled: true`).
+3.  调用 `detect_and_update_emby_user` 强制更新本地数据，记录封禁快照。
+4.  额外更新 `extra_data` 字段，记录 `is_disabled`, `disabled_reason`, `disabled_at`, `disabled_by` 等信息。
+
+```python
+# 示例：封禁逻辑
+detect_and_update_emby_user(
+    model=emby_user,
+    new_user_dto=new_user_dto,
+    session=session,
+    force_update=True,
+    extra_remark="系统自动封禁"
+)
+
+emby_user.extra_data["is_disabled"] = True
+# ... 其他 extra_data 更新 ...
+flag_modified(emby_user, "extra_data")
+```

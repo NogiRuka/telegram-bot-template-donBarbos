@@ -162,7 +162,8 @@ async def ban_emby_user(
 
     # 3. 记录审计日志
     audit_log = AuditLogModel(
-        user_id=deleted_by,
+        operator_id=deleted_by,
+        user_id=target_user_id,
         action_type=ActionType.USER_BLOCK,  # 使用 USER_BLOCK 作为封禁/移除的操作类型
         target_id=str(target_user_id),
         description=f"封禁用户 {target_user_id}",  # 必填字段
@@ -298,12 +299,14 @@ async def disable_emby_user(
 
     # 3. 记录审计日志
     audit_log = AuditLogModel(
-        user_id=admin_id if admin_id else 0,
-        action=ActionType.UPDATE,
-        resource="emby_user",
-        resource_id=emby_user_id,
+        operator_id=admin_id if admin_id else 0,
+        action_type=ActionType.USER_BLOCK,
+        target_type="emby_user",
+        target_id=str(emby_user_id),
+        description=f"禁用 Emby 用户 {emby_user_id}",
         details={"action": "disable", "reason": reason, "target_id": target_id},
-        ip_address="127.0.0.1"
+        ip_address="127.0.0.1",
+        user_agent="System/Bot"
     )
     session.add(audit_log)
     await session.commit()
@@ -395,12 +398,14 @@ async def enable_emby_user(
 
     # 3. 记录审计日志
     audit_log = AuditLogModel(
-        user_id=admin_id if admin_id else 0,
-        action=ActionType.UPDATE,
-        resource="emby_user",
-        resource_id=emby_user_id,
+        operator_id=admin_id if admin_id else 0,
+        action_type=ActionType.USER_UNBLOCK,
+        target_type="emby_user",
+        target_id=str(emby_user_id),
+        description=f"启用 Emby 用户 {emby_user_id}",
         details={"action": "enable", "reason": reason, "target_id": target_id},
-        ip_address="127.0.0.1"
+        ip_address="127.0.0.1",
+        user_agent="System/Bot"
     )
     session.add(audit_log)
     await session.commit()

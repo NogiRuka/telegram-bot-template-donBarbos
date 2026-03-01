@@ -270,35 +270,28 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
                     new_user_dto = await emby_client.get_user(str(user_id))
 
                     # 更新数据库状态
-                    async with sessionmaker() as session:
-                        result = await session.execute(
-                            select(EmbyUserModel).where(EmbyUserModel.emby_user_id == str(user_id))
-                        )
-                        emby_user = result.scalar_one_or_none()
-                        if emby_user:
-                            # 2. 更新主表
-                            # 调用通用更新函数，强制更新以记录变更，并附带系统封禁备注
-                            detect_and_update_emby_user(
-                                model=emby_user,
-                                new_user_dto=new_user_dto or emby_user.user_dto or {},
-                                session=session,
-                                force_update=True,
-                                extra_remark="系统自动封禁：网页端播放违规 (3次警告)"
-                            )
-                            
-                            if not emby_user.extra_data:
-                                emby_user.extra_data = {}
-                            
-                            # 更新 extra_data
-                            emby_user.extra_data["is_disabled"] = True
-                            emby_user.extra_data["disabled_reason"] = "web_playback_violation"
-                            emby_user.extra_data["disabled_at"] = format_datetime(now())
-                            
-                            flag_modified(emby_user, "extra_data")
-                            session.add(emby_user)
-
-                            await session.commit()
-                            logger.info(f"💾 已更新用户 {user_id} 数据库状态为封禁，并保存历史快照")
+                    # 2. 更新主表
+                    # 调用通用更新函数，强制更新以记录变更，并附带系统封禁备注
+                    detect_and_update_emby_user(
+                        model=emby_user,
+                        new_user_dto=new_user_dto or emby_user.user_dto or {},
+                        session=session,
+                        force_update=True,
+                        extra_remark="系统自动封禁：网页端播放违规 (3次警告)"
+                    )
+                    
+                    if not emby_user.extra_data:
+                        emby_user.extra_data = {}
+                    
+                    # 更新 extra_data
+                    emby_user.extra_data["is_disabled"] = True
+                    emby_user.extra_data["disabled_reason"] = "web_playback_violation"
+                    emby_user.extra_data["disabled_at"] = format_datetime(now())
+                    
+                    flag_modified(emby_user, "extra_data")
+                    session.add(emby_user)
+                    await session.commit()
+                    logger.info(f"💾 已更新用户 {user_id} 数据库状态为封禁，并保存历史快照")
 
                     logger.info(f"🚫 用户 {user_id} 已成功封禁")
             except Exception as e:
