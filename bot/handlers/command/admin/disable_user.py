@@ -15,13 +15,13 @@ router = Router(name="command_disable_user")
 
 COMMAND_META = {
     "name": "disable_user",
-    "alias": None,
+    "alias": "du",
     "usage": "/disable_user <user_id_or_emby_id>",
     "desc": "禁用 Emby 账号"
 }
 
 
-@router.message(Command("disable_user"))
+@router.message(Command("disable_user", "du"))
 @private_chat_only
 @require_admin_priv
 @require_admin_command_access(COMMAND_META["name"])

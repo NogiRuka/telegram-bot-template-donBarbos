@@ -15,13 +15,13 @@ router = Router(name="command_enable_user")
 
 COMMAND_META = {
     "name": "enable_user",
-    "alias": None,
+    "alias": "eu",
     "usage": "/enable_user <user_id_or_emby_id>",
     "desc": "启用 Emby 账号"
 }
 
 
-@router.message(Command("enable_user"))
+@router.message(Command("enable_user", "eu"))
 @private_chat_only
 @require_admin_priv
 @require_admin_command_access(COMMAND_META["name"])

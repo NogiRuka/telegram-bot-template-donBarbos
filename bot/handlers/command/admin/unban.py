@@ -16,13 +16,13 @@ router = Router(name="command_unban")
 
 COMMAND_META = {
     "name": "unban",
-    "alias": None,
+    "alias": "ub",
     "usage": "/unban <user_id>",
     "desc": "解除封禁"
 }
 
 
-@router.message(Command("unban"))
+@router.message(Command("unban", "ub"))
 @private_chat_only
 @require_admin_priv
 @require_admin_command_access(COMMAND_META["name"])

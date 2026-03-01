@@ -15,13 +15,13 @@ router = Router(name="admin_stats")
 
 COMMAND_META = {
     "name": "stats",
-    "alias": None,
+    "alias": "st",
     "usage": "/stats",
     "desc": "查看全局统计信息"
 }
 
 
-@router.message(Command("stats"))
+@router.message(Command("stats", "st"))
 @require_admin_priv
 @require_admin_command_access(COMMAND_META["name"])
 async def admin_stats_command(message: Message, session: AsyncSession) -> None:

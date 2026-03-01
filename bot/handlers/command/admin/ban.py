@@ -18,13 +18,13 @@ router = Router(name="command_ban")
 
 COMMAND_META = {
     "name": "ban",
-    "alias": None,
+    "alias": "b",
     "usage": "/ban <user_id>",
     "desc": "封禁用户"
 }
 
 
-@router.message(Command("ban"))
+@router.message(Command("ban", "b"))
 @private_chat_only
 @require_admin_priv
 @require_admin_command_access(COMMAND_META["name"])

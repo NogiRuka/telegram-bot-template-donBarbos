@@ -14,16 +14,17 @@ router = Router(name="admin_group")
 
 COMMAND_META = {
     "name": "group",
-    "alias": None,
+    "alias": "g",
     "usage": "/groups, /enable_group <chat_id>, /disable_group <chat_id>, /group_info <chat_id>",
     "desc": "群组消息保存配置管理"
 }
+
 
 MAX_MESSAGE_LENGTH = 4000
 SUMMARY_LIMIT = 20
 
 
-@router.message(Command("groups"))
+@router.message(Command("groups", "g"))
 @require_admin_priv
 @require_admin_command_access(COMMAND_META["name"])
 async def admin_groups_command(message: Message, session: AsyncSession) -> None:
