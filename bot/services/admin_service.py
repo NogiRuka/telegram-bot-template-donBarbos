@@ -15,6 +15,7 @@ from bot.database.models import (
     EmbyUserModel,
     UserExtendModel,
 )
+from bot.services.emby_update_helper import detect_and_update_emby_user
 from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
 from bot.utils.msg_group import send_group_notification
@@ -193,6 +194,216 @@ async def ban_emby_user(
 
         # 调用通用通知函数
         await send_group_notification(bot, user_info, detailed_reason)
+
+    return results
+
+
+async def disable_emby_user(
+    session: AsyncSession,
+    target_id: str,  # 可以是 Telegram ID 或 Emby ID
+    admin_id: int | None = None,
+    reason: str = "管理员手动禁用",
+    bot: Bot | None = None,
+    user_info: dict[str, str] | None = None,
+) -> list[str]:
+    """
+    禁用 Emby 用户逻辑
+
+    功能:
+    1. 禁用 Emby 账号 (API)
+    2. 更新数据库状态
+    3. 记录审计日志
+    4. 发送通知
+
+    Args:
+        session: 数据库会话
+        target_id: 目标 ID (Telegram ID 或 Emby ID)
+        admin_id: 执行操作的管理员 ID (可选)
+        reason: 禁用原因
+        bot: Bot 实例 (用于发送通知)
+        user_info: 用户信息字典
+    """
+    results = []
+    
+    # 1. 确定目标 Emby 用户
+    emby_user_id = None
+    emby_user_db = None
+
+    # 尝试按 Telegram ID 查找
+    if target_id.isdigit():
+        stmt = select(UserExtendModel).where(UserExtendModel.user_id == int(target_id))
+        result = await session.execute(stmt)
+        user_extend = result.scalar_one_or_none()
+        if user_extend and user_extend.emby_user_id:
+            emby_user_id = user_extend.emby_user_id
+
+    # 如果没找到，尝试按 Emby ID 查找
+    if not emby_user_id:
+        # 假设 target_id 就是 Emby ID
+        emby_user_id = target_id
+
+    # 查找 Emby 用户记录
+    stmt_emby = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
+    result_emby = await session.execute(stmt_emby)
+    emby_user_db = result_emby.scalar_one_or_none()
+
+    if not emby_user_db:
+        return ["❌ 未找到对应的 Emby 用户记录"]
+
+    # 2. 调用 API 禁用
+    emby_client = get_emby_client()
+    if not emby_client:
+        return ["⚠️ Emby 客户端未配置"]
+
+    try:
+        success = await emby_client.disable_user(emby_user_id)
+        if success:
+            results.append("✅ Emby 账号已禁用")
+            
+            # 重新获取 UserDto 以保持同步
+            new_user_dto = await emby_client.get_user(emby_user_id)
+            
+            # 更新数据库状态
+            from sqlalchemy.orm.attributes import flag_modified
+            from bot.utils.datetime import format_datetime
+
+            # 使用通用更新逻辑
+            detect_and_update_emby_user(
+                model=emby_user_db,
+                new_user_dto=new_user_dto or emby_user_db.user_dto or {},
+                session=session,
+                force_update=True,
+                extra_remark=f"{reason} (禁用)"
+            )
+
+            # 额外更新 extra_data
+            if not emby_user_db.extra_data:
+                emby_user_db.extra_data = {}
+            
+            emby_user_db.extra_data["is_disabled"] = True
+            emby_user_db.extra_data["disabled_reason"] = "manual_ban"
+            emby_user_db.extra_data["disabled_at"] = format_datetime(now())
+            emby_user_db.extra_data["disabled_by"] = admin_id
+            
+            flag_modified(emby_user_db, "extra_data")
+            session.add(emby_user_db)
+            await session.commit()
+            
+        else:
+            results.append("⚠️ Emby API 禁用请求失败或用户已禁用")
+
+    except Exception as e:
+        logger.error(f"禁用 Emby 用户失败: {e}")
+        results.append(f"❌ API 错误: {e}")
+
+    # 3. 记录审计日志
+    audit_log = AuditLogModel(
+        user_id=admin_id if admin_id else 0,
+        action=ActionType.UPDATE,
+        resource="emby_user",
+        resource_id=emby_user_id,
+        details={"action": "disable", "reason": reason, "target_id": target_id},
+        ip_address="127.0.0.1"
+    )
+    session.add(audit_log)
+    await session.commit()
+
+    return results
+
+
+async def enable_emby_user(
+    session: AsyncSession,
+    target_id: str,
+    admin_id: int | None = None,
+    reason: str = "管理员手动启用",
+    bot: Bot | None = None,
+    user_info: dict[str, str] | None = None,
+) -> list[str]:
+    """
+    启用 Emby 用户逻辑
+
+    功能:
+    1. 启用 Emby 账号 (API)
+    2. 更新数据库状态
+    3. 记录审计日志
+    4. 发送通知
+    """
+    results = []
+    
+    # 1. 确定目标 Emby 用户
+    emby_user_id = None
+    emby_user_db = None
+
+    if target_id.isdigit():
+        stmt = select(UserExtendModel).where(UserExtendModel.user_id == int(target_id))
+        result = await session.execute(stmt)
+        user_extend = result.scalar_one_or_none()
+        if user_extend and user_extend.emby_user_id:
+            emby_user_id = user_extend.emby_user_id
+
+    if not emby_user_id:
+        emby_user_id = target_id
+
+    stmt_emby = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)
+    result_emby = await session.execute(stmt_emby)
+    emby_user_db = result_emby.scalar_one_or_none()
+
+    if not emby_user_db:
+        return ["❌ 未找到对应的 Emby 用户记录"]
+
+    # 2. 调用 API 启用
+    emby_client = get_emby_client()
+    if not emby_client:
+        return ["⚠️ Emby 客户端未配置"]
+
+    try:
+        success = await emby_client.enable_user(emby_user_id)
+        if success:
+            results.append("✅ Emby 账号已启用")
+            
+            new_user_dto = await emby_client.get_user(emby_user_id)
+            
+            from sqlalchemy.orm.attributes import flag_modified
+            
+            detect_and_update_emby_user(
+                model=emby_user_db,
+                new_user_dto=new_user_dto or emby_user_db.user_dto or {},
+                session=session,
+                force_update=True,
+                extra_remark=f"{reason} (启用)"
+            )
+
+            if not emby_user_db.extra_data:
+                emby_user_db.extra_data = {}
+            
+            # 清除禁用状态
+            emby_user_db.extra_data["is_disabled"] = False
+            emby_user_db.extra_data.pop("disabled_reason", None)
+            emby_user_db.extra_data.pop("disabled_at", None)
+            emby_user_db.extra_data.pop("disabled_by", None)
+            
+            flag_modified(emby_user_db, "extra_data")
+            session.add(emby_user_db)
+            await session.commit()
+            
+        else:
+            results.append("⚠️ Emby API 启用请求失败或用户已启用")
+
+    except Exception as e:
+        logger.error(f"启用 Emby 用户失败: {e}")
+        results.append(f"❌ API 错误: {e}")
+
+    # 3. 记录审计日志
+    audit_log = AuditLogModel(
+        user_id=admin_id if admin_id else 0,
+        action=ActionType.UPDATE,
+        resource="emby_user",
+        resource_id=emby_user_id,
+        details={"action": "enable", "reason": reason, "target_id": target_id},
+        ip_address="127.0.0.1"
+    )
+    session.add(audit_log)
+    await session.commit()
 
     return results
 
