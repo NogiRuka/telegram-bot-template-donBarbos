@@ -19,6 +19,7 @@ from bot.core.constants import (
 )
 from bot.database.database import sessionmaker
 from bot.database.models.emby_user import EmbyUserModel
+from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
 from bot.services.config_service import get_config
@@ -85,7 +86,7 @@ async def handle_emby_webhook(
 
     # 所有事件都存入数据库，但只有 library.new 事件设置状态
     if event_type:
-        logger.info(f"📥 收到 Emby Webhook 事件: {event_type}")
+        # logger.info(f"📥 收到 Emby Webhook 事件: {event_type}")
 
         # 根据事件类型决定是否设置状态
         event_status = None  # 默认不设置状态
@@ -208,7 +209,7 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
         last_warning_time_str = web_warning.get("last_warning_time")
         if last_warning_time_str:
             last_time = parse_formatted_datetime(last_warning_time_str)
-            logger.info(f"🕒 时间调试: last_str={last_warning_time_str}, last_obj={last_time}, now={now()}")
+            # logger.info(f"🕒 时间调试: last_str={last_warning_time_str}, last_obj={last_time}, now={now()}")
             if last_time and (now() - last_time < timedelta(minutes=10)):
                 logger.info(f"⏳ 用户 {user_id} 处于警告冷却期，跳过")
                 return
@@ -265,6 +266,38 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
                 if policy:
                     policy["IsDisabled"] = True
                     await emby_client.update_user_policy(str(user_id), policy)
+
+                    # 更新数据库状态
+                    async with sessionmaker() as session:
+                        result = await session.execute(
+                            select(EmbyUserModel).where(EmbyUserModel.emby_user_id == str(user_id))
+                        )
+                        emby_user = result.scalar_one_or_none()
+                        if emby_user:
+                            # 1. 更新主表
+                            emby_user.remark = "系统自动封禁：网页端播放违规"
+                            if not emby_user.extra_data:
+                                emby_user.extra_data = {}
+                            emby_user.extra_data["is_disabled"] = True
+                            emby_user.extra_data["disabled_reason"] = "web_playback_violation"
+                            emby_user.extra_data["disabled_at"] = format_datetime(now())
+                            flag_modified(emby_user, "extra_data")
+                            session.add(emby_user)
+
+                            # 2. 写入历史记录
+                            history_entry = EmbyUserHistoryModel(
+                                emby_user_id=emby_user.emby_user_id,
+                                name=emby_user.name,
+                                action="ban",
+                                remark="系统自动封禁：网页端播放违规 (3次警告)",
+                                extra_data=emby_user.extra_data,
+                                user_dto=emby_user.user_dto,
+                            )
+                            session.add(history_entry)
+
+                            await session.commit()
+                            logger.info(f"💾 已更新用户 {user_id} 数据库状态为封禁")
+
                     logger.info(f"🚫 用户 {user_id} 已成功封禁")
             except Exception as e:
                 logger.error(f"❌ 封禁用户失败: {e}")
