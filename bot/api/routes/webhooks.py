@@ -207,6 +207,7 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
         last_warning_time_str = web_warning.get("last_warning_time")
         if last_warning_time_str:
             last_time = parse_formatted_datetime(last_warning_time_str)
+            logger.info(f"🕒 时间调试: last_str={last_warning_time_str}, last_obj={last_time}, now={now()}")
             if last_time and (now() - last_time < timedelta(minutes=10)):
                 logger.info(f"⏳ 用户 {user_id} 处于警告冷却期，跳过")
                 return
