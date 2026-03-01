@@ -23,6 +23,7 @@ from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
 from bot.services.config_service import get_config
+from bot.services.emby_update_helper import detect_and_update_emby_user
 from bot.utils.datetime import format_datetime, now, parse_formatted_datetime
 from bot.utils.emby import get_emby_client
 
@@ -275,33 +276,16 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
                         )
                         emby_user = result.scalar_one_or_none()
                         if emby_user:
-                            # 1. 保存旧数据到历史记录（快照）
-                            history_entry = EmbyUserHistoryModel(
-                                emby_user_id=emby_user.emby_user_id,
-                                name=emby_user.name,
-                                action="ban",
-                                remark=emby_user.remark,  # 保存旧的 remark
-                                extra_data=emby_user.extra_data,  # 保存旧的 extra_data
-                                user_dto=emby_user.user_dto,
-                                # 复制审计字段
-                                created_at=emby_user.created_at,
-                                updated_at=emby_user.updated_at,
-                                created_by=emby_user.created_by,
-                                updated_by=emby_user.updated_by,
-                                is_deleted=emby_user.is_deleted,
-                                deleted_at=emby_user.deleted_at,
-                                deleted_by=emby_user.deleted_by,
-                            )
-                            session.add(history_entry)
-
                             # 2. 更新主表
-                            if new_user_dto:
-                                emby_user.user_dto = new_user_dto
-                                # 同时更新可能变更的映射字段
-                                if "Name" in new_user_dto:
-                                    emby_user.name = new_user_dto["Name"]
+                            # 调用通用更新函数，强制更新以记录变更，并附带系统封禁备注
+                            detect_and_update_emby_user(
+                                model=emby_user,
+                                new_user_dto=new_user_dto or emby_user.user_dto or {},
+                                session=session,
+                                force_update=True,
+                                extra_remark="系统自动封禁：网页端播放违规 (3次警告)"
+                            )
                             
-                            emby_user.remark = "系统自动封禁：网页端播放违规 (3次警告)"
                             if not emby_user.extra_data:
                                 emby_user.extra_data = {}
                             

@@ -12,7 +12,8 @@ from bot.core.config import settings
 from bot.database.models.emby_device import EmbyDeviceModel
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
-from bot.utils.datetime import now, parse_iso_datetime
+from bot.services.emby_update_helper import detect_and_update_emby_user
+from bot.utils.datetime import parse_iso_datetime
 from bot.utils.emby import get_emby_client
 from bot.utils.http import HttpRequestError
 
@@ -515,65 +516,9 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
                     except Exception:  # noqa: BLE001
                         return str(obj)
 
-                if _canon_json(old_dto) != _canon_json(new_dto):
-                    name = str(it.get("Name") or "")
-                    date_created = parse_iso_datetime(it.get("DateCreated"))
-                    last_login_date = parse_iso_datetime(it.get("LastLoginDate"))
-                    last_activity_date = parse_iso_datetime(it.get("LastActivityDate"))
-
-                    # 检测具体哪些字段变化了
-                    changed_fields: list[str] = []
-                    old_name = model.name
-                    old_dc = model.date_created
-                    old_ll = model.last_login_date
-                    old_la = model.last_activity_date
-                    old_remark = model.remark
-                    old_password_hash = model.password_hash
-                    old_remark = model.remark
-
-                    if name != old_name:
-                        changed_fields.append(f"name 从 {old_name} 更新为 {name}")
-                    if date_created != old_dc:
-                        changed_fields.append(f"date_created 从 {old_dc} 更新为 {date_created}")
-                    if last_login_date != old_ll:
-                        changed_fields.append(f"last_login_date 从 {old_ll} 更新为 {last_login_date}")
-                    if last_activity_date != old_la:
-                        changed_fields.append(f"last_activity_date 从 {old_la} 更新为 {last_activity_date}")
-
-                    # 生成备注
-                    remark = "; ".join(changed_fields) if changed_fields else "user_dto 有其他字段变化"
-
-                    # 保存旧数据到历史表
-                    session.add(
-                        EmbyUserHistoryModel(
-                            emby_user_id=eid,
-                            name=old_name,
-                            password_hash=old_password_hash,
-                            date_created=model.date_created,
-                            last_login_date=model.last_login_date,
-                            last_activity_date=model.last_activity_date,
-                            user_dto=old_dto,
-                            extra_data=model.extra_data,
-                            action="update",
-                            created_at=model.created_at,
-                            updated_at=model.updated_at,
-                            created_by=model.created_by,
-                            updated_by=model.updated_by,
-                            is_deleted=model.is_deleted,
-                            deleted_at=model.deleted_at,
-                            deleted_by=model.deleted_by,
-                            remark=old_remark,
-                        )
-                    )
+                # 检测并更新
+                if detect_and_update_emby_user(model, it, session):
                     updated += 1
-                    model.remark = remark
-
-                    # 更新主表字段
-                    model.name = name
-                    model.user_dto = it
-                    model.date_created = date_created
-                    model.last_login_date = last_login_date
-                    model.last_activity_date = last_activity_date
 
         await session.commit()
         logger.info("✅ Emby 用户同步完成: 插入 {}, 更新 {}, 删除 {}", inserted, updated, deleted)
