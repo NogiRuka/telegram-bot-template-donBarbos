@@ -33,17 +33,20 @@ async def disable_user_command(message: Message, command: CommandObject, session
     1. 禁用指定用户的 Emby 账号
     2. 记录审计日志
 
-    用法: /disable_user <telegram_user_id 或 emby_user_id>
+    用法: /disable_user <telegram_user_id 或 emby_user_id> [原因]
     """
     if not command.args:
         await message.reply(
             "⚠️ 请提供 Telegram 用户 ID 或 Emby 用户 ID\n"
-            "用法: `/disable_user <user_id>`",
+            "用法: `/disable_user <user_id> [原因]`",
             parse_mode="Markdown"
         )
         return
 
-    target_id = command.args.strip()
+    # 分割参数: target_id 和 reason
+    args = command.args.split(maxsplit=1)
+    target_id = args[0].strip()
+    reason = args[1].strip() if len(args) > 1 else "管理员手动禁用"
     
     # 简单的 ID 格式校验 (数字或字母数字组合)
     if not target_id.isalnum():
@@ -54,7 +57,7 @@ async def disable_user_command(message: Message, command: CommandObject, session
         session=session,
         target_id=target_id,
         admin_id=message.from_user.id,
-        reason="管理员手动禁用",
+        reason=reason,
         bot=message.bot,
         user_info={"action": "ManualDisable", "target": target_id}
     )

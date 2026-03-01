@@ -17,11 +17,13 @@ from bot.core.constants import (
     EVENT_TYPE_LIBRARY_NEW,
     EVENT_TYPE_PLAYBACK_START,
 )
+from bot.core.loader import bot as telegram_bot
 from bot.database.database import sessionmaker
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
+from bot.database.models.user_extend import UserExtendModel
 from bot.services.config_service import get_config
 from bot.services.emby_update_helper import detect_and_update_emby_user
 from bot.utils.datetime import format_datetime, now, parse_formatted_datetime
@@ -84,6 +86,10 @@ async def handle_emby_webhook(
     series_name = item.get("SeriesName")
     season_number = item.get("ParentIndexNumber")
     episode_number = item.get("IndexNumber")
+
+    # 处理非官方客户端警告（网易/爆米花）
+    if payload.get("Session"):
+        await _process_restricted_client_check(payload)
 
     # 所有事件都存入数据库，但只有 library.new 事件设置状态
     if event_type:
@@ -341,3 +347,177 @@ def format_json_pretty(data: Any) -> str:
             return json.dumps({"unserializable": str(type(data))}, ensure_ascii=False)
         except Exception:
             return "{}"
+
+
+async def _process_restricted_client_check(payload: dict[str, Any]) -> None:
+    """处理非官方客户端检测（网易/爆米花）"""
+    session_info = payload.get("Session", {})
+    client = session_info.get("Client", "")
+    device_name = session_info.get("DeviceName", "")
+
+    # 关键词检测
+    keywords = ["网易", "爆米花"]
+    is_restricted = any(k in client for k in keywords) or any(k in device_name for k in keywords)
+    
+    if not is_restricted:
+        return
+
+    user_info = payload.get("User", {})
+    user_id = user_info.get("Id")
+    if not user_id:
+        return
+
+    logger.info(f"🔍 检测到用户 {user_id} 使用违规客户端 (Client: {client}, Device: {device_name})")
+
+    async with sessionmaker() as session:
+        # 1. 检查白名单
+        whitelist_val = await get_config(session, CONFIG_KEY_EMBY_WHITELIST_USER_IDS)
+        whitelist: list[str] = []
+        if isinstance(whitelist_val, list):
+            whitelist = [str(x) for x in whitelist_val]
+        elif isinstance(whitelist_val, str):
+            try:
+                loaded = json.loads(whitelist_val)
+                if isinstance(loaded, list):
+                    whitelist = [str(x) for x in loaded]
+                else:
+                    whitelist = [x.strip() for x in whitelist_val.split(",") if x.strip()]
+            except Exception:
+                whitelist = [x.strip() for x in whitelist_val.split(",") if x.strip()]
+
+        if str(user_id) in whitelist:
+            logger.info(f"✅ 用户 {user_id} 在白名单中，跳过违规客户端警告")
+            return
+
+        # 2. 获取用户数据 & Telegram ID
+        stmt = select(EmbyUserModel, UserExtendModel).outerjoin(
+            UserExtendModel, 
+            UserExtendModel.emby_user_id == EmbyUserModel.emby_user_id
+        ).where(EmbyUserModel.emby_user_id == str(user_id))
+        
+        result = await session.execute(stmt)
+        record = result.first()
+        
+        if not record:
+            logger.warning(f"⚠️ 用户 {user_id} 不在本地数据库中，无法记录警告")
+            return
+            
+        emby_user, user_extend = record
+        
+        # 3. 检查冷却时间和更新警告
+        extra_data = dict(emby_user.extra_data) if emby_user.extra_data else {}
+        warning_data = extra_data.get("restricted_client_warning", {})
+        
+        last_warning_time_str = warning_data.get("last_warning_time")
+        if last_warning_time_str:
+            last_time = parse_formatted_datetime(last_warning_time_str)
+            if last_time and (now() - last_time < timedelta(minutes=10)):
+                logger.info(f"⏳ 用户 {user_id} 处于违规客户端警告冷却期，跳过")
+                return
+
+        # 更新计数
+        count = warning_data.get("count", 0) + 1
+        warning_data["count"] = count
+        warning_data["last_warning_time"] = format_datetime(now())
+        
+        # 记录历史
+        history = warning_data.get("history", [])
+        item = payload.get("Item", {})
+        history.append({
+            "time": format_datetime(now()),
+            "item_name": item.get("Name"),
+            "item_id": item.get("Id"),
+            "client": client,
+            "device": device_name,
+        })
+        warning_data["history"] = history
+        
+        extra_data["restricted_client_warning"] = warning_data
+        
+        # 显式赋值以触发更新
+        emby_user.extra_data = extra_data
+        flag_modified(emby_user, "extra_data")
+        session.add(emby_user)
+        await session.commit()
+        
+        # 4. 发送 Telegram 警告
+        if user_extend and user_extend.user_id:
+            msg_text = _get_restricted_client_warning_text(count)
+            try:
+                await telegram_bot.send_message(chat_id=user_extend.user_id, text=msg_text)
+                logger.info(f"🔔 已向用户 {user_extend.user_id} 发送违规客户端警告 (第 {count} 次)")
+            except Exception as e:
+                logger.error(f"❌ 发送 Telegram 警告失败: {e}")
+        else:
+            logger.warning(f"⚠️ 用户 {user_id} 未绑定 Telegram 账号，无法发送警告")
+
+        # 5. 执行封禁 (如果达到3次)
+        if count >= 3:
+            logger.info(f"🚨 用户 {user_id} 达到违规客户端警告上限，执行封禁")
+            emby_client = get_emby_client()
+            if not emby_client:
+                logger.error("❌ Emby 客户端未配置，无法执行封禁")
+                return
+
+            try:
+                # 获取完整的 Policy 并修改 IsDisabled
+                success = await emby_client.disable_user(str(user_id))
+                
+                if success:
+                    # 重新获取最新的 UserDto，确保本地数据库中的 user_dto 字段包含 IsDisabled=True 的最新状态
+                    new_user_dto = await emby_client.get_user(str(user_id))
+
+                    # 更新数据库状态
+                    # 2. 更新主表
+                    # 调用通用更新函数，强制更新以记录变更，并附带系统封禁备注
+                    detect_and_update_emby_user(
+                        model=emby_user,
+                        new_user_dto=new_user_dto or emby_user.user_dto or {},
+                        session=session,
+                        force_update=True,
+                        extra_remark="系统自动封禁：使用违规客户端 (3次警告)"
+                    )
+                    
+                    if not emby_user.extra_data:
+                        emby_user.extra_data = {}
+                    
+                    # 更新 extra_data
+                    emby_user.extra_data["is_disabled"] = True
+                    emby_user.extra_data["disabled_reason"] = "restricted_client_violation"
+                    emby_user.extra_data["disabled_at"] = format_datetime(now())
+                    
+                    flag_modified(emby_user, "extra_data")
+                    session.add(emby_user)
+                    await session.commit()
+                    logger.info(f"💾 已更新用户 {user_id} 数据库状态为封禁，并保存历史快照")
+
+                    logger.info(f"🚫 用户 {user_id} 已成功封禁")
+                    
+            except Exception as e:
+                logger.error(f"❌ 封禁用户失败: {e}")
+
+
+def _get_restricted_client_warning_text(count: int) -> str:
+    if count == 1:
+        return (
+            "桜色男孩⚣｜客户端小侦测 🤖\n\n"
+            "我发现你正在使用【网易爆米花客户端】播放内容 👀\n\n"
+            "这个客户端在本服务器是被禁止使用的哦～\n"
+            "请尽快更换为官方客户端观看。\n\n"
+            "这次只是提醒，不会影响账号使用 😉"
+        )
+    elif count == 2:
+        return (
+            "桜色男孩⚣｜你又用爆米花啦 😳\n\n"
+            "再次检测到你使用【网易爆米花客户端】。\n\n"
+            "这个客户端不被允许使用。\n"
+            "如果继续使用，账号可能会被限制访问。\n\n"
+            "别让我难做呀，换个客户端吧～"
+        )
+    else:
+        return (
+            "桜色男孩⚣｜播放权限已锁定 🚨\n\n"
+            "第三次检测到你使用【网易爆米花客户端】。\n\n"
+            "根据服务器规则，你的账号已被自动禁用。\n"
+            "如需恢复权限，请联系管理员处理。"
+        )

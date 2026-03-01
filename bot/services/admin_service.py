@@ -290,6 +290,47 @@ async def disable_emby_user(
             session.add(emby_user_db)
             await session.commit()
             
+            # 发送通知给用户
+            if bot:
+                # 尝试获取 Telegram ID
+                tg_user_id = None
+                
+                # 1. 检查是否已经是 Telegram ID
+                if target_id.isdigit():
+                    # 验证是否关联到当前 Emby 用户
+                    stmt_check = select(UserExtendModel).where(
+                        UserExtendModel.user_id == int(target_id),
+                        UserExtendModel.emby_user_id == emby_user_id
+                    )
+                    res_check = await session.execute(stmt_check)
+                    if res_check.scalar_one_or_none():
+                        tg_user_id = int(target_id)
+                
+                # 2. 如果还没有 Telegram ID，尝试通过 Emby ID 反查
+                if not tg_user_id:
+                    stmt_find = select(UserExtendModel).where(UserExtendModel.emby_user_id == emby_user_id)
+                    res_find = await session.execute(stmt_find)
+                    user_ext = res_find.scalar_one_or_none()
+                    if user_ext and user_ext.user_id:
+                        tg_user_id = user_ext.user_id
+                
+                if tg_user_id:
+                    try:
+                        await bot.send_message(
+                            chat_id=tg_user_id,
+                            text=(
+                                "桜色男孩⚣｜账号状态通知 🚫\n\n"
+                                "您的 Emby 账号已被管理员禁用。\n\n"
+                                f"📝 原因: {reason}\n"
+                                f"⏰ 时间: {format_datetime(now())}\n\n"
+                                "如有疑问，请联系管理员。"
+                            )
+                        )
+                        results.append(f"📨 已发送通知给用户 {tg_user_id}")
+                    except Exception as e:
+                        logger.warning(f"无法发送禁用通知给用户 {tg_user_id}: {e}")
+                        results.append(f"⚠️ 无法发送通知: {e}")
+            
         else:
             results.append("⚠️ Emby API 禁用请求失败或用户已禁用")
 
@@ -388,6 +429,47 @@ async def enable_emby_user(
             flag_modified(emby_user_db, "extra_data")
             session.add(emby_user_db)
             await session.commit()
+            
+            # 发送通知给用户
+            if bot:
+                # 尝试获取 Telegram ID
+                tg_user_id = None
+                
+                # 1. 检查是否已经是 Telegram ID
+                if target_id.isdigit():
+                    # 验证是否关联到当前 Emby 用户
+                    stmt_check = select(UserExtendModel).where(
+                        UserExtendModel.user_id == int(target_id),
+                        UserExtendModel.emby_user_id == emby_user_id
+                    )
+                    res_check = await session.execute(stmt_check)
+                    if res_check.scalar_one_or_none():
+                        tg_user_id = int(target_id)
+                
+                # 2. 如果还没有 Telegram ID，尝试通过 Emby ID 反查
+                if not tg_user_id:
+                    stmt_find = select(UserExtendModel).where(UserExtendModel.emby_user_id == emby_user_id)
+                    res_find = await session.execute(stmt_find)
+                    user_ext = res_find.scalar_one_or_none()
+                    if user_ext and user_ext.user_id:
+                        tg_user_id = user_ext.user_id
+                
+                if tg_user_id:
+                    try:
+                        await bot.send_message(
+                            chat_id=tg_user_id,
+                            text=(
+                                "桜色男孩⚣｜账号状态通知 ✅\n\n"
+                                "您的 Emby 账号已被管理员重新启用。\n\n"
+                                f"📝 原因: {reason}\n"
+                                f"⏰ 时间: {format_datetime(now())}\n\n"
+                                "现在您可以正常使用 Emby 服务了～"
+                            )
+                        )
+                        results.append(f"📨 已发送通知给用户 {tg_user_id}")
+                    except Exception as e:
+                        logger.warning(f"无法发送启用通知给用户 {tg_user_id}: {e}")
+                        results.append(f"⚠️ 无法发送通知: {e}")
             
         else:
             results.append("⚠️ Emby API 启用请求失败或用户已启用")

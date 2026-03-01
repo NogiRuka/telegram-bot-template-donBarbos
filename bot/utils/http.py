@@ -52,7 +52,7 @@ class HttpClient:
         """发送 HTTP 请求
 
         功能说明:
-        - 统一拼接 `base_url + base_path + endpoint`, 注入 `X-Emby-Token` 头, 使用 15s 超时
+        - 统一拼接 `base_url + base_path + endpoint`, 注入 `X-Emby-Token` 头, 使用 60s 超时
         - 始终读取响应体; 对非 2xx 状态抛出异常并附带原始响应体
 
         输入参数:
@@ -67,7 +67,7 @@ class HttpClient:
         if self.token:
             headers["X-Emby-Token"] = self.token
 
-        timeout = aiohttp.ClientTimeout(total=15)
+        timeout = aiohttp.ClientTimeout(total=60)
         ep = endpoint if endpoint.startswith("/") else "/" + endpoint
         url = f"{self.base_url}{self.base_path}{ep}"
         try:
