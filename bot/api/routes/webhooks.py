@@ -10,6 +10,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from sqlalchemy import select
+from sqlalchemy.orm.attributes import flag_modified
 
 from bot.config.constants import CONFIG_KEY_EMBY_WHITELIST_USER_IDS
 from bot.core.constants import (
@@ -233,6 +234,7 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
 
         # 显式赋值以触发更新
         emby_user.extra_data = extra_data
+        flag_modified(emby_user, "extra_data")
         session.add(emby_user)
         await session.commit()
 
