@@ -265,6 +265,9 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
                 success = await emby_client.disable_user(str(user_id))
                 
                 if success:
+                    # 重新获取最新的 UserDto，确保本地数据库中的 user_dto 字段包含 IsDisabled=True 的最新状态
+                    new_user_dto = await emby_client.get_user(str(user_id))
+
                     # 更新数据库状态
                     async with sessionmaker() as session:
                         result = await session.execute(
@@ -292,6 +295,12 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
                             session.add(history_entry)
 
                             # 2. 更新主表
+                            if new_user_dto:
+                                emby_user.user_dto = new_user_dto
+                                # 同时更新可能变更的映射字段
+                                if "Name" in new_user_dto:
+                                    emby_user.name = new_user_dto["Name"]
+                            
                             emby_user.remark = "系统自动封禁：网页端播放违规 (3次警告)"
                             if not emby_user.extra_data:
                                 emby_user.extra_data = {}
