@@ -1,6 +1,8 @@
 from aiogram import Router
 
 from .admin.ban import router as ban_router
+from .admin.disable_user import router as disable_user_router
+from .admin.enable_user import router as enable_user_router
 from .admin.group import router as admin_group_router
 from .admin.save_emby import router as save_emby_router
 from .admin.stats import router as admin_stats_router
@@ -21,6 +23,8 @@ def get_command_router() -> Router:
     router = Router(name="command")
     # 管理员命令
     router.include_router(ban_router)
+    router.include_router(disable_user_router)
+    router.include_router(enable_user_router)
     router.include_router(unban_router)
     router.include_router(save_emby_router)
     router.include_router(submission_review_router)
