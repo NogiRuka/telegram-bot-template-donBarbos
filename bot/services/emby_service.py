@@ -13,7 +13,7 @@ from bot.database.models.emby_device import EmbyDeviceModel
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.services.emby_update_helper import detect_and_update_emby_user
-from bot.utils.datetime import parse_iso_datetime
+from bot.utils.datetime import now, parse_iso_datetime
 from bot.utils.emby import get_emby_client
 from bot.utils.http import HttpRequestError
 
