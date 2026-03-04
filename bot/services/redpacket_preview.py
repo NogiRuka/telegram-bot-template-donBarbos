@@ -302,6 +302,10 @@ def compose_redpacket_with_info(
             wm_img = wm_img.resize((size, size), Image.Resampling.LANCZOS)
             img.paste(wm_img, (11, 11), wm_img)
 
+    avatar_size = layout.avatar_size
+    # Use layout configuration for avatar Y position or default
+    avatar_y = layout.avatar_y if hasattr(layout, 'avatar_y') else 130
+    
     if avatar_file_content:
         import io
         try:
@@ -322,8 +326,6 @@ def compose_redpacket_with_info(
     if av_img is not None:
         # Calculate avatar position (centered horizontally)
         avatar_x = center_x - avatar_size // 2
-        # Use layout configuration for avatar Y position or default
-        avatar_y = layout.avatar_y if hasattr(layout, 'avatar_y') else 130
         
         img.paste(av_img, (avatar_x, avatar_y), av_img)
 
