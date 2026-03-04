@@ -263,6 +263,7 @@ def compose_redpacket_with_info(
     watermark_image_name: str | None = None,
     avatar_image_name: str | None = None,
     layout: RedpacketLayout | None = None,
+    avatar_file_content: bytes | None = None,
 ) -> str:
     if cover_name is None:
         cover_name = _random_asset_file("cover", (".png", ".jpg", ".jpeg"))
@@ -301,15 +302,35 @@ def compose_redpacket_with_info(
             wm_img = wm_img.resize((size, size), Image.Resampling.LANCZOS)
             img.paste(wm_img, (11, 11), wm_img)
 
-    avatar_size = layout.avatar_size
-    avatar_y = 130
-    avatar_x = center_x - avatar_size // 2
-    av_img = _load_avatar_image(avatar_image_name, avatar_size)
+    if avatar_file_content:
+        import io
+        try:
+            av_img = Image.open(io.BytesIO(avatar_file_content)).convert("RGBA")
+            av_img = av_img.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
+            # Apply mask
+            assets_root = _get_root_assets_dir()
+            mask_path = assets_root / "redpacket" / "mask" / "avatar.png"
+            if mask_path.exists():
+                mask_img = Image.open(mask_path).convert("L")
+                mask_img = mask_img.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
+                av_img.putalpha(mask_img)
+        except Exception:
+             av_img = _load_avatar_image(avatar_image_name, avatar_size)
+    else:
+        av_img = _load_avatar_image(avatar_image_name, avatar_size)
+
     if av_img is not None:
+        # Calculate avatar position (centered horizontally)
+        avatar_x = center_x - avatar_size // 2
+        # Use layout configuration for avatar Y position or default
+        avatar_y = layout.avatar_y if hasattr(layout, 'avatar_y') else 130
+        
         img.paste(av_img, (avatar_x, avatar_y), av_img)
 
     sender_text = f"{sender_name}的红包"
-    sender_pos = (float(center_x), float(avatar_y + avatar_size + 60))
+    # Adjust sender text position based on avatar
+    text_y = avatar_y + avatar_size + 20 
+    sender_pos = (float(center_x), float(text_y))
     _draw_text_with_layout(
         draw,
         sender_pos,

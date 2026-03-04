@@ -18,9 +18,26 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
     parts = args_raw.split() if args_raw else []
 
     # 默认使用发送者名字
-    sender_name = message.from_user.full_name if message.from_user else "测试用户"
+    sender_name = message.from_user.first_name if message.from_user else "测试用户"
     amount = 100
     count = 5
+    
+    # 获取用户头像
+    avatar_content = None
+    if message.from_user:
+        try:
+            user_photos = await message.from_user.get_profile_photos(limit=1)
+            if user_photos.total_count > 0:
+                # 获取最大尺寸
+                photo = user_photos.photos[0][-1]
+                file = await message.bot.get_file(photo.file_id)
+                # 下载头像内容
+                import io
+                avatar_io = io.BytesIO()
+                await message.bot.download_file(file.file_path, avatar_io)
+                avatar_content = avatar_io.getvalue()
+        except Exception as e:
+            logger.warning(f"获取用户头像失败: {e}")
 
     # 如果有参数，尝试解析
     if parts:
@@ -58,6 +75,7 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
             group_text=None,
             watermark_image_name=None,
             avatar_image_name=None,
+            avatar_file_content=avatar_content,
         )
     except Exception:
         logger.exception("生成红包模板预览失败: sender=%s amount=%s count=%s", sender_name, amount, count)
