@@ -380,18 +380,19 @@ def compose_redpacket_with_info(
     
     # Use UUID for unique filename to avoid conflicts and cache issues
     import uuid
-    filename = f"rp_{uuid.uuid4().hex}.jpg"
+    # 切换为 WebP 格式，同等画质下体积更小
+    filename = f"rp_{uuid.uuid4().hex}.webp"
     
     if return_bytes:
         import io
         byte_io = io.BytesIO()
-        # Quality 85: 高质量平衡点，肉眼难辨差异但体积更小
-        img.convert("RGB").save(byte_io, format="JPEG", quality=85, optimize=True)
+        # WebP Quality 90: 极高画质，体积远小于 JPEG
+        img.save(byte_io, format="WEBP", quality=90)
         return byte_io.getvalue(), filename
 
     output_dir = _ensure_output_dir()
     output_path = output_dir / filename
     
-    # Save as JPEG with high quality
-    img.convert("RGB").save(output_path, format="JPEG", quality=85, optimize=True)
+    # Save as WebP with high quality
+    img.save(output_path, format="WEBP", quality=90)
     return str(output_path)
