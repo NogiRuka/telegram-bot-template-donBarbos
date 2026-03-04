@@ -1,4 +1,5 @@
 from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +17,8 @@ router = Router(name="admin_home")
 async def show_admin_panel(
     callback: CallbackQuery,
     session: AsyncSession,
-    main_msg: MainMessageService
+    main_msg: MainMessageService,
+    state: FSMContext
 ) -> None:
     """展示管理员面板
 
@@ -27,10 +29,12 @@ async def show_admin_panel(
     - callback: 回调对象
     - session: 异步数据库会话
     - main_msg: 主消息服务
+    - state: FSM状态上下文
 
     返回值:
     - None
     """
+    await state.clear()
     features = await list_admin_features(session)
     kb = get_admin_panel_keyboard(features)
     user_id = callback.from_user.id if callback.from_user else None

@@ -162,6 +162,7 @@ async def start_handler(
 @router.callback_query(F.data == "back:home")
 async def back_to_home(callback: types.CallbackQuery, session: AsyncSession, main_msg: MainMessageService, state: FSMContext) -> None:
     """返回首页：根据回调更新主消息内容"""
+    await state.clear()
     await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "quiz_list_ids")
     await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "main_image_list_ids")
     await clear_message_list_from_state(state, callback.bot, callback.message.chat.id, "preview_data")
