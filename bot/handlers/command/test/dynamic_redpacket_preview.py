@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+import asyncio
 from aiogram import Router, F
 from aiogram.filters import Command, CommandObject
 from aiogram.types import FSInputFile, Message, CallbackQuery
@@ -14,6 +16,7 @@ router = Router(name="test_dynamic_redpacket_preview")
 
 @router.message(Command("test_rp"))
 async def test_dynamic_redpacket_preview(message: Message, command: CommandObject) -> None:
+    start_total = time.time()
     args_raw = (command.args or "").strip()
     parts = args_raw.split() if args_raw else []
 
@@ -26,15 +29,25 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
     avatar_content = None
     if message.from_user:
         try:
+            t0 = time.time()
             user_photos = await message.from_user.get_profile_photos(limit=1)
+            logger.info(f"获取用户头像元数据耗时: {time.time() - t0:.4f}s")
+            
             if user_photos.total_count > 0:
-                # 获取最大尺寸
-                photo = user_photos.photos[0][-1]
+                # 获取较小尺寸以加快速度 (0: small, -1: big)
+                # 红包预览不需要高清大图，使用第一张通常足够清晰且更小
+                photo = user_photos.photos[0][0] 
+                
+                t1 = time.time()
                 file = await message.bot.get_file(photo.file_id)
+                logger.info(f"获取头像文件路径耗时: {time.time() - t1:.4f}s")
+                
                 # 下载头像内容
                 import io
                 avatar_io = io.BytesIO()
+                t2 = time.time()
                 await message.bot.download_file(file.file_path, avatar_io)
+                logger.info(f"下载头像耗时: {time.time() - t2:.4f}s")
                 avatar_content = avatar_io.getvalue()
         except Exception as e:
             logger.warning(f"获取用户头像失败: {e}")
@@ -66,17 +79,24 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
                     pass
 
     try:
-        path = compose_redpacket_with_info(
-            cover_name=None,
-            body_name=None,
-            sender_name=sender_name,
-            amount=amount,
-            count=count,
-            group_text=None,
-            watermark_image_name=None,
-            avatar_image_name=None,
-            avatar_file_content=avatar_content,
+        t3 = time.time()
+        # 使用 run_in_executor 避免阻塞事件循环
+        loop = asyncio.get_running_loop()
+        path = await loop.run_in_executor(
+            None, 
+            lambda: compose_redpacket_with_info(
+                cover_name=None,
+                body_name=None,
+                sender_name=sender_name,
+                amount=amount,
+                count=count,
+                group_text=None,
+                watermark_image_name=None,
+                avatar_image_name=None,
+                avatar_file_content=avatar_content,
+            )
         )
+        logger.info(f"生成图片耗时: {time.time() - t3:.4f}s")
     except Exception:
         logger.exception("生成红包模板预览失败: sender=%s amount=%s count=%s", sender_name, amount, count)
         await message.reply("生成预览失败，请检查日志", parse_mode=None)
@@ -87,6 +107,7 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
     kb.button(text="🧧 抢红包", callback_data="test_rp_click")
     
     try:
+        t4 = time.time()
         file = FSInputFile(path)
         escaped_name = escape_markdown_v2(sender_name)
         await message.answer_photo(
@@ -95,9 +116,12 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
             parse_mode="MarkdownV2",
             reply_markup=kb.as_markup()
         )
+        logger.info(f"发送图片耗时: {time.time() - t4:.4f}s")
     except Exception:
         logger.exception("发送红包模板预览失败: path=%s", path)
         await message.reply("发送预览失败，请检查日志", parse_mode=None)
+    
+    logger.info(f"总耗时: {time.time() - start_total:.4f}s")
 
 
 @router.callback_query(F.data == "test_rp_click")
