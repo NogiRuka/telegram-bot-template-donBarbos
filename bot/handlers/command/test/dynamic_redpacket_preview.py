@@ -4,7 +4,7 @@ import time
 import asyncio
 from aiogram import Router, F
 from aiogram.filters import Command, CommandObject
-from aiogram.types import FSInputFile, Message, CallbackQuery
+from aiogram.types import FSInputFile, Message, CallbackQuery, BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
 
@@ -84,7 +84,8 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
         t3 = time.time()
         # 使用 run_in_executor 避免阻塞事件循环
         loop = asyncio.get_running_loop()
-        path = await loop.run_in_executor(
+        # 修改为返回字节流，避免磁盘 I/O
+        img_bytes, filename = await loop.run_in_executor(
             None, 
             lambda: compose_redpacket_with_info(
                 cover_name=None,
@@ -96,6 +97,7 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
                 watermark_image_name=None,
                 avatar_image_name=None,
                 avatar_file_content=avatar_content,
+                return_bytes=True,
             )
         )
         logger.info(f"生成图片耗时: {time.time() - t3:.4f}s")
@@ -110,7 +112,9 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
     
     try:
         t4 = time.time()
-        file = FSInputFile(path)
+        logger.info(f"图片大小: {len(img_bytes) / 1024:.2f} KB")
+        # 使用 BufferedInputFile 直接发送内存中的图片数据
+        file = BufferedInputFile(img_bytes, filename=filename)
         escaped_name = escape_markdown_v2(sender_name)
         await message.answer_photo(
             photo=file,
@@ -120,7 +124,7 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
         )
         logger.info(f"发送图片耗时: {time.time() - t4:.4f}s")
     except Exception:
-        logger.exception("发送红包模板预览失败: path=%s", path)
+        logger.exception("发送红包模板预览失败")
         await message.reply("发送预览失败，请检查日志", parse_mode=None)
     
     logger.info(f"总耗时: {time.time() - start_total:.4f}s")

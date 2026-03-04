@@ -264,7 +264,8 @@ def compose_redpacket_with_info(
     avatar_image_name: str | None = None,
     layout: RedpacketLayout | None = None,
     avatar_file_content: bytes | None = None,
-) -> str:
+    return_bytes: bool = False,
+) -> str | tuple[bytes, str]:
     if cover_name is None:
         cover_name = _random_asset_file("cover", (".png", ".jpg", ".jpeg"))
     if body_name is None:
@@ -378,11 +379,17 @@ def compose_redpacket_with_info(
         new_height = int(height * ratio)
         img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
 
-    output_dir = _ensure_output_dir()
-    
     # Use UUID for unique filename to avoid conflicts and cache issues
     import uuid
     filename = f"rp_{uuid.uuid4().hex}.jpg"
+    
+    if return_bytes:
+        import io
+        byte_io = io.BytesIO()
+        img.convert("RGB").save(byte_io, format="JPEG", quality=75, optimize=True)
+        return byte_io.getvalue(), filename
+
+    output_dir = _ensure_output_dir()
     output_path = output_dir / filename
     
     # Save as JPEG with optimization to reduce file size (faster upload)
