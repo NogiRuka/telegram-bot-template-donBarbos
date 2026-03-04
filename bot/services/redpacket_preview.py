@@ -370,6 +370,14 @@ def compose_redpacket_with_info(
     anchor = "rb"
     draw.text(group_pos, group_text, font=group_font, fill=layout.watermark_color, anchor=anchor)
 
+    # 缩放图片以减少文件大小 (宽限制为 600px，高度按比例)
+    # 红包预览图通常很大，缩小后在手机端看起来依然清晰，但体积大幅减小
+    max_width = 600
+    if width > max_width:
+        ratio = max_width / width
+        new_height = int(height * ratio)
+        img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+
     output_dir = _ensure_output_dir()
     
     # Use UUID for unique filename to avoid conflicts and cache issues
@@ -378,5 +386,6 @@ def compose_redpacket_with_info(
     output_path = output_dir / filename
     
     # Save as JPEG with optimization to reduce file size (faster upload)
-    img.convert("RGB").save(output_path, format="JPEG", quality=85, optimize=True)
+    # Quality 75 是预览图的平衡点，既清晰又足够小
+    img.convert("RGB").save(output_path, format="JPEG", quality=75, optimize=True)
     return str(output_path)
