@@ -303,7 +303,7 @@ def compose_redpacket_with_info(
             img.paste(wm_img, (11, 11), wm_img)
 
     avatar_size = layout.avatar_size
-    # Use layout configuration for avatar Y position or default
+    # 使用布局配置中的头像 Y 坐标，或使用默认值 130
     avatar_y = layout.avatar_y if hasattr(layout, 'avatar_y') else 130
     
     if avatar_file_content:
@@ -311,7 +311,7 @@ def compose_redpacket_with_info(
         try:
             av_img = Image.open(io.BytesIO(avatar_file_content)).convert("RGBA")
             av_img = av_img.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
-            # Apply mask
+            # 应用遮罩
             assets_root = _get_root_assets_dir()
             mask_path = assets_root / "redpacket" / "mask" / "avatar.png"
             if mask_path.exists():
@@ -324,15 +324,13 @@ def compose_redpacket_with_info(
         av_img = _load_avatar_image(avatar_image_name, avatar_size)
 
     if av_img is not None:
-        # Calculate avatar position (centered horizontally)
+        # 计算头像位置（水平居中）
         avatar_x = center_x - avatar_size // 2
         
         img.paste(av_img, (avatar_x, avatar_y), av_img)
 
     sender_text = f"{sender_name}的红包"
-    # Adjust sender text position based on avatar
-    text_y = avatar_y + avatar_size + 20 
-    sender_pos = (float(center_x), float(text_y))
+    sender_pos = (float(center_x), float(avatar_y + avatar_size + 60))
     _draw_text_with_layout(
         draw,
         sender_pos,
