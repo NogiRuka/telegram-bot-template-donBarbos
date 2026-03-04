@@ -371,9 +371,12 @@ def compose_redpacket_with_info(
     draw.text(group_pos, group_text, font=group_font, fill=layout.watermark_color, anchor=anchor)
 
     output_dir = _ensure_output_dir()
-    cover_base = cover_name.rsplit(".", 1)[0]
-    body_base = body_name.rsplit(".", 1)[0]
-    filename = f"rp_info_{cover_base}__{body_base}.png"
+    
+    # Use UUID for unique filename to avoid conflicts and cache issues
+    import uuid
+    filename = f"rp_{uuid.uuid4().hex}.jpg"
     output_path = output_dir / filename
-    img.convert("RGB").save(output_path, format="PNG")
+    
+    # Save as JPEG with optimization to reduce file size (faster upload)
+    img.convert("RGB").save(output_path, format="JPEG", quality=85, optimize=True)
     return str(output_path)

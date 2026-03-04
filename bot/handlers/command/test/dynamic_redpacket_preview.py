@@ -16,6 +16,8 @@ router = Router(name="test_dynamic_redpacket_preview")
 
 @router.message(Command("test_rp"))
 async def test_dynamic_redpacket_preview(message: Message, command: CommandObject) -> None:
+    # 立即发送状态提示，减少等待焦虑
+    await message.bot.send_chat_action(chat_id=message.chat.id, action="upload_photo")
     start_total = time.time()
     args_raw = (command.args or "").strip()
     parts = args_raw.split() if args_raw else []
