@@ -13,6 +13,9 @@ from bot.utils.text import escape_markdown_v2
 
 router = Router(name="test_dynamic_redpacket_preview")
 
+# 简单的内存缓存，存储 {file_unique_id: bytes}
+# 注意：在生产环境中应考虑过期时间和内存占用，这里仅作为演示优化
+AVATAR_CACHE: dict[str, bytes] = {}
 
 @router.message(Command("test_rp"))
 async def test_dynamic_redpacket_preview(message: Message, command: CommandObject) -> None:
@@ -39,17 +42,29 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
                 # 优先使用高清大图 (-1: big)，保证预览质量
                 photo = user_photos.photos[0][-1] 
                 
-                t1 = time.time()
-                file = await message.bot.get_file(photo.file_id)
-                logger.info(f"获取头像文件路径耗时: {time.time() - t1:.4f}s")
-                
-                # 下载头像内容
-                import io
-                avatar_io = io.BytesIO()
-                t2 = time.time()
-                await message.bot.download_file(file.file_path, avatar_io)
-                logger.info(f"下载头像耗时: {time.time() - t2:.4f}s")
-                avatar_content = avatar_io.getvalue()
+                # 检查内存缓存
+                if photo.file_unique_id in AVATAR_CACHE:
+                    avatar_content = AVATAR_CACHE[photo.file_unique_id]
+                    logger.info("命中头像内存缓存，跳过下载")
+                else:
+                    t1 = time.time()
+                    file = await message.bot.get_file(photo.file_id)
+                    logger.info(f"获取头像文件路径耗时: {time.time() - t1:.4f}s")
+                    
+                    # 下载头像内容
+                    # 下载头像内容
+                    import io
+                    avatar_io = io.BytesIO()
+                    t2 = time.time()
+                    await message.bot.download_file(file.file_path, avatar_io)
+                    logger.info(f"下载头像耗时: {time.time() - t2:.4f}s")
+                    avatar_content = avatar_io.getvalue()
+                    
+                    # 写入缓存
+                    AVATAR_CACHE[photo.file_unique_id] = avatar_content
+                    # 简单限制缓存大小防止溢出
+                    if len(AVATAR_CACHE) > 100:
+                        AVATAR_CACHE.clear()
         except Exception as e:
             logger.warning(f"获取用户头像失败: {e}")
 

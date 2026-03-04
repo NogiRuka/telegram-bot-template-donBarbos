@@ -371,7 +371,12 @@ def compose_redpacket_with_info(
     anchor = "rb"
     draw.text(group_pos, group_text, font=group_font, fill=layout.watermark_color, anchor=anchor)
 
-    # 恢复高质量，不进行缩放以保证清晰度
+    # 缩放图片以平衡质量和体积 (宽限制为 1080px，满足高清需求但避免过大)
+    max_width = 1080
+    if width > max_width:
+        ratio = max_width / width
+        new_height = int(height * ratio)
+        img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
     
     # Use UUID for unique filename to avoid conflicts and cache issues
     import uuid
@@ -380,13 +385,13 @@ def compose_redpacket_with_info(
     if return_bytes:
         import io
         byte_io = io.BytesIO()
-        # Quality 95 保证极高清晰度，几乎无损
-        img.convert("RGB").save(byte_io, format="JPEG", quality=95, optimize=True)
+        # Quality 85: 高质量平衡点，肉眼难辨差异但体积更小
+        img.convert("RGB").save(byte_io, format="JPEG", quality=85, optimize=True)
         return byte_io.getvalue(), filename
 
     output_dir = _ensure_output_dir()
     output_path = output_dir / filename
     
     # Save as JPEG with high quality
-    img.convert("RGB").save(output_path, format="JPEG", quality=95, optimize=True)
+    img.convert("RGB").save(output_path, format="JPEG", quality=85, optimize=True)
     return str(output_path)
