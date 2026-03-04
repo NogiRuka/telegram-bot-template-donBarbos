@@ -36,9 +36,8 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
             logger.info(f"获取用户头像元数据耗时: {time.time() - t0:.4f}s")
             
             if user_photos.total_count > 0:
-                # 获取较小尺寸以加快速度 (0: small, -1: big)
-                # 红包预览不需要高清大图，使用第一张通常足够清晰且更小
-                photo = user_photos.photos[0][0] 
+                # 优先使用高清大图 (-1: big)，保证预览质量
+                photo = user_photos.photos[0][-1] 
                 
                 t1 = time.time()
                 file = await message.bot.get_file(photo.file_id)
