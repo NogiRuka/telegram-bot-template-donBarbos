@@ -63,7 +63,10 @@ async def on_startup() -> None:
             await CurrencyService.ensure_products(session)
             await CurrencyService.ensure_configs(session)
 
-            await run_emby_sync(session)
+            if settings.DEBUG:
+                logger.warning("🚧 开发环境模式: 跳过 Emby 数据同步")
+            else:
+                await run_emby_sync(session)
 
         # 启动定时问答调度器
         asyncio.create_task(QuizService.start_scheduler(bot))
