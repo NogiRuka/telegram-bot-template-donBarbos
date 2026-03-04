@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.filters import Command, CommandObject
-from aiogram.types import FSInputFile, Message
+from aiogram.types import FSInputFile, Message, CallbackQuery
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
 
 from bot.services.redpacket_preview import compose_redpacket_with_info
+from bot.utils.text import escape_markdown_v2
 
 router = Router(name="test_dynamic_redpacket_preview")
 
@@ -15,26 +17,36 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
     args_raw = (command.args or "").strip()
     parts = args_raw.split() if args_raw else []
 
-    sender_name = "测试用户"
-    amount = 100.0
+    # 默认使用发送者名字
+    sender_name = message.from_user.full_name if message.from_user else "测试用户"
+    amount = 100
     count = 5
 
+    # 如果有参数，尝试解析
     if parts:
-        if len(parts) not in (2, 3):
-            await message.reply("用法: /test_rp 用户名 金额 [份数]", parse_mode=None)
-            return
-        sender_name = parts[0]
+        # 如果第一个参数看起来像数字，则认为是金额，保持 sender_name 为发送者
+        # 如果第一个参数不是数字，则认为是指定的发送者名字
         try:
-            amount = float(parts[1])
+            amount = float(parts[0])
+            # 如果成功解析了金额，看后面有没有份数
+            if len(parts) > 1:
+                try:
+                    count = int(parts[1])
+                except ValueError:
+                    pass # 忽略错误的份数
         except ValueError:
-            await message.reply("金额必须是数字", parse_mode=None)
-            return
-        if len(parts) == 3:
-            try:
-                count = int(parts[2])
-            except ValueError:
-                await message.reply("份数必须是整数", parse_mode=None)
-                return
+            # 第一个参数不是数字，当作名字
+            sender_name = parts[0]
+            if len(parts) > 1:
+                try:
+                    amount = float(parts[1])
+                except ValueError:
+                    pass
+            if len(parts) > 2:
+                try:
+                    count = int(parts[2])
+                except ValueError:
+                    pass
 
     try:
         path = compose_redpacket_with_info(
@@ -52,12 +64,24 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
         await message.reply("生成预览失败，请检查日志", parse_mode=None)
         return
 
+    # 构建生动的按钮
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🧧 抢红包", callback_data="test_rp_click")
+    
     try:
         file = FSInputFile(path)
+        escaped_name = escape_markdown_v2(sender_name)
         await message.answer_photo(
             photo=file,
-            caption=f"测试红包模板预览\n发红包: {sender_name}\n金额: {amount} 💧 / {count}",
+            caption=f"🧧 *{escaped_name}* 发出一个拼手气红包\n\n恭喜发财，大吉大利",
+            parse_mode="MarkdownV2",
+            reply_markup=kb.as_markup()
         )
     except Exception:
         logger.exception("发送红包模板预览失败: path=%s", path)
         await message.reply("发送预览失败，请检查日志", parse_mode=None)
+
+
+@router.callback_query(F.data == "test_rp_click")
+async def on_test_rp_click(callback: CallbackQuery):
+    await callback.answer("🎉 恭喜！这是一个测试红包，你抢到了 0.00 元！", show_alert=True)
