@@ -41,7 +41,7 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
         # 发送占位消息
         placeholder_msg = await message.answer_photo(
             photo=ph_file,
-            caption="⏳ *红包生成中...*",
+            caption=r"⏳ *红包生成中\.\.\.*",
             parse_mode="MarkdownV2"
         )
         logger.info(f"发送占位图耗时: {time.time() - t_ph:.4f}s")
