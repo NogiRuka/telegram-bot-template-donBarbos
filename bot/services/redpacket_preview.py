@@ -1,4 +1,6 @@
 from __future__ import annotations
+import io
+import uuid
 import os
 import random
 import tempfile
@@ -10,6 +12,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 GROUP_WATERMARK_TEXT = "@lustfulboy_group"
 
+# ========= 全局缓存 =========
+BASE_IMAGE_CACHE = {}
+FONT_CACHE = {}
+MASK_CACHE = {}
+WATERMARK_CACHE = {}
 
 def _get_assets_dir() -> Path:
     current_dir = Path(__file__).resolve().parent  # bot/services
@@ -98,10 +105,55 @@ def _load_avatar_image(avatar_image_name: str | None, size: int) -> Image.Image 
     return av_img
 
 
-def compose_redpacket(cover_name: str, body_name: str) -> str:
+def get_font_cached(path: Path | str, size: int) -> ImageFont.FreeTypeFont:
+    """获取缓存的字体对象"""
+    key = (str(path), size)
+    if key not in FONT_CACHE:
+        try:
+            FONT_CACHE[key] = ImageFont.truetype(str(path), size)
+        except Exception:
+            # Fallback to default if font fails to load
+            FONT_CACHE[key] = ImageFont.load_default()
+    return FONT_CACHE[key]
+
+
+def get_avatar_mask(size: int) -> Image.Image | None:
+    """获取缓存的头像遮罩"""
+    key = size
+    if key in MASK_CACHE:
+        return MASK_CACHE[key]
+
+    assets_root = _get_root_assets_dir()
+    mask_path = assets_root / "redpacket" / "mask" / "avatar.png"
+    if not mask_path.exists():
+        return None
+
+    try:
+        mask = Image.open(mask_path).convert("L")
+        mask = mask.resize((size, size), Image.Resampling.BILINEAR)
+        MASK_CACHE[key] = mask
+        return mask
+    except Exception:
+        return None
+
+
+def get_base_image(cover_name: str, body_name: str) -> Image.Image:
+    """获取缓存的底图（封面+主体）"""
+    key = f"{cover_name}_{body_name}"
+    if key in BASE_IMAGE_CACHE:
+        return BASE_IMAGE_CACHE[key].copy()
+
     assets_dir = _get_assets_dir()
     cover_path = assets_dir / "cover" / cover_name
     body_path = assets_dir / "body" / body_name
+    
+    # Ensure files exist, otherwise fallback to random or error
+    if not cover_path.exists():
+        cover_name = _random_asset_file("cover", (".png", ".jpg", ".jpeg"))
+        cover_path = assets_dir / "cover" / cover_name
+    if not body_path.exists():
+        body_name = _random_asset_file("body", (".png", ".jpg", ".jpeg"))
+        body_path = assets_dir / "body" / body_name
 
     cover = _open_image(cover_path)
     body = _open_image(body_path)
@@ -113,7 +165,7 @@ def compose_redpacket(cover_name: str, body_name: str) -> str:
 
     scale = final_width / cover.width
     new_height = int(cover.height * scale)
-    cover = cover.resize((final_width, new_height), Image.Resampling.LANCZOS)
+    cover = cover.resize((final_width, new_height), Image.Resampling.BILINEAR)
 
     if new_height >= cover_target_height:
         cover = cover.crop((0, 0, final_width, cover_target_height))
@@ -122,25 +174,50 @@ def compose_redpacket(cover_name: str, body_name: str) -> str:
         tmp.paste(cover, (0, 0))
         cover = tmp
 
-    body = body.resize((final_width, body_target_height), Image.Resampling.LANCZOS)
+    body = body.resize((final_width, body_target_height), Image.Resampling.BILINEAR)
 
     final_img = Image.new("RGBA", (final_width, final_height), (0, 0, 0, 0))
     final_img.paste(cover, (0, 0))
     final_img.paste(body, (0, body_y), body)
 
+    BASE_IMAGE_CACHE[key] = final_img
+    return final_img.copy()
+
+
+def compose_redpacket(cover_name: str, body_name: str) -> str:
+    img = get_base_image(cover_name, body_name)
+    
     output_dir = _ensure_output_dir()
     cover_base = cover_name.rsplit(".", 1)[0]
     body_base = body_name.rsplit(".", 1)[0]
-    filename = f"rp_{cover_base}__{body_base}.png"
+    filename = f"rp_{cover_base}__{body_base}.webp"
     output_path = output_dir / filename
 
-    final_img = final_img.convert("RGB")
-    final_img.save(output_path, format="PNG")
+    img.save(output_path, format="WEBP", quality=90)
     return str(output_path)
 
 
 def generate_dynamic_redpacket_preview(name: str, amount: str) -> str:
     return compose_redpacket("C01.jpg", "B01.png")
+
+
+def get_random_cover_body() -> tuple[str, str]:
+    """获取随机的封面和主体文件名"""
+    cover = _random_asset_file("cover", (".png", ".jpg", ".jpeg"))
+    body = _random_asset_file("body", (".png", ".jpg", ".jpeg"))
+    return cover, body
+
+
+def get_base_image_bytes(cover_name: str, body_name: str) -> tuple[bytes, str]:
+    """获取底图的字节流（用于快速发送预览占位）"""
+    img = get_base_image(cover_name, body_name)
+    import io
+    import uuid
+    byte_io = io.BytesIO()
+    # 占位图不需要太高质量，快速编码即可
+    img.save(byte_io, format="WEBP", quality=75, method=0)
+    filename = f"preview_{uuid.uuid4().hex}.webp"
+    return byte_io.getvalue(), filename
 
 
 def _load_font(size: int, font_name: str | None = None) -> ImageFont.FreeTypeFont:
@@ -271,128 +348,77 @@ def compose_redpacket_with_info(
     if body_name is None:
         body_name = _random_asset_file("body", (".png", ".jpg", ".jpeg"))
 
-    base_path = compose_redpacket(cover_name, body_name)
-    img = Image.open(base_path).convert("RGBA")
+    # 1. 获取缓存底图
+    img = get_base_image(cover_name, body_name)
     draw = ImageDraw.Draw(img)
     width, height = img.size
     center_x = width // 2
 
-    layout = layout or RedpacketLayout()
+    assets_root = _get_root_assets_dir()
 
-    if watermark_image_name is None:
-        watermark_image_name = "redpacket/watermark/lustfulboy.png"
-
-    if layout.font_name:
-        title_font = _load_font(layout.title_font_size, layout.font_name)
-        message_font = _load_font(layout.message_font_size, layout.font_name)
-        amount_font = _load_font(layout.amount_font_size, layout.font_name)
-        watermark_font = _load_font(layout.watermark_font_size, layout.font_name)
-        group_font = watermark_font
-    else:
-        title_font = _load_fixed_font("fonts/redpacket/simhei.ttf", layout.title_font_size)
-        message_font = _load_fixed_font("fonts/redpacket/simhei.ttf", layout.message_font_size)
-        amount_font = _load_fixed_font("fonts/redpacket/方正喵呜体.ttf", layout.amount_font_size)
-        watermark_font = _load_fixed_font("fonts/redpacket/segoepr.ttf", layout.watermark_font_size)
-        group_font = _load_fixed_font("fonts/redpacket/segoepr.ttf", layout.watermark_font_size)
-
-    if watermark_image_name:
-        wm_path = _get_root_assets_dir() / watermark_image_name
-        if wm_path.exists():
-            wm_img = Image.open(wm_path).convert("RGBA")
-            size = 80
-            wm_img = wm_img.resize((size, size), Image.Resampling.LANCZOS)
-            img.paste(wm_img, (11, 11), wm_img)
-
-    avatar_size = layout.avatar_size
-    # 使用布局配置中的头像 Y 坐标，或使用默认值 130
-    avatar_y = layout.avatar_y if hasattr(layout, 'avatar_y') else 130
+    # 2. 获取缓存字体
+    # 为了性能，优先使用固定字体配置，忽略 layout 中的部分字体配置
+    # 如果需要完全自定义，可以在这里扩展，但会牺牲部分缓存命中率
+    title_font = get_font_cached(assets_root / "fonts/redpacket/simhei.ttf", 60)
+    amount_font = get_font_cached(assets_root / "fonts/redpacket/方正喵呜体.ttf", 100)
     
+    # 3. 处理头像
+    avatar_size = 210
+    avatar_y = 130
+    
+    av_img = None
     if avatar_file_content:
-        import io
         try:
             av_img = Image.open(io.BytesIO(avatar_file_content)).convert("RGBA")
-            av_img = av_img.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
-            # 应用遮罩
-            assets_root = _get_root_assets_dir()
-            mask_path = assets_root / "redpacket" / "mask" / "avatar.png"
-            if mask_path.exists():
-                mask_img = Image.open(mask_path).convert("L")
-                mask_img = mask_img.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
-                av_img.putalpha(mask_img)
+            av_img = av_img.resize((avatar_size, avatar_size), Image.Resampling.BILINEAR)
+            
+            # 获取并应用缓存遮罩
+            mask = get_avatar_mask(avatar_size)
+            if mask:
+                av_img.putalpha(mask)
         except Exception:
-             av_img = _load_avatar_image(avatar_image_name, avatar_size)
-    else:
+            pass
+            
+    if av_img is None:
+        # Fallback to default avatar
         av_img = _load_avatar_image(avatar_image_name, avatar_size)
 
-    if av_img is not None:
-        # 计算头像位置（水平居中）
+    if av_img:
         avatar_x = center_x - avatar_size // 2
-        
         img.paste(av_img, (avatar_x, avatar_y), av_img)
 
+    # 4. 绘制文本
     sender_text = f"{sender_name}的红包"
-    sender_pos = (float(center_x), float(avatar_y + avatar_size + 60))
-    _draw_text_with_layout(
-        draw,
-        sender_pos,
+    # 简单计算居中位置
+    # 注意：ImageDraw.text 的 anchor="mm" 表示文本中心对齐
+    draw.text(
+        (center_x, avatar_y + avatar_size + 60),
         sender_text,
-        title_font,
-        layout.title_color,
-        "mm",
-        layout.title_align,
-        layout.title_dx,
-        layout.title_dy,
-        layout,
+        font=title_font,
+        fill=(235, 205, 154),
+        anchor="mm",
     )
 
     amount_text = f"{amount:.0f}/{count}"
-    amount_pos = (float(center_x), float(height - layout.amount_from_bottom))
-    original_shadow = layout.shadow_enabled
-    layout.shadow_enabled = False
-    _draw_text_with_layout(
-        draw,
-        amount_pos,
+    draw.text(
+        (center_x, height - 80),
         amount_text,
-        amount_font,
-        layout.amount_color,
-        "mm",
-        layout.amount_align,
-        layout.amount_dx,
-        layout.amount_dy,
-        layout,
+        font=amount_font,
+        fill=(235, 205, 154),
+        anchor="mm",
     )
-    layout.shadow_enabled = original_shadow
 
-    if not group_text:
-        group_text = GROUP_WATERMARK_TEXT
-    margin_x = 10.0
-    margin_y = 10.0
-    group_pos = (float(width) - margin_x, float(height) - margin_y)
-    anchor = "rb"
-    draw.text(group_pos, group_text, font=group_font, fill=layout.watermark_color, anchor=anchor)
-
-    # 缩放图片以平衡质量和体积 (宽限制为 1080px，满足高清需求但避免过大)
-    max_width = 1080
-    if width > max_width:
-        ratio = max_width / width
-        new_height = int(height * ratio)
-        img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
-    
-    # Use UUID for unique filename to avoid conflicts and cache issues
+    # 5. 生成结果 (WebP + 内存操作)
     import uuid
-    # 切换为 WebP 格式，同等画质下体积更小
     filename = f"rp_{uuid.uuid4().hex}.webp"
-    
+
     if return_bytes:
-        import io
         byte_io = io.BytesIO()
-        # WebP Quality 90: 极高画质，体积远小于 JPEG
-        img.save(byte_io, format="WEBP", quality=90)
+        # WebP method=4 平衡速度和大小
+        img.save(byte_io, format="WEBP", quality=80, method=4)
         return byte_io.getvalue(), filename
 
     output_dir = _ensure_output_dir()
     output_path = output_dir / filename
-    
-    # Save as WebP with high quality
-    img.save(output_path, format="WEBP", quality=90)
+    img.save(output_path, format="WEBP", quality=80, method=4)
     return str(output_path)
