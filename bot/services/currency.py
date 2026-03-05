@@ -155,7 +155,7 @@ class CurrencyService:
             msg_parts = [
                 "🎉 签到成功！",
                 f"获得：+{total_reward} {CURRENCY_SYMBOL}",
-                f"连续：{streak} 天 (加成 +{int(streak_bonus_pct*100)}%)"
+                f"连续：{streak} 天"
             ]
 
             if weekly_bonus > 0:
