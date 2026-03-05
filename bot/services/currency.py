@@ -73,7 +73,7 @@ class CurrencyService:
             # 2. 检查是否已签到
             today = now().date()
             if user_ext.last_checkin_date == today:
-                return False, f"{CURRENCY_SYMBOL} 今日签到已完成，明天再来领取奖励吧！"
+                return False, f"{CURRENCY_SYMBOL} 今日已经签过到了哦！"
 
             # 3. 读取配置
             base_reward = await CurrencyService.get_config(session, "checkin.base", 10)
