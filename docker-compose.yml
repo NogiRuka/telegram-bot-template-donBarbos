@@ -69,7 +69,6 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}-mysql
     restart: always
     command: >
-      --skip-sha256-password
       --default-authentication-plugin=caching_sha2_password
       --max_connections=100
       --innodb-buffer-pool-size=256M
@@ -88,7 +87,7 @@ services:
       - mysql-data:/var/lib/mysql
 
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u$${DB_USER}", "-p$${DB_PASS}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
       interval: 10s
       timeout: 5s
       retries: 5
