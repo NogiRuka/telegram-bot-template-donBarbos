@@ -389,9 +389,9 @@ def compose_redpacket_with_info(
 
     # 1. 头像位置
     # 头像大小：210x210 像素
-    avatar_size = 210
+    avatar_size = 240
     # 头像垂直位置 (Y轴)：距离顶部 130 像素
-    avatar_y = 130
+    avatar_y = 180
     
     if av_img:
         av_img = av_img.resize((avatar_size, avatar_size))
@@ -401,8 +401,8 @@ def compose_redpacket_with_info(
     # 2. 发送者昵称位置
     # 字体大小：60
     # 垂直位置 (Y轴)：头像底部 + 60 像素
-    nickname_y = avatar_y + avatar_size + 60
-    sender_text = f"{sender_name} 的红包"
+    nickname_y = avatar_y + avatar_size + 50
+    sender_text = f"{sender_name}的红包"
     
     draw.text(
         (center_x, nickname_y),
