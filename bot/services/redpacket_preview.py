@@ -383,30 +383,52 @@ def compose_redpacket_with_info(
         # Fallback to default avatar
         av_img = _load_avatar_image(avatar_image_name, avatar_size)
 
-    if av_img:
-        avatar_x = center_x - avatar_size // 2
-        img.paste(av_img, (avatar_x, avatar_y), av_img)
+    # -----------------------------------------------------------
+    # [坐标配置区域] 修改下方的坐标值可调整元素位置
+    # -----------------------------------------------------------
 
-    # 4. 绘制文本
-    sender_text = f"{sender_name}的红包"
-    # 简单计算居中位置
-    # 注意：ImageDraw.text 的 anchor="mm" 表示文本中心对齐
+    # 1. 头像位置
+    # 头像大小：100x100 像素
+    avatar_size = 100
+    # 头像垂直位置 (Y轴)：距离顶部 135 像素
+    avatar_y = 135
+    
+    if av_img:
+        av_img = av_img.resize((avatar_size, avatar_size))
+        # 粘贴头像：(水平居中, 指定Y坐标)
+        img.paste(av_img, (center_x - avatar_size // 2, avatar_y), av_img)
+
+    # 2. 发送者昵称位置
+    # 字体大小：60
+    # 垂直位置 (Y轴)：头像底部 + 60 像素
+    nickname_y = avatar_y + avatar_size + 60
+    sender_text = f"{sender_name} 的红包"
+    
     draw.text(
-        (center_x, avatar_y + avatar_size + 60),
+        (center_x, nickname_y),
         sender_text,
         font=title_font,
-        fill=(235, 205, 154),
-        anchor="mm",
+        fill=(235, 205, 154), # 字体颜色 (RGB)
+        anchor="mm",          # 锚点：水平垂直居中
     )
 
+    # 3. 红包金额/数量位置
+    # 字体大小：100
+    # 垂直位置 (Y轴)：距离底部 80 像素
+    amount_y = height - 80
     amount_text = f"{amount:.0f}/{count}"
+    
     draw.text(
-        (center_x, height - 80),
+        (center_x, amount_y),
         amount_text,
         font=amount_font,
-        fill=(235, 205, 154),
-        anchor="mm",
+        fill=(235, 205, 154), # 字体颜色 (RGB)
+        anchor="mm",          # 锚点：水平垂直居中
     )
+    
+    # -----------------------------------------------------------
+    # [结束] 坐标配置区域
+    # -----------------------------------------------------------
 
     # 5. 生成结果 (WebP + 内存操作)
     import uuid
