@@ -10,6 +10,7 @@ from loguru import logger
 
 from bot.services.redpacket_preview import compose_redpacket_with_info
 from bot.utils.text import escape_markdown_v2
+from bot.filters.admin import AdminFilter
 
 router = Router(name="test_dynamic_redpacket_preview")
 
@@ -17,7 +18,7 @@ router = Router(name="test_dynamic_redpacket_preview")
 # 注意：在生产环境中应考虑过期时间和内存占用，这里仅作为演示优化
 AVATAR_CACHE: dict[str, bytes] = {}
 
-@router.message(Command("test_rp"))
+@router.message(Command("test_rp"), AdminFilter())
 async def test_dynamic_redpacket_preview(message: Message, command: CommandObject) -> None:
     # 立即发送状态提示，减少等待焦虑
     await message.bot.send_chat_action(chat_id=message.chat.id, action="upload_photo")
