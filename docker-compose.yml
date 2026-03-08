@@ -98,7 +98,7 @@ services:
   mysqlbackup:
     container_name: ${COMPOSE_PROJECT_NAME}-mysqlbackup
     image: databack/mysql-backup
-    command: dump
+    command: dumpcs
     restart: always
     env_file:
       - .env
