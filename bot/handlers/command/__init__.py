@@ -22,7 +22,6 @@ def get_command_router() -> Router:
     # 所有者命令 (动态加载)
     router.include_router(get_owner_command_router())
     
-    # 测试命令仅在开发模式下启用
-    if getattr(settings, "DEBUG", False):
-        router.include_router(test_dynamic_redpacket_preview_router)
+    # 测试命令 (临时开启，无需 DEBUG 模式)
+    router.include_router(test_dynamic_redpacket_preview_router)
     return router
