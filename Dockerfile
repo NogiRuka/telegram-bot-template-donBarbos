@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:0.5-python3.13-alpine
+FROM ghcr.io/astral-sh/uv:0.5-python3.13-bookworm-slim
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -10,7 +10,7 @@ COPY . .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-install-project --no-group dev \
-    && adduser -D appuser \
+    && useradd -m appuser \
     && chown -R appuser:appuser .
 
 USER appuser

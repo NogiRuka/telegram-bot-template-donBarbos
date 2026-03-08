@@ -7,6 +7,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
 
 
@@ -111,7 +112,8 @@ def get_font_cached(path: Path | str, size: int) -> ImageFont.FreeTypeFont:
     if key not in FONT_CACHE:
         try:
             FONT_CACHE[key] = ImageFont.truetype(str(path), size)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to load font {path}: {e}, falling back to default")
             # Fallback to default if font fails to load
             FONT_CACHE[key] = ImageFont.load_default()
     return FONT_CACHE[key]
