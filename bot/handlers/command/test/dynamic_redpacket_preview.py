@@ -4,15 +4,11 @@ import time
 import asyncio
 from aiogram import Router, F
 from aiogram.filters import Command, CommandObject
-from aiogram.types import FSInputFile, Message, CallbackQuery, BufferedInputFile, InputMediaPhoto
+from aiogram.types import FSInputFile, Message, CallbackQuery, BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
 
-from bot.services.redpacket_preview import (
-    compose_redpacket_with_info, 
-    get_random_cover_body, 
-    get_base_image_bytes
-)
+from bot.services.redpacket_preview import compose_redpacket_with_info
 from bot.utils.text import escape_markdown_v2
 
 router = Router(name="test_dynamic_redpacket_preview")
@@ -28,28 +24,6 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
     start_total = time.time()
     args_raw = (command.args or "").strip()
     parts = args_raw.split() if args_raw else []
-
-    # 1. 预选随机封面，确保占位图和最终图一致
-    cover_name, body_name = get_random_cover_body()
-
-    # 2. 快速生成并发送占位图（底图）
-    try:
-        t_ph = time.time()
-        ph_bytes, ph_filename = get_base_image_bytes(cover_name, body_name)
-        ph_file = BufferedInputFile(ph_bytes, filename=ph_filename)
-        
-        # 发送占位消息
-        placeholder_msg = await message.answer_photo(
-            photo=ph_file,
-            caption=r"⏳ *红包生成中\.\.\.*",
-            parse_mode="MarkdownV2"
-        )
-        logger.info(f"发送占位图耗时: {time.time() - t_ph:.4f}s")
-    except Exception:
-        logger.exception("发送占位图失败")
-        placeholder_msg = None
-        # 如果占位图发送失败，尝试发送纯文本提示
-        await message.answer("⏳ 红包生成中...")
 
     # 默认使用发送者名字
     sender_name = message.from_user.first_name if message.from_user else "测试用户"
@@ -123,8 +97,8 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
         img_bytes, filename = await loop.run_in_executor(
             None, 
             lambda: compose_redpacket_with_info(
-                cover_name=cover_name,  # 使用预选的封面
-                body_name=body_name,    # 使用预选的主体
+                cover_name=None,  # 随机
+                body_name=None,   # 随机
                 sender_name=sender_name,
                 amount=amount,
                 count=count,
@@ -138,10 +112,7 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
         logger.info(f"生成最终图片耗时: {time.time() - t3:.4f}s")
     except Exception:
         logger.exception("生成红包模板预览失败: sender=%s amount=%s count=%s", sender_name, amount, count)
-        if placeholder_msg:
-            await placeholder_msg.edit_caption(caption="❌ 生成预览失败，请重试")
-        else:
-            await message.reply("生成预览失败，请检查日志", parse_mode=None)
+        await message.reply("生成预览失败，请检查日志", parse_mode=None)
         return
 
     # 构建生动的按钮
@@ -156,31 +127,16 @@ async def test_dynamic_redpacket_preview(message: Message, command: CommandObjec
         escaped_name = escape_markdown_v2(sender_name)
         final_caption = f"🧧 *{escaped_name}* 发出一个拼手气红包\n\n恭喜发财，大吉大利"
 
-        if placeholder_msg:
-            # 3. 使用 edit_message_media 替换占位图
-            await placeholder_msg.edit_media(
-                media=InputMediaPhoto(
-                    media=file,
-                    caption=final_caption,
-                    parse_mode="MarkdownV2"
-                ),
-                reply_markup=kb.as_markup()
-            )
-        else:
-            # 如果占位图发送失败，直接发送新消息
-            await message.answer_photo(
-                photo=file,
-                caption=final_caption,
-                parse_mode="MarkdownV2",
-                reply_markup=kb.as_markup()
-            )
-        logger.info(f"替换/发送图片耗时: {time.time() - t4:.4f}s")
+        await message.answer_photo(
+            photo=file,
+            caption=final_caption,
+            parse_mode="MarkdownV2",
+            reply_markup=kb.as_markup()
+        )
+        logger.info(f"发送图片耗时: {time.time() - t4:.4f}s")
     except Exception:
         logger.exception("发送红包模板预览失败")
-        if placeholder_msg:
-             await placeholder_msg.edit_caption(caption="❌ 发送预览失败")
-        else:
-             await message.reply("发送预览失败，请检查日志", parse_mode=None)
+        await message.reply("发送预览失败，请检查日志", parse_mode=None)
     
     logger.info(f"总耗时: {time.time() - start_total:.4f}s")
 
