@@ -388,10 +388,10 @@ def compose_redpacket_with_info(
     # -----------------------------------------------------------
 
     # 1. 头像位置
-    # 头像大小：100x100 像素
-    avatar_size = 100
-    # 头像垂直位置 (Y轴)：距离顶部 135 像素
-    avatar_y = 135
+    # 头像大小：210x210 像素
+    avatar_size = 210
+    # 头像垂直位置 (Y轴)：距离顶部 130 像素
+    avatar_y = 130
     
     if av_img:
         av_img = av_img.resize((avatar_size, avatar_size))
