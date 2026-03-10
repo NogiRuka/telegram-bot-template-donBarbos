@@ -2,10 +2,10 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.config import settings
 from bot.handlers.command._meta import collect_command_meta
 from bot.services.config_service import is_command_enabled
 from bot.services.users import is_admin
+from bot.utils.permissions import _resolve_role
 
 router = Router(name="help")
 
@@ -57,7 +57,7 @@ async def help_command(message: types.Message, session: AsyncSession) -> None:
             if usage:
                 text += f"  用法: {usage}\n"
 
-    if message.from_user and message.from_user.id == settings.get_owner_id():
+    if message.from_user and await _resolve_role(session, message.from_user.id) == "owner":
         text += "\n👑 所有者命令\n"
         for cmd in owner_cmds:
             name = cmd.get("name") or ""

@@ -25,6 +25,7 @@ from bot.services.config_service import ensure_config_defaults, sync_notificatio
 from bot.services.currency import CurrencyService
 from bot.services.emby_service import run_emby_sync, start_scheduler
 from bot.services.quiz_service import QuizService
+from bot.services.users import sync_roles_from_settings_on_startup
 
 if TYPE_CHECKING:
     from aiogram import Bot
@@ -56,6 +57,7 @@ async def on_startup() -> None:
     try:
         await ensure_database_and_schema()
         async with sessionmaker() as session:
+            await sync_roles_from_settings_on_startup(session)
             await ensure_config_defaults(session)
             await sync_notification_channels(session)
             await seed_quiz_data(session)

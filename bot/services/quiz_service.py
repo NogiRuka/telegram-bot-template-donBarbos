@@ -552,8 +552,8 @@ class QuizService:
         执行定时问答触发
         """
         from bot.config.constants import KEY_BOT_FEATURES_ENABLED
-        from bot.core.config import settings
         from bot.database.database import sessionmaker
+        from bot.database.models import UserExtendModel, UserRole
 
         logger.info("⏰ [定时问答] 开始执行定时触发任务")
 
@@ -569,8 +569,11 @@ class QuizService:
             bot_enabled = await get_config(session, KEY_BOT_FEATURES_ENABLED)
             # bot_enabled 默认为 True (None 视为开启)
             is_bot_enabled = bot_enabled is not False
-
-            owner_id = settings.get_owner_id()
+            owner_stmt = select(UserExtendModel.user_id).where(UserExtendModel.role == UserRole.owner).limit(1)
+            owner_id = (await session.execute(owner_stmt)).scalar_one_or_none()
+            if owner_id is None:
+                logger.warning("⏰ [定时问答] 未找到所有者(owner)记录，任务取消")
+                return
 
             # 3. 获取目标用户
             target_type = await get_config(session, KEY_QUIZ_SCHEDULE_TARGET_TYPE)

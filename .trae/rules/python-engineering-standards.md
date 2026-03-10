@@ -21,36 +21,36 @@ This project must follow clean architecture and maintainable engineering practic
 
 ### 角色来源与判定顺序（以实际代码为准）
 
-角色判定使用“配置 + 数据库”两套来源，并按以下顺序决策：
+运行时角色判定只认数据库 `user_extend.role`。
+
+`.env` 中的 `OWNER_ID` / `ADMIN_IDS` 仅用于启动时初始化/补全数据库权限（不要在运行时用 env 兜底判定权限）：
+- `OWNER_ID`：必须存在记录，且必须为 `owner`（必要时提升为 owner）
+- `ADMIN_IDS`：仅当 `user_extend` 不存在记录时创建为 `admin`；若已存在记录则不改动其 role
 
 ```mermaid
 flowchart TD
-  A[收到消息/回调] --> B{user_id == OWNER_ID?}
-  B -- 是 --> O[role=owner]
-  B -- 否 --> C{数据库 user_extend.role 有记录?}
-  C -- owner --> O
-  C -- admin --> D[role=admin]
-  C -- user/无 --> E{user_id 在 ADMIN_IDS?}
-  E -- 是 --> D
-  E -- 否 --> U[role=user]
+  S[机器人启动] --> I[同步 .env 权限到 user_extend]
+  I --> R[运行中收到消息/回调]
+  R --> Q{user_extend.role?}
+  Q -- owner --> O[role=owner]
+  Q -- admin --> A[role=admin]
+  Q -- user/无 --> U[role=user]
 ```
 
 关键点：
-- OWNER_ID（配置）优先级最高
-- 数据库角色（user_extend.role）其次
-- ADMIN_IDS（配置）用于兜底/兼容，无数据库记录也能成为 admin
+- 运行时不读取 env 权限，只读数据库
+- 启动阶段做一次 env -> 数据库 的初始化/补全（后续权限变更以数据库为准）
 
 对应实现参考：
+- bot/runtime/hooks.py 的 on_startup
+- bot/services/users.py 的 sync_roles_from_settings_on_startup
 - bot/utils/permissions.py 的 _resolve_role、require_owner、require_admin_priv
 
 ### 权限校验的推荐写法（避免各处重复判断）
 
 - owner 专用：使用 require_owner 装饰器保护处理器
 - admin/owner 专用：使用 require_admin_priv 装饰器保护处理器
-- 不推荐在 handlers 里手写“查表/读配置”做权限判断（容易漏掉某个来源、也容易重复）
-
-补充说明：
-- bot/filters/admin.py 的 AdminFilter 只基于数据库 user_extend.role 判断；如果某个管理员只配置在 ADMIN_IDS 而未写入数据库，AdminFilter 可能识别不到。需要覆盖“配置 + 数据库”时，优先使用 require_admin_priv。
+- 不推荐在 handlers 里手写“查表/读 env/读配置”做权限判断（容易重复、也容易出现多处口径不一致）
 
 ### 什么时候用 Filter，什么时候用装饰器
 
@@ -67,13 +67,13 @@ flowchart TD
 ```
 
 推荐规则（本项目）：
-- 需要“配置 + 数据库”一起判定角色，并且希望统一返回“无权限”提示：用装饰器（require_owner / require_admin_priv）
+- 需要做权限判断，并且希望统一返回“无权限”提示：用装饰器（require_owner / require_admin_priv）
 - 需要对“某类消息形态”做过滤（例如只处理私聊、只处理带参数、只处理某种内容类型），且不需要统一提示：用 Filter
 - 需要给 CallbackQuery 和 Message 两种入口都做一致的拒绝提示：优先用装饰器（装饰器里统一处理 Message/CallbackQuery）
 
 容易踩坑的点：
 - Filter 通常是“静默跳过”更自然；如果你想提示用户“你没权限”，Filter 也能做，但经常会把提示逻辑分散到多个 Filter 里，后期不好统一
-- AdminFilter 如果只查数据库角色，可能漏掉仅在 .env 的 ADMIN_IDS 里配置但未写入数据库的管理员；这类“多来源判定”更适合走 permissions.py 的统一逻辑
+- 权限判断不要依赖 env：env 仅用于启动时初始化/补全数据库权限
 
 ---
 

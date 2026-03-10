@@ -41,9 +41,8 @@ async def _resolve_role(session: AsyncSession | None, user_id: int | None) -> st
     """解析角色
 
     功能说明:
-    - 优先判断配置文件中的 Owner ID (最高权限)
-    - 其次从数据库 `user_extend.role` 解析
-    - 若无会话或无记录, 回退到配置文件的 admin 列表
+    - 仅从数据库 `user_extend.role` 解析
+    - 若无会话或无记录, 默认返回 user
 
     输入参数:
     - session: 异步数据库会话, 可为 None
@@ -52,11 +51,6 @@ async def _resolve_role(session: AsyncSession | None, user_id: int | None) -> st
     返回值:
     - str: 角色标识, 取值为 "owner" | "admin" | "user"
     """
-    # 1. 优先检查配置文件中的 Owner (最高优先级)
-    if user_id is not None and user_id == settings.get_owner_id():
-        return "owner"
-
-    # 2. 查数据库
     if session and user_id is not None:
         with contextlib.suppress(Exception):
             result = await session.execute(select(UserExtendModel.role).where(UserExtendModel.user_id == user_id))
@@ -65,16 +59,6 @@ async def _resolve_role(session: AsyncSession | None, user_id: int | None) -> st
                 return "owner"
             if r == UserRole.admin:
                 return "admin"
-            # 数据库为普通用户，继续检查是否为配置文件中的 admin
-            if r == UserRole.user:
-                pass
-            else:
-                return "user" # 默认
-
-    # 3. 检查配置文件中的 Admin
-    if user_id is not None and user_id in set(settings.get_admin_ids()):
-        return "admin"
-
     return "user"
 
 
@@ -263,8 +247,10 @@ def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[
             user_id = _extract_user_id(first)
 
             # 2. 检查是否为所有者 (豁免检查)
-            if user_id and user_id == settings.get_owner_id():
-                return await func(*args, **kwargs)
+            if session is not None and user_id is not None:
+                role = await _resolve_role(session, user_id)
+                if role == "owner":
+                    return await func(*args, **kwargs)
 
             # 3. 检查功能开关
             if session is None:

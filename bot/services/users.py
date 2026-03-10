@@ -1,4 +1,5 @@
 from __future__ import annotations
+import contextlib
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -271,9 +272,6 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
                     await session.execute(update(UserModel).where(UserModel.id == user.id).values(**update_values))
                     await session.commit()
 
-        # 基于配置同步角色（owner/admin/user）
-        await ensure_role_by_settings(session, user.id)
-
         # 更新扩展表最后交互时间（无则创建）
         ext_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user.id))
         ext = ext_res.scalar_one_or_none()
@@ -295,44 +293,73 @@ async def upsert_user_on_interaction(session: AsyncSession, user: User) -> None:
     except Exception as e:
         logger.error("更新用户交互失败，user_id=%s，错误信息：%s", user.id, e, exc_info=True)
 
-async def ensure_role_by_settings(session: AsyncSession, user_id: int) -> None:
-    """根据配置同步用户角色
+def _append_env_init_remark(existing: str | None, marker: str) -> str:
+    s = (existing or "").strip()
+    token = f"[env_init:{marker}]"
+    if token in s:
+        return s or token
+    if not s:
+        return token
+    return f"{s}\n{token}"
 
-    功能说明:
-    - 对 `user_extend.role` 进行校正：与配置中的 `OWNER_ID`/`ADMIN_IDS` 对齐
-    - 优先级：owner > admin > user
 
-    输入参数:
-    - session: 异步数据库会话
-    - user_id: Telegram 用户ID
+async def sync_roles_from_settings_on_startup(session: AsyncSession) -> None:
+    """启动时将 .env 中的 OWNER_ID/ADMIN_IDS 写入数据库
 
-    返回值:
-    - None
+    规则:
+    - OWNER_ID: 必须存在且必须为 owner（必要时提升为 owner）
+    - ADMIN_IDS: 仅在 user_extend 不存在记录时创建为 admin；若已存在则不改动其 role
     """
-    try:
-        desired = UserRole.user
-        try:
-            if user_id == settings.get_owner_id():
-                desired = UserRole.owner
-        except Exception:
-            pass
-        if desired is UserRole.user:
-            admin_ids = set(settings.get_admin_ids())
-            if user_id in admin_ids:
-                desired = UserRole.admin
+    owner_id: int | None = None
+    with contextlib.suppress(Exception):
+        owner_id = int(settings.get_owner_id())
+    admin_ids: set[int] = set()
+    with contextlib.suppress(Exception):
+        admin_ids = set(settings.get_admin_ids())
 
-        res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == user_id))
-        ext = res.scalar_one_or_none()
-        if ext is None:
-            model = UserExtendModel(user_id=user_id, role=desired)
-            session.add(model)
-            await session.commit()
-            return
-        if ext.role != desired:
-            ext.role = desired
-            await session.commit()
-    except Exception:
-        pass
+    if owner_id is not None:
+        admin_ids.discard(owner_id)
+
+    changed = False
+
+    if owner_id is not None:
+        owner_res = await session.execute(select(UserExtendModel).where(UserExtendModel.user_id == owner_id))
+        owner_ext = owner_res.scalar_one_or_none()
+        if owner_ext is None:
+            session.add(
+                UserExtendModel(
+                    user_id=owner_id,
+                    role=UserRole.owner,
+                    remark=_append_env_init_remark(None, "OWNER_ID"),
+                )
+            )
+            changed = True
+        else:
+            if owner_ext.role != UserRole.owner:
+                owner_ext.role = UserRole.owner
+                changed = True
+            new_remark = _append_env_init_remark(owner_ext.remark, "OWNER_ID")
+            if (owner_ext.remark or "").strip() != new_remark:
+                owner_ext.remark = new_remark
+                changed = True
+
+    if admin_ids:
+        existing_res = await session.execute(select(UserExtendModel.user_id).where(UserExtendModel.user_id.in_(admin_ids)))
+        existing_ids = set(existing_res.scalars().all())
+        missing_ids = [uid for uid in admin_ids if uid not in existing_ids]
+        if missing_ids:
+            for uid in missing_ids:
+                session.add(
+                    UserExtendModel(
+                        user_id=uid,
+                        role=UserRole.admin,
+                        remark=_append_env_init_remark(None, "ADMIN_IDS"),
+                    )
+                )
+            changed = True
+
+    if changed:
+        await session.commit()
 
 
 async def set_is_admin(session: AsyncSession, user_id: int, is_admin: bool) -> None:
