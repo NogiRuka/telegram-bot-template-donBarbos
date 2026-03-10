@@ -7,10 +7,11 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import FSInputFile, Message, CallbackQuery, BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.services.redpacket_preview import compose_redpacket_with_info
 from bot.utils.text import escape_markdown_v2
-from bot.filters.admin import AdminFilter
+from bot.utils.permissions import require_admin_priv
 
 router = Router(name="test_dynamic_redpacket_preview")
 
@@ -18,8 +19,9 @@ router = Router(name="test_dynamic_redpacket_preview")
 # 注意：在生产环境中应考虑过期时间和内存占用，这里仅作为演示优化
 AVATAR_CACHE: dict[str, bytes] = {}
 
-@router.message(Command("test_rp"), AdminFilter())
-async def test_dynamic_redpacket_preview(message: Message, command: CommandObject) -> None:
+@router.message(Command("test_rp"))
+@require_admin_priv
+async def test_dynamic_redpacket_preview(message: Message, command: CommandObject, session: AsyncSession) -> None:
     # 立即发送状态提示，减少等待焦虑
     await message.bot.send_chat_action(chat_id=message.chat.id, action="upload_photo")
     start_total = time.time()
