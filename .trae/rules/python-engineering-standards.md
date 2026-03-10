@@ -9,6 +9,98 @@ This project must follow clean architecture and maintainable engineering practic
 
 ---
 
+## 项目快速认知（新对话直接看这里）
+
+### 权限体系（只允许 3 级）
+
+- user：普通用户，默认权限
+- admin：管理员，可执行管理相关操作（可多个）
+- owner：所有者，最高权限（唯一）
+
+项目中不允许出现其它权限等级（例如 superadmin、vip、staff 等）。
+
+### 角色来源与判定顺序（以实际代码为准）
+
+角色判定使用“配置 + 数据库”两套来源，并按以下顺序决策：
+
+```mermaid
+flowchart TD
+  A[收到消息/回调] --> B{user_id == OWNER_ID?}
+  B -- 是 --> O[role=owner]
+  B -- 否 --> C{数据库 user_extend.role 有记录?}
+  C -- owner --> O
+  C -- admin --> D[role=admin]
+  C -- user/无 --> E{user_id 在 ADMIN_IDS?}
+  E -- 是 --> D
+  E -- 否 --> U[role=user]
+```
+
+关键点：
+- OWNER_ID（配置）优先级最高
+- 数据库角色（user_extend.role）其次
+- ADMIN_IDS（配置）用于兜底/兼容，无数据库记录也能成为 admin
+
+对应实现参考：
+- bot/utils/permissions.py 的 _resolve_role、require_owner、require_admin_priv
+
+### 权限校验的推荐写法（避免各处重复判断）
+
+- owner 专用：使用 require_owner 装饰器保护处理器
+- admin/owner 专用：使用 require_admin_priv 装饰器保护处理器
+- 不推荐在 handlers 里手写“查表/读配置”做权限判断（容易漏掉某个来源、也容易重复）
+
+补充说明：
+- bot/filters/admin.py 的 AdminFilter 只基于数据库 user_extend.role 判断；如果某个管理员只配置在 ADMIN_IDS 而未写入数据库，AdminFilter 可能识别不到。需要覆盖“配置 + 数据库”时，优先使用 require_admin_priv。
+
+---
+
+## 命令结构（强制约束）
+
+命令处理器必须放在以下目录之一（权限由目录决定）：
+- handlers/command/user/
+- handlers/command/admin/
+- handlers/command/owner/
+
+禁止创建其它权限目录（group/mod/superadmin/staff/vip/misc/utils 等）。
+
+命令文件名只描述功能，不包含权限前缀：
+- 错误：admin_ban.py、owner_stats.py
+- 正确：ban.py、stats.py
+
+每个命令模块必须声明 COMMAND_META：
+
+```python
+COMMAND_META = {
+    "name": "ban",
+    "alias": "b",
+    "usage": "/ban <user>",
+    "desc": "封禁用户"
+}
+```
+
+---
+
+## 项目关键约定（必须遵守）
+
+- 分层职责
+  - handlers：只处理 Telegram 交互（收消息、发消息、按钮回调、状态机）
+  - services：业务逻辑
+  - repositories：数据库访问
+  - utils：纯工具函数
+- SQLAlchemy 软删除过滤必须使用 Model.is_deleted.is_(False)（禁止 not Model.is_deleted）
+- 新增写入数据库的记录，尽量填写 remark/description/extra 等说明字段，便于排查
+- Ruff 全局忽略 RUF003（允许中文全角标点）
+- 更新 EmbyUserModel 前必须使用 bot.services.emby_update_helper.detect_and_update_emby_user（Snapshot-First + 历史记录）
+
+---
+
+## 运行与重启约定
+
+- 本项目启动命令：python -m bot
+- 修改代码后重启流程：先显式停止旧进程，再启动新进程
+
+---
+
 ## Commit Message Rules
 
 All git commit messages MUST:
