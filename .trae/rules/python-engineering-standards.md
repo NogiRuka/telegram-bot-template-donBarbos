@@ -52,6 +52,29 @@ flowchart TD
 补充说明：
 - bot/filters/admin.py 的 AdminFilter 只基于数据库 user_extend.role 判断；如果某个管理员只配置在 ADMIN_IDS 而未写入数据库，AdminFilter 可能识别不到。需要覆盖“配置 + 数据库”时，优先使用 require_admin_priv。
 
+### 什么时候用 Filter，什么时候用装饰器
+
+两者本质都是“让处理器在特定条件下才会执行”，区别主要在于：复用粒度、可组合性、是否需要统一的拒绝提示、以及依赖的数据源。
+
+```mermaid
+flowchart TD
+  A[需要做权限/条件限制] --> B{限制是否属于\n“路由层过滤”？}
+  B -- 是 --> F[用 Filter\n(写在 @router.message(...) 里)]
+  B -- 否/需要统一提示 --> D[用装饰器\n(require_* / feature 开关等)]
+  F --> C{条件是否只依赖 message/callback\n+ session 且不需要统一提示?}
+  C -- 是 --> OK1[Filter 最合适]
+  C -- 否 --> D
+```
+
+推荐规则（本项目）：
+- 需要“配置 + 数据库”一起判定角色，并且希望统一返回“无权限”提示：用装饰器（require_owner / require_admin_priv）
+- 需要对“某类消息形态”做过滤（例如只处理私聊、只处理带参数、只处理某种内容类型），且不需要统一提示：用 Filter
+- 需要给 CallbackQuery 和 Message 两种入口都做一致的拒绝提示：优先用装饰器（装饰器里统一处理 Message/CallbackQuery）
+
+容易踩坑的点：
+- Filter 通常是“静默跳过”更自然；如果你想提示用户“你没权限”，Filter 也能做，但经常会把提示逻辑分散到多个 Filter 里，后期不好统一
+- AdminFilter 如果只查数据库角色，可能漏掉仅在 .env 的 ADMIN_IDS 里配置但未写入数据库的管理员；这类“多来源判定”更适合走 permissions.py 的统一逻辑
+
 ---
 
 ## 命令结构（强制约束）
