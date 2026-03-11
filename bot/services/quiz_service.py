@@ -47,6 +47,21 @@ class QuizService:
     # 用于保存后台任务的引用，防止被垃圾回收
     _background_tasks = set()
 
+    @classmethod
+    def _track_task(cls, task: asyncio.Task) -> None:
+        cls._background_tasks.add(task)
+        task.add_done_callback(cls._background_tasks.discard)
+
+    @classmethod
+    async def stop_background_tasks(cls) -> None:
+        if not cls._background_tasks:
+            return
+        tasks = list(cls._background_tasks)
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        cls._background_tasks.clear()
+
     @staticmethod
     async def schedule_quiz_timeout(
         bot: Bot,
@@ -147,8 +162,7 @@ class QuizService:
                 timeout=timeout
             )
         )
-        cls._background_tasks.add(task)
-        task.add_done_callback(cls._background_tasks.discard)
+        cls._track_task(task)
 
     @staticmethod
     async def check_trigger_conditions(session: AsyncSession, user_id: int, chat_id: int, bot: Bot | None = None) -> bool:
@@ -510,7 +524,7 @@ class QuizService:
         await session.commit()
 
         if is_correct:
-            msg = "✅ 回答正确！"  # noqa: RUF001
+            msg = "✅ 回答正确！"
         else:
             # correct_option = question.options[question.correct_index]
             msg = "❌ 回答错误。"
@@ -701,9 +715,7 @@ class QuizService:
                         if curr_time_str in sch_times:
                             # 触发!
                             logger.info(f"⏰ [定时问答] 时间匹配 ({curr_time_str})，触发任务")
-                            # 使用 create_task 避免阻塞调度循环
-                            # 并稍微延迟一点点避免同一秒多次(其实 sleep(1) 够了)
-                            asyncio.create_task(cls.trigger_scheduled_quiz(bot))
+                            cls._track_task(asyncio.create_task(cls.trigger_scheduled_quiz(bot), name="scheduled_quiz"))
                             # 等待一秒确保时间跳变
                             await asyncio.sleep(1)
 

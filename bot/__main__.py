@@ -1,6 +1,8 @@
 from __future__ import annotations
 import asyncio
+import contextlib
 import os
+import signal
 import sys
 from pathlib import Path
 
@@ -85,11 +87,38 @@ async def main() -> None:
     dp.shutdown.register(on_shutdown)
 
     try:
-        await dp.start_polling(
-            bot,
-            # 显式允许 chat_member 类型的更新
-            allowed_updates=["message", "callback_query", "chat_member", "my_chat_member"]
+        loop = asyncio.get_running_loop()
+        old_sigint_handler = signal.getsignal(signal.SIGINT)
+
+        polling_task = asyncio.create_task(
+            dp.start_polling(
+                bot,
+                allowed_updates=["message", "callback_query", "chat_member", "my_chat_member"],
+            ),
+            name="polling",
         )
+
+        shutdown_logged = False
+
+        def _request_shutdown() -> None:
+            nonlocal shutdown_logged
+            if not shutdown_logged:
+                shutdown_logged = True
+                logger.info("👋 收到 Ctrl+C, 正在安全停止...")
+            if not polling_task.done():
+                polling_task.cancel()
+
+        def _handle_sigint(signum: int, frame: object | None) -> None:
+            loop.call_soon_threadsafe(_request_shutdown)
+
+        with contextlib.suppress(ValueError, OSError, RuntimeError):
+            signal.signal(signal.SIGINT, _handle_sigint)
+
+        try:
+            await polling_task
+        finally:
+            with contextlib.suppress(ValueError, OSError, RuntimeError):
+                signal.signal(signal.SIGINT, old_sigint_handler)
     except asyncio.CancelledError:
         return
     except Exception as e:
@@ -98,7 +127,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("👋 收到 Ctrl+C, 已安全退出")
+    asyncio.run(main())

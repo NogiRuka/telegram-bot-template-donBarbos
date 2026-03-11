@@ -15,3 +15,11 @@ class UserSubmitState(StatesGroup):
 
 class UserSubmissionState(StatesGroup):
     """用户求片/投稿中心状态"""
+
+
+class RedPacketWizardStates(StatesGroup):
+    waiting_for_type = State()
+    waiting_for_amount = State()
+    waiting_for_count = State()
+    waiting_for_target = State()
+    waiting_for_message = State()

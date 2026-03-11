@@ -30,6 +30,23 @@ from bot.services.users import sync_roles_from_settings_on_startup
 if TYPE_CHECKING:
     from aiogram import Bot
 
+_runtime_tasks: set[asyncio.Task[Any]] = set()
+
+
+def _track_runtime_task(task: asyncio.Task[Any]) -> None:
+    _runtime_tasks.add(task)
+    task.add_done_callback(_runtime_tasks.discard)
+
+
+async def _stop_runtime_tasks() -> None:
+    if not _runtime_tasks:
+        return
+    tasks = list(_runtime_tasks)
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+    _runtime_tasks.clear()
+
 
 async def on_startup() -> None:
     """启动钩子
@@ -71,9 +88,9 @@ async def on_startup() -> None:
                 await run_emby_sync(session)
 
         # 启动定时问答调度器
-        asyncio.create_task(QuizService.start_scheduler(bot))
+        _track_runtime_task(asyncio.create_task(QuizService.start_scheduler(bot), name="quiz_scheduler"))
         # 启动 Emby 定时同步调度器
-        asyncio.create_task(start_scheduler(bot))
+        _track_runtime_task(asyncio.create_task(start_scheduler(bot), name="emby_scheduler"))
 
         await start_api_server()
     except (OSError, ValueError, RuntimeError) as err:
@@ -94,6 +111,8 @@ async def on_shutdown() -> None:
     - None
     """
     logger.info("⏹️ 机器人停止中...")
+    await _stop_runtime_tasks()
+    await QuizService.stop_background_tasks()
     await remove_default_commands(bot)
     await dp.storage.close()
     await dp.fsm.storage.close()
