@@ -6,8 +6,10 @@ Webhooks 路由
 from __future__ import annotations
 import json
 from datetime import timedelta
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
+from aiogram.exceptions import TelegramAPIError
+from aiohttp import ClientError
 from fastapi import APIRouter, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
@@ -20,7 +22,6 @@ from bot.core.constants import (
 from bot.core.loader import bot as telegram_bot
 from bot.database.database import sessionmaker
 from bot.database.models.emby_user import EmbyUserModel
-from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
 from bot.database.models.notification import NotificationModel
 from bot.database.models.user_extend import UserExtendModel
@@ -31,11 +32,312 @@ from bot.utils.emby import get_emby_client
 
 try:
     import orjson
-except Exception:
+except ImportError:
     orjson = None
 from loguru import logger
 
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
 router = APIRouter()
+
+WARNING_COOLDOWN_MINUTES = 10
+WARNING_SECOND = 2
+WARNING_DISABLE_THRESHOLD = 3
+
+
+def _parse_whitelist(whitelist_val: Any) -> list[str]:
+    if isinstance(whitelist_val, list):
+        return [str(x) for x in whitelist_val]
+    if isinstance(whitelist_val, str):
+        loaded: Any | None
+        try:
+            loaded = json.loads(whitelist_val)
+        except json.JSONDecodeError:
+            loaded = None
+        if isinstance(loaded, list):
+            return [str(x) for x in loaded]
+        return [x.strip() for x in whitelist_val.split(",") if x.strip()]
+    return []
+
+
+async def _get_emby_user_and_extend(
+    session: AsyncSession,
+    user_id: str,
+) -> tuple[EmbyUserModel, UserExtendModel | None] | None:
+    stmt = select(EmbyUserModel, UserExtendModel).outerjoin(
+        UserExtendModel,
+        UserExtendModel.emby_user_id == EmbyUserModel.emby_user_id,
+    ).where(EmbyUserModel.emby_user_id == user_id)
+    result = await session.execute(stmt)
+    record = result.first()
+    if not record:
+        return None
+    emby_user, user_extend = record
+    return emby_user, user_extend
+
+
+async def _increment_warning(
+    session: AsyncSession,
+    emby_user: EmbyUserModel,
+    warning_key: str,
+    client_device: tuple[str, str],
+    item: dict[str, Any],
+) -> int | None:
+    client, device_name = client_device
+    extra_data = dict(emby_user.extra_data) if emby_user.extra_data else {}
+    warning_data = extra_data.get(warning_key, {})
+
+    last_warning_time_str = warning_data.get("last_warning_time")
+    if last_warning_time_str:
+        last_time = parse_formatted_datetime(last_warning_time_str)
+        if last_time and (now() - last_time < timedelta(minutes=WARNING_COOLDOWN_MINUTES)):
+            return None
+
+    count = int(warning_data.get("count", 0)) + 1
+    warning_data["count"] = count
+    warning_data["last_warning_time"] = format_datetime(now())
+
+    history = warning_data.get("history", [])
+    history.append(
+        {
+            "time": format_datetime(now()),
+            "item_name": item.get("Name"),
+            "item_id": item.get("Id"),
+            "client": client,
+            "device": device_name,
+        }
+    )
+    warning_data["history"] = history
+
+    extra_data[warning_key] = warning_data
+    emby_user.extra_data = extra_data
+    flag_modified(emby_user, "extra_data")
+    session.add(emby_user)
+    await session.commit()
+    return count
+
+
+async def _send_telegram_warning(
+    *,
+    user_extend: UserExtendModel | None,
+    emby_user_id: str,
+    text: str,
+    count: int,
+    label: str,
+) -> None:
+    if user_extend and user_extend.user_id:
+        try:
+            await telegram_bot.send_message(chat_id=user_extend.user_id, text=text)
+            logger.info(f"🔔 已向用户 {user_extend.user_id} 发送{label} (第 {count} 次)")
+        except (TelegramAPIError, ClientError, RuntimeError, ValueError) as e:
+            logger.error(f"❌ 发送 Telegram 警告失败: {e}")
+        return
+    logger.warning(f"⚠️ 用户 {emby_user_id} 未绑定 Telegram 账号，无法发送警告")
+
+
+async def _send_emby_session_warning(
+    emby_client: Any,
+    session_id: str,
+    header: str,
+    text: str,
+) -> bool:
+    try:
+        await emby_client.send_session_message(session_id, header, text)
+    except (ClientError, RuntimeError, ValueError) as e:
+        logger.error(f"❌ 发送警告消息失败: {e}")
+    else:
+        return True
+    return False
+
+
+def _is_web_playback(client: str, device_name: str) -> bool:
+    return "Emby Web" in client or "Web" in device_name
+
+
+def _is_restricted_client(client: str, device_name: str) -> bool:
+    keywords = ["网易", "爆米花"]
+    return any(k in client for k in keywords) or any(k in device_name for k in keywords)
+
+
+async def _is_user_in_whitelist(session: AsyncSession, user_id: str) -> bool:
+    whitelist_val = await get_config(session, CONFIG_KEY_EMBY_WHITELIST_USER_IDS)
+    whitelist = _parse_whitelist(whitelist_val)
+    return user_id in whitelist
+
+
+async def _maybe_disable_user_for_web_playback(
+    session: AsyncSession,
+    emby_client: Any,
+    emby_user: EmbyUserModel,
+    user_id: str,
+) -> None:
+    success = await emby_client.disable_user(user_id)
+    if not success:
+        return
+
+    new_user_dto = await emby_client.get_user(user_id)
+    detect_and_update_emby_user(
+        model=emby_user,
+        new_user_dto=new_user_dto or emby_user.user_dto or {},
+        session=session,
+        force_update=True,
+        extra_remark="系统自动封禁：网页端播放违规 (3次警告)",
+    )
+
+    if not emby_user.extra_data:
+        emby_user.extra_data = {}
+    emby_user.extra_data["is_disabled"] = True
+    emby_user.extra_data["disabled_reason"] = "web_playback_violation"
+    emby_user.extra_data["disabled_at"] = format_datetime(now())
+
+    flag_modified(emby_user, "extra_data")
+    session.add(emby_user)
+    await session.commit()
+    logger.info(f"💾 已更新用户 {user_id} 数据库状态为封禁，并保存历史快照")
+    logger.info(f"🚫 用户 {user_id} 已成功封禁")
+
+
+async def _handle_web_playback_warning(
+    session: AsyncSession,
+    payload: dict[str, Any],
+    user_id: str,
+    session_info: dict[str, Any],
+) -> None:
+    session_id = session_info.get("Id")
+    client = session_info.get("Client", "")
+    device_name = session_info.get("DeviceName", "")
+
+    record = await _get_emby_user_and_extend(session, user_id)
+    if not record:
+        logger.warning(f"⚠️ 用户 {user_id} 不在本地数据库中，无法记录警告")
+        return
+    emby_user, user_extend = record
+
+    item = payload.get("Item", {})
+    count = await _increment_warning(
+        session=session,
+        emby_user=emby_user,
+        warning_key="web_playback_warning",
+        client_device=(client, device_name),
+        item=item,
+    )
+    if count is None:
+        logger.info(f"⏳ 用户 {user_id} 处于警告冷却期，跳过")
+        return
+
+    msg_data = _get_warning_message(count)
+    msg_text = f"{msg_data['Header']}\n\n{msg_data['Text']}"
+    await _send_telegram_warning(
+        user_extend=user_extend,
+        emby_user_id=user_id,
+        text=msg_text,
+        count=count,
+        label="网页端播放警告",
+    )
+
+    emby_client = get_emby_client()
+    if not emby_client:
+        logger.error("❌ Emby 客户端未配置，无法发送警告")
+        return
+
+    if session_id:
+        ok = await _send_emby_session_warning(
+            emby_client,
+            str(session_id),
+            msg_data["Header"],
+            msg_data["Text"],
+        )
+        if ok:
+            logger.info(f"🔔 已向用户 {user_id} 发送第 {count} 次网页端播放警告")
+
+    if count >= WARNING_DISABLE_THRESHOLD:
+        logger.info(f"🚨 用户 {user_id} 达到警告上限，执行封禁")
+        try:
+            await _maybe_disable_user_for_web_playback(session, emby_client, emby_user, user_id)
+        except (ClientError, RuntimeError, ValueError) as e:
+            logger.error(f"❌ 封禁用户失败: {e}")
+
+
+async def _maybe_disable_user_for_restricted_client(
+    session: AsyncSession,
+    emby_client: Any,
+    emby_user: EmbyUserModel,
+    user_id: str,
+) -> None:
+    success = await emby_client.disable_user(user_id)
+    if not success:
+        return
+
+    new_user_dto = await emby_client.get_user(user_id)
+    detect_and_update_emby_user(
+        model=emby_user,
+        new_user_dto=new_user_dto or emby_user.user_dto or {},
+        session=session,
+        force_update=True,
+        extra_remark="系统自动封禁：使用违规客户端 (3次警告)",
+    )
+
+    if not emby_user.extra_data:
+        emby_user.extra_data = {}
+    emby_user.extra_data["is_disabled"] = True
+    emby_user.extra_data["disabled_reason"] = "restricted_client_violation"
+    emby_user.extra_data["disabled_at"] = format_datetime(now())
+
+    flag_modified(emby_user, "extra_data")
+    session.add(emby_user)
+    await session.commit()
+    logger.info(f"💾 已更新用户 {user_id} 数据库状态为封禁，并保存历史快照")
+    logger.info(f"🚫 用户 {user_id} 已成功封禁")
+
+
+async def _handle_restricted_client_warning(
+    session: AsyncSession,
+    payload: dict[str, Any],
+    user_id: str,
+    client: str,
+    device_name: str,
+) -> None:
+    record = await _get_emby_user_and_extend(session, user_id)
+    if not record:
+        logger.warning(f"⚠️ 用户 {user_id} 不在本地数据库中，无法记录警告")
+        return
+    emby_user, user_extend = record
+
+    item = payload.get("Item", {})
+    count = await _increment_warning(
+        session=session,
+        emby_user=emby_user,
+        warning_key="restricted_client_warning",
+        client_device=(client, device_name),
+        item=item,
+    )
+    if count is None:
+        logger.info(f"⏳ 用户 {user_id} 处于违规客户端警告冷却期，跳过")
+        return
+
+    msg_text = _get_restricted_client_warning_text(count)
+    await _send_telegram_warning(
+        user_extend=user_extend,
+        emby_user_id=user_id,
+        text=msg_text,
+        count=count,
+        label="违规客户端警告",
+    )
+
+    if count < WARNING_DISABLE_THRESHOLD:
+        return
+
+    logger.info(f"🚨 用户 {user_id} 达到违规客户端警告上限，执行封禁")
+    emby_client = get_emby_client()
+    if not emby_client:
+        logger.error("❌ Emby 客户端未配置，无法执行封禁")
+        return
+
+    try:
+        await _maybe_disable_user_for_restricted_client(session, emby_client, emby_user, user_id)
+    except (ClientError, RuntimeError, ValueError) as e:
+        logger.error(f"❌ 封禁用户失败: {e}")
 
 
 @router.post("/webhooks/emby")
@@ -164,14 +466,11 @@ async def handle_emby_webhook(
 
 async def _process_playback_start(payload: dict[str, Any]) -> None:
     """处理播放开始事件，检测网页端播放并警告"""
-    # 1. 检查是否为网页端
     session_info = payload.get("Session", {})
     client = session_info.get("Client", "")
     device_name = session_info.get("DeviceName", "")
 
-    # 简单的网页端检测逻辑: Client 通常是 "Emby Web", DeviceName 可能包含 "Web"
-    is_web = "Emby Web" in client or "Web" in device_name
-    if not is_web:
+    if not _is_web_playback(client, device_name):
         return
 
     user_info = payload.get("User", {})
@@ -182,144 +481,49 @@ async def _process_playback_start(payload: dict[str, Any]) -> None:
     logger.info(f"🔍 检测到用户 {user_id} 使用网页端播放 (Client: {client}, Device: {device_name})")
 
     async with sessionmaker() as session:
-        # 2. 检查白名单
-        whitelist_val = await get_config(session, CONFIG_KEY_EMBY_WHITELIST_USER_IDS)
-        whitelist: list[str] = []
-        if isinstance(whitelist_val, list):
-            whitelist = [str(x) for x in whitelist_val]
-        elif isinstance(whitelist_val, str):
-            try:
-                loaded = json.loads(whitelist_val)
-                if isinstance(loaded, list):
-                    whitelist = [str(x) for x in loaded]
-                else:
-                    whitelist = [x.strip() for x in whitelist_val.split(",") if x.strip()]
-            except Exception:
-                whitelist = [x.strip() for x in whitelist_val.split(",") if x.strip()]
-
-        if str(user_id) in whitelist:
+        if await _is_user_in_whitelist(session, str(user_id)):
             logger.info(f"✅ 用户 {user_id} 在白名单中，跳过网页端播放警告")
             return
 
-        # 3. 获取用户数据
-        result = await session.execute(select(EmbyUserModel).where(EmbyUserModel.emby_user_id == str(user_id)))
-        emby_user = result.scalar_one_or_none()
-
-        if not emby_user:
-            logger.warning(f"⚠️ 用户 {user_id} 不在本地数据库中，无法记录警告")
-            return
-
-        # 4. 检查冷却时间和更新警告
-        extra_data = dict(emby_user.extra_data) if emby_user.extra_data else {}
-        web_warning = extra_data.get("web_playback_warning", {})
-
-        last_warning_time_str = web_warning.get("last_warning_time")
-        if last_warning_time_str:
-            last_time = parse_formatted_datetime(last_warning_time_str)
-            # logger.info(f"🕒 时间调试: last_str={last_warning_time_str}, last_obj={last_time}, now={now()}")
-            if last_time and (now() - last_time < timedelta(minutes=10)):
-                logger.info(f"⏳ 用户 {user_id} 处于警告冷却期，跳过")
-                return
-
-        # 更新计数
-        count = web_warning.get("count", 0) + 1
-        web_warning["count"] = count
-        web_warning["last_warning_time"] = format_datetime(now())
-
-        # 记录历史
-        history = web_warning.get("history", [])
-        item = payload.get("Item", {})
-        history.append({
-            "time": format_datetime(now()),
-            "item_name": item.get("Name"),
-            "item_id": item.get("Id"),
-            "client": client,
-            "device": device_name,
-        })
-        web_warning["history"] = history
-
-        extra_data["web_playback_warning"] = web_warning
-
-        # 显式赋值以触发更新
-        emby_user.extra_data = extra_data
-        flag_modified(emby_user, "extra_data")
-        session.add(emby_user)
-        await session.commit()
-
-        # 5. 发送警告和执行封禁
-        emby_client = get_emby_client()
-        if not emby_client:
-            logger.error("❌ Emby 客户端未配置，无法发送警告")
-            return
-
-        session_id = session_info.get("Id")
-        if session_id:
-            msg_data = _get_warning_message(count)
-            try:
-                await emby_client.send_session_message(
-                    session_id,
-                    msg_data["Header"],
-                    msg_data["Text"]
-                )
-                logger.info(f"🔔 已向用户 {user_id} 发送第 {count} 次网页播放警告")
-            except Exception as e:
-                logger.error(f"❌ 发送警告消息失败: {e}")
-
-        if count >= 3:
-            logger.info(f"🚨 用户 {user_id} 达到警告上限，执行封禁")
-            try:
-                # 获取完整的 Policy 并修改 IsDisabled
-                success = await emby_client.disable_user(str(user_id))
-                
-                if success:
-                    # 重新获取最新的 UserDto，确保本地数据库中的 user_dto 字段包含 IsDisabled=True 的最新状态
-                    new_user_dto = await emby_client.get_user(str(user_id))
-
-                    # 更新数据库状态
-                    # 2. 更新主表
-                    # 调用通用更新函数，强制更新以记录变更，并附带系统封禁备注
-                    detect_and_update_emby_user(
-                        model=emby_user,
-                        new_user_dto=new_user_dto or emby_user.user_dto or {},
-                        session=session,
-                        force_update=True,
-                        extra_remark="系统自动封禁：网页端播放违规 (3次警告)"
-                    )
-                    
-                    if not emby_user.extra_data:
-                        emby_user.extra_data = {}
-                    
-                    # 更新 extra_data
-                    emby_user.extra_data["is_disabled"] = True
-                    emby_user.extra_data["disabled_reason"] = "web_playback_violation"
-                    emby_user.extra_data["disabled_at"] = format_datetime(now())
-                    
-                    flag_modified(emby_user, "extra_data")
-                    session.add(emby_user)
-                    await session.commit()
-                    logger.info(f"💾 已更新用户 {user_id} 数据库状态为封禁，并保存历史快照")
-
-                    logger.info(f"🚫 用户 {user_id} 已成功封禁")
-            except Exception as e:
-                logger.error(f"❌ 封禁用户失败: {e}")
+        await _handle_web_playback_warning(
+            session=session,
+            payload=payload,
+            user_id=str(user_id),
+            session_info=session_info,
+        )
 
 
 def _get_warning_message(count: int) -> dict[str, str]:
     if count == 1:
         return {
             "Header": "桜色男孩⚣｜网页播放小侦测 🤖",
-            "Text": "哎呀～被我发现啦 👀\n\n你正在用【网页端播放】。\n这里暂时不支持这种打开方式哦～\n\n换成客户端继续看吧！\n这次我就当没看见 😉"
+            "Text": (
+                "哎呀～被我发现啦 👀\n\n"
+                "你正在用【网页端播放】。\n"
+                "这里暂时不支持这种打开方式哦～\n\n"
+                "换成客户端继续看吧！\n"
+                "这次我就当没看见 😉"
+            ),
         }
-    elif count == 2:
+    if count == WARNING_SECOND:
         return {
             "Header": "桜色男孩⚣｜你又来了嘛 😳",
-            "Text": "嗯？怎么还是【网页端播放】呀～\n\n我已经提醒过一次啦。\n再继续这样看下去，账号可能会被关进“小黑屋”哦…\n\n快换客户端吧，别让我难做 🥺"
+            "Text": (
+                "嗯？怎么还是【网页端播放】呀～\n\n"
+                "我已经提醒过一次啦。\n"
+                "再继续这样看下去，账号可能会被关进“小黑屋”哦…\n\n"
+                "快换客户端吧，别让我难做 🥺"
+            ),
         }
-    else:
-        return {
-            "Header": "桜色男孩⚣｜我真的要动手了 🚨",
-            "Text": "第三次检测到【网页端播放】。\n\n规则说话，我也没办法啦。\n你的账号已被自动禁用。\n\n需要解封的话，请联系管理员～"
-        }
+    return {
+        "Header": "桜色男孩⚣｜我真的要动手了 🚨",
+        "Text": (
+            "第三次检测到【网页端播放】。\n\n"
+            "规则说话，我也没办法啦。\n"
+            "你的账号已被自动禁用。\n\n"
+            "需要解封的话，请联系管理员～"
+        ),
+    }
 
 
 def format_json_pretty(data: Any) -> str:
@@ -338,15 +542,15 @@ def format_json_pretty(data: Any) -> str:
     依赖安装方式：
     - `pip install orjson`（已在项目依赖中声明）
     """
-    try:
-        if orjson is not None:
-            return orjson.dumps(data, option=orjson.OPT_INDENT_2).decode("utf-8")
-        return json.dumps(data, ensure_ascii=False, indent=2)
-    except Exception:
+    if orjson is not None:
         try:
-            return json.dumps({"unserializable": str(type(data))}, ensure_ascii=False)
-        except Exception:
-            return "{}"
+            return orjson.dumps(data, option=orjson.OPT_INDENT_2).decode("utf-8")
+        except TypeError:
+            pass
+    try:
+        return json.dumps(data, ensure_ascii=False, indent=2)
+    except (TypeError, ValueError):
+        return json.dumps({"unserializable": str(type(data))}, ensure_ascii=False)
 
 
 async def _process_restricted_client_check(payload: dict[str, Any]) -> None:
@@ -355,11 +559,7 @@ async def _process_restricted_client_check(payload: dict[str, Any]) -> None:
     client = session_info.get("Client", "")
     device_name = session_info.get("DeviceName", "")
 
-    # 关键词检测
-    keywords = ["网易", "爆米花"]
-    is_restricted = any(k in client for k in keywords) or any(k in device_name for k in keywords)
-    
-    if not is_restricted:
+    if not _is_restricted_client(client, device_name):
         return
 
     user_info = payload.get("User", {})
@@ -370,131 +570,16 @@ async def _process_restricted_client_check(payload: dict[str, Any]) -> None:
     logger.info(f"🔍 检测到用户 {user_id} 使用违规客户端 (Client: {client}, Device: {device_name})")
 
     async with sessionmaker() as session:
-        # 1. 检查白名单
-        whitelist_val = await get_config(session, CONFIG_KEY_EMBY_WHITELIST_USER_IDS)
-        whitelist: list[str] = []
-        if isinstance(whitelist_val, list):
-            whitelist = [str(x) for x in whitelist_val]
-        elif isinstance(whitelist_val, str):
-            try:
-                loaded = json.loads(whitelist_val)
-                if isinstance(loaded, list):
-                    whitelist = [str(x) for x in loaded]
-                else:
-                    whitelist = [x.strip() for x in whitelist_val.split(",") if x.strip()]
-            except Exception:
-                whitelist = [x.strip() for x in whitelist_val.split(",") if x.strip()]
-
-        if str(user_id) in whitelist:
+        if await _is_user_in_whitelist(session, str(user_id)):
             logger.info(f"✅ 用户 {user_id} 在白名单中，跳过违规客户端警告")
             return
-
-        # 2. 获取用户数据 & Telegram ID
-        stmt = select(EmbyUserModel, UserExtendModel).outerjoin(
-            UserExtendModel, 
-            UserExtendModel.emby_user_id == EmbyUserModel.emby_user_id
-        ).where(EmbyUserModel.emby_user_id == str(user_id))
-        
-        result = await session.execute(stmt)
-        record = result.first()
-        
-        if not record:
-            logger.warning(f"⚠️ 用户 {user_id} 不在本地数据库中，无法记录警告")
-            return
-            
-        emby_user, user_extend = record
-        
-        # 3. 检查冷却时间和更新警告
-        extra_data = dict(emby_user.extra_data) if emby_user.extra_data else {}
-        warning_data = extra_data.get("restricted_client_warning", {})
-        
-        last_warning_time_str = warning_data.get("last_warning_time")
-        if last_warning_time_str:
-            last_time = parse_formatted_datetime(last_warning_time_str)
-            if last_time and (now() - last_time < timedelta(minutes=10)):
-                logger.info(f"⏳ 用户 {user_id} 处于违规客户端警告冷却期，跳过")
-                return
-
-        # 更新计数
-        count = warning_data.get("count", 0) + 1
-        warning_data["count"] = count
-        warning_data["last_warning_time"] = format_datetime(now())
-        
-        # 记录历史
-        history = warning_data.get("history", [])
-        item = payload.get("Item", {})
-        history.append({
-            "time": format_datetime(now()),
-            "item_name": item.get("Name"),
-            "item_id": item.get("Id"),
-            "client": client,
-            "device": device_name,
-        })
-        warning_data["history"] = history
-        
-        extra_data["restricted_client_warning"] = warning_data
-        
-        # 显式赋值以触发更新
-        emby_user.extra_data = extra_data
-        flag_modified(emby_user, "extra_data")
-        session.add(emby_user)
-        await session.commit()
-        
-        # 4. 发送 Telegram 警告
-        if user_extend and user_extend.user_id:
-            msg_text = _get_restricted_client_warning_text(count)
-            try:
-                await telegram_bot.send_message(chat_id=user_extend.user_id, text=msg_text)
-                logger.info(f"🔔 已向用户 {user_extend.user_id} 发送违规客户端警告 (第 {count} 次)")
-            except Exception as e:
-                logger.error(f"❌ 发送 Telegram 警告失败: {e}")
-        else:
-            logger.warning(f"⚠️ 用户 {user_id} 未绑定 Telegram 账号，无法发送警告")
-
-        # 5. 执行封禁 (如果达到3次)
-        if count >= 3:
-            logger.info(f"🚨 用户 {user_id} 达到违规客户端警告上限，执行封禁")
-            emby_client = get_emby_client()
-            if not emby_client:
-                logger.error("❌ Emby 客户端未配置，无法执行封禁")
-                return
-
-            try:
-                # 获取完整的 Policy 并修改 IsDisabled
-                success = await emby_client.disable_user(str(user_id))
-                
-                if success:
-                    # 重新获取最新的 UserDto，确保本地数据库中的 user_dto 字段包含 IsDisabled=True 的最新状态
-                    new_user_dto = await emby_client.get_user(str(user_id))
-
-                    # 更新数据库状态
-                    # 2. 更新主表
-                    # 调用通用更新函数，强制更新以记录变更，并附带系统封禁备注
-                    detect_and_update_emby_user(
-                        model=emby_user,
-                        new_user_dto=new_user_dto or emby_user.user_dto or {},
-                        session=session,
-                        force_update=True,
-                        extra_remark="系统自动封禁：使用违规客户端 (3次警告)"
-                    )
-                    
-                    if not emby_user.extra_data:
-                        emby_user.extra_data = {}
-                    
-                    # 更新 extra_data
-                    emby_user.extra_data["is_disabled"] = True
-                    emby_user.extra_data["disabled_reason"] = "restricted_client_violation"
-                    emby_user.extra_data["disabled_at"] = format_datetime(now())
-                    
-                    flag_modified(emby_user, "extra_data")
-                    session.add(emby_user)
-                    await session.commit()
-                    logger.info(f"💾 已更新用户 {user_id} 数据库状态为封禁，并保存历史快照")
-
-                    logger.info(f"🚫 用户 {user_id} 已成功封禁")
-                    
-            except Exception as e:
-                logger.error(f"❌ 封禁用户失败: {e}")
+        await _handle_restricted_client_warning(
+            session=session,
+            payload=payload,
+            user_id=str(user_id),
+            client=client,
+            device_name=device_name,
+        )
 
 
 def _get_restricted_client_warning_text(count: int) -> str:
@@ -506,7 +591,7 @@ def _get_restricted_client_warning_text(count: int) -> str:
             "请尽快更换为官方客户端观看。\n\n"
             "这次只是提醒，不会影响账号使用 😉"
         )
-    elif count == 2:
+    if count == WARNING_SECOND:
         return (
             "桜色男孩⚣｜你又用爆米花啦 😳\n\n"
             "再次检测到你使用【网易爆米花客户端】。\n\n"
@@ -514,10 +599,9 @@ def _get_restricted_client_warning_text(count: int) -> str:
             "如果继续使用，账号可能会被限制访问。\n\n"
             "别让我难做呀，换个客户端吧～"
         )
-    else:
-        return (
-            "桜色男孩⚣｜播放权限已锁定 🚨\n\n"
-            "第三次检测到你使用【网易爆米花客户端】。\n\n"
-            "根据服务器规则，你的账号已被自动禁用。\n"
-            "如需恢复权限，请联系管理员处理。"
-        )
+    return (
+        "桜色男孩⚣｜播放权限已锁定 🚨\n\n"
+        "第三次检测到你使用【网易爆米花客户端】。\n\n"
+        "根据服务器规则，你的账号已被自动禁用。\n"
+        "如需恢复权限，请联系管理员处理。"
+    )

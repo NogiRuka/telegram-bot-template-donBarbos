@@ -8,6 +8,7 @@ from aiogram import Bot
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from bot.database.models import (
     ActionType,
@@ -16,7 +17,7 @@ from bot.database.models import (
     UserExtendModel,
 )
 from bot.services.emby_update_helper import detect_and_update_emby_user
-from bot.utils.datetime import now
+from bot.utils.datetime import format_datetime, now
 from bot.utils.emby import get_emby_client
 from bot.utils.msg_group import send_group_notification
 
@@ -225,7 +226,7 @@ async def disable_emby_user(
         user_info: 用户信息字典
     """
     results = []
-    
+
     # 1. 确定目标 Emby 用户
     emby_user_id = None
     emby_user_db = None
@@ -260,14 +261,11 @@ async def disable_emby_user(
         success = await emby_client.disable_user(emby_user_id)
         if success:
             results.append("✅ Emby 账号已禁用")
-            
+
             # 重新获取 UserDto 以保持同步
             new_user_dto = await emby_client.get_user(emby_user_id)
-            
-            # 更新数据库状态
-            from sqlalchemy.orm.attributes import flag_modified
-            from bot.utils.datetime import format_datetime
 
+            # 更新数据库状态
             # 使用通用更新逻辑
             detect_and_update_emby_user(
                 model=emby_user_db,
@@ -280,21 +278,21 @@ async def disable_emby_user(
             # 额外更新 extra_data
             if not emby_user_db.extra_data:
                 emby_user_db.extra_data = {}
-            
+
             emby_user_db.extra_data["is_disabled"] = True
             emby_user_db.extra_data["disabled_reason"] = "manual_ban"
             emby_user_db.extra_data["disabled_at"] = format_datetime(now())
             emby_user_db.extra_data["disabled_by"] = admin_id
-            
+
             flag_modified(emby_user_db, "extra_data")
             session.add(emby_user_db)
             await session.commit()
-            
+
             # 发送通知给用户
             if bot:
                 # 尝试获取 Telegram ID
                 tg_user_id = None
-                
+
                 # 1. 检查是否已经是 Telegram ID
                 if target_id.isdigit():
                     # 验证是否关联到当前 Emby 用户
@@ -305,7 +303,7 @@ async def disable_emby_user(
                     res_check = await session.execute(stmt_check)
                     if res_check.scalar_one_or_none():
                         tg_user_id = int(target_id)
-                
+
                 # 2. 如果还没有 Telegram ID，尝试通过 Emby ID 反查
                 if not tg_user_id:
                     stmt_find = select(UserExtendModel).where(UserExtendModel.emby_user_id == emby_user_id)
@@ -313,7 +311,7 @@ async def disable_emby_user(
                     user_ext = res_find.scalar_one_or_none()
                     if user_ext and user_ext.user_id:
                         tg_user_id = user_ext.user_id
-                
+
                 if tg_user_id:
                     try:
                         await bot.send_message(
@@ -330,7 +328,7 @@ async def disable_emby_user(
                     except Exception as e:
                         logger.warning(f"无法发送禁用通知给用户 {tg_user_id}: {e}")
                         results.append(f"⚠️ 无法发送通知: {e}")
-            
+
         else:
             results.append("⚠️ Emby API 禁用请求失败或用户已禁用")
 
@@ -373,7 +371,7 @@ async def enable_emby_user(
     4. 发送通知
     """
     results = []
-    
+
     # 1. 确定目标 Emby 用户
     emby_user_id = None
     emby_user_db = None
@@ -404,11 +402,9 @@ async def enable_emby_user(
         success = await emby_client.enable_user(emby_user_id)
         if success:
             results.append("✅ Emby 账号已启用")
-            
+
             new_user_dto = await emby_client.get_user(emby_user_id)
-            
-            from sqlalchemy.orm.attributes import flag_modified
-            
+
             detect_and_update_emby_user(
                 model=emby_user_db,
                 new_user_dto=new_user_dto or emby_user_db.user_dto or {},
@@ -419,22 +415,22 @@ async def enable_emby_user(
 
             if not emby_user_db.extra_data:
                 emby_user_db.extra_data = {}
-            
+
             # 清除禁用状态
             emby_user_db.extra_data["is_disabled"] = False
             emby_user_db.extra_data.pop("disabled_reason", None)
             emby_user_db.extra_data.pop("disabled_at", None)
             emby_user_db.extra_data.pop("disabled_by", None)
-            
+
             flag_modified(emby_user_db, "extra_data")
             session.add(emby_user_db)
             await session.commit()
-            
+
             # 发送通知给用户
             if bot:
                 # 尝试获取 Telegram ID
                 tg_user_id = None
-                
+
                 # 1. 检查是否已经是 Telegram ID
                 if target_id.isdigit():
                     # 验证是否关联到当前 Emby 用户
@@ -445,7 +441,7 @@ async def enable_emby_user(
                     res_check = await session.execute(stmt_check)
                     if res_check.scalar_one_or_none():
                         tg_user_id = int(target_id)
-                
+
                 # 2. 如果还没有 Telegram ID，尝试通过 Emby ID 反查
                 if not tg_user_id:
                     stmt_find = select(UserExtendModel).where(UserExtendModel.emby_user_id == emby_user_id)
@@ -453,7 +449,7 @@ async def enable_emby_user(
                     user_ext = res_find.scalar_one_or_none()
                     if user_ext and user_ext.user_id:
                         tg_user_id = user_ext.user_id
-                
+
                 if tg_user_id:
                     try:
                         await bot.send_message(
@@ -470,7 +466,7 @@ async def enable_emby_user(
                     except Exception as e:
                         logger.warning(f"无法发送启用通知给用户 {tg_user_id}: {e}")
                         results.append(f"⚠️ 无法发送通知: {e}")
-            
+
         else:
             results.append("⚠️ Emby API 启用请求失败或用户已启用")
 
