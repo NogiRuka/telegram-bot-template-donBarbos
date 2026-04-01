@@ -3,7 +3,7 @@ from aiogram import Bot
 from loguru import logger
 
 from bot.core.config import settings
-from bot.utils.text import escape_markdown_v2
+from bot.utils.text import build_user_link_markdown_v2, escape_markdown_v2
 
 
 def escape_markdown_v2_preserve_code(text: str) -> str:
@@ -35,18 +35,14 @@ def escape_markdown_v2_preserve_code(text: str) -> str:
         return escape_markdown_v2(text)
 
 
-def _build_user_mention(full_name: str | None, user_id: str | None, username: str | None) -> str:
-    uid = user_id or ""
-    if username:
-        visible = f"@{username}"
-    else:
-        name = (full_name or "").strip()
-        visible = f"@{name}" if name else "@Unknown"
-    text = visible
-    escaped_text = escape_markdown_v2(text)
-    if uid.isdigit():
-        return f"[{escaped_text}](tg://user?id={uid})"
-    return escaped_text
+def _build_user_mention(full_name: str | None, user_id: str | None, _username: str | None) -> str:
+    first_name = ""
+    last_name = ""
+    if full_name:
+        parts = full_name.split(maxsplit=1)
+        first_name = parts[0] if parts else ""
+        last_name = parts[1] if len(parts) > 1 else ""
+    return build_user_link_markdown_v2(user_id, first_name, last_name)
 
 
 async def send_group_notification(
@@ -70,7 +66,6 @@ async def send_group_notification(
         chat_id = user_info.get("chat_id")
 
         user_id = user_info.get("user_id", "UnknownID")
-        username = user_info.get("username", "UnknownUser")
         full_name = user_info.get("full_name", "Unknown")
         action = user_info.get("action", "UnknownAction")
 
@@ -110,11 +105,10 @@ async def send_group_notification(
         tags = f"{group_tag_str} {to_hashtag('ID' + str(user_id))} {to_hashtag(action)}"
 
         # 📖 FullName @Username Reason
-        escaped_full_name = escape_markdown_v2(full_name)
-        user_mention = _build_user_mention(full_name, str(user_id), username)
+        user_mention = _build_user_mention(full_name, str(user_id), None)
         escaped_reason = escape_markdown_v2_preserve_code(reason)
 
-        content = f"📖 `{escaped_full_name}` {user_mention} {escaped_reason}"
+        content = f"📖 {user_mention} {escaped_reason}"
         msg_text = f"{tags}\n{content}"
 
         await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="MarkdownV2")

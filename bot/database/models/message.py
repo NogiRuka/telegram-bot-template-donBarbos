@@ -18,6 +18,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, BasicAuditMixin
+from bot.utils.text import build_user_link_markdown_v2
 
 
 class MessageType(str, Enum):
@@ -452,8 +453,11 @@ class MessageModel(Base, BasicAuditMixin):
                     replacement = entity_text  # 保持原样，因为已经包含@
                 elif entity_type == "text_mention":
                     user = entity.get("user", {})
-                    username = user.get("username", user.get("first_name", entity_text))
-                    replacement = f"[@{username}](tg://user?id={user.get('id', '')})"
+                    replacement = build_user_link_markdown_v2(
+                        user.get("id", ""),
+                        user.get("first_name"),
+                        user.get("last_name"),
+                    )
                 elif entity_type == "hashtag":
                     replacement = entity_text  # 保持原样，因为已经包含#
                 elif entity_type == "cashtag":
@@ -528,8 +532,11 @@ class MessageModel(Base, BasicAuditMixin):
                     replacement = entity_text  # 保持原样，因为已经包含@
                 elif entity_type == "text_mention":
                     user = entity.get("user", {})
-                    username = user.get("username", user.get("first_name", entity_text))
-                    replacement = f"[@{username}](tg://user?id={user.get('id', '')})"
+                    replacement = build_user_link_markdown_v2(
+                        user.get("id", ""),
+                        user.get("first_name"),
+                        user.get("last_name"),
+                    )
                 elif entity_type == "hashtag":
                     replacement = entity_text  # 保持原样，因为已经包含#
                 elif entity_type == "cashtag":

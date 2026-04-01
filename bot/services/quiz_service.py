@@ -348,21 +348,24 @@ class QuizService:
                 timeout_sec = 60 # 默认值，防止 session 和 timeout_sec 都没传的情况
 
         extra = "无"
-        # 如果有 extra_caption 则使用它，否则尝试使用第一个标签，最后回退到 "链接"
-        link_text = "链接"
-        if image and image.extra_caption:
-            link_text = image.extra_caption.strip()
-        elif image and image.tags and len(image.tags) > 0:
-            link_text = image.tags[0]
+        if image:
+            link_text = "链接"
+            if image.extra_caption:
+                link_text = image.extra_caption.strip()
+            elif image.tags and len(image.tags) > 0:
+                link_text = image.tags[0]
+            elif question.tags and len(question.tags) > 0:
+                link_text = question.tags[0]
 
-        if image and image.image_source:
-            if image.image_source.startswith("http"):
-                # HTML 格式的链接
-                extra = f"<a href='{image.image_source}'>{html.escape(link_text)}</a>"
+            if image.image_source:
+                if image.image_source.startswith("http"):
+                    extra = f"<a href='{image.image_source}'>{html.escape(link_text)}</a>"
+                else:
+                    extra = html.escape(image.image_source)
             else:
-                extra = f"{html.escape(image.image_source)}"
-        else:
-            extra = f"{html.escape(link_text)}"
+                extra = html.escape(link_text)
+        elif question.tags and len(question.tags) > 0:
+            extra = html.escape(question.tags[0])
 
         cat_name = question.category.name if question.category else "无分类"
 
@@ -424,7 +427,7 @@ class QuizService:
         correct_index = question.correct_index
 
         # 创建索引列表（不打乱，保持用户输入顺序）
-        indices = list(range(len(options)))
+        list(range(len(options)))
 
         # 找到新的正确答案索引（实际上 Session 存的是原始索引，回调传回的也是原始索引，所以显示顺序变了不影响逻辑）
         # 等等，如果在 Session 中存原始 correct_index，那么回调时只要传回用户选的原始索引即可。
@@ -509,7 +512,7 @@ class QuizService:
         if not quiz_session:
             return False, 0, "⚠️ 题目已过期或不存在。", ""
 
-        is_group_quiz = quiz_session.chat_id != quiz_session.user_id
+        is_group_quiz = quiz_session.chat_id < 0
         if is_group_quiz:
             if chat_id != quiz_session.chat_id:
                 return False, 0, "⚠️ 题目已过期或不存在。", ""
@@ -558,7 +561,12 @@ class QuizService:
         # 4. 计算奖励
         wrong_reward = session_extra.get("reward_base", question.reward_base)
         correct_reward = session_extra.get("reward_bonus", question.reward_bonus)
-        reward = correct_reward if is_correct else wrong_reward
+        if is_correct:
+            reward = correct_reward
+        elif is_group_quiz:
+            reward = 0
+        else:
+            reward = wrong_reward
 
         # 计算耗时 (秒)
         time_taken = None
@@ -602,7 +610,8 @@ class QuizService:
             # correct_option = question.options[question.correct_index]
             msg = "❌ 回答错误。"
             # msg += f"正确答案：{correct_option}"
-        msg += f"\n获得{CURRENCY_NAME}：+{reward} {CURRENCY_SYMBOL}"
+        if reward > 0:
+            msg += f"\n获得{CURRENCY_NAME}：+{reward} {CURRENCY_SYMBOL}"
 
         return is_correct, reward, msg, original_caption
 

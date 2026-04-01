@@ -1,4 +1,5 @@
 from __future__ import annotations
+import html
 
 
 def safe_alert_text(text: str, max_len: int = 190) -> str:
@@ -51,6 +52,29 @@ def escape_markdown_v2(text: str) -> str:
     return "".join(f"\\{ch}" if ch in specials else ch for ch in (text or ""))
 
 
+def build_user_display_name(first_name: str | None, last_name: str | None) -> str:
+    first = (first_name or "").strip()
+    last = (last_name or "").strip()
+    full = f"{first} {last}".strip()
+    return full or "Unknown"
+
+
+def build_user_link_html(user_id: int | str | None, first_name: str | None, last_name: str | None) -> str:
+    name = html.escape(build_user_display_name(first_name, last_name))
+    uid = str(user_id or "").strip()
+    if uid.lstrip("-").isdigit():
+        return f'<a href="tg://user?id={uid}">{name}</a>'
+    return name
+
+
+def build_user_link_markdown_v2(user_id: int | str | None, first_name: str | None, last_name: str | None) -> str:
+    name = escape_markdown_v2(build_user_display_name(first_name, last_name))
+    uid = str(user_id or "").strip()
+    if uid.lstrip("-").isdigit():
+        return f"[{name}](tg://user?id={uid})"
+    return name
+
+
 def format_size(size_bytes: int | None) -> str:
     """格式化文件大小为人类可读字符串
 
@@ -77,4 +101,3 @@ def format_size(size_bytes: int | None) -> str:
         unit_index += 1
 
     return f"{size:.2f} {units[unit_index]}"
-

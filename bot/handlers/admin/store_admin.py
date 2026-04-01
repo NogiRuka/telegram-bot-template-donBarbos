@@ -4,9 +4,11 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.constants import CURRENCY_SYMBOL
+from bot.database.models import UserModel
 from bot.keyboards.inline.buttons import (
     BACK_TO_ADMIN_PANEL_BUTTON,
     BACK_TO_HOME_BUTTON,
@@ -28,7 +30,7 @@ from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.admin import StoreAddProductState, StoreAdminState
 from bot.utils.message import extract_id, send_toast
-from bot.utils.text import escape_markdown_v2
+from bot.utils.text import build_user_link_markdown_v2, escape_markdown_v2
 
 router = Router(name="store_admin")
 
@@ -184,9 +186,17 @@ async def handle_purchase_history(callback: CallbackQuery, session: AsyncSession
     if not history:
         text = f"*{STORE_ADMIN_HISTORY_LABEL}*\n\n暂无购买记录。"
     else:
+        user_ids = sorted({int(tx.user_id) for tx in history})
+        user_name_map: dict[int, tuple[str | None, str | None]] = {}
+        if user_ids:
+            stmt = select(UserModel.id, UserModel.first_name, UserModel.last_name).where(UserModel.id.in_(user_ids))
+            rows = (await session.execute(stmt)).all()
+            user_name_map = {int(uid): (first_name, last_name) for uid, first_name, last_name in rows}
+
         lines = []
         for tx in history:
-            user_link = f"[{tx.user_id}](tg://user?id={tx.user_id})"
+            first_name, last_name = user_name_map.get(int(tx.user_id), ("Unknown", None))
+            user_link = build_user_link_markdown_v2(tx.user_id, first_name, last_name)
             date_str = tx.created_at.strftime("%Y-%m-%d %H:%M")
             product_name = tx.meta.get("product_name", "未知商品") if tx.meta else "未知商品"
             lines.append(rf"• `{date_str}` {user_link} 购买了 *{escape_markdown_v2(product_name)}* \({escape_markdown_v2(str(tx.amount))} {escape_markdown_v2(CURRENCY_SYMBOL)}\)")

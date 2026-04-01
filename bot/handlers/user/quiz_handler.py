@@ -8,9 +8,11 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.services.quiz_service import QuizService, QuizSessionExpiredError
-from bot.utils.message import safe_delete_message
+from bot.utils.message import delete_message_after_delay, safe_delete_message
+from bot.utils.text import build_user_link_html
 
 router = Router(name="user_quiz")
+ANSWERED_QUIZ_RETENTION_SECONDS = 30
 
 @router.callback_query(F.data.startswith("quiz:ans:"))
 async def on_quiz_answer(callback: CallbackQuery, session: AsyncSession) -> None:  # noqa: PLR0915
@@ -35,7 +37,12 @@ async def on_quiz_answer(callback: CallbackQuery, session: AsyncSession) -> None
         # 如果是纯文本, 用 edit_text
         # 由于我们不知道原消息是图还是文, 可以通过 callback.message 类型判断
 
-        result_text = f"\n\n{html.escape(msg)}"
+        answer_user = build_user_link_html(
+            callback.from_user.id,
+            callback.from_user.first_name,
+            callback.from_user.last_name,
+        )
+        result_text = f"\n\n{html.escape(msg)}\n作答：{answer_user}"
 
         # 关闭键盘按钮
         close_kb = InlineKeyboardBuilder()
@@ -56,6 +63,7 @@ async def on_quiz_answer(callback: CallbackQuery, session: AsyncSession) -> None
                 reply_markup=reply_kb,
                 parse_mode="HTML"
             )
+        delete_message_after_delay(callback.message, delay=ANSWERED_QUIZ_RETENTION_SECONDS)
 
     except QuizSessionExpiredError as e:
         # 会话已过期, 编辑消息显示提示, 不使用弹窗
