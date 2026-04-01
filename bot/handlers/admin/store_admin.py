@@ -1,4 +1,5 @@
 import contextlib
+import html
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -30,7 +31,7 @@ from bot.services.currency import CurrencyService
 from bot.services.main_message import MainMessageService
 from bot.states.admin import StoreAddProductState, StoreAdminState
 from bot.utils.message import extract_id, send_toast
-from bot.utils.text import build_user_link_markdown_v2, escape_markdown_v2
+from bot.utils.text import build_user_link_html, escape_markdown_v2
 
 router = Router(name="store_admin")
 
@@ -184,7 +185,7 @@ async def handle_purchase_history(callback: CallbackQuery, session: AsyncSession
     history = await CurrencyService.get_purchase_history(session, limit=20)
 
     if not history:
-        text = f"*{STORE_ADMIN_HISTORY_LABEL}*\n\n暂无购买记录。"
+        text = f"<b>{html.escape(STORE_ADMIN_HISTORY_LABEL)}</b>\n\n暂无购买记录。"
     else:
         user_ids = sorted({int(tx.user_id) for tx in history})
         user_name_map: dict[int, tuple[str | None, str | None]] = {}
@@ -196,17 +197,20 @@ async def handle_purchase_history(callback: CallbackQuery, session: AsyncSession
         lines = []
         for tx in history:
             first_name, last_name = user_name_map.get(int(tx.user_id), ("Unknown", None))
-            user_link = build_user_link_markdown_v2(tx.user_id, first_name, last_name)
+            user_link = build_user_link_html(tx.user_id, first_name, last_name)
             date_str = tx.created_at.strftime("%Y-%m-%d %H:%M")
             product_name = tx.meta.get("product_name", "未知商品") if tx.meta else "未知商品"
-            lines.append(rf"• `{date_str}` {user_link} 购买了 *{escape_markdown_v2(product_name)}* \({escape_markdown_v2(str(tx.amount))} {escape_markdown_v2(CURRENCY_SYMBOL)}\)")
+            lines.append(
+                f"• <code>{html.escape(date_str)}</code> {user_link} 购买了 <b>{html.escape(product_name)}</b> "
+                f"({html.escape(str(tx.amount))} {html.escape(CURRENCY_SYMBOL)})"
+            )
 
-        text = f"*{STORE_ADMIN_HISTORY_LABEL}* \\(最近20条\\)\n\n" + "\n".join(lines)
+        text = f"<b>{html.escape(STORE_ADMIN_HISTORY_LABEL)} (最近20条)</b>\n\n" + "\n".join(lines)
 
     kb = InlineKeyboardBuilder()
     kb.row(BACK_TO_STORE_ADMIN_BUTTON, BACK_TO_HOME_BUTTON)
 
-    await main_msg.update_on_callback(callback, text, kb.as_markup())
+    await main_msg.update_on_callback(callback, text, kb.as_markup(), parse_mode="HTML")
 
 
 # ===== 添加商品流程 =====

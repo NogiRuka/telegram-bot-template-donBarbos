@@ -58,6 +58,7 @@ class MainMessageService:
         image_path: str | None = None,
         image_file_id: str | None = None,
         image_source_type: str | None = None,
+        parse_mode: str | None = "MarkdownV2",
     ) -> bool:
         """发送新的图片主消息并记录"""
         try:
@@ -68,7 +69,7 @@ class MainMessageService:
                     photo=image_file_id,
                     caption=caption,
                     reply_markup=kb,
-                    parse_mode="MarkdownV2",
+                    parse_mode=parse_mode,
                 )
             else:
                 file = FSInputFile(image_path or "")
@@ -77,7 +78,7 @@ class MainMessageService:
                     photo=file,
                     caption=caption,
                     reply_markup=kb,
-                    parse_mode="MarkdownV2",
+                    parse_mode=parse_mode,
                 )
             self.remember(user_id, msg)
             return True
@@ -93,6 +94,7 @@ class MainMessageService:
         image_path: str | None = None,
         image_file_id: str | None = None,
         image_source_type: str | None = None,
+        parse_mode: str | None = "MarkdownV2",
     ) -> bool:
         """
         渲染主消息（唯一对外入口）
@@ -111,7 +113,13 @@ class MainMessageService:
                 return False
 
             return await self._send_new(
-                user_id, caption, kb, image_path=image_path, image_file_id=image_file_id, image_source_type=image_source_type
+                user_id,
+                caption,
+                kb,
+                image_path=image_path,
+                image_file_id=image_file_id,
+                image_source_type=image_source_type,
+                parse_mode=parse_mode,
             )
 
         chat_id, message_id = ids
@@ -124,7 +132,7 @@ class MainMessageService:
                     message_id=message_id,
                     caption=caption,
                     reply_markup=kb,
-                    parse_mode="MarkdownV2",
+                    parse_mode=parse_mode,
                 )
                 return True
             except Exception as e:
@@ -136,7 +144,13 @@ class MainMessageService:
             await self.bot.delete_message(chat_id, message_id)
 
         return await self._send_new(
-            user_id, caption, kb, image_path=image_path, image_file_id=image_file_id, image_source_type=image_source_type
+            user_id,
+            caption,
+            kb,
+            image_path=image_path,
+            image_file_id=image_file_id,
+            image_source_type=image_source_type,
+            parse_mode=parse_mode,
         )
 
 
@@ -160,6 +174,7 @@ class MainMessageService:
         callback: types.CallbackQuery,
         caption: str,
         kb: types.InlineKeyboardMarkup,
+        parse_mode: str | None = "MarkdownV2",
     ) -> bool:
         """
         回调场景下刷新主消息
@@ -178,4 +193,4 @@ class MainMessageService:
         # ⭐ 关键修复点：内存丢失，但用户点了旧主消息
         self.remember(uid, msg)
 
-        return await self.render(uid, caption, kb)
+        return await self.render(uid, caption, kb, parse_mode=parse_mode)

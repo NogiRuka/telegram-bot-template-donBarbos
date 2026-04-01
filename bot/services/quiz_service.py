@@ -426,9 +426,6 @@ class QuizService:
         options = question.options  # list[str]
         correct_index = question.correct_index
 
-        # 创建索引列表（不打乱，保持用户输入顺序）
-        list(range(len(options)))
-
         # 找到新的正确答案索引（实际上 Session 存的是原始索引，回调传回的也是原始索引，所以显示顺序变了不影响逻辑）
         # 等等，如果在 Session 中存原始 correct_index，那么回调时只要传回用户选的原始索引即可。
         # 按钮 callback_data: quiz:answer:{option_index}

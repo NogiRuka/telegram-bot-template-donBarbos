@@ -81,9 +81,17 @@ def _usage_text() -> str:
     if not isinstance(usage, dict):
         msg = "invalid usage meta"
         raise TypeError(msg)
-    summary = str(usage["summary"])
-    format_lines = [str(it) for it in usage["formats"]]
-    example_lines = [str(it) for it in usage["examples"]]
+    summary = str(usage.get("summary") or "")
+    raw_formats = usage.get("formats", [])
+    raw_examples = usage.get("examples", [])
+
+    if not isinstance(raw_formats, (list, tuple)):
+        raw_formats = [raw_formats] if raw_formats else []
+    if not isinstance(raw_examples, (list, tuple)):
+        raw_examples = [raw_examples] if raw_examples else []
+
+    format_lines = [str(it) for it in raw_formats]
+    example_lines = [str(it) for it in raw_examples]
 
     format_text = "\n".join([f"`{line}`" for line in format_lines])
     example_text = "\n".join([f"`{line}`" for line in example_lines])

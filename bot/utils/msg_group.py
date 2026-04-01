@@ -1,9 +1,11 @@
 
+import html
+
 from aiogram import Bot
 from loguru import logger
 
 from bot.core.config import settings
-from bot.utils.text import build_user_link_markdown_v2, escape_markdown_v2
+from bot.utils.text import build_user_link_html, escape_markdown_v2
 
 
 def escape_markdown_v2_preserve_code(text: str) -> str:
@@ -42,7 +44,7 @@ def _build_user_mention(full_name: str | None, user_id: str | None, _username: s
         parts = full_name.split(maxsplit=1)
         first_name = parts[0] if parts else ""
         last_name = parts[1] if len(parts) > 1 else ""
-    return build_user_link_markdown_v2(user_id, first_name, last_name)
+    return build_user_link_html(user_id, first_name, last_name)
 
 
 async def send_group_notification(
@@ -71,10 +73,8 @@ async def send_group_notification(
 
         # 简单的 hashtag 处理：去除空格并转义
         def to_hashtag(s: str) -> str:
-            # 先去除不合法字符，再转义 MarkdownV2 字符
-            # 注意: hashtag 内部不能有空格，但 MarkdownV2 要求转义 #
             clean_s = str(s).replace(" ", "").replace("#", "")
-            return "\\#" + escape_markdown_v2(clean_s)
+            return "#" + clean_s
 
         # 构造群组标识 Tag
         # 需求: 同时显示 @channelname (如果有) 和 #M100xxx (chat_id)
@@ -84,7 +84,7 @@ async def send_group_notification(
         # 1. @channelname
         if chat_username:
              clean_chat_username = str(chat_username).lstrip("@").replace(" ", "")
-             group_tags_parts.append("@" + escape_markdown_v2(clean_chat_username))
+             group_tags_parts.append("@" + clean_chat_username)
 
         # 2. #M100xxx (chat_id)
         if chat_id:
@@ -106,12 +106,12 @@ async def send_group_notification(
 
         # 📖 FullName @Username Reason
         user_mention = _build_user_mention(full_name, str(user_id), None)
-        escaped_reason = escape_markdown_v2_preserve_code(reason)
+        escaped_reason = html.escape(reason)
 
         content = f"📖 {user_mention} {escaped_reason}"
         msg_text = f"{tags}\n{content}"
 
-        await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="MarkdownV2")
+        await bot.send_message(chat_id=settings.OWNER_MSG_GROUP, text=msg_text, parse_mode="HTML")
         logger.info(f"群组通知已发送至 {settings.OWNER_MSG_GROUP}")
     except Exception as e:
         logger.error(f"发送群组通知失败: {e}")
