@@ -5,6 +5,7 @@ from .currency_config import CurrencyConfigModel
 from .currency_product import CurrencyProductModel
 from .currency_transaction import CurrencyTransactionModel
 from .emby_device import EmbyDeviceModel
+from .emby_device_history import EmbyDeviceHistoryModel
 from .emby_item import EmbyItemModel
 from .emby_user import EmbyUserModel
 from .emby_user_history import EmbyUserHistoryModel
@@ -34,6 +35,7 @@ __all__ = [
     "CurrencyProductModel",
     "CurrencyTransactionModel",
     "EmbyDeviceModel",
+    "EmbyDeviceHistoryModel",
     "EmbyItemModel",
     "EmbyUserHistoryModel",
     "EmbyUserModel",

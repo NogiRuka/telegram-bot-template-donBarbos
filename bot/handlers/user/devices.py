@@ -12,6 +12,7 @@ from bot.database.models.user_extend import UserExtendModel
 from bot.keyboards.inline.buttons import BACK_TO_ACCOUNT_BUTTON, BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import USER_DEVICES_LABEL
 from bot.services.main_message import MainMessageService
+from bot.services.emby_service import build_device_diff, build_device_snapshot, create_device_history
 from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
 from bot.utils.permissions import require_emby_account, require_user_feature
@@ -261,10 +262,26 @@ async def handle_device_delete_action(
         return
 
     # 2. 软删除设备
+    before_data = build_device_snapshot(device)
     device.is_deleted = True
     device.deleted_at = now()
     device.deleted_by = user_id
     device.remark = "用户手动删除"
+    after_data = build_device_snapshot(device)
+    changed_fields, diff_data = build_device_diff(before_data, after_data)
+    session.add(
+        create_device_history(
+            device=device,
+            action="delete",
+            source="user",
+            before_data=before_data,
+            after_data=after_data,
+            changed_fields=changed_fields,
+            diff_data=diff_data,
+            remark=device.remark,
+            operator_id=user_id,
+        )
+    )
 
     # 3. 获取最大设备数
     stmt_user = select(EmbyUserModel).where(EmbyUserModel.emby_user_id == emby_user_id)

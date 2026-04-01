@@ -2,6 +2,7 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from aiogram import BaseMiddleware
+from aiogram.enums import ChatType
 from aiogram.types import CallbackQuery, Message, TelegramObject
 from loguru import logger
 
@@ -35,6 +36,8 @@ class QuizTriggerMiddleware(BaseMiddleware):
         chat_id = None
 
         if isinstance(event, Message):
+            if event.chat.type != ChatType.PRIVATE:
+                return result
             # 排除服务消息 (进群、退群、改名、置顶等)
             is_service_message = (
                 event.new_chat_members
@@ -54,6 +57,8 @@ class QuizTriggerMiddleware(BaseMiddleware):
                 user_id = event.from_user.id
                 chat_id = event.chat.id
         elif isinstance(event, CallbackQuery):
+            if event.message and event.message.chat.type != ChatType.PRIVATE:
+                return result
             if event.data and event.data.startswith("quiz:"):
                 # 如果是问答相关的点击, 不触发新题目
                 return result
@@ -121,7 +126,6 @@ class QuizTriggerMiddleware(BaseMiddleware):
                                             chat_id=chat_id,
                                             message_id=sent_msg.message_id,
                                             session_id=session_id,
-                                            user_id=user_id,
                                             timeout=int(timeout_sec)
                                         )
                                     except Exception as e:  # noqa: BLE001

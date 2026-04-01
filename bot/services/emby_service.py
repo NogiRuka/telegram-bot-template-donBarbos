@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from bot.core.config import settings
 from bot.database.models.emby_device import EmbyDeviceModel
+from bot.database.models.emby_device_history import EmbyDeviceHistoryModel
 from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.emby_user_history import EmbyUserHistoryModel
 from bot.services.emby_update_helper import detect_and_update_emby_user
@@ -19,6 +20,99 @@ from bot.utils.http import HttpRequestError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
+
+DEVICE_HISTORY_FIELDS = (
+    "emby_device_id",
+    "reported_device_id",
+    "name",
+    "last_user_name",
+    "app_name",
+    "app_version",
+    "last_user_id",
+    "date_last_activity",
+    "icon_url",
+    "ip_address",
+    "raw_data",
+    "is_deleted",
+    "deleted_at",
+    "deleted_by",
+    "remark",
+)
+
+
+def _normalize_history_value(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(k): _normalize_history_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_normalize_history_value(item) for item in value]
+    return value
+
+
+def build_device_snapshot(device: EmbyDeviceModel | None) -> dict[str, Any] | None:
+    if device is None:
+        return None
+
+    snapshot = {
+        "device_pk": device.id,
+        **{field: getattr(device, field) for field in DEVICE_HISTORY_FIELDS},
+    }
+    return _normalize_history_value(snapshot)
+
+
+def build_device_diff(
+    before_data: dict[str, Any] | None,
+    after_data: dict[str, Any] | None,
+) -> tuple[list[str], dict[str, Any]]:
+    before_data = before_data or {}
+    after_data = after_data or {}
+
+    changed_fields: list[str] = []
+    diff_data: dict[str, Any] = {}
+
+    for field in sorted(set(before_data) | set(after_data)):
+        if before_data.get(field) == after_data.get(field):
+            continue
+        changed_fields.append(field)
+        diff_data[field] = {
+            "old": before_data.get(field),
+            "new": after_data.get(field),
+        }
+
+    return changed_fields, diff_data
+
+
+def create_device_history(
+    device: EmbyDeviceModel,
+    action: str,
+    source: str,
+    before_data: dict[str, Any] | None,
+    after_data: dict[str, Any] | None,
+    changed_fields: list[str] | None = None,
+    diff_data: dict[str, Any] | None = None,
+    remark: str | None = None,
+    operator_id: int | None = None,
+) -> EmbyDeviceHistoryModel:
+    if changed_fields is None or diff_data is None:
+        changed_fields, diff_data = build_device_diff(before_data, after_data)
+
+    return EmbyDeviceHistoryModel(
+        emby_device_id=device.emby_device_id,
+        device_pk=device.id,
+        reported_device_id=device.reported_device_id,
+        last_user_id=device.last_user_id,
+        action=action,
+        source=source,
+        changed_fields=changed_fields or None,
+        before_data=before_data,
+        after_data=after_data,
+        diff_data=diff_data or None,
+        created_by=operator_id,
+        updated_by=operator_id,
+        remark=remark,
+    )
 
 
 async def list_users(
@@ -591,11 +685,14 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
 
             model = existing_models.get(emby_device_id)
             if model:
-                # 1. 如果设备已被软删除，则跳过处理（不恢复也不更新）
+                before_data = build_device_snapshot(model)
+                restored = False
                 if model.is_deleted:
-                    continue
+                    model.is_deleted = False
+                    model.deleted_at = None
+                    model.deleted_by = None
+                    restored = True
 
-                # 2. 检查变更字段
                 changes = []
 
                 if model.reported_device_id != reported_id:
@@ -639,8 +736,29 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
                     model.raw_data = device_data
                     changes.append("raw_data")
 
+                if restored:
+                    changes.extend(["is_deleted", "deleted_at", "deleted_by"])
+
                 if changes:
-                    model.remark = f"更新字段: {', '.join(changes)}"
+                    model.remark = (
+                        f"同步恢复并更新字段: {', '.join(changes)}"
+                        if restored
+                        else f"更新字段: {', '.join(changes)}"
+                    )
+                    after_data = build_device_snapshot(model)
+                    _, diff_data = build_device_diff(before_data, after_data)
+                    session.add(
+                        create_device_history(
+                            device=model,
+                            action="restore" if restored else "update",
+                            source="sync",
+                            before_data=before_data,
+                            after_data=after_data,
+                            changed_fields=changes,
+                            diff_data=diff_data,
+                            remark=model.remark,
+                        )
+                    )
                     updated += 1
                     session.add(model)
             else:
@@ -656,18 +774,46 @@ async def save_all_emby_devices(session: AsyncSession) -> int:
                     date_last_activity=date_last_activity,
                     icon_url=icon_url,
                     ip_address=ip_address,
-                    raw_data=device_data
+                    raw_data=device_data,
+                    remark="设备首次同步入库",
                 )
                 session.add(model)
+                await session.flush()
+                session.add(
+                    create_device_history(
+                        device=model,
+                        action="create",
+                        source="sync",
+                        before_data=None,
+                        after_data=build_device_snapshot(model),
+                        remark=model.remark,
+                    )
+                )
                 inserted += 1
 
         # 3. 处理删除: 数据库中有，但 API 中没有的
         for eid, model in existing_models.items():
             if eid not in api_device_ids and not model.is_deleted:
+                before_data = build_device_snapshot(model)
                 model.is_deleted = True
                 model.deleted_at = now()
                 model.deleted_by = 0  # 0 表示系统
                 model.remark = "API 返回中已不存在，系统自动软删除"
+                after_data = build_device_snapshot(model)
+                changed_fields, diff_data = build_device_diff(before_data, after_data)
+                session.add(
+                    create_device_history(
+                        device=model,
+                        action="delete",
+                        source="sync",
+                        before_data=before_data,
+                        after_data=after_data,
+                        changed_fields=changed_fields,
+                        diff_data=diff_data,
+                        remark=model.remark,
+                        operator_id=0,
+                    )
+                )
                 session.add(model)
                 deleted += 1
 
@@ -811,10 +957,26 @@ async def cleanup_devices_by_policy(
 
                 # 软删除多余设备
                 for device in devices[max_devices:]:
+                    before_data = build_device_snapshot(device)
                     device.is_deleted = True
                     device.deleted_at = now()
                     device.deleted_by = 0  # 0 表示系统
                     device.remark = "超出最大设备数自动清理"
+                    after_data = build_device_snapshot(device)
+                    changed_fields, diff_data = build_device_diff(before_data, after_data)
+                    session.add(
+                        create_device_history(
+                            device=device,
+                            action="delete",
+                            source="system",
+                            before_data=before_data,
+                            after_data=after_data,
+                            changed_fields=changed_fields,
+                            diff_data=diff_data,
+                            remark=device.remark,
+                            operator_id=0,
+                        )
+                    )
                     session.add(device)
                     deleted_count += 1
 

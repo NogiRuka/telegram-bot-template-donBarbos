@@ -49,7 +49,6 @@ async def test_trigger(callback: CallbackQuery, session: AsyncSession) -> None:
                 chat_id=target_chat_id,
                 message_id=sent.message_id,
                 session_id=session_id,
-                user_id=user_id,
                 timeout=int(timeout_sec)
             )
 

@@ -16,12 +16,19 @@ router = Router(name="user_quiz")
 async def on_quiz_answer(callback: CallbackQuery, session: AsyncSession) -> None:  # noqa: PLR0915
     """处理问答点击"""
     try:
-        # data format: quiz:ans:{index}
-        _, _, index_str = callback.data.split(":")
+        # data format: quiz:ans:{session_id}:{index}
+        _, _, session_id_str, index_str = callback.data.split(":")
+        session_id = int(session_id_str)
         answer_index = int(index_str)
         user_id = callback.from_user.id
 
-        _is_correct, _reward, msg, original_caption = await QuizService.handle_answer(session, user_id, answer_index)
+        _is_correct, _reward, msg, original_caption = await QuizService.handle_answer(
+            session,
+            user_id,
+            session_id,
+            answer_index,
+            chat_id=callback.message.chat.id if callback.message else None,
+        )
 
         # 编辑原消息: 移除键盘, 追加结果
         # 注意: 如果是图片消息, edit_text 可能报错, 应该用 edit_caption

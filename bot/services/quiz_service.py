@@ -68,7 +68,6 @@ class QuizService:
         chat_id: int,
         message_id: int,
         session_id: int,
-        user_id: int,
         timeout: int
     ) -> None:
         """
@@ -84,7 +83,6 @@ class QuizService:
         :param chat_id: 聊天 ID
         :param message_id: 消息 ID
         :param session_id: 会话 ID
-        :param user_id: 用户 ID
         :param timeout: 超时秒数
         """
         logger.debug(f"⏳ [问答] 会话 {session_id} 已调度超时处理，将在 {timeout} 秒后执行")
@@ -119,7 +117,7 @@ class QuizService:
                         logger.info(f"🗑️ [问答] 会话 {session_id} 的消息 {message_id} 已删除")
 
                     # 记录日志并清理 Session
-                    await QuizService.handle_timeout(session, user_id)
+                    await QuizService.handle_timeout_by_session_id(session, session_id)
                     # handle_timeout 会 commit
                 else:
                     logger.debug(f"✅ [问答] 会话 {session_id} 已处理或已过期，跳过删除")
@@ -138,7 +136,6 @@ class QuizService:
         chat_id: int,
         message_id: int,
         session_id: int,
-        user_id: int,
         timeout: int
     ) -> None:
         """
@@ -148,7 +145,6 @@ class QuizService:
         :param chat_id: 聊天 ID
         :param message_id: 消息 ID
         :param session_id: 会话 ID
-        :param user_id: 用户 ID
         :param timeout: 超时秒数
         """
         logger.info(f"⏳ [问答] 正在为会话 {session_id} 调度超时处理，时长: {timeout} 秒")
@@ -158,11 +154,55 @@ class QuizService:
                 chat_id=chat_id,
                 message_id=message_id,
                 session_id=session_id,
-                user_id=user_id,
                 timeout=timeout
             )
         )
         cls._track_task(task)
+
+    @staticmethod
+    def build_group_session_user_id(chat_id: int) -> int:
+        """为群组问答生成稳定的会话所有者ID。
+
+        私聊用户ID为正数，群组 chat_id 为负数，因此可以直接复用 chat_id
+        作为群问答的 session.user_id，不会与私聊用户冲突。
+        """
+        return chat_id
+
+    @staticmethod
+    async def get_active_session(
+        session: AsyncSession,
+        user_id: int,
+        chat_id: int | None = None,
+    ) -> QuizActiveSessionModel | None:
+        stmt = select(QuizActiveSessionModel).where(
+            QuizActiveSessionModel.user_id == user_id,
+            QuizActiveSessionModel.is_deleted.is_(False),
+        ).order_by(desc(QuizActiveSessionModel.created_at)).limit(1)
+        quiz_session = (await session.execute(stmt)).scalar_one_or_none()
+        if quiz_session:
+            return quiz_session
+
+        if chat_id is None or chat_id == user_id:
+            return None
+
+        group_session_user_id = QuizService.build_group_session_user_id(chat_id)
+        stmt = select(QuizActiveSessionModel).where(
+            QuizActiveSessionModel.user_id == group_session_user_id,
+            QuizActiveSessionModel.chat_id == chat_id,
+            QuizActiveSessionModel.is_deleted.is_(False),
+        ).order_by(desc(QuizActiveSessionModel.created_at)).limit(1)
+        return (await session.execute(stmt)).scalar_one_or_none()
+
+    @staticmethod
+    async def get_session_by_id(
+        session: AsyncSession,
+        session_id: int,
+    ) -> QuizActiveSessionModel | None:
+        stmt = select(QuizActiveSessionModel).where(
+            QuizActiveSessionModel.id == session_id,
+            QuizActiveSessionModel.is_deleted.is_(False),
+        )
+        return (await session.execute(stmt)).scalar_one_or_none()
 
     @staticmethod
     async def check_trigger_conditions(session: AsyncSession, user_id: int, chat_id: int, bot: Bot | None = None) -> bool:
@@ -175,6 +215,9 @@ class QuizService:
         :param bot: Bot实例 (用于删除过期消息)
         :return: True if triggered, False otherwise
         """
+        if chat_id != user_id:
+            return False
+
         # 0. 检查总开关
         global_enabled = await get_config(session, KEY_QUIZ_GLOBAL_ENABLE)
         if global_enabled is False: # None 默认开启
@@ -331,7 +374,18 @@ class QuizService:
 
 
     @staticmethod
-    async def create_quiz_session(session: AsyncSession, user_id: int, chat_id: int) -> tuple[QuizQuestionModel, QuizImageModel | None, InlineKeyboardMarkup, int] | None:
+    async def create_quiz_session(
+        session: AsyncSession,
+        user_id: int,
+        chat_id: int,
+        *,
+        allow_parallel: bool = False,
+        question_id: int | None = None,
+        timeout_sec: int | None = None,
+        reward_base: int | None = None,
+        reward_bonus: int | None = None,
+        title: str | None = None,
+    ) -> tuple[QuizQuestionModel, QuizImageModel | None, InlineKeyboardMarkup, int] | None:
         """
         创建问答会话
 
@@ -341,22 +395,22 @@ class QuizService:
         :return: (Question, Image, Keyboard, SessionID) or None
         """
         # 若已有活跃会话，直接返回 None 或清理过期
-        active_stmt = select(QuizActiveSessionModel).where(
-            QuizActiveSessionModel.user_id == user_id,
-            QuizActiveSessionModel.is_deleted.is_(False),
-        )
-        active_session = (await session.execute(active_stmt)).scalar_one_or_none()
-        if active_session:
-            if active_session.expire_at <= now():
-                await QuizService.handle_timeout(session, user_id)
-            else:
-                return None
+        if not allow_parallel:
+            active_session = await QuizService.get_active_session(session, user_id, chat_id)
+            if active_session:
+                if active_session.expire_at <= now():
+                    await QuizService.handle_timeout_by_session_id(session, active_session.id)
+                else:
+                    return None
 
-        # 获取超时时间配置
-        timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
-        # 1. 随机选取题目
-        # 这种写法在数据量大时效率较低，但对于初期足够
-        stmt = select(QuizQuestionModel).where(QuizQuestionModel.is_active).order_by(func.random()).limit(1)
+        if timeout_sec is None:
+            timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
+
+        stmt = select(QuizQuestionModel).where(QuizQuestionModel.is_active)
+        if question_id is not None:
+            stmt = stmt.where(QuizQuestionModel.id == question_id)
+        else:
+            stmt = stmt.order_by(func.random()).limit(1)
         question = (await session.execute(stmt)).scalar_one_or_none()
 
         if not question:
@@ -378,19 +432,17 @@ class QuizService:
         # 这里的 option_index 指的是 options 列表中的下标。
         # 无论按钮怎么排，这个下标指向的内容不变。
 
-        builder = InlineKeyboardBuilder()
-        for idx in indices:
-            builder.button(
-                text=options[idx],
-                callback_data=f"quiz:ans:{idx}"
-            )
-        builder.adjust(2)  # 每行2个（示例：第一行 A B；第二行 C D）
-
-        # 4. 创建 Session
         expire_at = compute_expire_at(now(), timeout_sec)
 
         # 保存用于重建 caption 的信息
-        extra_data = {"timeout_sec": timeout_sec}
+        extra_data = {
+            "timeout_sec": timeout_sec,
+            "title": title or "桜之问答",
+        }
+        if reward_base is not None:
+            extra_data["reward_base"] = reward_base
+        if reward_bonus is not None:
+            extra_data["reward_bonus"] = reward_bonus
         if quiz_image:
             extra_data["image_source"] = quiz_image.image_source
             extra_data["extra_caption"] = quiz_image.extra_caption
@@ -417,6 +469,14 @@ class QuizService:
             logger.warning("重复的活跃会话，跳过创建")
             return None
 
+        builder = InlineKeyboardBuilder()
+        for idx in range(len(options)):
+            builder.button(
+                text=options[idx],
+                callback_data=f"quiz:ans:{quiz_session.id}:{idx}"
+            )
+        builder.adjust(2)
+
         return question, quiz_image, builder.as_markup(), quiz_session.id
 
     @staticmethod
@@ -432,26 +492,35 @@ class QuizService:
             await session.commit()
 
     @staticmethod
-    async def handle_answer(session: AsyncSession, user_id: int, answer_index: int) -> tuple[bool, int, str, str]:
+    async def handle_answer(
+        session: AsyncSession,
+        user_id: int,
+        session_id: int,
+        answer_index: int,
+        chat_id: int | None = None,
+    ) -> tuple[bool, int, str, str]:
         """
         处理用户回答
         :return: (is_correct, reward_amount, message_text, original_caption)
         """
         # 1. 获取 Session
-        stmt = select(QuizActiveSessionModel).where(
-            QuizActiveSessionModel.user_id == user_id,
-            QuizActiveSessionModel.is_deleted.is_(False),
-        )
-        quiz_session = (await session.execute(stmt)).scalar_one_or_none()
+        quiz_session = await QuizService.get_session_by_id(session, session_id)
 
         if not quiz_session:
+            return False, 0, "⚠️ 题目已过期或不存在。", ""
+
+        is_group_quiz = quiz_session.chat_id != quiz_session.user_id
+        if is_group_quiz:
+            if chat_id != quiz_session.chat_id:
+                return False, 0, "⚠️ 题目已过期或不存在。", ""
+        elif quiz_session.user_id != user_id:
             return False, 0, "⚠️ 题目已过期或不存在。", ""
 
         # 检查是否过期
         if quiz_session.expire_at <= now():
             chat_id = quiz_session.chat_id
             message_id = quiz_session.message_id
-            await QuizService.handle_timeout(session, user_id)
+            await QuizService.handle_timeout_by_session_id(session, quiz_session.id)
             msg = "⚠️ 题目已过期或不存在。"
             raise QuizSessionExpiredError(msg, chat_id=chat_id, message_id=message_id)
 
@@ -479,14 +548,17 @@ class QuizService:
             question=question,
             image=fake_image,
             session=session,
-            timeout_sec=session_extra.get("timeout_sec")
+            timeout_sec=session_extra.get("timeout_sec"),
+            title=session_extra.get("title", "桜之问答"),
         )
 
         # 3. 判定结果
         is_correct = (answer_index == quiz_session.correct_index)
 
         # 4. 计算奖励
-        reward = question.reward_bonus if is_correct else question.reward_base
+        wrong_reward = session_extra.get("reward_base", question.reward_base)
+        correct_reward = session_extra.get("reward_bonus", question.reward_bonus)
+        reward = correct_reward if is_correct else wrong_reward
 
         # 计算耗时 (秒)
         time_taken = None
@@ -520,7 +592,8 @@ class QuizService:
         # 7. 删除 Session
         quiz_session.is_deleted = True
         quiz_session.deleted_at = now()
-        quiz_session.remark = f"用户完成作答: {'答对' if is_correct else '答错'}"
+        quiz_scope = "群组" if is_group_quiz else "私聊"
+        quiz_session.remark = f"{quiz_scope}问答完成作答: {'答对' if is_correct else '答错'}"
         await session.commit()
 
         if is_correct:
@@ -558,6 +631,26 @@ class QuizService:
             quiz_session.is_deleted = True
             quiz_session.deleted_at = now()
             quiz_session.remark = "会话超时，自动清理"
+        await session.commit()
+
+    @staticmethod
+    async def handle_timeout_by_session_id(session: AsyncSession, session_id: int) -> None:
+        quiz_session = await QuizService.get_session_by_id(session, session_id)
+        if not quiz_session:
+            return
+
+        log = QuizLogModel(
+            user_id=quiz_session.user_id,
+            chat_id=quiz_session.chat_id,
+            question_id=quiz_session.question_id,
+            user_answer=None,
+            is_correct=False,
+            extra=quiz_session.extra,
+        )
+        session.add(log)
+        quiz_session.is_deleted = True
+        quiz_session.deleted_at = now()
+        quiz_session.remark = "会话超时，自动清理"
         await session.commit()
 
     @staticmethod
@@ -664,7 +757,7 @@ class QuizService:
                         # 启动超时任务
                         timeout_sec = await get_config(session, KEY_QUIZ_SESSION_TIMEOUT)
                         if timeout_sec:
-                             QuizService.start_timeout_task(bot, user.id, sent_msg.message_id, session_id, user.id, timeout_sec)
+                             QuizService.start_timeout_task(bot, user.id, sent_msg.message_id, session_id, timeout_sec)
 
                         count_sent += 1
                         # 避免风控，稍微 sleep 一下?
