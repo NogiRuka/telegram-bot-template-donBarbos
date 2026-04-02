@@ -179,17 +179,25 @@ async def create_user(
         return False, None, "未配置 Emby 连接信息"
 
     try:
+        # Pre-check: 如果配置了模板用户ID，但模板用户不存在，则直接拒绝注册
+        tid = template_user_id or settings.get_emby_template_user_id()
+        if tid:
+            try:
+                template_user = await client.get_user(tid)
+                if not template_user or not template_user.get("Id"):
+                    return False, None, "模板用户不存在或已删除，请联系管理员修复 EMBY_TEMPLATE_USER_ID"
+            except Exception:
+                return False, None, "模板用户校验失败或不存在，请联系管理员修复 EMBY_TEMPLATE_USER_ID"
+
         # Step 1: 创建无密码用户
         user_dto = await client.create_user(name=name)
         user_id = str(user_dto.get("Id") or "")
         if not user_id:
             return False, None, "创建用户失败: 未返回用户ID"
 
-        # Step 2: 获取模板用户的 Configuration 和 Policy
-        tid = template_user_id or settings.get_emby_template_user_id()
+        # Step 2: 如配置模板用户，复制其 Configuration 和 Policy
         if tid:
             try:
-                template_user = await client.get_user(tid)
                 template_config = template_user.get("Configuration")
                 template_policy = template_user.get("Policy")
 
@@ -589,8 +597,7 @@ async def save_all_emby_users(session: AsyncSession) -> tuple[int, int]:
             else:
                 # 更新：只比较 user_dto，有变化就写入历史表
                 # 必须深拷贝旧数据，防止引用被后续修改污染，导致历史表存入新数据
-                old_dto = copy.deepcopy(model.user_dto)
-                new_dto = it
+                copy.deepcopy(model.user_dto)
 
                 def _canon_json(obj: Any) -> str:
                     """生成规范化 JSON 字符串用于比较

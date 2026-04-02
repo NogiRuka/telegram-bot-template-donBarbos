@@ -11,8 +11,8 @@ from bot.database.models.emby_user import EmbyUserModel
 from bot.database.models.user_extend import UserExtendModel
 from bot.keyboards.inline.buttons import BACK_TO_ACCOUNT_BUTTON, BACK_TO_HOME_BUTTON
 from bot.keyboards.inline.constants import USER_DEVICES_LABEL
-from bot.services.main_message import MainMessageService
 from bot.services.emby_service import build_device_diff, build_device_snapshot, create_device_history
+from bot.services.main_message import MainMessageService
 from bot.utils.datetime import now
 from bot.utils.emby import get_emby_client
 from bot.utils.permissions import require_emby_account, require_user_feature
@@ -66,13 +66,9 @@ async def _update_emby_policy(session: AsyncSession, emby_user_id: str, max_devi
 
         # 3. 根据规则修改 Policy
         if current_count < max_devices:
-            # 小于最大数：允许所有设备
             policy["EnableAllDevices"] = True
-            # 可选：清空 EnabledDevices 或保持原样，EnableAllDevices=True 时通常忽略此字段
-            # 但为了保持整洁，可以更新为当前设备列表
             policy["EnabledDevices"] = enabled_ids
         else:
-            # 大于等于最大数：仅允许列表中的设备
             policy["EnableAllDevices"] = False
             policy["EnabledDevices"] = enabled_ids
 

@@ -14,7 +14,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
 
-from bot.config.constants import CONFIG_KEY_EMBY_WHITELIST_USER_IDS
+from bot.config.constants import KEY_EMBY_WHITELIST_USER_IDS, KEY_TG_WHITELIST_USER_IDS
 from bot.core.constants import (
     EVENT_TYPE_LIBRARY_NEW,
     EVENT_TYPE_PLAYBACK_START,
@@ -161,9 +161,21 @@ def _is_restricted_client(client: str, device_name: str) -> bool:
 
 
 async def _is_user_in_whitelist(session: AsyncSession, user_id: str) -> bool:
-    whitelist_val = await get_config(session, CONFIG_KEY_EMBY_WHITELIST_USER_IDS)
-    whitelist = _parse_whitelist(whitelist_val)
-    return user_id in whitelist
+    # Emby 用户ID白名单
+    emby_whitelist_val = await get_config(session, KEY_EMBY_WHITELIST_USER_IDS)
+    emby_whitelist = set(_parse_whitelist(emby_whitelist_val))
+    if user_id in emby_whitelist:
+        return True
+    # Telegram 用户ID白名单（需要关联 UserExtend）
+    tg_whitelist_val = await get_config(session, KEY_TG_WHITELIST_USER_IDS)
+    tg_whitelist = {int(x) for x in _parse_whitelist(tg_whitelist_val) if str(x).lstrip("-").isdigit()}
+    if not tg_whitelist:
+        return False
+    # 查询 emby_user_id 对应的 telegram user_id
+    stmt = select(UserExtendModel.user_id).where(UserExtendModel.emby_user_id == user_id)
+    res = await session.execute(stmt)
+    tg_id = res.scalar_one_or_none()
+    return tg_id in tg_whitelist if tg_id is not None else False
 
 
 async def _maybe_disable_user_for_web_playback(

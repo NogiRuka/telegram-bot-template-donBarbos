@@ -12,10 +12,12 @@ from aiogram.types import Chat, ChatMemberUpdated, Message
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config import KEY_TG_WHITELIST_USER_IDS
 from bot.core.config import settings
 from bot.database.models import GroupType
 from bot.handlers.group.group_message_saver import message_saver
 from bot.services.admin_service import ban_emby_user
+from bot.services.config_service import get_config
 from bot.services.group_config_service import get_or_create_group_config
 from bot.services.users import upsert_user_on_interaction
 from bot.utils.msg_group import send_group_notification
@@ -121,26 +123,26 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
     监听群成员离开或被踢出事件
     """
     logger.info(f"🔄 成员变动事件: chat={event.chat.id}, user={event.new_chat_member.user.id}, old={event.old_chat_member.status}, new={event.new_chat_member.status}")
-
     if settings.GROUP and not _is_config_group(event.chat):
         logger.warning(f"⚠️ 群组不匹配，忽略事件: config={settings.GROUP}, event_chat={event.chat.id}/{event.chat.username}")
         return
-
     user = event.new_chat_member.user
-    logger.info(f"🚪 用户离开/被踢出: {user.id} ({user.full_name}) - 状态: {event.new_chat_member.status}")
-
-    # 确定操作原因和执行者
-    reason = "主动离开了群组"
+    # 退群白名单豁免：白名单用户退群不处理（从配置表读取）
+    whitelist_raw = await get_config(session, KEY_TG_WHITELIST_USER_IDS)
+    whitelist: set[int] = set()
+    if isinstance(whitelist_raw, list):
+        for item in whitelist_raw:
+            sid = str(item).strip()
+            if sid.lstrip("-").isdigit():
+                whitelist.add(int(sid))
+    if event.new_chat_member.status == ChatMemberStatus.LEFT and whitelist and user.id in whitelist:
+        logger.info(f"⏭️ 退群白名单豁免: {user.id}")
+        return
+    reason = "主动离开了群组" if event.new_chat_member.status == ChatMemberStatus.LEFT else "被管理员踢出/封禁"
     admin_id = None
-
-    if event.new_chat_member.status == ChatMemberStatus.KICKED:
-        reason = "被管理员踢出/封禁"
-        # 尝试获取执行踢出的管理员 (如果有)
-        if event.from_user:
-             admin_id = event.from_user.id
-             reason = f"被管理员 {event.from_user.full_name} 踢出/封禁"
-
-    # 执行清理逻辑
+    if event.new_chat_member.status == ChatMemberStatus.KICKED and event.from_user:
+        admin_id = event.from_user.id
+        reason = f"被管理员 {event.from_user.full_name} 踢出/封禁"
     try:
         user_info = {
             "group_name": event.chat.title,
@@ -151,7 +153,6 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
             "action": "Kick" if event.new_chat_member.status == ChatMemberStatus.KICKED else "Leave",
             "user_id": str(user.id),
         }
-
         results = await ban_emby_user(
             session=session,
             target_user_id=user.id,
@@ -160,9 +161,7 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
             bot=event.bot,
             user_info=user_info
         )
-
         logger.info(f"🧼 自动清理 Emby 账号执行结果: {user.id} - {results}")
-
         await session.commit()
     except Exception as e:
         logger.error(f"❌ 自动清理 Emby 账号失败: {user.id} - {e}")

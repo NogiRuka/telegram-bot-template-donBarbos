@@ -71,4 +71,7 @@ KEY_QUIZ_SCHEDULE_ENABLE = "admin.quiz.schedule.enable"
 KEY_NOTIFICATION_CHANNELS = "notification.channels"
 
 # Emby 配置
-CONFIG_KEY_EMBY_WHITELIST_USER_IDS = "emby.whitelist_user_ids"
+KEY_EMBY_WHITELIST_USER_IDS = "emby.whitelist.user_ids"
+
+# Telegram 白名单（Telegram 用户ID）
+KEY_TG_WHITELIST_USER_IDS = "tg.whitelist.user.ids"

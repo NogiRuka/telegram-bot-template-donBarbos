@@ -75,6 +75,7 @@ class BotSettings(EnvBaseSettings):
             raise ValueError(msg)
         return v
 
+
     @field_validator("GROUP")
     @classmethod
     def validate_group(cls, v: str | None) -> str | None:
@@ -262,6 +263,7 @@ class BotSettings(EnvBaseSettings):
             except ValueError:
                 results.append(p)
         return results
+
 
     def get_owner_id(self) -> int:
         """获取所有者用户ID
