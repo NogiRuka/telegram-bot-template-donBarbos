@@ -168,7 +168,15 @@ async def _is_user_in_whitelist(session: AsyncSession, user_id: str) -> bool:
         return True
     # Telegram 用户ID白名单（需要关联 UserExtend）
     tg_whitelist_val = await get_config(session, KEY_TG_WHITELIST_USER_IDS)
-    tg_whitelist = {int(x) for x in _parse_whitelist(tg_whitelist_val) if str(x).lstrip("-").isdigit()}
+    tg_whitelist: set[int] = set()
+    for x in _parse_whitelist(tg_whitelist_val):
+        sid = str(x).strip()
+        if not sid.isdigit():
+            continue
+        uid = int(sid)
+        if uid <= 0:
+            continue
+        tg_whitelist.add(uid)
     if not tg_whitelist:
         return False
     # 查询 emby_user_id 对应的 telegram user_id
