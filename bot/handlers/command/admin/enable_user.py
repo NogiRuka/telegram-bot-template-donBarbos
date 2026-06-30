@@ -7,6 +7,7 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.handlers.command._usage import build_usage_text
 from bot.services.admin_service import enable_emby_user
 from bot.utils.decorators import private_chat_only
 from bot.utils.permissions import require_admin_command_access, require_admin_priv
@@ -16,8 +17,12 @@ router = Router(name="command_enable_user")
 COMMAND_META = {
     "name": "enable_user",
     "alias": "eu",
-    "usage": "/enable_user <user_id_or_emby_id>",
-    "desc": "启用 Emby 账号"
+    "usage": "/eu <user_id|emby_id> [原因]",
+    "example": {
+        "command": "/eu 123456789 手动恢复",
+        "explain": "启用指定用户Emby账号，并记录原因“手动恢复”",
+    },
+    "desc": "启用 Emby 账号",
 }
 
 
@@ -26,31 +31,16 @@ COMMAND_META = {
 @require_admin_priv
 @require_admin_command_access(COMMAND_META["name"])
 async def enable_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
-    """
-    启用 Emby 用户命令
-
-    功能:
-    1. 启用指定用户的 Emby 账号
-    2. 记录审计日志
-
-    用法: /enable_user <telegram_user_id 或 emby_user_id> [原因]
-    """
     if not command.args:
-        await message.reply(
-            "⚠️ 请提供 Telegram 用户 ID 或 Emby 用户 ID\n"
-            "用法: `/enable_user <user_id> [原因]`",
-            parse_mode="Markdown"
-        )
+        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
         return
 
-    # 分割参数: target_id 和 reason
     args = command.args.split(maxsplit=1)
     target_id = args[0].strip()
     reason = args[1].strip() if len(args) > 1 else "管理员手动启用"
-    
-    # 简单的 ID 格式校验
+
     if not target_id.isalnum():
-        await message.reply("❌ 无效的 ID 格式")
+        await message.reply("无效的 ID 格式。")
         return
 
     results = await enable_emby_user(
@@ -59,7 +49,7 @@ async def enable_user_command(message: Message, command: CommandObject, session:
         admin_id=message.from_user.id,
         reason=reason,
         bot=message.bot,
-        user_info={"action": "ManualEnable", "target": target_id}
+        user_info={"action": "ManualEnable", "target": target_id},
     )
 
     await message.reply("\n".join(results))

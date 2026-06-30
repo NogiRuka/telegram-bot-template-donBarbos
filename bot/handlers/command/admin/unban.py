@@ -1,6 +1,7 @@
 """
 解除封禁命令模块
 """
+
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
@@ -8,6 +9,7 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
+from bot.handlers.command._usage import build_usage_text
 from bot.services.admin_service import unban_user_service
 from bot.utils.decorators import private_chat_only
 from bot.utils.permissions import require_admin_command_access, require_admin_priv
@@ -17,8 +19,12 @@ router = Router(name="command_unban")
 COMMAND_META = {
     "name": "unban",
     "alias": "ub",
-    "usage": "/unban <user_id>",
-    "desc": "解除封禁"
+    "usage": "/ub <user_id>",
+    "example": {
+        "command": "/ub 123456789",
+        "explain": "解除 Telegram 用户 123456789 的封禁状态",
+    },
+    "desc": "解除封禁",
 }
 
 
@@ -27,18 +33,14 @@ COMMAND_META = {
 @require_admin_priv
 @require_admin_command_access(COMMAND_META["name"])
 async def unban_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
-    """
-    解除封禁命令
-    用法: /unban <user_id>
-    """
     if not command.args:
-        await message.reply("⚠️ 请提供 Telegram 用户 ID\n用法: `/unban <user_id>`", parse_mode="Markdown")
+        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
         return
 
     try:
         target_user_id = int(command.args)
     except ValueError:
-        await message.reply("❌ 无效的用户 ID，必须为数字")
+        await message.reply("无效的用户 ID，必须为整数。")
         return
 
     await process_unban(message, target_user_id, session, message.from_user.id)
@@ -47,11 +49,8 @@ async def unban_user_command(message: Message, command: CommandObject, session: 
 @router.callback_query(F.data.startswith("unban:"))
 @require_admin_priv
 async def unban_callback(query: CallbackQuery, session: AsyncSession) -> None:
-    """处理解除封禁按钮点击"""
     target_user_id = int(query.data.split(":")[1])
-
     await query.message.edit_reply_markup(reply_markup=None)
-
     await process_unban(query.message, target_user_id, session, query.from_user.id, is_callback=True)
     await query.answer("已解除封禁")
 
@@ -59,7 +58,6 @@ async def unban_callback(query: CallbackQuery, session: AsyncSession) -> None:
 @router.callback_query(F.data == "close_message")
 @require_admin_priv
 async def close_callback(query: CallbackQuery, session: AsyncSession) -> None:
-    """关闭消息"""
     await query.message.delete()
 
 
@@ -68,29 +66,26 @@ async def process_unban(
     target_user_id: int,
     session: AsyncSession,
     admin_id: int,
-    is_callback: bool = False
+    is_callback: bool = False,
 ) -> None:
-    """处理解封核心逻辑"""
-    results = []
+    results: list[str] = []
 
-    # 1. Telegram 解封
     if settings.GROUP:
         try:
             await message.bot.unban_chat_member(chat_id=settings.GROUP, user_id=target_user_id, only_if_banned=True)
-            results.append("✅ 已解除群组封禁")
-        except Exception as e:
-            logger.warning(f"无法解封用户 {target_user_id}: {e}")
-            results.append(f"⚠️ 群组解封失败: {e}")
+            results.append("已解除群组封禁。")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"无法解封用户 {target_user_id}: {exc}")
+            results.append(f"群组解封失败: {exc}")
     else:
-        results.append("ℹ️ 未配置群组，跳过群组解封")
+        results.append("未配置群组，已跳过群组解封。")
 
-    # 2. 记录审计日志并通知
     group_name = "Private"
     chat_id = None
     chat_username = None
 
     if message.chat.type != "private":
-        group_name = message.chat.title
+        group_name = message.chat.title or "Unknown"
         chat_id = message.chat.id
         chat_username = message.chat.username
     elif settings.GROUP:
@@ -116,11 +111,9 @@ async def process_unban(
         admin_id=admin_id,
         reason="管理员手动解封",
         bot=message.bot,
-        user_info=user_info
+        user_info=user_info,
     )
     results.extend(service_results)
 
     await session.commit()
-
-    text = "\n".join(results)
-    await message.reply(text)
+    await message.reply("\n".join(results))

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.constants import CURRENCY_SYMBOL
 from bot.database.models import UserSubmissionModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
+from bot.handlers.command._usage import build_usage_text
 from bot.keyboards.inline.buttons import CLOSE_BUTTON
 from bot.services.currency import CurrencyService
 from bot.utils.datetime import now
@@ -18,7 +19,21 @@ router = Router(name="command_submission_review")
 COMMAND_META = {
     "name": "sr",
     "alias": "submission_review",
-    "usage": "/sr <投稿ID> <a/r> [notif_id] [留言]",
+    "usage": {
+        "summary": [
+            "/sr <投稿ID> <操作> [留言]",
+            "通过支持: a / approve，可选附带通知ID",
+            "拒绝支持: r / reject，直接填写留言即可",
+        ],
+        "formats": [
+            "/sr <投稿ID> a [通知ID] [留言]",
+            "/sr <投稿ID> r [留言]",
+        ],
+        "examples": [
+            "/sr 12 a 35 已收录，感谢投稿",
+            "/sr 12 r 资源信息不完整",
+        ],
+    },
     "desc": "命令式投稿审批"
 }
 
@@ -31,10 +46,12 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
 
     功能说明:
     - 通过命令快速审批用户求片/投稿，并可附带留言
-    - 命令格式: /sr <submission_id> <a/r> [notif_id] [comment...]
+    - 命令格式:
+      - 通过: /sr <submission_id> <a/approve> [notif_id] [comment...]
+      - 拒绝: /sr <submission_id> <r/reject> [comment...]
       - submission_id: 求片/投稿ID（整数）
       - a/r: a=通过(approve)，r=拒绝(reject)
-      - notif_id: 关联的通知ID（LibraryNewNotificationModel.id，可选）
+      - notif_id: 关联的通知ID（LibraryNewNotificationModel.id，仅通过时可选）
       - comment: 审批留言（可选，支持空格；当未提供notif_id时，如第三参数非纯数字则视为comment）
     - 审批通过时若 reward_bonus>0，将发放奖励
     - 将投稿者ID追加到对应通知的 target_user_id（逗号分隔，去重）
@@ -56,18 +73,26 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
         args_raw = (command.args or "").strip()
         parts = args_raw.split()
         if len(parts) < 2:
-            await send_toast(message, "❌ 参数不足\n正确格式：/sr <投稿ID> <a/r> [notif_id] [留言]")
+            await send_toast(message, f"❌ 参数不足\n{build_usage_text(COMMAND_META)}", parse_mode="Markdown")
             return
 
         submission_id_str, action_str = parts[0], parts[1]
         notif_id: int | None = None
         comment = ""
 
+        action = action_str.lower()
+        if action not in ("a", "approve", "r", "reject"):
+            await send_toast(message, "❌ 操作类型无效，应为 a/approve 或 r/reject")
+            return
+
         if len(parts) >= 3:
-            third = parts[2]
-            if third.isdigit():
-                notif_id = int(third)
-                comment = " ".join(parts[3:]) if len(parts) > 3 else ""
+            if action in ("a", "approve"):
+                third = parts[2]
+                if third.isdigit():
+                    notif_id = int(third)
+                    comment = " ".join(parts[3:]) if len(parts) > 3 else ""
+                else:
+                    comment = " ".join(parts[2:])
             else:
                 comment = " ".join(parts[2:])
 
@@ -75,11 +100,6 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
             submission_id = int(submission_id_str)
         except ValueError:
             await send_toast(message, "❌ 投稿ID或通知ID必须为整数")
-            return
-
-        action = action_str.lower()
-        if action not in ("a", "approve", "r", "reject"):
-            await send_toast(message, "❌ 操作类型无效，应为 a/approve 或 r/reject")
             return
 
         submission = await session.get(UserSubmissionModel, submission_id)
