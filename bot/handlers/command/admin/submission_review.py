@@ -167,7 +167,7 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
         except Exception as e:
             logger.warning(f"❌ 通知投稿者 {submission.submitter_id} 失败: {e}")
         kb = InlineKeyboardMarkup(inline_keyboard=[[CLOSE_BUTTON]])
-        if notification is not None:
+        if submission.status == "approved" and notification is not None:
             await message.reply(
                 f"{result_text}。\n"
                 f"📄 投稿ID：{submission.id}\n"
@@ -176,13 +176,22 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
                 reply_markup=kb,
             parse_mode="MarkdownV2"
             )
-        else:
+        elif submission.status == "approved":
             await message.reply(
                 f"{result_text}。\n"
                 f"📄 投稿ID：{submission.id}\n"
                 f"🔗 通知ID：未提供（未追加通知用户）",
                 reply_markup=kb,
             parse_mode="MarkdownV2"
+            )
+        else:
+            reply_text = f"{result_text}。\n📄 投稿ID：{submission.id}"
+            if comment:
+                reply_text += f"\n📝 留言：{comment}"
+            await message.reply(
+                reply_text,
+                reply_markup=kb,
+                parse_mode="MarkdownV2"
             )
 
     except Exception as e:
