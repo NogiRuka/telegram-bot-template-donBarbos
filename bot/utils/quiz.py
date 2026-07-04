@@ -1,9 +1,11 @@
-from typing import TypedDict
+from typing import Any, TypedDict
+
+from aiogram.types import Message
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.models import QuizCategoryModel
+from bot.database.models import QuizCategoryModel, QuizImageModel
 
 
 class ParsedQuiz(TypedDict):
@@ -20,6 +22,69 @@ class ParsedQuiz(TypedDict):
     is_image_only: bool | None
 class QuizParseError(Exception):
     pass
+
+
+MAX_QUIZ_IMAGE_BATCH = 9
+
+
+def resolve_quiz_media_input(
+    message: Message,
+    album: list[Message] | None = None,
+) -> tuple[list[Message], list[Message], Message, str | None]:
+    """统一提取问答输入中的媒体与文本
+
+    规则:
+    - 若存在相册，优先使用相册消息集合
+    - 文本优先取第一条带 caption 的图片消息
+    - 否则回退到当前消息的 text/caption
+    """
+    media_list = album if album else [message]
+    photo_messages = [m for m in media_list if m.photo]
+    primary_message = photo_messages[0] if photo_messages else message
+    text = next((m.caption for m in photo_messages if m.caption), None)
+    if not text:
+        text = message.caption or message.text
+    return media_list, photo_messages, primary_message, text
+
+
+def ensure_quiz_photo_limit(photo_messages: list[Message]) -> None:
+    """限制单次题图上传数量"""
+    if len(photo_messages) > MAX_QUIZ_IMAGE_BATCH:
+        msg = f"单次最多发送 {MAX_QUIZ_IMAGE_BATCH} 张图片。"
+        raise QuizParseError(msg)
+
+
+def build_quiz_image_models(
+    photo_messages: list[Message],
+    *,
+    category_id: int,
+    tags: list[str],
+    description: str,
+    image_source: str | None,
+    extra_caption: str | None,
+    created_by: int,
+    is_active: bool,
+    extra: dict[str, Any] | None = None,
+) -> list[QuizImageModel]:
+    """根据图片消息批量构建题图模型"""
+    models: list[QuizImageModel] = []
+    for photo_message in photo_messages:
+        photo = photo_message.photo[-1]
+        models.append(
+            QuizImageModel(
+                file_id=photo.file_id,
+                file_unique_id=photo.file_unique_id,
+                category_id=category_id,
+                tags=tags,
+                description=description,
+                image_source=image_source,
+                extra_caption=extra_caption,
+                is_active=is_active,
+                created_by=created_by,
+                extra=extra,
+            )
+        )
+    return models
 
 async def parse_quiz_input(session: AsyncSession, text: str) -> ParsedQuiz:
     """

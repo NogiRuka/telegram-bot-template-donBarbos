@@ -1,5 +1,6 @@
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.constants import OWNER_PANEL_LABEL
 from bot.keyboards.inline.owner import get_owner_panel_keyboard
@@ -11,7 +12,7 @@ router = Router(name="owner_home")
 
 @router.callback_query(F.data == "owner:panel")
 @require_owner
-async def show_owner_panel(callback: CallbackQuery, main_msg: MainMessageService) -> None:
+async def show_owner_panel(callback: CallbackQuery, session: AsyncSession, main_msg: MainMessageService) -> None:
     """显示所有者主面板
 
     功能说明:
@@ -19,6 +20,7 @@ async def show_owner_panel(callback: CallbackQuery, main_msg: MainMessageService
 
     输入参数:
     - callback: 回调对象
+    - session: 异步数据库会话
     - main_msg: 主消息服务
 
     返回值:

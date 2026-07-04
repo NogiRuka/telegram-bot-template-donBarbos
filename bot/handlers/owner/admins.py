@@ -1,19 +1,23 @@
-from aiogram import F, Router, types
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.inline.constants import OWNER_ADMINS_LABEL
 from bot.keyboards.inline.owner import get_admins_panel_keyboard
+from bot.services.main_message import MainMessageService
 from bot.services.users import list_admins
 from bot.utils.permissions import _resolve_role, require_owner
-from bot.utils.view import render_view
 
 router = Router(name="owner_admins")
 
 
 @router.callback_query(F.data == "owner:admins")
 @require_owner
-async def show_admins_panel(callback: CallbackQuery) -> None:
+async def show_admins_panel(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService,
+) -> None:
     """显示管理员管理面板
 
     功能说明:
@@ -21,21 +25,24 @@ async def show_admins_panel(callback: CallbackQuery) -> None:
 
     输入参数:
     - callback: 回调对象
+    - session: 异步数据库会话
 
     返回值:
     - None
     """
     caption = f"{OWNER_ADMINS_LABEL}\n\n可查看管理员列表与管理权限"
     kb = get_admins_panel_keyboard()
-    msg = callback.message
-    if isinstance(msg, types.Message):
-        await render_view(msg, caption, kb)
+    await main_msg.update_on_callback(callback, caption, kb)
     await callback.answer()
 
 
 @router.callback_query(F.data == "owner:admins:list")
 @require_owner
-async def list_admins_view(callback: CallbackQuery, session: AsyncSession) -> None:
+async def list_admins_view(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    main_msg: MainMessageService,
+) -> None:
     """查看管理员列表
 
     功能说明:
@@ -65,8 +72,5 @@ async def list_admins_view(callback: CallbackQuery, session: AsyncSession) -> No
             label = f"ID:{u.id} 用户名:@{u.username or '无'}"
             lines.append(label)
     caption = "\n".join(lines)
-    msg = callback.message
-    if isinstance(msg, types.Message):
-        await render_view(msg, caption, get_admins_panel_keyboard())
+    await main_msg.update_on_callback(callback, caption, get_admins_panel_keyboard())
     await callback.answer()
-

@@ -40,7 +40,7 @@ async def start_quiz_submit(callback: CallbackQuery, state: FSMContext, session:
     text = (
         "*✍️ 问答投稿*\n"
         "欢迎为题库贡献题目\\!\n\n"
-        "📸 可发送一张图片\\(可选\\)\n"
+        f"📸 可发送 1\\-{MAX_QUIZ_IMAGE_BATCH} 张图片\\(可选，纯题图投稿也支持多张\\)\n"
         "✍️ 题目请写在说明中\\(纯文本直接发送即可\\)\n\n"
         "📝 *输入格式说明：*\n"
         "`第1行：题目描述\n"
@@ -51,6 +51,11 @@ async def start_quiz_submit(callback: CallbackQuery, state: FSMContext, session:
         "第6行：难度系数（1-5，可选，默认1）\n"
         "第7行：图片来源（链接或文字描述，可选）\n"
         "第8行：图片补充说明（可选）`\n\n"
+        "🖼️ *仅添加题图格式：*\n"
+        "`第1行：分类ID\n"
+        "第2行：标签1　标签2（必填）\n"
+        "第3行：图片来源（可选）\n"
+        "第4行：图片补充说明（可选）`\n\n"
         "*📂 可用分类：*\n"
         f"{cat_text}"
     )
@@ -135,21 +140,118 @@ async def delete_example_msg(callback: CallbackQuery) -> None:
     await callback.message.delete()
     await callback.answer()
 
-from bot.utils.quiz import QuizParseError, parse_quiz_input
+from bot.utils.quiz import (
+    MAX_QUIZ_IMAGE_BATCH,
+    QuizParseError,
+    build_quiz_image_models,
+    ensure_quiz_photo_limit,
+    parse_quiz_input,
+    resolve_quiz_media_input,
+)
 
 
 @router.message(UserQuizSubmitState.waiting_for_input)
-async def process_submit(message: Message, state: FSMContext, session: AsyncSession, main_msg: MainMessageService) -> None:
+async def process_submit(
+    message: Message,
+    state: FSMContext,
+    session: AsyncSession,
+    main_msg: MainMessageService,
+    album: list[Message] | None = None,
+) -> None:
     """处理用户投稿"""
-    # 删除用户输入
-    await main_msg.delete_input(message)
-
-    # 获取文本内容
-    text = message.caption or message.text
+    media_list, photo_messages, _, text = resolve_quiz_media_input(message, album)
 
     try:
+        ensure_quiz_photo_limit(photo_messages)
         # 复用公共解析逻辑
         parsed = await parse_quiz_input(session, text)
+
+        for media in media_list:
+            await main_msg.delete_input(media)
+
+        if parsed.get("is_image_only"):
+            user_id = message.from_user.id
+            extra_data = {
+                "submitted_by": user_id,
+                "submission_rewarded": True
+            }
+
+            if not photo_messages:
+                await send_toast(message, "❌ 仅添加题图模式必须发送图片")
+                return
+
+            images = build_quiz_image_models(
+                photo_messages,
+                category_id=parsed["category_id"],
+                tags=parsed["tags"],
+                description=f"用户 {user_id} 投稿题图",
+                image_source=parsed["image_source"],
+                extra_caption=parsed["extra_caption"],
+                is_active=True,
+                created_by=user_id,
+                extra=extra_data,
+            )
+            session.add_all(images)
+            await session.flush()
+
+            await CurrencyService.add_currency(
+                session=session,
+                user_id=user_id,
+                amount=3,
+                event_type="quiz_submit_base",
+                description=f"投稿题图 {len(images)} 张奖励"
+            )
+
+            await session.commit()
+
+            try:
+                from bot.utils.msg_group import send_group_notification
+
+                user_info = {
+                    "user_id": str(user_id),
+                    "username": message.from_user.username or "Unknown",
+                    "full_name": message.from_user.full_name,
+                    "group_name": "QuizSubmit",
+                    "action": "Submit",
+                }
+
+                reason = (
+                    f"投稿了桜之问答题图（{len(images)}张）\n"
+                    f"🏷️ {escape_markdown_v2('，'.join(parsed['tags']))}"
+                )
+
+                await send_group_notification(message.bot, user_info, reason)
+            except Exception as e:
+                logger.warning(f"发送群组通知失败: {e}")
+
+            if len(images) == 1:
+                success_text = (
+                    "✅ *题图投稿成功\\!*\n\n"
+                    f"🆔 ID：`{images[0].id}`\n"
+                    f"📂 分类：{escape_markdown_v2(parsed['category_name'])} \\(`{parsed['category_id']}`\\)\n"
+                    f"🏷️ 标签：{escape_markdown_v2('，'.join(parsed['tags']))}\n"
+                    f"🎁 奖励：\\+3 {escape_markdown_v2(CURRENCY_SYMBOL)} 已发放\n"
+                )
+            else:
+                image_ids = "、".join(f"`{img.id}`" for img in images)
+                success_text = (
+                    "✅ *题图投稿成功\\!*\n\n"
+                    f"🆔 ID：{image_ids}\n"
+                    f"📂 分类：{escape_markdown_v2(parsed['category_name'])} \\(`{parsed['category_id']}`\\)\n"
+                    f"🏷️ 标签：{escape_markdown_v2('，'.join(parsed['tags']))}\n"
+                    f"🎁 奖励：\\+3 {escape_markdown_v2(CURRENCY_SYMBOL)} 已发放\n"
+                )
+            if parsed["image_source"]:
+                success_text += f"🔗 来源：{escape_markdown_v2(parsed['image_source'])}\n"
+            if parsed["extra_caption"]:
+                success_text += f"📄 说明：{escape_markdown_v2(parsed['extra_caption'])}\n"
+
+            await state.clear()
+            builder = InlineKeyboardBuilder()
+            builder.button(text="✍️ 继续投稿", callback_data=USER_QUIZ_SUBMIT_CALLBACK_DATA)
+            builder.row(BACK_TO_PROFILE_BUTTON, BACK_TO_HOME_BUTTON)
+            await main_msg.render(user_id, success_text.rstrip(), builder.as_markup())
+            return
 
         # 保存题目 (默认不启用)
         user_id = message.from_user.id
@@ -175,21 +277,19 @@ async def process_submit(message: Message, state: FSMContext, session: AsyncSess
         await session.flush() # 获取 ID
 
         # 如果有图片，保存图片并关联
-        if message.photo:
-            photo = message.photo[-1]
-            img = QuizImageModel(
-                file_id=photo.file_id,
-                file_unique_id=photo.file_unique_id,
+        if photo_messages:
+            images = build_quiz_image_models(
+                photo_messages,
                 category_id=parsed["category_id"],
-                tags=parsed["tags"], # 继承题目标签
+                tags=parsed["tags"],
                 description=f"用户 {user_id} 投稿题目 {quiz.id}",
                 image_source=parsed["image_source"],
                 extra_caption=parsed["extra_caption"],
-                is_active=True, # 默认不启用
+                is_active=True,
                 created_by=user_id,
-                extra=extra_data
+                extra=extra_data,
             )
-            session.add(img)
+            session.add_all(images)
 
         # 发放基础奖励
         await CurrencyService.add_currency(

@@ -114,7 +114,6 @@ def create_device_history(
         remark=remark,
     )
 
-
 async def list_users(
     is_hidden: bool | None = None,
     is_disabled: bool | None = None,
