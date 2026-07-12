@@ -1,4 +1,5 @@
 from __future__ import annotations
+import html
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -152,7 +153,7 @@ def _build_series_info(item: EmbyItemModel) -> str:
             status_text = "更新中"
         elif item.status == "Ended":
             status_text = "已完结"
-        parts.append(f"📊 <b>状态：</b>{status_text}")
+        parts.append(f"📊 <b>状态：</b>{html.escape(status_text)}")
 
     return "\n".join(parts)
 
@@ -195,13 +196,15 @@ async def get_notification_content(item: EmbyItemModel, session: AsyncSession | 
     library_tag = await _extract_library_tag(item.path, session)
     series_info = _build_series_info(item)
 
-    msg_parts: list[str] = [f"🎬 <b>名称：</b><code>{item.name}</code>"]
+    item_name = html.escape(item.name or "")
+    msg_parts: list[str] = [f"🎬 <b>名称：</b><code>{item_name}</code>"]
     if library_tag:
-        msg_parts.append(f"📂 <b>分类：</b>{library_tag}")
+        msg_parts.append(f"📂 <b>分类：</b>{html.escape(library_tag)}")
     if series_info:
         msg_parts.append(series_info)
 
-    msg_parts.append(f"📅 <b>时间：</b>{item.date_created if item.date_created else '未知'}")
+    date_text = str(item.date_created) if item.date_created else "未知"
+    msg_parts.append(f"📅 <b>时间：</b>{html.escape(date_text)}")
 
     overview = item.overview or ""
     if overview:
@@ -210,7 +213,7 @@ async def get_notification_content(item: EmbyItemModel, session: AsyncSession | 
             overview = overview.split("---")[0].strip()
 
         if overview:
-            msg_parts.append(f"📝 <b>简介：</b>{_truncate_overview(overview)}")
+            msg_parts.append(f"📝 <b>简介：</b>{html.escape(_truncate_overview(overview))}")
 
     return "\n".join(msg_parts), image_url
 

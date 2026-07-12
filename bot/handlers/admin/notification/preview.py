@@ -23,6 +23,23 @@ from bot.utils.message import clear_message_list_from_state, delete_message, del
 from bot.utils.notification import get_notification_content
 
 
+def _has_html_special_chars(text: str | None) -> bool:
+    """判断文本是否包含容易破坏 HTML parse_mode 的特殊字符。"""
+    if not text:
+        return False
+    return any(ch in text for ch in "<>&")
+
+
+def _preview_text(text: str | None, limit: int = 120) -> str:
+    """生成日志友好的短预览文本。"""
+    if not text:
+        return ""
+    normalized = text.replace("\r", " ").replace("\n", " ").strip()
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[:limit] + "..."
+
+
 @router.callback_query(F.data.startswith("admin:notify_preview"))
 async def handle_notify_preview(
     callback: types.CallbackQuery,
@@ -125,6 +142,8 @@ async def handle_notify_preview(
 
         try:
             msg = None
+            raw_name = notif.item_name or notif.series_name or item.name or "Unknown"
+            raw_overview = item.overview or ""
             if image_url:
                 logger.debug(f"正在发送图片预览: {image_url}")
                 try:
@@ -135,7 +154,17 @@ async def handle_notify_preview(
                         reply_markup=reject_kb,
                     )
                 except Exception as e:
-                    logger.warning(f"图片发送失败，尝试转为纯文本发送 | URL: {image_url} | Error: {e}")
+                    logger.warning(
+                        "图片发送失败，尝试转为纯文本发送 | "
+                        f"Notification ID: {notif.id} | "
+                        f"Item ID: {item.id} | "
+                        f"URL: {image_url} | "
+                        f"NameHasHtmlChars: {_has_html_special_chars(raw_name)} | "
+                        f"OverviewHasHtmlChars: {_has_html_special_chars(raw_overview)} | "
+                        f"NamePreview: {_preview_text(raw_name)} | "
+                        f"OverviewPreview: {_preview_text(raw_overview)} | "
+                        f"Error: {e}"
+                    )
                     # 图片发送失败（如 wrong type of the web page content），回退到发送纯文本
 
             if not msg:
@@ -153,7 +182,11 @@ async def handle_notify_preview(
                 f"预览发送失败 | "
                 f"Notification ID: {notif.id} | "
                 f"Item ID: {item.id} | "
-                f"Name: {notif.item_name or notif.series_name or 'Unknown'} | "
+                f"Name: {raw_name} | "
+                f"NameHasHtmlChars: {_has_html_special_chars(raw_name)} | "
+                f"OverviewHasHtmlChars: {_has_html_special_chars(raw_overview)} | "
+                f"NamePreview: {_preview_text(raw_name)} | "
+                f"OverviewPreview: {_preview_text(raw_overview)} | "
                 f"Error: {e}"
             )
             logger.error(error_info)
