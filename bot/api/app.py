@@ -1,13 +1,15 @@
-"""API 应用模块
+"""API 应用模块。
 
-功能说明:
-- 构建并导出 FastAPI 应用实例, 供 `uvicorn` 或 `python -m bot.api` 使用
+职责:
+- 创建并导出 FastAPI 应用实例, 供 `uvicorn` 或 `python -m bot.api` 使用。
+- 统一配置中间件、路由、日志与健康检查。
 
 依赖安装(Windows):
-- pip install fastapi loguru
+- `pip install fastapi loguru`
 """
 
 from __future__ import annotations
+
 import time
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
@@ -25,17 +27,7 @@ if TYPE_CHECKING:
 
 @asynccontextmanager
 async def api_lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """API 生命周期事件处理
-
-    功能说明:
-    - 在应用启动前后输出提示日志, 覆盖完整生命周期
-
-    输入参数:
-    - app: FastAPI 应用实例
-
-    返回值:
-    - None
-    """
+    """API 生命周期管理。"""
     del app
     logger.info("🚀 API 服务启动中...")
     logger.info("✅ API 服务启动完成")
@@ -45,18 +37,7 @@ async def api_lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
-    """创建 FastAPI 应用实例
-
-    功能说明:
-    - 配置应用元信息与 CORS
-    - 注册核心路由与健康检查
-
-    输入参数:
-    - 无
-
-    返回值:
-    - FastAPI: 已配置的应用实例
-    """
+    """创建并配置 FastAPI 应用。"""
     app = FastAPI(
         title="Telegram Bot Admin API",
         description="为 Telegram Bot 管理界面提供的 API 服务",
@@ -85,18 +66,7 @@ def create_app() -> FastAPI:
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        """请求日志中间件
-
-        功能说明:
-        - 记录每次请求的方法、路径、状态码、耗时与客户端IP
-
-        输入参数:
-        - request: FastAPI 请求对象
-        - call_next: 下游处理器
-
-        返回值:
-        - Response: FastAPI 响应对象
-        """
+        """记录请求方法、路径、状态码、耗时和客户端 IP。"""
         start = time.perf_counter()
         try:
             response = await call_next(request)
@@ -128,36 +98,15 @@ def create_app() -> FastAPI:
 
     @app.get("/")
     async def root() -> dict[str, str]:
-        """根路径健康检查
-
-        功能说明:
-        - 返回服务运行状态信息
-
-        输入参数:
-        - 无
-
-        返回值:
-        - dict[str, str]: 服务状态信息
-        """
+        """根路径健康检查。"""
         return {"message": "Telegram Bot Admin API", "status": "running"}
 
     @app.get("/health")
     async def health_check() -> dict[str, str]:
-        """健康检查端点
-
-        功能说明:
-        - 返回健康状态信息
-
-        输入参数:
-        - 无
-
-        返回值:
-        - dict[str, str]: 健康状态信息
-        """
+        """健康检查端点。"""
         return {"status": "healthy"}
 
     return app
 
 
-# 导出应用实例
 app = create_app()
