@@ -8,6 +8,7 @@ from bot.services.emby_metadata.matching import (
     normalize_product_number,
 )
 from bot.services.emby_metadata.models import MediaLibraryCategory
+from bot.services.emby_metadata.parser.ck_download import CkDownloadParser
 from bot.services.emby_metadata.sources.base import MetadataSourceParseError
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
 
@@ -64,6 +65,12 @@ class CkDownloadParserTests(unittest.TestCase):
         self.assertEqual([person.name for person in candidate.people], ["聖哉", "夏葵", "大希(TAIKI)", "仁(JIN)＜東京＞"])
         self.assertEqual(candidate.poster_url, "https://img.ck-download.com/images/product/33831/33831_1.jpg")
 
+    def test_parse_saved_search_results(self) -> None:
+        results = CkDownloadParser.parse_search_results(self._read_fixture("search/COCO060.html"))
+        self.assertEqual(len(results), 5)
+        self.assertEqual([source_id for source_id, _ in results], ["18996", "18997", "18998", "18999", "19000"])
+        self.assertEqual(CkDownloadSource.parse_search_results(self._read_fixture("search/COCO060.html"), limit=1), results[:1])
+
     def test_parse_search_results_deduplicates_and_supports_absolute_urls(self) -> None:
         html = """
         <div class="product_list">
@@ -73,10 +80,9 @@ class CkDownloadParserTests(unittest.TestCase):
         </div>
         """
         self.assertEqual(
-            CkDownloadSource.parse_search_results(html),
+            CkDownloadParser.parse_search_results(html),
             [("33907", "First title"), ("33831", "Second title")],
         )
-        self.assertEqual(CkDownloadSource.parse_search_results(html, limit=1), [("33907", "First title")])
 
     def test_empty_search_results(self) -> None:
         self.assertEqual(CkDownloadSource.parse_search_results("<html></html>"), [])
