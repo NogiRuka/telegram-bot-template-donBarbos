@@ -1,32 +1,14 @@
 from __future__ import annotations
 
-import copy
 from typing import Any
 
-from bot.core.config import settings
 from bot.services.emby_metadata.models import MetadataCandidate
 from bot.utils.emby import get_emby_client
 
 
-async def apply_metadata_candidate_to_item(
-    item_id: str,
-    candidate: MetadataCandidate,
-    *,
-    user_id: str | None = None,
-    apply_poster: bool = False,
-    poster_data: str | None = None,
-) -> dict[str, Any] | None:
-    """把抓取到的元数据写回指定 Emby Item。"""
-    client = get_emby_client()
-    if client is None:
-        return None
-
-    target_user_id = user_id or settings.get_emby_template_user_id()
-    item = await client.get_item(target_user_id, item_id) if target_user_id else {}
-    if not item:
-        item = {"Id": item_id}
-
-    payload = copy.deepcopy(item)
+def build_item_update_payload(item: dict[str, Any], candidate: MetadataCandidate) -> dict[str, Any]:
+    """根据候选元数据构建 Emby Item 更新载荷。"""
+    payload = dict(item)
     payload["Name"] = candidate.title
     payload["OriginalTitle"] = candidate.original_title
     payload["SortName"] = candidate.sort_name
@@ -38,6 +20,20 @@ async def apply_metadata_candidate_to_item(
     payload["Studios"] = list(candidate.studios)
     payload["People"] = [person.model_dump(exclude_none=True) for person in candidate.people]
     payload["ProviderIds"] = dict(candidate.external_ids)
+    return payload
+
+
+async def apply_item_update(
+    item_id: str,
+    payload: dict[str, Any],
+    *,
+    apply_poster: bool = False,
+    poster_data: str | None = None,
+) -> dict[str, Any] | None:
+    """把载荷写回指定 Emby Item。"""
+    client = get_emby_client()
+    if client is None:
+        return None
 
     await client.update_item(item_id, payload)
 
@@ -45,3 +41,26 @@ async def apply_metadata_candidate_to_item(
         await client.upload_item_image(item_id, poster_data, "Primary")
 
     return payload
+
+
+async def apply_metadata_candidate_to_item(
+    item_id: str,
+    candidate: MetadataCandidate,
+    *,
+    user_id: str | None = None,
+    apply_poster: bool = False,
+    poster_data: str | None = None,
+) -> dict[str, Any] | None:
+    """读取原 Item、合成载荷并写回指定 Emby Item。"""
+    client = get_emby_client()
+    if client is None:
+        return None
+
+    item = await client.get_item(user_id, item_id) if user_id else {"Id": item_id}
+    payload = build_item_update_payload(item or {"Id": item_id}, candidate)
+    return await apply_item_update(
+        item_id,
+        payload,
+        apply_poster=apply_poster,
+        poster_data=poster_data,
+    )
