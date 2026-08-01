@@ -71,7 +71,7 @@ class HttpClient:
         ep = endpoint if endpoint.startswith("/") else "/" + endpoint
         url = f"{self.base_url}{self.base_path}{ep}"
         try:
-            async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with aiohttp.ClientSession(timeout=timeout, auto_decompress=False) as session:
                 async with session.request(method=method.upper(), url=url, headers=headers, **kwargs) as resp:
                     status = resp.status
                     ctype = resp.headers.get("Content-Type", "")
