@@ -24,6 +24,9 @@ def get_emby_client() -> EmbyClient | None:
     if not base_url or not api_key:
         return None
 
-    _emby_client = EmbyClient(base_url, api_key)
+    _emby_client = EmbyClient(
+        base_url, 
+        api_key,
+    )
 
     return _emby_client

@@ -11,20 +11,11 @@ class HttpClient:
     """HTTP 客户端
 
     功能说明:
-    - 为 Emby 等外部服务提供统一的异步请求封装, 自动携带令牌头
-
-    输入参数:
-    - base_url: 服务基础地址, 如 `https://your-emby.com`
-    - token: 访问令牌, 写入 `X-Emby-Token` 请求头, 可为 None
-
-    返回值:
-    - 无
-
-    依赖安装:
-    - pip install aiohttp
+    - 提供统一的异步 HTTP 请求封装
+    - 支持默认请求头、JSON 自动解析、连接复用
     """
 
-    def __init__(self, base_url: str, token: str | None = None, base_path: str | None = None) -> None:
+    def __init__(self, base_url: str, headers: dict[str, str] | None = None, base_path: str | None = None) -> None:
         """初始化 HTTP 客户端
 
         功能说明:
@@ -32,14 +23,14 @@ class HttpClient:
 
         输入参数:
         - base_url: 服务基础地址, 如 `https://your-emby.com`
-        - token: 访问令牌, 可为 None
+        - headers: 请求头, 可为 None
         - base_path: 公共路径前缀(可选), 例如 `/emby`
 
         返回值:
         - None
         """
         self.base_url = base_url.rstrip("/")
-        self.token = token
+        self.default_headers = headers or {}
         if base_path is None or not base_path.strip():
             self.base_path = ""
         else:
@@ -47,7 +38,7 @@ class HttpClient:
             if not s.startswith("/"):
                 s = "/" + s
             self.base_path = s.rstrip("/")
-        self.session: aiohttp.ClientSession | None = None
+        self.session = aiohttp.ClientSession | None = None
 
     async def close(self) -> None:
         if self.session and not self.session.closed:
@@ -60,17 +51,19 @@ class HttpClient:
                 auto_decompress=True,
                 headers={
                     "Accept-Encoding": "gzip, deflate",
+                    **self.default_headers,
                 },
             )
-
         return self.session
 
     async def request(self, method: str, endpoint: str, **kwargs: Any) -> Any:
         """发送 HTTP 请求
 
         功能说明:
-        - 统一拼接 `base_url + base_path + endpoint`, 注入 `X-Emby-Token` 头, 使用 60s 超时
-        - 始终读取响应体; 对非 2xx 状态抛出异常并附带原始响应体
+        - 拼接 base_url + base_path + endpoint
+        - 合并默认请求头与本次请求头
+        - 自动解析 JSON
+        - 非 2xx 抛出 HttpRequestError
 
         输入参数:
         - method: HTTP 方法, 如 `GET`/`POST`/`DELETE`
@@ -80,34 +73,23 @@ class HttpClient:
         返回值:
         - Any: 解析后的响应体, 优先尝试 `JSON`, 失败回退为文本
         """
-        headers: dict[str, str] = dict(kwargs.pop("headers", {}) or {})
-        if self.token:
-            headers["X-Emby-Token"] = self.token
+        headers = kwargs.pop("headers", None)
+
+        logger.debug("Request headers: {}", headers)
 
         ep = endpoint if endpoint.startswith("/") else "/" + endpoint
         url = f"{self.base_url}{self.base_path}{ep}"
         try:
             session = await self._get_session()
             async with session.request(method=method.upper(), url=url, headers=headers, **kwargs) as resp:
+
+                logger.debug("Response headers: {}", dict(resp.headers))
+
                 status = resp.status
-                ctype = resp.headers.get("Content-Type", "")
-                raw_body = await resp.read()
-                encoding = resp.charset or "utf-8"
+                text_body = await resp.text()
                 try:
-                    text_body = raw_body.decode(encoding)
-                except UnicodeDecodeError:
-                    text_body = raw_body.decode("utf-8", errors="replace")
-                data: Any
-                if (
-                        "application/json" in ctype
-                        or text_body.startswith("{")
-                        or text_body.startswith("[")
-                    ):
-                    try:
-                        data = json.loads(text_body)
-                    except Exception:
-                        data = text_body
-                else:
+                    data = json.loads(text_body)
+                except json.JSONDecodeError:
                     data = text_body
                 if status >= 400:
                     snippet = (text_body[:1000] + ("…" if len(text_body) > 1000 else "")) if text_body else ""

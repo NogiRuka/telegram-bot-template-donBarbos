@@ -9,7 +9,13 @@ class EmbyClient:
     """Emby API 客户端，封装常用接口，依赖 HttpClient 发起请求。"""
 
     def __init__(self, base_url: str, api_key: str) -> None:
-        self.http = HttpClient(base_url, api_key, base_path="/emby")
+        self.http = HttpClient(
+            base_url, 
+            headers={
+                "X-Emby-Token": api_key,
+            },
+            base_path="/emby"
+        )
 
     async def close(self) -> None:
         """关闭 HTTP 客户端资源。"""
