@@ -185,8 +185,17 @@ async def create_user(
                 template_user = await client.get_user(tid)
                 if not template_user or not template_user.get("Id"):
                     return False, None, "模板用户不存在或已删除，请联系管理员修复 EMBY_TEMPLATE_USER_ID"
-            except Exception:
-                return False, None, "模板用户校验失败或不存在，请联系管理员修复 EMBY_TEMPLATE_USER_ID"
+            except HttpRequestError as e:
+                logger.error(
+                    "❌ Emby 模板用户请求失败: user_id={} status={} body={}",
+                    tid,
+                    e.status,
+                    e.body[:500] if e.body else "",
+                )
+                return False, None, f"模板用户请求失败（HTTP {e.status}），请检查 Emby 配置"
+            except Exception as e:
+                logger.exception("❌ Emby 模板用户校验异常: user_id={} err={}", tid, e)
+                return False, None, "模板用户校验异常，请查看日志或联系管理员"
 
         # Step 1: 创建无密码用户
         user_dto = await client.create_user(name=name)
