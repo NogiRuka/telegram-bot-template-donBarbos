@@ -24,7 +24,7 @@ def print_boot_banner(service_name: str) -> None:
     返回值:
     - None
     """
-    banner_path = Path("assets/banner.txt")
+    banner_path = Path(__file__).resolve().parent.parent / "assets" / "banner.txt"
     banner_text = ""
     if banner_path.exists():
         try:

@@ -33,19 +33,35 @@ telegram-bot-template-donBarbos/
 ```text
 bot/
 ├─ __main__.py         # Bot 启动入口（python -m bot）
-├─ analytics/          # 分析上报（如 Google Analytics）
-├─ api/                # 内置 API（FastAPI）
-├─ cache/              # 缓存实现
-├─ config/             # 配置常量与功能映射
-├─ core/               # 全局 settings、loader、核心常量
-├─ database/           # ORM 模型与迁移脚本
+├─ analytics/          # 分析上报及 Google Analytics 客户端
+├─ api/                # FastAPI 内置 API
+│  ├─ app.py           # API 应用与生命周期配置
+│  ├─ routes/          # 管理员、用户、认证、Webhook 等路由
+│  └─ __main__.py      # API 启动入口
+├─ assets/             # Bot 使用的图片、字体等资源
+├─ cache/              # 缓存与序列化实现
+├─ config/             # 配置键名、默认值与功能映射
+├─ core/               # 全局 settings、loader、Emby 及核心常量
+├─ database/           # 数据库连接、ORM 模型、种子数据与 Alembic 迁移
+│  ├─ models/          # SQLAlchemy ORM 模型
+│  └─ migrations/      # Alembic 迁移版本
 ├─ filters/            # Aiogram Filter 扩展
-├─ handlers/           # Telegram 交互层（命令、面板）
-├─ keyboards/          # Inline/Reply 键盘
+├─ handlers/           # Telegram 交互层
+│  ├─ admin/            # 管理员面板与管理操作
+│  ├─ command/          # 用户、管理员、Owner 命令
+│  ├─ group/            # 群组消息与群组配置
+│  ├─ owner/            # Owner 专属功能
+│  └─ user/             # 用户功能与业务交互
+├─ keyboards/          # Inline/Reply 键盘与默认命令
 ├─ middlewares/        # Aiogram 中间件
-├─ runtime/            # 启动/关闭钩子
+├─ runtime/            # 启动与关闭钩子
 ├─ services/           # 业务服务层
-├─ states/             # FSM 状态
+│  ├─ emby_metadata/   # Emby 元数据匹配与来源处理
+│  │  ├─ matching.py   # 元数据匹配逻辑
+│  │  ├─ models.py     # 元数据相关数据模型
+│  │  └─ sources/      # 外部元数据来源适配器
+│  └─ ...              # 配置、用户、问答、货币等业务服务
+├─ states/             # FSM 状态定义
 ├─ tests/              # 测试与调试工具
 ├─ tools/              # 开发辅助脚本
 └─ utils/              # 通用工具函数

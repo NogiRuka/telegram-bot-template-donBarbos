@@ -12,6 +12,15 @@ class EmbyClient:
         self.http = HttpClient(base_url, api_key, base_path="/emby")
 
     # ------------------------------------------------------------------
+    # 系统
+    # ------------------------------------------------------------------
+
+    async def get_system_info(self) -> dict[str, Any]:
+        """获取 Emby 系统信息，可用于测试连接 (GET /System/Info)。"""
+        data = await self.http.request("GET", "/System/Info")
+        return cast("dict[str, Any]", data) if isinstance(data, dict) else {}
+
+    # ------------------------------------------------------------------
     # 用户管理
     # ------------------------------------------------------------------
 
@@ -27,9 +36,9 @@ class EmbyClient:
         """分页获取用户列表 (GET /Users/Query)。"""
         params: dict[str, Any] = {}
         if is_hidden is not None:
-            params["IsHidden"] = is_hidden
+            params["IsHidden"] = str(is_hidden).lower()
         if is_disabled is not None:
-            params["IsDisabled"] = is_disabled
+            params["IsDisabled"] = str(is_disabled).lower()
         if start_index is not None:
             params["StartIndex"] = int(start_index)
         if limit is not None:
@@ -143,7 +152,7 @@ class EmbyClient:
         return await self.http.request("POST", f"/Users/{user_id}/Policy", json=policy)
 
     # ------------------------------------------------------------------
-    # 项目查询
+    # 项目查询与管理
     # ------------------------------------------------------------------
 
     async def get_item(self, user_id: str, item_id: str) -> dict[str, Any]:
@@ -254,6 +263,25 @@ class EmbyClient:
             total = len(items)
 
         return items, total
+
+    async def update_item(self, item_id: str, item_data: dict[str, Any]) -> Any:
+        """更新 Item 元数据，item_data 为完整 Item DTO (POST /Items/{ItemId})。"""
+        return await self.http.request("POST", f"/Items/{item_id}", json=item_data)
+
+    async def upload_item_image(
+        self,
+        item_id: str,
+        image_data: str,
+        image_type: str = "Primary",
+    ) -> Any:
+        """上传 Item 图片，image_data 需为 Base64 字符串 (POST /Items/{ItemId}/Images/{Type})。"""
+        headers = {"Content-Type": "image/jpeg"}
+        return await self.http.request(
+            "POST",
+            f"/Items/{item_id}/Images/{image_type}",
+            data=image_data,
+            headers=headers,
+        )
 
     # ------------------------------------------------------------------
     # 会话与设备

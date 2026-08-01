@@ -1,0 +1,16 @@
+[ck_download]
+enabled = true
+
+cookie = "_ga=GA1.1.1692189232.1770659137; USER_AUTO_LOGIN=Q2FrZQ%3D%3D.ODRmMTA0MmE1OTgwYWEyOTQ4OGQwNmIxZWFlMzI5MmJlMmRkMmNmMGY3OGMzNTgwYzI1OWVhN2ZlNWNhYjIxYhkr8vlTd4nKfhgy8OON70QSMEMzbSn90CyUVvhdm%2BN5PKgOpdXBYfrJOKyPjC0gV1BQNVindccawBTiFhTfeDkCk4YA1LaYRtklek9adL6JTYN1kITkEQy06dIRfDMnXw%3D%3D; COAT=c8tc81a99mqj3bf700fi7v2paf; _ga_4VE1V5J7Q4=GS2.1.s1785551425$o65$g1$t1785551564$j56$l0$h0"
+
+
+[hunk-ch]
+enabled = true
+
+cookie = ""
+
+
+[dmm]
+enabled = false
+
+cookie = ""
