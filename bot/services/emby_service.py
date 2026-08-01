@@ -183,6 +183,7 @@ async def create_user(
         if tid:
             try:
                 template_user = await client.get_user(tid)
+                logger.info("Emby 模板用户: {}", template_user)
                 if not template_user or not template_user.get("Id"):
                     return False, None, "模板用户不存在或已删除，请联系管理员修复 EMBY_TEMPLATE_USER_ID"
             except HttpRequestError as e:
