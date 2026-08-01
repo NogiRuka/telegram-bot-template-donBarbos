@@ -13,8 +13,31 @@ from .constants import *
 from bot.database.models.config import ConfigType
 from bot.keyboards.inline.constants import *
 
-# 默认配置值定义
+# ======================
+# 功能依赖关系
+# ======================
+FEATURE_DEPENDENCIES: dict[str, list[str]] = {
+
+    # 用户注册依赖账号中心
+    KEY_USER_REGISTER: [
+        KEY_USER_ACCOUNT,
+    ],
+
+    # 用户资料依赖账号中心
+    KEY_USER_PROFILE: [
+        KEY_USER_ACCOUNT,
+    ],
+
+    # 用户信息依赖账号中心
+    KEY_USER_INFO: [
+        KEY_USER_ACCOUNT,
+    ],
+}
+
+# ======================
+# 默认配置
 # 格式: Key -> (Value, ConfigType)
+# ======================
 DEFAULT_CONFIGS: dict[str, tuple[Any, ConfigType]] = {
     # 基础开关配置 (布尔值)
     KEY_BOT_FEATURES_ENABLED: (True, ConfigType.BOOLEAN),

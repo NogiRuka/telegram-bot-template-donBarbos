@@ -10,6 +10,8 @@ from sqlalchemy import select
 from bot.core.config import settings
 from bot.database.models import UserExtendModel, UserRole
 from bot.services.config_service import get_config, is_command_enabled
+from bot.config.mappings import FEATURE_DEPENDENCIES
+
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -256,7 +258,7 @@ def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[
             if session is None:
                 return await func(*args, **kwargs)
             enabled_all = bool(await get_config(session, "user.features.enabled") or False)
-            enabled_feature = bool(await get_config(session, feature_key) or False)
+            enabled_feature = await check_feature_enabled(session, feature_key)
             if enabled_all and enabled_feature:
                 return await func(*args, **kwargs)
             if isinstance(first, CallbackQuery):
@@ -342,3 +344,31 @@ def require_user_command_access(name: str) -> Callable[[Callable[..., Awaitable[
 
 def require_admin_command_access(name: str) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
     return require_command_access("admin", name)
+
+async def check_feature_enabled(
+    session: AsyncSession,
+    feature_key: str,
+) -> bool:
+
+    # 当前功能
+    enabled = bool(
+        await get_config(session, feature_key)
+    )
+
+    if not enabled:
+        return False
+
+    # 检查依赖
+    dependencies = FEATURE_DEPENDENCIES.get(
+        feature_key,
+        []
+    )
+
+    for dependency in dependencies:
+        if not await check_feature_enabled(
+            session,
+            dependency
+        ):
+            return False
+
+    return True

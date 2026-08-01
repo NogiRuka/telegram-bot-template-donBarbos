@@ -40,7 +40,11 @@ bot/
 │  └─ __main__.py      # API 启动入口
 ├─ assets/             # Bot 使用的图片、字体等资源
 ├─ cache/              # 缓存与序列化实现
-├─ config/             # 配置键名、默认值与功能映射
+├─ config/             # 配置模块：键名、默认值、功能映射与依赖关系
+│  ├─ constants.py     # 配置键常量，统一定义配置表中的 key
+│  ├─ features.py      # 功能依赖关系，例如 register 依赖 account
+│  ├─ mappings.py      # 默认配置、功能开关映射、面板可见功能定义
+│  └─ __init__.py      # 导出常量与映射，供外部统一导入
 ├─ core/               # 全局 settings、loader、Emby 及核心常量
 ├─ database/           # 数据库连接、ORM 模型、种子数据与 Alembic 迁移
 │  ├─ models/          # SQLAlchemy ORM 模型
@@ -71,23 +75,45 @@ bot/
 
 ## config 与 core
 
-- `bot/config/constants.py`  
-  定义所有配置键名（字符串），例如：
-  - `KEY_USER_FEATURES_ENABLED`
-  - `KEY_ADMIN_FEATURES_ENABLED`
-  - `KEY_USER_COMMANDS_DISABLED`
-  - `KEY_ADMIN_COMMANDS_DISABLED`
+目录职责可以理解为两部分：
 
-- `bot/config/mappings.py`  
-  - `DEFAULT_CONFIGS`：配置默认值与类型  
-  - `USER_FEATURES_MAPPING`：用户功能开关映射  
-  - `ADMIN_FEATURES_MAPPING`：管理员功能开关映射  
+- `bot/config/` 负责“机器人有哪些配置、默认是什么、界面上怎么映射、功能之间是否有依赖”。
+- `bot/core/` 负责“运行时怎么把环境配置加载进来，以及怎么初始化 Bot 核心对象”。
 
-- `bot/core/config.py`  
-  - `settings`：从环境变量加载的全局配置（owner/admin ID、数据库 URL 等）
+- `bot/config/constants.py`
+  - 统一定义配置表 key，避免在业务代码里直接写字符串
+  - 典型内容包括：用户功能开关、管理员功能开关、命令禁用列表、问答配置、通知配置、白名单配置
+  - 例如：`KEY_USER_FEATURES_ENABLED`、`KEY_ADMIN_FEATURES_ENABLED`、`KEY_USER_COMMANDS_DISABLED`、`KEY_QUIZ_GLOBAL_ENABLE`
 
-- `bot/core/loader.py`  
-  - 创建 Bot、Dispatcher 等核心对象
+- `bot/config/features.py`
+  - 定义功能依赖关系 `FEATURE_DEPENDENCIES`
+  - 当前用于约束某些功能不能脱离基础能力单独开启
+  - 例如：`user.register`、`user.info`、`user.emby` 都依赖 `user.account`
+
+- `bot/config/mappings.py`
+  - `DEFAULT_CONFIGS`：定义每个配置项的默认值和配置类型，如 `BOOLEAN`、`LIST`、`INTEGER`、`FLOAT`、`JSON`
+  - `USER_FEATURES_MAPPING`：把用户侧功能短码映射到真实配置键和按钮展示文案
+  - `ADMIN_FEATURES_MAPPING`：把管理员侧功能短码映射到真实配置键和按钮展示文案
+  - `ADMIN_PANEL_VISIBLE_FEATURES`：声明哪些管理员功能需要在面板中显示独立入口
+  - 这层本质上是“配置存储”和“界面交互”之间的桥梁
+
+- `bot/config/__init__.py`
+  - 统一导出 `constants` 与 `mappings`
+  - 方便其他模块通过 `bot.config` 集中导入
+
+- `bot/core/config.py`
+  - 提供全局 `settings`
+  - 负责从环境变量读取运行参数，例如 owner/admin ID、数据库连接、Telegram Bot Token 等
+  - 这一层解决的是“部署环境差异”问题
+
+- `bot/core/loader.py`
+  - 创建并组装 `Bot`、`Dispatcher` 等核心对象
+  - 负责启动期依赖装配，是程序入口初始化链路的重要一环
+
+简化理解：
+
+- `config` 决定“系统支持什么配置，以及这些配置如何被使用”。
+- `core` 决定“程序启动时如何读取配置并把核心对象跑起来”。
 
 ---
 
