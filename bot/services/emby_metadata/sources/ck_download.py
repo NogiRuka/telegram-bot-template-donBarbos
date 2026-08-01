@@ -3,8 +3,7 @@ from urllib.parse import urljoin
 import aiohttp
 
 from bot.services.emby_metadata.auth.cookie_manager import CookieManager
-from bot.services.emby_metadata.matching import calculate_confidence
-from bot.services.emby_metadata.models import MetadataCandidate
+from bot.services.emby_metadata.models import MetadataCandidate, MetadataSearchResult
 from bot.services.emby_metadata.parser.ck_download import CkDownloadParser
 from bot.services.emby_metadata.sources.base import (
     MetadataSource,
@@ -30,8 +29,8 @@ class CkDownloadSource(MetadataSource):
         if cookie:
             self._headers["Cookie"] = cookie
 
-    async def search(self, keyword: str, limit: int = 10) -> list[MetadataCandidate]:
-        """提交关键词搜索，并获取候选详情。"""
+    async def search(self, keyword: str, limit: int = 10) -> list[MetadataSearchResult]:
+        """提交关键词搜索，只返回结果页基础信息。"""
         search_keyword = keyword.strip()
         if limit <= 0 or not search_keyword:
             return []
@@ -41,17 +40,7 @@ class CkDownloadSource(MetadataSource):
             method="POST",
             data={"kw": search_keyword, "kw_opt": "1", "only_nm": "0"},
         )
-        summaries = CkDownloadParser.parse_search_results(html, limit)
-        candidates: list[MetadataCandidate] = []
-        for source_id, summary_title in summaries:
-            candidate = await self.fetch_detail(source_id)
-            candidate.confidence = calculate_confidence(
-                search_keyword,
-                candidate.title or summary_title,
-                candidate.product_number,
-            )
-            candidates.append(candidate)
-        return sorted(candidates, key=lambda item: item.confidence, reverse=True)
+        return CkDownloadParser.parse_search_results(html, limit)
 
     async def fetch_detail(self, source_id: str) -> MetadataCandidate:
         """请求指定商品详情，并交给纯解析器处理。"""

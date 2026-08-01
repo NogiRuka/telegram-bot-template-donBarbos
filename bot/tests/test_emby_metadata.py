@@ -7,7 +7,7 @@ from bot.services.emby_metadata.matching import (
     extract_product_number,
     normalize_product_number,
 )
-from bot.services.emby_metadata.models import MediaLibraryCategory
+from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataSearchResult
 from bot.services.emby_metadata.parser.ck_download import CkDownloadParser
 from bot.services.emby_metadata.sources.base import MetadataSourceParseError
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
@@ -68,8 +68,24 @@ class CkDownloadParserTests(unittest.TestCase):
     def test_parse_saved_search_results(self) -> None:
         results = CkDownloadParser.parse_search_results(self._read_fixture("search/COCO060.html"))
         self.assertEqual(len(results), 5)
-        self.assertEqual([source_id for source_id, _ in results], ["18996", "18997", "18998", "18999", "19000"])
-        self.assertEqual(CkDownloadSource.parse_search_results(self._read_fixture("search/COCO060.html"), limit=1), results[:1])
+        self.assertTrue(all(isinstance(result, MetadataSearchResult) for result in results))
+        self.assertEqual([result.source_id for result in results], ["18996", "18997", "18998", "18999", "19000"])
+        self.assertEqual(results[0].title, "[Hello!] 斗武と魁斗のオナホ品評会! 淫猥巨根にガン掘られ!!")
+        self.assertEqual(results[0].release_date, date(2023, 8, 4))
+        self.assertEqual(results[0].price_yen, 2074)
+        self.assertEqual(results[0].statuses, ["単品", "HD", "レンタル", "ブラウザ視聴専用"])
+        self.assertEqual(
+            results[0].image_urls,
+            [
+                "https://img.ck-download.com/images/product/18996/18996_1_360.jpg",
+                "https://img.ck-download.com/images/product/18996/18996_2_360.jpg",
+                "https://img.ck-download.com/images/product/18996/18996_3_360.jpg",
+            ],
+        )
+        self.assertEqual(
+            CkDownloadSource.parse_search_results(self._read_fixture("search/COCO060.html"), limit=1),
+            results[:1],
+        )
 
     def test_parse_search_results_deduplicates_and_supports_absolute_urls(self) -> None:
         html = """
@@ -79,9 +95,14 @@ class CkDownloadParserTests(unittest.TestCase):
             <a href="/product/detail/33831"><h5>Second title</h5></a>
         </div>
         """
+        results = CkDownloadParser.parse_search_results(html)
         self.assertEqual(
-            CkDownloadParser.parse_search_results(html),
+            [(result.source_id, result.title) for result in results],
             [("33907", "First title"), ("33831", "Second title")],
+        )
+        self.assertEqual(
+            [(result.source_id, result.title) for result in CkDownloadParser.parse_search_results(html, limit=1)],
+            [("33907", "First title")],
         )
 
     def test_empty_search_results(self) -> None:

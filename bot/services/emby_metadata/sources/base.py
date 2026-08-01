@@ -6,7 +6,7 @@ from bot.services.emby_metadata.errors import (
     MetadataSourceNetworkError,
     MetadataSourceParseError,
 )
-from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate
+from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate, MetadataSearchResult
 
 
 class MetadataSource(ABC):
@@ -15,7 +15,7 @@ class MetadataSource(ABC):
     base_url: str
 
     @abstractmethod
-    async def search(self, keyword: str, limit: int = 10) -> list[MetadataCandidate]:
+    async def search(self, keyword: str, limit: int = 10) -> list[MetadataSearchResult]:
         raise NotImplementedError
 
     @abstractmethod

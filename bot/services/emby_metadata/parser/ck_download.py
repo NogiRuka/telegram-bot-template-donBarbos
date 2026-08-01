@@ -6,7 +6,12 @@ from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup, Tag
 
 from bot.services.emby_metadata.errors import MetadataSourceParseError
-from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate, MetadataPerson
+from bot.services.emby_metadata.models import (
+    MediaLibraryCategory,
+    MetadataCandidate,
+    MetadataPerson,
+    MetadataSearchResult,
+)
 
 _DETAIL_PATH = re.compile(r"^/product/detail/(\d+)(?:[/?#]|$)")
 _DATE_PATTERN = re.compile(r"(\d{4})[./-](\d{2})[./-](\d{2})")
@@ -20,8 +25,8 @@ class CkDownloadParser:
     category = MediaLibraryCategory.JAPANESE_KOREAN
 
     @classmethod
-    def parse_search_results(cls, html: str, limit: int = 10) -> list[tuple[str, str]]:
-        """解析真实搜索结果列表，返回商品 ID 和列表标题。"""
+    def parse_search_results(cls, html: str, limit: int = 10) -> list[MetadataSearchResult]:
+        """解析搜索结果页的基础信息，不请求商品详情页。"""
         if limit <= 0:
             return []
         soup = BeautifulSoup(html, "html.parser")
@@ -29,7 +34,7 @@ class CkDownloadParser:
         if not links:
             links = soup.select('a[href*="/product/detail/"]')
 
-        results: list[tuple[str, str]] = []
+        results: list[MetadataSearchResult] = []
         seen_ids: set[str] = set()
         for link in links:
             href = link.get("href")
@@ -45,7 +50,19 @@ class CkDownloadParser:
             if not title:
                 continue
             seen_ids.add(source_id)
-            results.append((source_id, title))
+            results.append(
+                MetadataSearchResult(
+                    source=cls.source_name,
+                    source_id=source_id,
+                    category=cls.category,
+                    title=title,
+                    release_date=cls._search_result_date(link),
+                    price_yen=cls._search_result_price(link),
+                    statuses=cls._search_result_statuses(link),
+                    image_urls=cls._search_result_images(link),
+                    detail_url=urljoin(f"{cls.base_url}/", href),
+                )
+            )
             if len(results) >= limit:
                 break
         return results
@@ -112,6 +129,42 @@ class CkDownloadParser:
         heading = link.find(["h3", "h4", "h5"])
         target = heading if isinstance(heading, Tag) else link
         return cls._clean_text(target.get_text(" ", strip=True))
+
+    @classmethod
+    def _search_result_date(cls, link: Tag) -> date | None:
+        date_node = link.select_one(".ftData .date")
+        if not isinstance(date_node, Tag):
+            return None
+        match = _DATE_PATTERN.search(date_node.get_text(" ", strip=True))
+        if match is None:
+            return None
+        try:
+            return datetime.strptime("-".join(match.groups()), "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    @classmethod
+    def _search_result_price(cls, link: Tag) -> int | None:
+        price_node = link.select_one(".ftData .price strong")
+        if not isinstance(price_node, Tag):
+            return None
+        digits = re.sub(r"[^0-9]", "", price_node.get_text(strip=True))
+        return int(digits) if digits else None
+
+    @classmethod
+    def _search_result_statuses(cls, link: Tag) -> list[str]:
+        return cls._unique(
+            cls._clean_text(node.get_text(" ", strip=True))
+            for node in link.select(".status span")
+        )
+
+    @classmethod
+    def _search_result_images(cls, link: Tag) -> list[str]:
+        return cls._unique(
+            urljoin(f"{cls.base_url}/", source)
+            for image in link.select(".slideshow img")
+            if isinstance((source := image.get("src")), str)
+        )
 
     @classmethod
     def _parse_product_fields(cls, soup: BeautifulSoup) -> dict[str, str]:

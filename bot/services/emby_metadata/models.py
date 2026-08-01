@@ -20,6 +20,20 @@ class MetadataPerson(BaseModel):
     type: str = Field(default="Actor", description="Emby 人员类型，出演模型统一为 Actor")
 
 
+class MetadataSearchResult(BaseModel):
+    """搜索结果页的轻量信息，供用户选择详情抓取目标。"""
+
+    source: str = Field(description="数据源唯一名称")
+    source_id: str = Field(description="数据源站内商品 ID")
+    category: MediaLibraryCategory = Field(description="候选所属媒体库分类")
+    title: str = Field(description="搜索结果标题")
+    release_date: date | None = Field(default=None, description="搜索结果页显示的发布日期")
+    price_yen: int | None = Field(default=None, description="搜索结果页显示的日元价格")
+    statuses: list[str] = Field(default_factory=list, description="商品状态，例如单品、HD、租赁")
+    image_urls: list[str] = Field(default_factory=list, description="搜索结果页轮播图片 URL")
+    detail_url: str = Field(description="商品详情页 URL")
+
+
 class MetadataCandidate(BaseModel):
     """数据源详情页解析后的统一元数据候选。"""
 
