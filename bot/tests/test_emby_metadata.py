@@ -1,16 +1,25 @@
+import asyncio
 import unittest
 from datetime import date
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from bot.services.emby_metadata.matching import (
     calculate_confidence,
     extract_product_number,
     normalize_product_number,
 )
-from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataSearchResult
+from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate, MetadataSearchResult
 from bot.services.emby_metadata.parser.ck_download import CkDownloadParser
 from bot.services.emby_metadata.sources.base import MetadataSourceParseError
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
+from bot.services.emby_metadata.writer import (
+    apply_metadata_candidate_to_item,
+    build_item_update_changes,
+    build_item_update_payload,
+    extract_unexpected_item_changes,
+    preview_metadata_candidate_update,
+)
 
 _FIXTURE_ROOT = Path(__file__).parents[1] / "services" / "emby_metadata" / "fixtures" / "ck_download"
 
@@ -116,6 +125,100 @@ class CkDownloadParserTests(unittest.TestCase):
     def test_invalid_source_id_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             CkDownloadSource.parse_detail("<html></html>", "../33907")
+
+
+class WriterTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.candidate = MetadataCandidate(
+            source="ck_download",
+            source_id="33907",
+            category=MediaLibraryCategory.JAPANESE_KOREAN,
+            product_number="CO-GF00023",
+            title="CO-GF00023 标题A",
+            original_title="标题A",
+            sort_name="CO-GF00023 标题A",
+            forced_sort_name="CO-GF00023 标题A",
+            overview="新的简介",
+            year=2026,
+            release_date=date(2026, 7, 21),
+            genres=["A", "B"],
+            studios=["StudioA"],
+            people=[],
+            labels=[],
+            external_ids={"imdb": "tt123"},
+            poster_url=None,
+            runtime_minutes=26,
+            confidence=1.0,
+            raw_url="https://example.com/detail/33907",
+        )
+        self.before_item = {
+            "Id": "item-1",
+            "Name": "旧标题",
+            "OriginalTitle": "旧标题",
+            "SortName": "旧标题",
+            "ForcedSortName": "旧标题",
+            "Overview": "旧简介",
+            "ProductionYear": 2025,
+            "PremiereDate": "2025-01-01",
+            "Genres": ["Old"],
+            "Studios": ["OldStudio"],
+            "People": [],
+            "ProviderIds": {"tmdb": "1"},
+        }
+
+    def test_build_item_update_payload(self) -> None:
+        payload = build_item_update_payload(self.before_item, self.candidate)
+        self.assertEqual(payload["Name"], "CO-GF00023 标题A")
+        self.assertEqual(payload["Overview"], "新的简介")
+        self.assertEqual(payload["Genres"], ["A", "B"])
+        self.assertEqual(payload["ProviderIds"], {"imdb": "tt123"})
+
+    def test_build_item_update_changes_with_core_fields(self) -> None:
+        payload = build_item_update_payload(self.before_item, self.candidate)
+        changes = build_item_update_changes(self.before_item, payload)
+        fields = [change["field"] for change in changes]
+        self.assertIn("Name", fields)
+        self.assertIn("Overview", fields)
+        self.assertNotIn("Id", fields)
+
+    def test_build_item_update_changes_full_scan_detects_extra_fields(self) -> None:
+        after_item = dict(self.before_item)
+        after_item["UnexpectedField"] = "changed"
+        changes = build_item_update_changes(self.before_item, after_item, fields=None)
+        self.assertEqual(changes, [{"field": "UnexpectedField", "before": None, "after": "changed"}])
+
+    def test_extract_unexpected_item_changes(self) -> None:
+        requested_changes = [{"field": "Name", "before": "旧标题", "after": "新标题"}]
+        actual_changes = [
+            {"field": "Name", "before": "旧标题", "after": "新标题"},
+            {"field": "Genres", "before": ["Old"], "after": ["A", "B"]},
+        ]
+        unexpected = extract_unexpected_item_changes(requested_changes, actual_changes)
+        self.assertEqual(unexpected, [{"field": "Genres", "before": ["Old"], "after": ["A", "B"]}])
+
+    @patch("bot.services.emby_metadata.writer.fetch_item_snapshot", new_callable=AsyncMock)
+    def test_preview_metadata_candidate_update_uses_template_user(self, mock_fetch: AsyncMock) -> None:
+        mock_fetch.return_value = ("template-user", self.before_item)
+
+        result = asyncio.run(preview_metadata_candidate_update("item-1", self.candidate))
+        self.assertEqual(result["resolved_user_id"], "template-user")
+        self.assertEqual(result["before_item"]["Name"], "旧标题")
+        self.assertTrue(result["planned_changes"])
+
+    @patch("bot.services.emby_metadata.writer.fetch_item_snapshot", new_callable=AsyncMock)
+    @patch("bot.services.emby_metadata.writer.apply_item_update", new_callable=AsyncMock)
+    def test_apply_metadata_candidate_to_item_returns_writeback_diffs(self, mock_apply: AsyncMock, mock_fetch: AsyncMock) -> None:
+        mock_fetch.side_effect = [
+            ("template-user", self.before_item),
+            ("template-user", {**self.before_item, "Name": "CO-GF00023 标题A", "Genres": ["A", "B"]}),
+        ]
+        mock_apply.return_value = build_item_update_payload(self.before_item, self.candidate)
+
+        result = asyncio.run(apply_metadata_candidate_to_item("item-1", self.candidate))
+        self.assertEqual(result["resolved_user_id"], "template-user")
+        self.assertIn("after_item", result)
+        self.assertTrue(result["actual_changes"])
+        self.assertTrue(result["writeback_diffs"])
 
 
 if __name__ == "__main__":
