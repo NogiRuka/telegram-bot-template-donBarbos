@@ -1,13 +1,14 @@
 import re
 from collections.abc import Iterable
 from datetime import date, datetime
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup, Tag
 
-from bot.services.emby_metadata.matching import calculate_confidence, extract_product_number
-from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate
+from bot.services.emby_metadata.auth.cookie_manager import CookieManager
+from bot.services.emby_metadata.matching import calculate_confidence
+from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate, MetadataPerson
 from bot.services.emby_metadata.sources.base import (
     MetadataSource,
     MetadataSourceHTTPError,
@@ -17,52 +18,64 @@ from bot.services.emby_metadata.sources.base import (
 
 _DETAIL_PATH = re.compile(r"^/product/detail/(\d+)(?:[/?#]|$)")
 _DATE_PATTERN = re.compile(r"(\d{4})[./-](\d{2})[./-](\d{2})")
-_PRICE_MARKERS = ("販売価格", "カートに入れる")
-_EXCLUDED_OVERVIEW_TEXT = ("ログイン", "会員登録", "お気に入り", "税込", "販売価格")
 
 
 class CkDownloadSource(MetadataSource):
+    """ck-download 关键词搜索和商品详情适配器。"""
+
     name = "ck_download"
     category = MediaLibraryCategory.JAPANESE_KOREAN
-    base_url = "https://ck-download.com"
+    base_url = "https://www.ck-download.com"
 
-    def __init__(self, timeout_seconds: float = 15.0) -> None:
+    def __init__(self, timeout_seconds: float = 15.0, cookie_manager: CookieManager | None = None) -> None:
         self._timeout = aiohttp.ClientTimeout(total=timeout_seconds)
         self._headers = {
             "User-Agent": "EmbyMetadataManager/1.0 (+private metadata lookup)",
             "Accept-Language": "ja,en;q=0.8",
         }
+        cookie = (cookie_manager or CookieManager()).get_cookie(self.name)
+        if cookie:
+            self._headers["Cookie"] = cookie
 
     async def search(self, keyword: str, limit: int = 10) -> list[MetadataCandidate]:
-        if limit <= 0:
-            return []
-        search_keyword = extract_product_number(keyword) or keyword.strip()
-        if not search_keyword:
+        """使用站点关键词表单搜索，并按匹配置信度返回详情候选。"""
+        search_keyword = keyword.strip()
+        if limit <= 0 or not search_keyword:
             return []
 
-        html = await self._request("/product/search", params={"kw": search_keyword, "only_nm": "0", "kw_opt": "1"})
+        html = await self._request(
+            "/product/search",
+            method="POST",
+            data={"kw": search_keyword, "kw_opt": "1", "only_nm": "0"},
+        )
         summaries = self.parse_search_results(html, limit)
         candidates: list[MetadataCandidate] = []
         for source_id, summary_title in summaries:
             candidate = await self.fetch_detail(source_id)
             candidate.confidence = calculate_confidence(
-                keyword,
+                search_keyword,
                 candidate.title or summary_title,
-                candidate.external_ids.get("CkDownload"),
+                candidate.product_number,
             )
             candidates.append(candidate)
         return sorted(candidates, key=lambda item: item.confidence, reverse=True)
 
     async def fetch_detail(self, source_id: str) -> MetadataCandidate:
+        """获取并解析指定商品详情。"""
         self._validate_source_id(source_id)
         html = await self._request(f"/product/detail/{source_id}")
         return self.parse_detail(html, source_id)
 
-    async def _request(self, path: str, params: dict[str, str] | None = None) -> str:
+    async def _request(
+        self,
+        path: str,
+        method: str = "GET",
+        data: dict[str, str] | None = None,
+    ) -> str:
         url = urljoin(f"{self.base_url}/", path.lstrip("/"))
         try:
             async with aiohttp.ClientSession(timeout=self._timeout, headers=self._headers) as session:
-                async with session.get(url, params=params) as response:
+                async with session.request(method, url, data=data) as response:
                     if response.status >= 400:
                         message = f"HTTP {response.status}: {response.reason}"
                         raise MetadataSourceHTTPError(message, self.name)
@@ -74,6 +87,9 @@ class CkDownloadSource(MetadataSource):
 
     @classmethod
     def parse_search_results(cls, html: str, limit: int = 10) -> list[tuple[str, str]]:
+        """从搜索结果中的商品详情链接提取站内 ID 和标题。"""
+        if limit <= 0:
+            return []
         soup = BeautifulSoup(html, "html.parser")
         results: list[tuple[str, str]] = []
         seen_ids: set[str] = set()
@@ -81,57 +97,71 @@ class CkDownloadSource(MetadataSource):
             href = link.get("href")
             if not isinstance(href, str):
                 continue
-            path = href.removeprefix(cls.base_url)
-            match = _DETAIL_PATH.match(path)
+            match = _DETAIL_PATH.match(urlparse(href).path)
             if match is None:
                 continue
             source_id = match.group(1)
             if source_id in seen_ids:
                 continue
-            title = " ".join(link.get_text(" ", strip=True).split())
+            title = cls._search_result_title(link)
             if not title:
                 continue
             seen_ids.add(source_id)
             results.append((source_id, title))
-            if len(results) >= max(limit, 0):
+            if len(results) >= limit:
                 break
         return results
 
     @classmethod
     def parse_detail(cls, html: str, source_id: str) -> MetadataCandidate:
+        """按详情页固定区域解析可写入 Emby 的元数据。"""
         cls._validate_source_id(source_id)
         soup = BeautifulSoup(html, "html.parser")
-        heading = soup.find("h3")
+        heading = soup.select_one("#Contents.detail_page > h3") or soup.select_one(".detail_page > h3")
         if not isinstance(heading, Tag) or not heading.get_text(strip=True):
             raise MetadataSourceParseError("详情页缺少作品标题", cls.name)
 
-        title = " ".join(heading.get_text(" ", strip=True).split())
+        original_title = cls._clean_text(heading.get_text(" ", strip=True))
         fields = cls._parse_product_fields(soup)
-        product_number = fields.get("プロダクトナンバー")
+        product_number = fields.get("プロダクトナンバー") or None
+        display_title = f"{product_number} {original_title}" if product_number else original_title
         release_date = cls._parse_release_date(soup)
         dvd_year = cls._parse_year(fields.get("DVD発売年"))
         play_types = cls._linked_values(soup, "プレイ内容")
         model_types = cls._linked_values(soup, "モデルタイプ")
+        performers = cls._linked_values(soup, "出演モデル")
         manufacturer = fields.get("メーカー")
-        label = fields.get("レーベル")
-        labels = cls._unique(value for value in [label, *model_types, *play_types] if value)
+        labels = cls._unique(
+            value
+            for value in [
+                *play_types,
+                *model_types,
+                fields.get("レーベル"),
+                fields.get("DVD発売年"),
+                fields.get("DVDタイトル"),
+            ]
+            if value
+        )
 
         return MetadataCandidate(
             source=cls.name,
             source_id=source_id,
             category=cls.category,
-            title=title,
-            original_title=fields.get("DVDタイトル") or None,
-            overview=cls._parse_overview(heading),
+            product_number=product_number,
+            title=display_title,
+            original_title=original_title,
+            sort_name=display_title,
+            forced_sort_name=display_title,
+            overview=cls._parse_overview(soup),
             year=release_date.year if release_date else dvd_year,
             release_date=release_date,
             genres=play_types,
             studios=[manufacturer] if manufacturer else [],
-            external_ids={"CkDownload": product_number} if product_number else {},
-            poster_url=cls._parse_poster_url(soup),
-            raw_url=urljoin(f"{cls.base_url}/", f"product/detail/{source_id}"),
-            runtime_minutes=cls._parse_runtime(fields.get("再生時間")),
+            people=[MetadataPerson(name=name) for name in performers],
             labels=labels,
+            poster_url=cls._parse_poster_url(soup, source_id),
+            runtime_minutes=cls._parse_runtime(fields.get("再生時間")),
+            raw_url=urljoin(f"{cls.base_url}/", f"product/detail/{source_id}"),
         )
 
     @staticmethod
@@ -139,28 +169,36 @@ class CkDownloadSource(MetadataSource):
         if not source_id.isascii() or not source_id.isdigit():
             raise ValueError("ck-download source_id 必须是纯数字")
 
-    @staticmethod
-    def _parse_product_fields(soup: BeautifulSoup) -> dict[str, str]:
+    @classmethod
+    def _search_result_title(cls, link: Tag) -> str:
+        heading = link.find(["h3", "h4", "h5"])
+        target = heading if isinstance(heading, Tag) else link
+        return cls._clean_text(target.get_text(" ", strip=True))
+
+    @classmethod
+    def _parse_product_fields(cls, soup: BeautifulSoup) -> dict[str, str]:
         known_fields = {"プロダクトナンバー", "再生時間", "メーカー", "レーベル", "DVD発売年", "DVDタイトル"}
         fields: dict[str, str] = {}
-        for row in soup.select("tr"):
+        for row in soup.select("table.prod_data tr"):
             cells = row.find_all(["th", "td"], recursive=False)
             for index in range(0, len(cells) - 1, 2):
-                key = " ".join(cells[index].get_text(" ", strip=True).split())
+                key = cls._clean_text(cells[index].get_text(" ", strip=True))
                 if key in known_fields:
-                    fields[key] = " ".join(cells[index + 1].get_text(" ", strip=True).split())
+                    fields[key] = cls._clean_text(cells[index + 1].get_text(" ", strip=True))
         return fields
 
     @staticmethod
     def _parse_release_date(soup: BeautifulSoup) -> date | None:
-        for text in soup.stripped_strings:
-            match = _DATE_PATTERN.search(text)
-            if match is not None and ("UP" in text or len(text.strip()) <= 16):
-                try:
-                    return datetime.strptime("-".join(match.groups()), "%Y-%m-%d").date()
-                except ValueError:
-                    continue
-        return None
+        date_node = soup.select_one(".detail_page .add_info .date")
+        if not isinstance(date_node, Tag):
+            return None
+        match = _DATE_PATTERN.search(date_node.get_text(" ", strip=True))
+        if match is None:
+            return None
+        try:
+            return datetime.strptime("-".join(match.groups()), "%Y-%m-%d").date()
+        except ValueError:
+            return None
 
     @staticmethod
     def _parse_year(value: str | None) -> int | None:
@@ -179,47 +217,43 @@ class CkDownloadSource(MetadataSource):
         hours, minutes, seconds = (0, int(parts[0]), int(parts[1])) if len(parts) == 2 else map(int, parts)
         return hours * 60 + minutes + int(seconds >= 30)
 
-    @staticmethod
-    def _linked_values(soup: BeautifulSoup, label: str) -> list[str]:
-        label_node = soup.find(string=lambda text: text is not None and text.strip() == label)
-        if label_node is None or not isinstance(label_node.parent, Tag):
-            return []
-        container = label_node.parent.parent if isinstance(label_node.parent.parent, Tag) else label_node.parent
-        values = [" ".join(link.get_text(" ", strip=True).split()) for link in container.find_all("a")]
-        return CkDownloadSource._unique(value for value in values if value)
-
-    @staticmethod
-    def _parse_overview(heading: Tag) -> str | None:
-        paragraphs: list[str] = []
-        for element in heading.find_all_next(["p", "div"]):
-            text = " ".join(element.get_text(" ", strip=True).split())
-            if any(marker in text for marker in _PRICE_MARKERS):
-                break
-            if not text or _DATE_PATTERN.search(text) or any(excluded in text for excluded in _EXCLUDED_OVERVIEW_TEXT):
+    @classmethod
+    def _linked_values(cls, soup: BeautifulSoup, label: str) -> list[str]:
+        for item in soup.select(".prod_category li"):
+            heading = item.find("strong")
+            if not isinstance(heading, Tag) or heading.get_text(strip=True) != label:
                 continue
-            if element.find_parent(["nav", "header", "footer", "table"]):
-                continue
-            if element.name == "div" and element.find(["p", "div"], recursive=False):
-                continue
-            paragraphs.append(text)
-        return "\n".join(CkDownloadSource._unique(paragraphs)) or None
+            container = item.select_one(".item")
+            if not isinstance(container, Tag):
+                return []
+            return cls._unique(cls._clean_text(link.get_text(" ", strip=True)) for link in container.find_all("a"))
+        return []
 
     @classmethod
-    def _parse_poster_url(cls, soup: BeautifulSoup) -> str | None:
-        selectors = (".product-image img", ".product_image img", ".main-image img", "#main_image")
-        for selector in selectors:
-            image = soup.select_one(selector)
-            if not isinstance(image, Tag):
-                continue
+    def _parse_overview(cls, soup: BeautifulSoup) -> str | None:
+        container = soup.select_one(".detail_page .intro_text")
+        if not isinstance(container, Tag):
+            return None
+        paragraphs = [cls._clean_multiline(paragraph.get_text("\n", strip=True)) for paragraph in container.find_all("p")]
+        return "\n\n".join(paragraph for paragraph in paragraphs if paragraph) or None
+
+    @classmethod
+    def _parse_poster_url(cls, soup: BeautifulSoup, source_id: str) -> str | None:
+        expected_suffix = f"/{source_id}/{source_id}_1.jpg"
+        for image in soup.select(".detail_page .title_photo img, .detail_page .set_photo img"):
             source = image.get("src")
-            if not isinstance(source, str) or not source.strip():
-                continue
-            lowered = source.casefold()
-            if any(marker in lowered for marker in ("logo", "banner", "spacer", "noimage", "transparent")):
-                continue
-            return urljoin(f"{cls.base_url}/", source)
+            if isinstance(source, str) and urlparse(source).path.endswith(expected_suffix):
+                return urljoin(f"{cls.base_url}/", source)
         return None
 
     @staticmethod
+    def _clean_text(value: str) -> str:
+        return " ".join(value.split())
+
+    @classmethod
+    def _clean_multiline(cls, value: str) -> str:
+        return "\n".join(cleaned for line in value.splitlines() if (cleaned := cls._clean_text(line)))
+
+    @staticmethod
     def _unique(values: Iterable[str]) -> list[str]:
-        return list(dict.fromkeys(values))
+        return list(dict.fromkeys(value for value in values if value))

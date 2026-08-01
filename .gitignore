@@ -103,6 +103,7 @@ celerybeat.pid
 
 # Environments
 .env
+bot/config/cookies.toml
 .venv
 env/
 venv/
