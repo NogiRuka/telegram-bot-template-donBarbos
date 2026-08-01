@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from bot.core.config import settings
 from bot.services.emby_metadata.models import MetadataCandidate
 from bot.utils.emby import get_emby_client
 
@@ -32,8 +33,6 @@ async def apply_item_update(
 ) -> dict[str, Any] | None:
     """把载荷写回指定 Emby Item。"""
     client = get_emby_client()
-    if client is None:
-        return None
 
     await client.update_item(item_id, payload)
 
@@ -53,10 +52,9 @@ async def apply_metadata_candidate_to_item(
 ) -> dict[str, Any] | None:
     """读取原 Item、合成载荷并写回指定 Emby Item。"""
     client = get_emby_client()
-    if client is None:
-        return None
+    resolved_user_id = user_id or settings.get_emby_template_user_id()
 
-    item = await client.get_item(user_id, item_id) if user_id else {"Id": item_id}
+    item = await client.get_item(resolved_user_id, item_id) if resolved_user_id else {"Id": item_id}
     payload = build_item_update_payload(item or {"Id": item_id}, candidate)
     return await apply_item_update(
         item_id,
