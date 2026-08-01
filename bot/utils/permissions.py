@@ -228,7 +228,7 @@ def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[
 
     功能说明:
     - 在处理用户功能前检查用户总开关与具体功能是否启用
-    - 所有者 (Owner) 豁免检查，直接通过
+    - 所有者 (Owner)和管理员 (Admin) 豁免检查，直接通过
 
     输入参数:
     - feature_key: 配置键名, 例如 "user.register"、"user.info"
@@ -246,10 +246,10 @@ def require_user_feature(feature_key: str) -> Callable[[Callable[..., Awaitable[
             # 1. 提取用户ID
             user_id = _extract_user_id(first)
 
-            # 2. 检查是否为所有者 (豁免检查)
+            # 2. 检查是否为所有者或管理员 (豁免检查)
             if session is not None and user_id is not None:
                 role = await _resolve_role(session, user_id)
-                if role == "owner":
+                if role in {"admin", "owner"}:
                     return await func(*args, **kwargs)
 
             # 3. 检查功能开关
