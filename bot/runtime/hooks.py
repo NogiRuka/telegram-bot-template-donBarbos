@@ -27,6 +27,7 @@ from bot.services.emby_service import run_emby_sync, start_scheduler
 from bot.services.quiz_service import QuizService
 from bot.services.users import sync_roles_from_settings_on_startup
 from bot.utils.emby import get_emby_client
+from bot.core.hitokoto import init_hitokoto_client, close_hitokoto_client
 
 if TYPE_CHECKING:
     from aiogram import Bot
@@ -63,6 +64,9 @@ async def on_startup() -> None:
     - None
     """
     logger.info("🚀 机器人启动中...")
+
+    init_hitokoto_client()
+
     dp.include_router(get_handlers_router())
     try:
         await set_default_commands(bot)
@@ -122,6 +126,8 @@ async def on_shutdown() -> None:
     if client:
         await client.close()
     await bot.session.close()
+
+    await close_hitokoto_client()
 
     try:
         await engine.dispose()

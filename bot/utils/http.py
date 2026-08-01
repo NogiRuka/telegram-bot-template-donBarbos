@@ -50,7 +50,7 @@ class HttpClient:
         self.session: aiohttp.ClientSession | None = None
 
     async def close(self) -> None:
-        if not self.session.closed:
+        if self.session and not self.session.closed:
             await self.session.close()
 
     async def _get_session(self) -> aiohttp.ClientSession:
@@ -98,7 +98,11 @@ class HttpClient:
                 except UnicodeDecodeError:
                     text_body = raw_body.decode("utf-8", errors="replace")
                 data: Any
-                if "application/json" in ctype:
+                if (
+                        "application/json" in ctype
+                        or text_body.startswith("{")
+                        or text_body.startswith("[")
+                    ):
                     try:
                         data = json.loads(text_body)
                     except Exception:

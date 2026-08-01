@@ -72,7 +72,7 @@ async def build_home_view(
             if announcement is not None:
                 announcement = announcement.strip() or None
 
-    caption = build_start_caption(payload, user_name, settings.PROJECT_NAME, announcement)
+    caption = build_start_caption(payload, user_name, announcement)
 
     if append_text:
         caption += f"\n\n{append_text}"
