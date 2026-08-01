@@ -477,7 +477,8 @@ async def create_and_bind_emby_user(
     """创建 Emby 用户并绑定到用户扩展表
 
     功能说明:
-    - 检查是否已绑定 Emby 账号, 若未绑定则创建 Emby 用户并持久化本地快照
+    - 检查 `user_extend.emby_user_id` 是否已有绑定记录
+    - 若未绑定则创建 Emby 用户并持久化本地快照
     - 将新创建的 `emby_user_id` 写入 `user_extend.emby_user_id`
     - 使用 emby_service.create_user 进行完整创建流程（含模板配置复制）
 
@@ -511,35 +512,12 @@ async def create_and_bind_emby_user(
         from bot.services import emby_service
         from bot.utils.security import hash_password
 
-        # 已绑定检查
+        # 已绑定检查：只要 user_extend 中存在 emby_user_id，就视为已绑定
         res_ext = await session.execute(_select(UserExtendModel).where(UserExtendModel.user_id == user_id))
         ext = res_ext.scalar_one_or_none()
         if ext and getattr(ext, "emby_user_id", None):
-            current_emby_id = ext.emby_user_id
-
-            # 检查账号是否为软删除状态 (如果存在且未删除，则阻止创建)
-            stmt_check = _select(EmbyUserModel).where(
-                EmbyUserModel.emby_user_id == current_emby_id,
-                EmbyUserModel.is_deleted.is_(False),
-            )
-            res_check = await session.execute(stmt_check)
-            active_account = res_check.scalar_one_or_none()
-
-            if active_account:
-                logger.info("ℹ️ 用户已绑定 Emby 账号: user_id={} emby_user_id={}", user_id, current_emby_id)
-                return False, None, "已绑定 Emby 账号"
-
-            # 账号已软删除或不存在，执行归档并允许重新注册
-            logger.info("ℹ️ 检测到残留的软删除/无效账号，执行归档并重新注册: user_id={} old_id={}", user_id, current_emby_id)
-
-            extra = dict(ext.extra_data) if ext.extra_data else {}
-            archived = extra.get("archived_emby_ids", [])
-            if current_emby_id not in archived:
-                archived.append(current_emby_id)
-            extra["archived_emby_ids"] = archived
-
-            ext.extra_data = extra
-            ext.emby_user_id = None
+            logger.info("ℹ️ 用户已绑定 Emby 账号: user_id={} emby_user_id={}", user_id, ext.emby_user_id)
+            return False, None, "已绑定 Emby 账号"
 
         # 调用 emby_service.create_user 完整流程
         ok, user_dto, err = await emby_service.create_user(name=name, password=password)
@@ -587,8 +565,8 @@ async def has_emby_account(session: AsyncSession, user_id: int) -> bool:
     """检查是否已绑定 Emby 账号
 
     功能说明:
-    - 查询 `user_extend.emby_user_id` 是否存在
-    - 排除 `is_deleted=True` 的软删除记录
+    - 仅查询 `user_extend.emby_user_id` 是否存在
+    - 用于界面和流程入口的快速判断
 
     输入参数:
     - session: 异步数据库会话
@@ -597,18 +575,10 @@ async def has_emby_account(session: AsyncSession, user_id: int) -> bool:
     返回值:
     - bool: True 表示已绑定
     """
-    # 检查是否关联了 Emby 账号
-    stmt = (
-        select(EmbyUserModel)
-        .join(UserExtendModel, UserExtendModel.emby_user_id == EmbyUserModel.emby_user_id)
-        .where(
-            UserExtendModel.user_id == user_id,
-            EmbyUserModel.is_deleted.is_(False),
-        )
-    )
+    stmt = select(UserExtendModel.emby_user_id).where(UserExtendModel.user_id == user_id)
     res = await session.execute(stmt)
-    emby_id = res.scalar_one_or_none()
-    return bool(emby_id)
+    emby_user_id = res.scalar_one_or_none()
+    return bool(emby_user_id)
 
 
 async def get_user_and_extend(session: AsyncSession, user_id: int) -> tuple[UserModel | None, UserExtendModel | None]:
