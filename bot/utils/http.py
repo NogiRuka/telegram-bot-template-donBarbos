@@ -21,7 +21,7 @@ class HttpClient:
     - 无
 
     依赖安装:
-    - pip install aiohttp[speedups]
+    - pip install aiohttp
     """
 
     def __init__(self, base_url: str, token: str | None = None, base_path: str | None = None) -> None:
@@ -47,6 +47,23 @@ class HttpClient:
             if not s.startswith("/"):
                 s = "/" + s
             self.base_path = s.rstrip("/")
+        self.session: aiohttp.ClientSession | None = None
+
+    async def close(self) -> None:
+        if not self.session.closed:
+            await self.session.close()
+
+    async def _get_session(self) -> aiohttp.ClientSession:
+        if self.session is None or self.session.closed:
+            self.session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=60),
+                auto_decompress=True,
+                headers={
+                    "Accept-Encoding": "gzip, deflate",
+                },
+            )
+
+        return self.session
 
     async def request(self, method: str, endpoint: str, **kwargs: Any) -> Any:
         """发送 HTTP 请求
@@ -67,39 +84,38 @@ class HttpClient:
         if self.token:
             headers["X-Emby-Token"] = self.token
 
-        timeout = aiohttp.ClientTimeout(total=60)
         ep = endpoint if endpoint.startswith("/") else "/" + endpoint
         url = f"{self.base_url}{self.base_path}{ep}"
         try:
-            async with aiohttp.ClientSession(timeout=timeout, auto_decompress=False) as session:
-                async with session.request(method=method.upper(), url=url, headers=headers, **kwargs) as resp:
-                    status = resp.status
-                    ctype = resp.headers.get("Content-Type", "")
-                    raw_body = await resp.read()
-                    encoding = resp.charset or "utf-8"
+            session = await self._get_session()
+            async with session.request(method=method.upper(), url=url, headers=headers, **kwargs) as resp:
+                status = resp.status
+                ctype = resp.headers.get("Content-Type", "")
+                raw_body = await resp.read()
+                encoding = resp.charset or "utf-8"
+                try:
+                    text_body = raw_body.decode(encoding)
+                except UnicodeDecodeError:
+                    text_body = raw_body.decode("utf-8", errors="replace")
+                data: Any
+                if "application/json" in ctype:
                     try:
-                        text_body = raw_body.decode(encoding)
-                    except UnicodeDecodeError:
-                        text_body = raw_body.decode("utf-8", errors="replace")
-                    data: Any
-                    if "application/json" in ctype:
-                        try:
-                            data = json.loads(text_body)
-                        except Exception:
-                            data = text_body
-                    else:
+                        data = json.loads(text_body)
+                    except Exception:
                         data = text_body
-                    if status >= 400:
-                        snippet = (text_body[:1000] + ("…" if len(text_body) > 1000 else "")) if text_body else ""
-                        logger.error(
-                            "❌ HTTP请求失败: {method} {url} -> {status} {body}",
-                            method=method.upper(),
-                            url=url,
-                            status=status,
-                            body=snippet,
-                        )
-                        raise HttpRequestError(method.upper(), url, status, text_body, dict(resp.headers))
-                    return data
+                else:
+                    data = text_body
+                if status >= 400:
+                    snippet = (text_body[:1000] + ("…" if len(text_body) > 1000 else "")) if text_body else ""
+                    logger.error(
+                        "❌ HTTP请求失败: {method} {url} -> {status} {body}",
+                        method=method.upper(),
+                        url=url,
+                        status=status,
+                        body=snippet,
+                    )
+                    raise HttpRequestError(method.upper(), url, status, text_body, dict(resp.headers))
+                return data
         except aiohttp.ClientResponseError as e:
             logger.error(
                 "❌ HTTP请求失败: {method} {url} -> {status} {msg}",

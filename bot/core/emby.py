@@ -11,6 +11,10 @@ class EmbyClient:
     def __init__(self, base_url: str, api_key: str) -> None:
         self.http = HttpClient(base_url, api_key, base_path="/emby")
 
+    async def close(self) -> None:
+        """关闭 HTTP 客户端资源。"""
+        await self.http.close()
+
     # ------------------------------------------------------------------
     # 系统
     # ------------------------------------------------------------------

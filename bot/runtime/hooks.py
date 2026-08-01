@@ -26,6 +26,7 @@ from bot.services.currency import CurrencyService
 from bot.services.emby_service import run_emby_sync, start_scheduler
 from bot.services.quiz_service import QuizService
 from bot.services.users import sync_roles_from_settings_on_startup
+from bot.utils.emby import get_emby_client
 
 if TYPE_CHECKING:
     from aiogram import Bot
@@ -116,7 +117,12 @@ async def on_shutdown() -> None:
     await remove_default_commands(bot)
     await dp.storage.close()
     await dp.fsm.storage.close()
+
+    client = get_emby_client()
+    if client:
+        await client.close()
     await bot.session.close()
+
     try:
         await engine.dispose()
     except TypeError:
