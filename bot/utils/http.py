@@ -38,7 +38,7 @@ class HttpClient:
             if not s.startswith("/"):
                 s = "/" + s
             self.base_path = s.rstrip("/")
-        self.session = aiohttp.ClientSession | None = None
+        self.session: aiohttp.ClientSession | None = None
 
     async def close(self) -> None:
         if self.session and not self.session.closed:
