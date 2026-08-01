@@ -75,7 +75,12 @@ class HttpClient:
                 async with session.request(method=method.upper(), url=url, headers=headers, **kwargs) as resp:
                     status = resp.status
                     ctype = resp.headers.get("Content-Type", "")
-                    text_body = await resp.text()
+                    raw_body = await resp.read()
+                    encoding = resp.charset or "utf-8"
+                    try:
+                        text_body = raw_body.decode(encoding)
+                    except UnicodeDecodeError:
+                        text_body = raw_body.decode("utf-8", errors="replace")
                     data: Any
                     if "application/json" in ctype:
                         try:
