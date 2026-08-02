@@ -94,7 +94,7 @@ flowchart LR
 flowchart TB
     UI[Web 工作台] --> API[FastAPI 元数据路由]
     API --> ROUTER[媒体库分类路由]
-    ROUTER --> CK[日韩 ck_download]
+    ROUTER --> CK[日韩 ck-download]
     ROUTER --> DS[国产数据源 待接入]
     ROUTER --> WS[欧美数据源 待接入]
     CK --> PUBLIC[公开元数据页面]

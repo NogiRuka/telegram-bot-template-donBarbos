@@ -21,7 +21,7 @@ _DATE_PATTERN = re.compile(r"(\d{4})[./-](\d{2})[./-](\d{2})")
 class CkDownloadParser:
     """只负责解析 ck-download 的搜索结果页和商品详情页。"""
 
-    source_name = "ck_download"
+    source_name = "ck-download"
     base_url = "https://www.ck-download.com"
     category = MediaLibraryCategory.JAPANESE_KOREAN
 

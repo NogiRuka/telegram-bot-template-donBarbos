@@ -1,30 +1,30 @@
-**Comparison target**
+**对比目标**
 
-- Source visual truth: `C:/Users/Alviss/Downloads/ChatGPT Image 2026年8月2日 17_51_18.png`
-- Implementation route: `/emby-metadata`
-- Intended viewport: desktop, three-column workbench.
+- 视觉参考：`C:/Users/Alviss/Downloads/ChatGPT Image 2026年8月2日 17_51_18.png`
+- 实现路由：`/emby-metadata`
+- 目标视口：桌面端三栏工作台。
 
-**Findings**
+**发现**
 
-- [P1] Browser-rendered comparison is pending.
-  Location: authenticated `/emby-metadata` route.
-  Evidence: the app requires an authenticated session and no test administrator credentials were available to open the route in the local preview.
-  Impact: the layout cannot yet be visually compared against the source at the same viewport.
-  Fix: sign in locally, capture the workbench at desktop width, then compare the screenshot against the supplied reference and refine any P1/P2 differences.
+- [P1] 浏览器渲染后的视觉对比待完成。
+  位置：需要认证的 `/emby-metadata` 路由。
+  证据：此前没有可用于本地预览的测试管理员凭据。
+  影响：暂时无法在同一桌面视口下，将实际页面与参考图进行对比。
+  修复：使用本地账号登录、捕获工作台截图，再对照参考图修正 P1/P2 差异。
 
-**Required fidelity surfaces**
+**必要保真维度**
 
-- Fonts and typography: implemented with the existing application font stack; browser comparison pending.
-- Spacing and layout rhythm: three-column grid, toolbar, queue table, candidate cards, and writeback footer implemented; browser comparison pending.
-- Colors and visual tokens: existing shadcn neutral, blue, emerald, and amber tokens used; browser comparison pending.
-- Image quality and asset fidelity: real candidate image URLs are rendered when supplied by the data source; no synthetic poster placeholders are used.
-- Copy and content: Chinese Emby metadata workflow copy is implemented.
+- 字体与排版：沿用项目现有字体栈；待浏览器截图对比。
+- 间距与布局节奏：已实现三栏网格、工具栏、队列表、候选卡片和写入底栏；待浏览器截图对比。
+- 色彩与视觉令牌：使用现有 shadcn 中性色、蓝色、绿色和琥珀色令牌；待浏览器截图对比。
+- 图片质量与素材保真：数据源提供图片时渲染真实候选图；不使用合成海报占位图。
+- 文案与内容：已实现中文 Emby 元数据工作流文案。
 
-**Implementation checklist**
+**实现清单**
 
-- [x] Add authenticated metadata-workbench route and sidebar entry.
-- [x] Add queue, search, candidate detail, and confirmed-writeback API endpoints.
-- [x] Add interactive selection, filtering, overwrite mode, and field selection UI.
-- [ ] Complete browser visual QA with an authenticated local session.
+- [x] 添加受认证保护的元数据工作台路由与侧栏入口。
+- [x] 添加队列、搜索、候选详情和确认写回 API。
+- [x] 添加交互式选择、筛选、覆盖模式与字段勾选 UI。
+- [ ] 使用认证后的本地会话完成浏览器视觉验收。
 
-final result: blocked
+最终结果：阻塞

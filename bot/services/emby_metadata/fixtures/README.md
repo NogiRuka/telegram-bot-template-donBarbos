@@ -11,7 +11,7 @@ fixtures/
 
 命名规则：
 
-ck_download/
+ck-download/
     detail/
         31839.html
 
@@ -22,7 +22,7 @@ https://ck-download.com/product/series/123
 https://ck-download.com/product/actress/555
 推荐命名规则：
 
-ck_download/
+ck-download/
     detail/
         31839.html
         31840.html

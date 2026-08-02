@@ -75,7 +75,7 @@ class HttpClient:
         """
         headers = kwargs.pop("headers", None)
 
-        logger.info("✨Request headers: {}", headers)
+        # logger.info("✨Request headers: {}", headers)
 
         ep = endpoint if endpoint.startswith("/") else "/" + endpoint
         url = f"{self.base_url}{self.base_path}{ep}"
@@ -83,7 +83,7 @@ class HttpClient:
             session = await self._get_session()
             async with session.request(method=method.upper(), url=url, headers=headers, **kwargs) as resp:
 
-                logger.info("✨Response headers: {}", dict(resp.headers))
+                # logger.info("✨Response headers: {}", dict(resp.headers))
 
                 status = resp.status
                 text_body = await resp.text()

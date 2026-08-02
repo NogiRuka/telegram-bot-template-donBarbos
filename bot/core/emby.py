@@ -170,10 +170,10 @@ class EmbyClient:
         """获取项目详情 (GET /Users/{UserId}/Items/{Id})。"""
         data = await self.http.request("GET", f"/Users/{user_id}/Items/{item_id}")
         if isinstance(data, dict):
-            logger.debug(
-                "Emby get_item response: data={}",
-                data,
-            )
+            # logger.debug(
+            #     "Emby get_item response: data={}",
+            #     data,
+            # )
             return cast("dict[str, Any]", data)
         return {}
 
