@@ -21,6 +21,7 @@ import {
   AudioWaveform,
   Command,
   GalleryVerticalEnd,
+  Database,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -81,6 +82,11 @@ export const sidebarData: SidebarData = {
           title: '用户',
           url: '/users',
           icon: Users,
+        },
+        {
+          title: 'Emby 元数据',
+          url: '/emby-metadata',
+          icon: Database,
         },
       ],
     },

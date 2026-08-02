@@ -131,3 +131,8 @@ dmypy.json
 
 # Pycharm
 .idea/
+
+# pnpm local artifacts
+.pnpm-store/
+.pnpm/
+pnpm-debug.log*

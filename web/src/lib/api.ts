@@ -77,6 +77,24 @@ export interface DashboardStats {
   premium_users: number;
 }
 
+export interface MetadataNamedItem { name: string; id?: string }
+export interface MetadataSearchResult {
+  source: string; source_id: string; title: string; release_date?: string
+  statuses: string[]; image_urls: string[]; detail_url: string
+}
+export interface MetadataCandidate {
+  source: string; source_id: string; title: string; original_title: string
+  overview?: string; year?: number; release_date?: string; taglines?: string
+  genres: MetadataNamedItem[]; studios: MetadataNamedItem[]
+  external_ids: Record<string, string>; raw_url: string
+}
+export interface MetadataQueueItem {
+  notification_id: string; item_id: string; item_name: string; path: string
+  category: string; category_label: string; source: string; status: string
+  search_keyword?: string; search_count?: number
+}
+export interface MetadataQueueResponse { items: MetadataQueueItem[]; total: number }
+
 /**
  * API 客户端类
  * 负责与后端 API 的通信
@@ -214,6 +232,22 @@ class ApiClient {
       method: 'GET',
       url: '/dashboard/stats',
     });
+  }
+
+  async getMetadataQueue(): Promise<MetadataQueueResponse> {
+    return this.request<MetadataQueueResponse>({ method: 'GET', url: '/emby/metadata/queue' })
+  }
+
+  async searchMetadataQueue(notificationIds: string[]): Promise<Array<{ notification_id: string; results: MetadataSearchResult[] }>> {
+    return this.request({ method: 'POST', url: '/emby/metadata/queue/search', data: { notification_ids: notificationIds } })
+  }
+
+  async getMetadataCandidate(source: string, sourceId: string): Promise<MetadataCandidate> {
+    return this.request<MetadataCandidate>({ method: 'GET', url: `/emby/metadata/candidates/${source}/${sourceId}` })
+  }
+
+  async writebackMetadata(notificationId: string, data: { candidate: MetadataCandidate; fields: string[]; overwrite: boolean; confirmed: boolean }): Promise<void> {
+    return this.request<void>({ method: 'POST', url: `/emby/metadata/queue/${notificationId}/writeback`, data })
   }
 
   // ==================== 管理员相关 API ====================
