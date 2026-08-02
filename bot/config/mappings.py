@@ -19,19 +19,14 @@ from bot.keyboards.inline.constants import *
 FEATURE_DEPENDENCIES: dict[str, list[str]] = {
 
     # 用户注册依赖账号中心
-    KEY_USER_REGISTER: [
-        KEY_USER_ACCOUNT,
-    ],
+    KEY_USER_REGISTER: [KEY_USER_ACCOUNT,],
+    KEY_USER_INFO: [KEY_USER_ACCOUNT,],
+    KEY_USER_LINES: [KEY_USER_ACCOUNT,],
+    KEY_USER_DEVICES: [KEY_USER_ACCOUNT,],
+    KEY_USER_TAGS: [KEY_USER_ACCOUNT,],
+    KEY_USER_AVATAR: [KEY_USER_ACCOUNT,],
+    KEY_USER_PASSWORD: [KEY_USER_ACCOUNT,],
 
-    # 用户资料依赖账号中心
-    KEY_USER_PROFILE: [
-        KEY_USER_ACCOUNT,
-    ],
-
-    # 用户信息依赖账号中心
-    KEY_USER_INFO: [
-        KEY_USER_ACCOUNT,
-    ],
 }
 
 # ======================
