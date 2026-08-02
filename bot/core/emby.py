@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from bot.core.config import settings
 from bot.utils.http import HttpClient
+from loguru import logger
 
 
 class EmbyClient:
@@ -168,7 +169,20 @@ class EmbyClient:
     async def get_item(self, user_id: str, item_id: str) -> dict[str, Any]:
         """获取项目详情 (GET /Users/{UserId}/Items/{Id})。"""
         data = await self.http.request("GET", f"/Users/{user_id}/Items/{item_id}")
-        return cast("dict[str, Any]", data) if isinstance(data, dict) else {}
+        if isinstance(data, dict):
+            logger.debug(
+                "Emby get_item response: data={}",
+                data,
+            )
+            return cast("dict[str, Any]", data)
+        logger.debug(
+            "Emby get_item response is not dict: user_id={} item_id={} type={} value={}",
+            user_id,
+            item_id,
+            type(data).__name__,
+            data,
+        )
+        return {}
 
     async def get_items(
         self,

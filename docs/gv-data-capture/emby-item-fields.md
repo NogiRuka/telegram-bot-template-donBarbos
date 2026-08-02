@@ -49,13 +49,14 @@ item 26222 实测 49 个字段，按可更新性分五类：
 | `Overview` | str | 简介/剧情 | 用于后端联调的模拟 Emby Item… |
 | `PremiereDate` | str(ISO) | 首映日期 | 2016-08-17T16:00:00.0000000Z |
 | `ProductionYear` | int | 制作年份 | 2024 |
-| `Genres` | list[str] | 类型（剧情/爱情/喜剧） | ["剧情","爱情","喜剧"] |
-| `Studios` | list[dict] | 制作公司，每项 `{Name, Id}` | [{"Name":"Mock Studio","Id":26617}] |
+| `Genres` | list[str] | 类型原始值，便于展示与搜索 | ["剧情","爱情","喜剧"] |
+| `GenreItems` | list[dict] | 实际写回 Emby 的类型对象列表，每项 `{Name}` | [{"Name":"剧情"},{"Name":"爱情"}] |
+| `Studios` | list[dict] | 制作公司，每项 `{Name, Id}`；新建时可仅传 `{Name}` | [{"Name":"Mock Studio","Id":26617}] |
 | `People` | list[dict] | 演职员，每项含 `Name/Id/Role/Type` | [{"Name":"Gabriel Epstein","Role":"Germán","Type":"Actor"}] |
 | `ProviderIds` | dict | 外部 ID，键为来源（Tmdb/Imdb） | {"Tmdb":"mock-tmdb-001"} |
 | `CommunityRating` | float | 社区评分 | 6.5 |
 
-> `Studios`/`People` 的 `Id` 是 Emby 内部关联 ID。新建时传 `{"Name": "..."}` 即可，Emby 会自动建关联实体；更新现有项保留原 Id。
+> `Studios`/`People`/`GenreItems`/`TagItems` 的 `Id` 是 Emby 内部关联 ID。新建时传 `{"Name": "..."}` 即可，Emby 会自动建关联实体；更新现有项保留原 Id。
 
 ## 4. B. 辅助元数据（可选更新）
 
@@ -91,7 +92,7 @@ item 26222 实测 49 个字段，按可更新性分五类：
 | `Path` | str | 文件路径 | /mnt/webdav/media/…/Taekwondo (2016).mkv |
 | `FileName` | str | 文件名 | Taekwondo (2016).mkv |
 | `Container` | str | 容器格式 | mkv |
-| `TagItems` | list | Tags 的派生实体 | [] |
+| `TagItems` | list | 标签实体；本项目由候选 `tags` 映射为 `[{Name: ...}]` 写入 | [] |
 | `LocalTrailerCount` | int | 本地预告片数 | 0 |
 | `DisplayPreferencesId` | str | 显示偏好 ID | dbf7709c… |
 | `PrimaryImageAspectRatio` | int/float | 主图宽高比 | 1 |

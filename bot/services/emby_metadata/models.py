@@ -12,6 +12,13 @@ class MediaLibraryCategory(str, Enum):
     WESTERN = "western"
 
 
+class MetadataNamedItem(BaseModel):
+    """可写入 Emby 命名对象字段的统一模型。"""
+
+    name: str = Field(description="对象显示名称")
+    id: str | None = Field(default=None, description="Emby 内部关联 ID，未知时留空")
+
+
 class MetadataPerson(BaseModel):
     """可写入 Emby People 字段的演职员信息。"""
 
@@ -48,12 +55,15 @@ class MetadataCandidate(BaseModel):
     overview: str | None = Field(default=None, description="商品简介，仅取详情页 intro_text 区域")
     year: int | None = Field(default=None, description="制作年份，优先取发布日期年份")
     release_date: date | None = Field(default=None, description="商品发布日期")
-    genres: list[str] = Field(default_factory=list, description="播放内容分类，可写入 Emby Genres")
-    studios: list[str] = Field(default_factory=list, description="厂家或工作室名称")
+    genres: list[MetadataNamedItem] = Field(default_factory=list, description="播放内容分类，对应 Emby Genres/GenreItems")
+    studios: list[MetadataNamedItem] = Field(default_factory=list, description="厂家或工作室名称，对应 Emby Studios")
     people: list[MetadataPerson] = Field(default_factory=list, description="出演模型列表")
-    labels: list[str] = Field(default_factory=list, description="标签、模型类型及 DVD 信息的去重集合")
-    external_ids: dict[str, str] = Field(default_factory=dict, description="外部 ID，默认不填")
+    tags: list[MetadataNamedItem] = Field(default_factory=list, description="标签及其它辅助信息的集合，对应 Emby TagItems")
+    taglines: str | None = Field(default=None, description="宣传语 / 副标题 / 一句话简介，对应 Emby Taglines")
+    external_ids: dict[str, str] = Field(
+        default_factory=dict,
+        description="对应 Emby ProviderIds，固定使用 source/source_id/source_url/product_number 结构",
+    )
     poster_url: str | None = Field(default=None, description="商品主图 URL，固定选择编号为 1 的图片")
-    runtime_minutes: int | None = Field(default=None, description="片长分钟数，秒数达到 30 时进位")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="搜索候选匹配置信度")
     raw_url: str = Field(description="数据源详情页 URL")

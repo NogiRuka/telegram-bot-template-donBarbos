@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from bot.core.config import settings
-from bot.services.emby_metadata.models import MetadataCandidate
+from bot.services.emby_metadata.models import MetadataCandidate, MetadataNamedItem
 from bot.utils.emby import get_emby_client
 
 ITEM_UPDATE_DIFF_FIELDS = (
@@ -21,6 +21,10 @@ ITEM_UPDATE_DIFF_FIELDS = (
 )
 
 
+def _named_items_to_payload(items: list[MetadataNamedItem]) -> list[dict[str, Any]]:
+    return [item.model_dump(by_alias=False, exclude_none=True) | {"Name": item.name, **({"Id": item.id} if item.id else {})} for item in items]
+
+
 def build_item_update_payload(item: dict[str, Any], candidate: MetadataCandidate) -> dict[str, Any]:
     """根据候选元数据构建 Emby Item 更新载荷。"""
     payload = dict(item)
@@ -31,9 +35,12 @@ def build_item_update_payload(item: dict[str, Any], candidate: MetadataCandidate
     payload["Overview"] = candidate.overview
     payload["ProductionYear"] = candidate.year
     payload["PremiereDate"] = candidate.release_date.isoformat() if candidate.release_date else None
-    payload["Genres"] = list(candidate.genres)
-    payload["Studios"] = list(candidate.studios)
+    payload["Genres"] = [genre.name for genre in candidate.genres]
+    payload["GenreItems"] = _named_items_to_payload(candidate.genres)
+    payload["Studios"] = _named_items_to_payload(candidate.studios)
     payload["People"] = [person.model_dump(exclude_none=True) for person in candidate.people]
+    payload["TagItems"] = _named_items_to_payload(candidate.tags)
+    payload["Taglines"] = candidate.taglines
     payload["ProviderIds"] = dict(candidate.external_ids)
     return payload
 

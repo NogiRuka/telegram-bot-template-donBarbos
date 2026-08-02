@@ -9,7 +9,12 @@ from bot.services.emby_metadata.matching import (
     extract_product_number,
     normalize_product_number,
 )
-from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate, MetadataSearchResult
+from bot.services.emby_metadata.models import (
+    MediaLibraryCategory,
+    MetadataCandidate,
+    MetadataNamedItem,
+    MetadataSearchResult,
+)
 from bot.services.emby_metadata.parser.ck_download import CkDownloadParser
 from bot.services.emby_metadata.sources.base import MetadataSourceParseError
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
@@ -57,11 +62,11 @@ class CkDownloadParserTests(unittest.TestCase):
         self.assertEqual(candidate.release_date, date(2026, 7, 21))
         self.assertEqual(candidate.year, 2026)
         self.assertEqual(candidate.runtime_minutes, 26)
-        self.assertEqual(candidate.studios, ["CKオリジナル"])
+        self.assertEqual([studio.name for studio in candidate.studios], ["CKオリジナル"])
         self.assertEqual(candidate.people, [])
         self.assertEqual(candidate.poster_url, "https://img.ck-download.com/images/product/33907/33907_1.jpg")
-        self.assertIn("フェラチオ", candidate.genres)
-        self.assertIn("激撮フィッティングルーム", candidate.labels)
+        self.assertIn("フェラチオ", [genre.name for genre in candidate.genres])
+        self.assertIn("激撮フィッティングルーム", [tag.name for tag in candidate.tags])
         self.assertIn("※この作品の視聴方法", candidate.overview or "")
         self.assertNotIn("販売価格", candidate.overview or "")
 
@@ -70,7 +75,7 @@ class CkDownloadParserTests(unittest.TestCase):
         self.assertEqual(candidate.product_number, "COCO562-HD")
         self.assertEqual(candidate.runtime_minutes, 126)
         self.assertEqual(candidate.year, 2026)
-        self.assertEqual(candidate.studios, ["COAT"])
+        self.assertEqual([studio.name for studio in candidate.studios], ["COAT"])
         self.assertEqual([person.name for person in candidate.people], ["聖哉", "夏葵", "大希(TAIKI)", "仁(JIN)＜東京＞"])
         self.assertEqual(candidate.poster_url, "https://img.ck-download.com/images/product/33831/33831_1.jpg")
 
@@ -141,10 +146,10 @@ class WriterTests(unittest.TestCase):
             overview="新的简介",
             year=2026,
             release_date=date(2026, 7, 21),
-            genres=["A", "B"],
-            studios=["StudioA"],
+            genres=[MetadataNamedItem(name="A"), MetadataNamedItem(name="B")],
+            studios=[MetadataNamedItem(name="StudioA")],
             people=[],
-            labels=[],
+            tags=[],
             external_ids={"imdb": "tt123"},
             poster_url=None,
             runtime_minutes=26,

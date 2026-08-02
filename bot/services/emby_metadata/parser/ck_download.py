@@ -9,6 +9,7 @@ from bot.services.emby_metadata.errors import MetadataSourceParseError
 from bot.services.emby_metadata.models import (
     MediaLibraryCategory,
     MetadataCandidate,
+    MetadataNamedItem,
     MetadataPerson,
     MetadataSearchResult,
 )
@@ -110,12 +111,14 @@ class CkDownloadParser:
             overview=cls._parse_overview(soup),
             year=release_date.year if release_date else dvd_year,
             release_date=release_date,
-            genres=play_types,
-            studios=[manufacturer] if manufacturer else [],
+            genres=[MetadataNamedItem(name=value) for value in play_types],
+            studios=[MetadataNamedItem(name=manufacturer)] if manufacturer else [],
             people=[MetadataPerson(name=name) for name in performers],
-            labels=labels,
+            tags=[MetadataNamedItem(name=value) for value in labels],
+            taglines=None,
+            external_ids={},
             poster_url=cls._parse_poster_url(soup, source_id),
-            runtime_minutes=cls._parse_runtime(fields.get("再生時間")),
+            confidence=0.0,
             raw_url=urljoin(f"{cls.base_url}/", f"product/detail/{source_id}"),
         )
 

@@ -102,8 +102,8 @@ flowchart TB
 | `overview` | `Overview` | 是 | 保留段落换行 |
 | `year` | `ProductionYear` | 是 | 优先采用上架日年份 |
 | `release_date` | `PremiereDate` | 是 | 使用 ISO 日期 |
-| `genres` | `Genres` | 是 | 去重后整体写入 |
-| `studios` | `Studios` | 是 | 厂家映射为工作室 |
+| `genres` | `Genres` / `GenreItems` | 是 | 候选内部保存为对象列表；写回时 `Genres` 取名称数组，`GenreItems=[{Name, Id?}]` |
+| `studios` | `Studios` | 是 | 厂家映射为工作室对象列表，写回时使用 `[{Name, Id?}]` |
 | `people` | `People` | 否 | 第一阶段通常为空 |
 | `external_ids` | `ProviderIds` | 是 | 合并键，不删除其他来源 ID |
 | `poster_url` | 主封面 | 否 | 仅明确公开主图可选 |

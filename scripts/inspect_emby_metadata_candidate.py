@@ -1,6 +1,6 @@
 import argparse
 import asyncio
-import json
+from datetime import date
 import sys
 from pathlib import Path
 
@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate
+from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate, MetadataNamedItem, MetadataPerson
 from bot.services.emby_metadata.writer import apply_metadata_candidate_to_item, preview_metadata_candidate_update
 
 
@@ -33,21 +33,19 @@ def build_candidate() -> MetadataCandidate:
 真っ白なプリケツを揉まれ叩かれ…ボリュームのあるスッポリ仮性包茎も弄られて…!
 「ちょっとおっきくなってきたんじゃない?」「うん…」 斗武、掘られイキ&顔射!!""",
         year=2023,
-        release_date=None,
-        genres=["フェラチオ", "イラマチオ", "巨根", "オナホール"],
-        studios=["Hello!"],
-        people=[
-            {"name": "魁斗", "role": None, "type": "Actor"},
-            {"name": "斗武", "role": None, "type": "Actor"},
-        ],
-        labels=["COCO060", "Hello!", "HD"],
+        release_date=date(2023, 8, 4),
+        genres=[MetadataNamedItem(name="フェラチオ"), MetadataNamedItem(name="イラマチオ"), MetadataNamedItem(name="巨根"), MetadataNamedItem(name="オナホール")],
+        studios=[MetadataNamedItem(name="Hello!")],
+        people=[MetadataPerson(name="测试角色1", role="测试角色1")],
         external_ids={
-            "source": "ck_download",
+            "source": "ck_download22222",
             "source_id": "18996",
+            "source_url": "https://www.ck-download.com/product/detail/18996",
             "product_number": "COCO060-04",
         },
+        tags=[MetadataNamedItem(name="标签1"), MetadataNamedItem(name="标签2"), MetadataNamedItem(name="HD")],
+        taglines="好好看推荐",
         poster_url="https://img.ck-download.com/images/product/18996/18996_1_360.jpg",
-        runtime_minutes=None,
         confidence=1.0,
         raw_url="https://www.ck-download.com/product/detail/18996", 
     )
@@ -64,6 +62,11 @@ async def run_preview() -> None:
     print("resolved_user_id:", result["resolved_user_id"])
     print("before Name:", before_item.get("Name"))
     print("payload Name:", payload.get("Name"))
+    print("payload PremiereDate:", payload.get("PremiereDate"))
+    print("payload GenreItems:", payload.get("GenreItems"))
+    print("payload Studios:", payload.get("Studios"))
+    print("payload TagItems:", payload.get("TagItems"))
+    print("payload Taglines:", payload.get("Taglines"))
     print("before Overview:", (before_item.get("Overview") or "")[:200])
     print("payload Overview:", (payload.get("Overview") or "")[:200])
     print("planned_changes:", result["planned_changes"])
@@ -79,6 +82,11 @@ async def run_apply() -> None:
     print("resolved_user_id:", result["resolved_user_id"])
     print("before Name:", before_item.get("Name"))
     print("after Name:", after_item.get("Name"))
+    print("after PremiereDate:", after_item.get("PremiereDate"))
+    print("after GenreItems:", after_item.get("GenreItems"))
+    print("after Studios:", after_item.get("Studios"))
+    print("after TagItems:", after_item.get("TagItems"))
+    print("after Taglines:", after_item.get("Taglines"))
     print("before Overview:", (before_item.get("Overview") or "")[:200])
     print("after Overview:", (after_item.get("Overview") or "")[:200])
     print("actual_changes:", result["actual_changes"])
