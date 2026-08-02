@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import base64
 from datetime import date
 import sys
 from pathlib import Path
@@ -12,7 +13,17 @@ from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCand
 from bot.services.emby_metadata.writer import apply_metadata_candidate_to_item, preview_metadata_candidate_update
 
 
-def build_candidate() -> MetadataCandidate:
+def _read_image_as_base64(image_path: str) -> str:
+    return base64.b64encode(Path(image_path).read_bytes()).decode("ascii")
+
+
+def build_candidate(args: argparse.Namespace) -> MetadataCandidate:
+    person = MetadataPerson(name="测试角色1", role="测试角色1")
+    if args.person_image_path:
+        person.image_path = args.person_image_path
+    if args.person_image_data:
+        person.image_data = _read_image_as_base64(args.person_image_data)
+
     candidate = MetadataCandidate(
         source="ck_download",
         source_id="18996",
@@ -36,7 +47,7 @@ def build_candidate() -> MetadataCandidate:
         release_date=date(2023, 8, 4),
         genres=[MetadataNamedItem(name="フェラチオ"), MetadataNamedItem(name="イラマチオ"), MetadataNamedItem(name="巨根"), MetadataNamedItem(name="オナホール")],
         studios=[MetadataNamedItem(name="Hello!")],
-        people=[MetadataPerson(name="测试角色1", role="测试角色1")],
+        people=[person],
         external_ids={
             "source": "ck_download22222",
             "source_id": "18996",
@@ -45,16 +56,18 @@ def build_candidate() -> MetadataCandidate:
         },
         tags=[MetadataNamedItem(name="标签1"), MetadataNamedItem(name="标签2"), MetadataNamedItem(name="HD")],
         taglines="好好看推荐",
-        poster_url="https://img.ck-download.com/images/product/18996/18996_1_360.jpg",
+        poster_url=args.poster_url,
         confidence=1.0,
-        raw_url="https://www.ck-download.com/product/detail/18996", 
+        raw_url="https://www.ck-download.com/product/detail/18996",
     )
-
+    if args.poster_path:
+        candidate.poster_url = None
+        candidate.poster_path = args.poster_path
     return candidate
 
 
-async def run_preview() -> None:
-    candidate = build_candidate()
+async def run_preview(args: argparse.Namespace) -> None:
+    candidate = build_candidate(args)
     result = await preview_metadata_candidate_update("26222", candidate)
     before_item = result["before_item"]
     payload = result["payload"]
@@ -73,8 +86,8 @@ async def run_preview() -> None:
     print("unexpected_changes:", result.get("unexpected_changes", []))
 
 
-async def run_apply() -> None:
-    candidate = build_candidate()
+async def run_apply(args: argparse.Namespace) -> None:
+    candidate = build_candidate(args)
     result = await apply_metadata_candidate_to_item("26222", candidate)
     before_item = result["before_item"]
     after_item = result["after_item"]
@@ -97,8 +110,12 @@ async def run_apply() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true", help="实际写回 Emby")
+    parser.add_argument("--poster-url", default="https://img.ck-download.com/images/product/18996/18996_1_360.jpg")
+    parser.add_argument("--poster-path")
+    parser.add_argument("--person-image-path")
+    parser.add_argument("--person-image-data")
     args = parser.parse_args()
-    asyncio.run(run_apply() if args.apply else run_preview())
+    asyncio.run(run_apply(args) if args.apply else run_preview(args))
 
 
 if __name__ == "__main__":

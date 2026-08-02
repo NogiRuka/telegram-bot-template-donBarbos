@@ -25,6 +25,9 @@ class MetadataPerson(BaseModel):
     name: str = Field(description="演员或演职员姓名")
     role: str | None = Field(default=None, description="角色名，数据源未提供时留空")
     type: str = Field(default="Actor", description="Emby 人员类型，出演模型统一为 Actor")
+    image_url: str | None = Field(default=None, description="角色主图来源地址，数据源未提供时留空")
+    image_data: str | None = Field(default=None, description="自定义角色主图 Base64，优先于 image_url")
+    image_path: str | None = Field(default=None, description="自定义角色主图本地路径，优先于 image_url")
 
 
 class MetadataSearchResult(BaseModel):

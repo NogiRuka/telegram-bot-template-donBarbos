@@ -175,13 +175,6 @@ class EmbyClient:
                 data,
             )
             return cast("dict[str, Any]", data)
-        logger.debug(
-            "Emby get_item response is not dict: user_id={} item_id={} type={} value={}",
-            user_id,
-            item_id,
-            type(data).__name__,
-            data,
-        )
         return {}
 
     async def get_items(

@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import base64
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
+
+import aiohttp
 
 from bot.core.config import settings
 from bot.services.emby_metadata.models import MetadataCandidate, MetadataNamedItem
 from bot.utils.emby import get_emby_client
+
+IMAGE_ARCHIVE_ROOT = Path("data/emby_metadata/images")
 
 ITEM_UPDATE_DIFF_FIELDS = (
     "Name",
@@ -25,6 +32,48 @@ def _named_items_to_payload(items: list[MetadataNamedItem]) -> list[dict[str, An
     return [item.model_dump(by_alias=False, exclude_none=True) | {"Name": item.name, **({"Id": item.id} if item.id else {})} for item in items]
 
 
+def _person_to_payload(person: Any) -> dict[str, Any]:
+    return person.model_dump(exclude_none=True, exclude={"image_url", "image_data", "image_path"})
+
+
+def _image_headers(url: str, referer: str | None = None) -> dict[str, str]:
+    parsed = urlparse(url)
+    return {
+        "Referer": referer or f"{parsed.scheme}://{parsed.netloc}/",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    }
+
+
+def _archive_path(candidate: MetadataCandidate, filename: str) -> Path:
+    return IMAGE_ARCHIVE_ROOT / candidate.source / candidate.source_id / filename
+
+
+async def _download_image_as_base64(
+    url: str,
+    *,
+    referer: str | None = None,
+    archive_path: Path | None = None,
+) -> str:
+    timeout = aiohttp.ClientTimeout(total=15)
+    async with aiohttp.ClientSession(timeout=timeout, headers=_image_headers(url, referer)) as session:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            image_bytes = await response.read()
+    if archive_path is not None:
+        archive_path.parent.mkdir(parents=True, exist_ok=True)
+        archive_path.write_bytes(image_bytes)
+    return base64.b64encode(image_bytes).decode("ascii")
+
+
+def _read_local_image_as_base64(path: str, *, archive_path: Path | None = None) -> str:
+    image_bytes = Path(path).read_bytes()
+    if archive_path is not None:
+        archive_path.parent.mkdir(parents=True, exist_ok=True)
+        archive_path.write_bytes(image_bytes)
+    return base64.b64encode(image_bytes).decode("ascii")
+
+
 def build_item_update_payload(item: dict[str, Any], candidate: MetadataCandidate) -> dict[str, Any]:
     """根据候选元数据构建 Emby Item 更新载荷。"""
     payload = dict(item)
@@ -38,7 +87,7 @@ def build_item_update_payload(item: dict[str, Any], candidate: MetadataCandidate
     payload["Genres"] = [genre.name for genre in candidate.genres]
     payload["GenreItems"] = _named_items_to_payload(candidate.genres)
     payload["Studios"] = _named_items_to_payload(candidate.studios)
-    payload["People"] = [person.model_dump(exclude_none=True) for person in candidate.people]
+    payload["People"] = [_person_to_payload(person) for person in candidate.people]
     payload["TagItems"] = _named_items_to_payload(candidate.tags)
     payload["Taglines"] = candidate.taglines
     payload["ProviderIds"] = dict(candidate.external_ids)
@@ -108,14 +157,47 @@ async def apply_item_update(
     *,
     apply_poster: bool = False,
     poster_data: str | None = None,
+    poster_url: str | None = None,
+    poster_referer: str | None = None,
+    poster_archive_path: Path | None = None,
+    people: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
-    """把载荷写回指定 Emby Item。"""
+    """把载荷和图片写回指定 Emby Item。"""
     client = get_emby_client()
+    if client is None:
+        raise RuntimeError("Emby 客户端未配置")
 
     await client.update_item(item_id, payload)
 
-    if apply_poster and poster_data:
-        await client.upload_item_image(item_id, poster_data, "Primary")
+    if apply_poster:
+        image_data = poster_data
+        if image_data is None and poster_url:
+            image_data = await _download_image_as_base64(
+                poster_url,
+                referer=poster_referer,
+                archive_path=poster_archive_path,
+            )
+        if image_data:
+            await client.upload_item_image(item_id, image_data, "Primary")
+
+    for person in people or []:
+        person_id = person.get("Id")
+        image_url = person.get("ImageUrl")
+        image_data = person.get("ImageData")
+        image_path = person.get("ImagePath")
+        archive_path = person.get("ArchivePath")
+        if not person_id:
+            continue
+        if image_data is None and image_path:
+            image_data = _read_local_image_as_base64(image_path, archive_path=archive_path)
+        if image_data is None and image_url:
+            image_data = await _download_image_as_base64(
+                image_url,
+                referer=person.get("ImageReferer"),
+                archive_path=archive_path,
+            )
+        if image_data:
+            await client.upload_item_image(str(person_id), image_data, "Primary")
 
     return payload
 
@@ -136,9 +218,46 @@ async def apply_metadata_candidate_to_item(
         preview["payload"],
         apply_poster=apply_poster,
         poster_data=poster_data,
+        poster_url=candidate.poster_url,
+        poster_referer=candidate.raw_url,
+        poster_archive_path=_archive_path(candidate, "poster.jpg"),
+        people=[],
     )
 
     _, after_item = await fetch_item_snapshot(item_id, user_id=preview["resolved_user_id"])
+
+    people_by_name = {
+        person.name: person
+        for person in candidate.people
+        if person.image_url or person.image_data or person.image_path
+    }
+    person_uploads = []
+    for after_person in after_item.get("People", []):
+        if not isinstance(after_person, dict):
+            continue
+        name = after_person.get("Name")
+        person_id = after_person.get("Id")
+        source_person = people_by_name.get(name)
+        if not name or not person_id or source_person is None:
+            continue
+        person_uploads.append(
+            {
+                "Id": person_id,
+                "ImageUrl": source_person.image_url,
+                "ImageData": source_person.image_data,
+                "ImagePath": source_person.image_path,
+                "ImageReferer": candidate.raw_url,
+                "ArchivePath": _archive_path(candidate, f"person_{name}.jpg"),
+            }
+        )
+
+    if person_uploads:
+        await apply_item_update(
+            item_id,
+            after_item,
+            people=person_uploads,
+        )
+        _, after_item = await fetch_item_snapshot(item_id, user_id=preview["resolved_user_id"])
     actual_core_changes = build_item_update_changes(preview["before_item"], after_item)
     actual_changes = build_item_update_changes(preview["before_item"], after_item, fields=None)
     writeback_diffs = build_item_update_changes(preview["payload"], after_item, fields=None)
