@@ -10,6 +10,7 @@ from sqlalchemy import select
 from bot.database.database import sessionmaker
 from bot.database.models import LibraryNewNotificationModel
 from bot.services.emby_metadata.models import MetadataCandidate
+from bot.services.emby_metadata.matching import extract_product_number
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
 from bot.services.emby_metadata.writer import apply_metadata_candidate_to_item
 
@@ -26,6 +27,7 @@ def _path_from_payload(notification: LibraryNewNotificationModel) -> str:
 def _queue_item(notification: LibraryNewNotificationModel) -> dict[str, Any]:
     """把新媒体通知转换为前端队列的数据结构。"""
     path = _path_from_payload(notification)
+    payload_item = notification.payload.get("Item", {}) if notification.payload else {}
     if "日韩" in path:
         category = "japanese_korean"
         category_label = "日韩"
@@ -39,17 +41,20 @@ def _queue_item(notification: LibraryNewNotificationModel) -> dict[str, Any]:
         category_label = "国产"
         source = "未配置"
 
+    item_name = notification.item_name or notification.title or "未命名条目"
+    search_keyword = extract_product_number(item_name) or item_name
     return {
         "notification_id": str(notification.id),
         "item_id": notification.item_id or "",
-        "item_name": notification.item_name or notification.title or "未命名条目",
+        "item_name": item_name,
         "path": path,
         "category": category,
         "category_label": category_label,
         "source": source,
         "status": "pending" if notification.status == "pending_completion" else notification.status or "pending",
-        "search_keyword": notification.item_name or notification.title or "",
+        "search_keyword": search_keyword,
         "search_count": len(_search_cache.get(str(notification.id), [])),
+        "image_url": payload_item.get("ImageUrl") or payload_item.get("PrimaryImageUrl"),
     }
 
 
@@ -72,7 +77,6 @@ async def get_queue() -> dict[str, Any]:
             select(LibraryNewNotificationModel)
             .where(LibraryNewNotificationModel.status == "pending_completion")
             .where(LibraryNewNotificationModel.item_type == "Movie")
-            .where(LibraryNewNotificationModel.is_deleted == False)
             .order_by(LibraryNewNotificationModel.id.desc())
         )
         notifications = list(result.scalars())
@@ -80,7 +84,7 @@ async def get_queue() -> dict[str, Any]:
     return {"items": items, "total": len(items)}
 
 
-async def search_queue(notification_ids: list[str]) -> list[dict[str, Any]]:
+async def search_queue(notification_ids: list[str], keywords: dict[str, str] | None = None) -> list[dict[str, Any]]:
     """搜索选中项目，缓存轻量候选结果供本次工作台会话使用。"""
     source = CkDownloadSource()
     response: list[dict[str, Any]] = []
@@ -90,7 +94,7 @@ async def search_queue(notification_ids: list[str]) -> list[dict[str, Any]]:
             response.append({"notification_id": notification_id, "results": []})
             continue
         try:
-            results = await source.search(item["search_keyword"])
+            results = await source.search((keywords or {}).get(notification_id) or item["search_keyword"])
         except Exception as error:
             raise HTTPException(status_code=502, detail=f"数据源搜索失败：{error}") from error
         serialized = [result.model_dump(mode="json") for result in results]

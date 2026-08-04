@@ -15,6 +15,7 @@ class SearchRequest(BaseModel):
     """批量搜索时由管理员选中的通知项。"""
 
     notification_ids: list[str] = Field(min_length=1, max_length=30)
+    keywords: dict[str, str] = Field(default_factory=dict)
 
 
 class WritebackRequest(BaseModel):
@@ -35,7 +36,7 @@ async def get_queue() -> dict[str, Any]:
 @router.post("/queue/search")
 async def search_queue(request: SearchRequest) -> list[dict[str, Any]]:
     """批量搜索选中项目。"""
-    return await workbench.search_queue(request.notification_ids)
+    return await workbench.search_queue(request.notification_ids, request.keywords)
 
 
 @router.get("/candidates/{source}/{source_id}")

@@ -91,7 +91,7 @@ export interface MetadataCandidate {
 export interface MetadataQueueItem {
   notification_id: string; item_id: string; item_name: string; path: string
   category: string; category_label: string; source: string; status: string
-  search_keyword?: string; search_count?: number
+  search_keyword?: string; search_count?: number; image_url?: string
 }
 export interface MetadataQueueResponse { items: MetadataQueueItem[]; total: number }
 
@@ -238,8 +238,8 @@ class ApiClient {
     return this.request<MetadataQueueResponse>({ method: 'GET', url: '/emby/metadata/queue' })
   }
 
-  async searchMetadataQueue(notificationIds: string[]): Promise<Array<{ notification_id: string; results: MetadataSearchResult[] }>> {
-    return this.request({ method: 'POST', url: '/emby/metadata/queue/search', data: { notification_ids: notificationIds } })
+  async searchMetadataQueue(notificationIds: string[], keywords: Record<string, string> = {}): Promise<Array<{ notification_id: string; results: MetadataSearchResult[] }>> {
+    return this.request({ method: 'POST', url: '/emby/metadata/queue/search', data: { notification_ids: notificationIds, keywords } })
   }
 
   async getMetadataCandidate(source: string, sourceId: string): Promise<MetadataCandidate> {
