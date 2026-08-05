@@ -54,7 +54,9 @@ item 26222 实测 49 个字段，按可更新性分五类：
 | `Studios` | list[dict] | 制作公司，每项 `{Name, Id}`；新建时可仅传 `{Name}` | [{"Name":"Mock Studio","Id":26617}] |
 | `People` | list[dict] | 演职员，每项含 `Name/Id/Role/Type` | [{"Name":"Gabriel Epstein","Role":"Germán","Type":"Actor"}] |
 | `ProviderIds` | dict | 外部 ID，键为来源（Tmdb/Imdb） | {"Tmdb":"mock-tmdb-001"} |
-| `CommunityRating` | float | 社区评分 | 6.5 |
+| `CommunityRating` | float | 社区评分 | 默认空 step=".1" min="0" max="10" |
+| `OfficialRating` | str | 家长评分 | XXX |
+| `CustomRating` | str | 自定义评分 | XXX |
 
 > `Studios`/`People`/`GenreItems`/`TagItems` 的 `Id` 是 Emby 内部关联 ID。新建时传 `{"Name": "..."}` 即可，Emby 会自动建关联实体；更新现有项保留原 Id。
 

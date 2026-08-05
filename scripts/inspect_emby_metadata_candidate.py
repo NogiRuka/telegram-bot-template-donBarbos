@@ -49,10 +49,11 @@ def build_candidate(args: argparse.Namespace) -> MetadataCandidate:
         studios=[MetadataNamedItem(name="Hello!")],
         people=[person],
         external_ids={
-            "source": "ck_download22222",
+            "source": "ck_download",
             "source_id": "18996",
             "source_url": "https://www.ck-download.com/product/detail/18996",
             "product_number": "COCO060-04",
+            "Imdb": "COCO060-04",
         },
         tags=[MetadataNamedItem(name="标签1"), MetadataNamedItem(name="标签2"), MetadataNamedItem(name="HD")],
         taglines="好好看推荐",
