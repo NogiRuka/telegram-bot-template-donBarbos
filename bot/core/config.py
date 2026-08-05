@@ -52,6 +52,8 @@ class BotSettings(EnvBaseSettings):
     EMBY_API_KEY: str | None = Field(default=None, description="Emby API Key, 通过 X-Emby-Token 传递")
     EMBY_TEMPLATE_USER_ID: str | None = Field(default=None, description="Emby 模板用户ID，用于创建用户时复制配置")
     EMBY_API_PREFIX: str | None = Field(default="/emby", description="Emby API 路径前缀, 例如 /emby; 可为空")
+    OPENAI_API_KEY: str | None = Field(default=None, description="OpenAI API 密钥")
+    OPENAI_API_BASE: str = Field(default="https://api.openai.com/v1", description="OpenAI API 基础地址")
     EMBY_SYNC_TIME: str = Field(default="00:00", description="每日定时同步 Emby 数据的时间 (HH:MM)")
     NOTIFICATION_CHANNEL_ID: str | None = Field(default=None, description="通知频道ID列表，逗号分隔，支持Username(@channel)或数字ID")
     OWNER_MSG_GROUP: int | str | None = Field(default=None, description="管理员通知群组ID")
@@ -199,6 +201,16 @@ class BotSettings(EnvBaseSettings):
             str | None: 配置中的路径前缀（如 "/emby"），若为空则返回 None。
         """
         return self.EMBY_API_PREFIX
+
+    @field_validator("OPENAI_API_BASE")
+    @classmethod
+    def validate_openai_api_base(cls, v: str) -> str:
+        """规范化 OpenAI API 基础地址。"""
+        value = v.strip()
+        if not value.startswith(("http://", "https://")):
+            msg = "OPENAI_API_BASE 必须以 http:// 或 https:// 开头"
+            raise ValueError(msg)
+        return value.rstrip("/")
 
     def has_emby_config(self) -> bool:
         """判断是否已配置 Emby 连接信息

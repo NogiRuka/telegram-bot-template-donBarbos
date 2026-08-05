@@ -18,7 +18,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from bot.api.routes import admins, auth, dashboard, emby_metadata, redpacket, users, webhooks
+from bot.api.routes import admins, auth, dashboard, emby_metadata, openai, redpacket, users, webhooks
 from bot.core.config import settings
 
 if TYPE_CHECKING:
@@ -60,6 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(webhooks.router, prefix="/api", tags=["webhooks"])
     app.include_router(redpacket.router, prefix="/api", tags=["redpacket"])
     app.include_router(emby_metadata.router, prefix="/api", tags=["emby-metadata"])
+    app.include_router(openai.router, prefix="/api", tags=["openai"])
     app.add_api_route("/", webhooks.handle_emby_webhook, methods=["POST"], tags=["webhooks"])
 
     @app.middleware("http")

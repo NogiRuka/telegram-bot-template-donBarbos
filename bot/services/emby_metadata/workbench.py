@@ -45,7 +45,7 @@ def _item_image_url(notification: LibraryNewNotificationModel, payload_item: dic
     """使用 Emby 的 Item 图片接口构造队列封面地址。"""
     image_tags = payload_item.get("ImageTags") or {}
     tag = image_tags.get("Primary")
-    item_id = str(payload_item.get("Id") or notification.item_id or "")
+    item_id = str(notification.item_id or "")
     base_url = settings.get_emby_base_url()
     if not (tag and item_id and base_url):
         return None
