@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import Annotated, Any, Literal
 
 import aiohttp
@@ -11,14 +12,24 @@ from loguru import logger
 
 from bot.core.config import settings
 from bot.services.openai import OpenAIClient
+from bot.services.openai_usage import usage_tracker
 from bot.utils.http import HttpRequestError
 
 router = APIRouter(prefix="/openai")
 
 
+@router.get("/usage")
+async def get_openai_usage() -> dict[str, Any]:
+    """返回本地记录的 OpenAI token 用量和估算成本。"""
+    return await usage_tracker.summary()
+
+
 @router.get("/costs")
 async def get_openai_costs(
-    start_time: Annotated[int, Query(description="查询时间范围起点，Unix 秒，包含该时间")],
+    start_time: Annotated[
+        int | None,
+        Query(description="查询时间范围起点，Unix 秒，包含该时间；不传则查询最近 7 天"),
+    ] = None,
     api_key_ids: Annotated[list[str] | None, Query(description="按 API Key ID 过滤")] = None,
     bucket_width: Annotated[Literal["1d"] | None, Query(description="时间桶宽度")] = "1d",
     end_time: Annotated[int | None, Query(description="查询时间范围终点，Unix 秒，不包含该时间")] = None,
@@ -31,13 +42,14 @@ async def get_openai_costs(
     project_ids: Annotated[list[str] | None, Query(description="按项目 ID 过滤")] = None,
 ) -> dict[str, Any]:
     """获取 OpenAI 组织成本数据。"""
-    if end_time is not None and end_time <= start_time:
+    request_start_time = start_time if start_time is not None else int(time.time()) - 7 * 24 * 60 * 60
+    if end_time is not None and end_time <= request_start_time:
         raise HTTPException(status_code=400, detail="end_time 必须大于 start_time")
     if not settings.OPENAI_API_KEY:
         raise HTTPException(status_code=503, detail="OpenAI API 未配置")
 
     params: dict[str, Any] = {
-        "start_time": start_time,
+        "start_time": request_start_time,
         "bucket_width": bucket_width,
         "limit": limit,
     }
