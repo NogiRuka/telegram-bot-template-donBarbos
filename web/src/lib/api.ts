@@ -84,14 +84,20 @@ export interface MetadataSearchResult {
 }
 export interface MetadataCandidate {
   source: string; source_id: string; title: string; original_title: string
+  product_number?: string
+  sort_name: string; forced_sort_name: string
   overview?: string; year?: number; release_date?: string; taglines?: string
-  genres: MetadataNamedItem[]; studios: MetadataNamedItem[]
+  community_rating?: number; official_rating?: string; custom_rating?: string
+  genres: MetadataNamedItem[]; studios: MetadataNamedItem[]; people: MetadataNamedItem[]; tags: MetadataNamedItem[]
   external_ids: Record<string, string>; raw_url: string
 }
+export interface MetadataOption { value: string; label: string }
 export interface MetadataQueueItem {
   notification_id: string; item_id: string; item_name: string; path: string
   category: string; category_label: string; source: string; status: string
   search_keyword?: string; search_count?: number; image_url?: string
+  category_options: MetadataOption[]; source_options: MetadataOption[]
+  source_options_by_category: Record<string, MetadataOption[]>
 }
 export interface MetadataQueueResponse { items: MetadataQueueItem[]; total: number }
 
@@ -238,12 +244,16 @@ class ApiClient {
     return this.request<MetadataQueueResponse>({ method: 'GET', url: '/emby/metadata/queue' })
   }
 
-  async searchMetadataQueue(notificationIds: string[], keywords: Record<string, string> = {}): Promise<Array<{ notification_id: string; results: MetadataSearchResult[] }>> {
-    return this.request({ method: 'POST', url: '/emby/metadata/queue/search', data: { notification_ids: notificationIds, keywords } })
+  async searchMetadataQueue(selections: Array<{ notification_id: string; keyword: string; category: string; source: string }>): Promise<Array<{ notification_id: string; results: MetadataSearchResult[] }>> {
+    return this.request({ method: 'POST', url: '/emby/metadata/queue/search', data: { selections } })
   }
 
-  async getMetadataCandidate(source: string, sourceId: string): Promise<MetadataCandidate> {
-    return this.request<MetadataCandidate>({ method: 'GET', url: `/emby/metadata/candidates/${source}/${sourceId}` })
+  async getMetadataCandidate(notificationId: string, source: string, sourceId: string): Promise<{ candidate: MetadataCandidate; before_item: Record<string, unknown> }> {
+    return this.request({ method: 'GET', url: `/emby/metadata/queue/${notificationId}/candidates/${source}/${sourceId}` })
+  }
+
+  metadataImageUrl(url: string, referer: string): string {
+    return `${this.client.defaults.baseURL}/emby/metadata/images?${new URLSearchParams({ url, referer })}`
   }
 
   async writebackMetadata(notificationId: string, data: { candidate: MetadataCandidate; fields: string[]; overwrite: boolean; confirmed: boolean }): Promise<void> {

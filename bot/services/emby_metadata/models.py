@@ -67,6 +67,9 @@ class MetadataCandidate(BaseModel):
         default_factory=dict,
         description="对应 Emby ProviderIds，固定使用 source/source_id/source_url/product_number 结构",
     )
+    community_rating: float | None = Field(default=None, ge=0, le=10)
+    official_rating: str | None = Field(default=None)
+    custom_rating: str | None = Field(default=None)
     poster_url: str | None = Field(default=None, description="商品主图 URL，固定选择编号为 1 的图片")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="搜索候选匹配置信度")
     raw_url: str = Field(description="数据源详情页 URL")

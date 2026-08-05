@@ -3,25 +3,56 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlencode
 
 from fastapi import HTTPException
 from sqlalchemy import select
 
+from bot.core.config import settings
 from bot.database.database import sessionmaker
 from bot.database.models import LibraryNewNotificationModel
-from bot.services.emby_metadata.models import MetadataCandidate
+from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate
 from bot.services.emby_metadata.matching import extract_product_number
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
-from bot.services.emby_metadata.writer import apply_metadata_candidate_to_item
+from bot.services.emby_metadata.writer import (
+    apply_metadata_candidate_to_item,
+    download_image,
+    preview_metadata_candidate_update,
+)
 
 
 _search_cache: dict[str, list[dict[str, Any]]] = {}
+
+_CATEGORY_OPTIONS = (
+    {"value": MediaLibraryCategory.JAPANESE_KOREAN.value, "label": "日韩"},
+    {"value": MediaLibraryCategory.DOMESTIC.value, "label": "国产"},
+    {"value": MediaLibraryCategory.WESTERN.value, "label": "欧美"},
+)
+_SOURCES_BY_CATEGORY: dict[str, dict[str, type[CkDownloadSource]]] = {
+    MediaLibraryCategory.JAPANESE_KOREAN.value: {CkDownloadSource.name: CkDownloadSource},
+    MediaLibraryCategory.DOMESTIC.value: {},
+    MediaLibraryCategory.WESTERN.value: {},
+}
 
 
 def _path_from_payload(notification: LibraryNewNotificationModel) -> str:
     """兼容不同 Webhook 载荷结构，提取 Emby 媒体路径。"""
     item = notification.payload.get("Item", {}) if notification.payload else {}
     return str(item.get("Path") or notification.payload.get("Path") or "")
+
+
+def _item_image_url(notification: LibraryNewNotificationModel, payload_item: dict[str, Any]) -> str | None:
+    """使用 Emby 的 Item 图片接口构造队列封面地址。"""
+    image_tags = payload_item.get("ImageTags") or {}
+    tag = image_tags.get("Primary")
+    item_id = str(payload_item.get("Id") or notification.item_id or "")
+    base_url = settings.get_emby_base_url()
+    if not (tag and item_id and base_url):
+        return None
+    params = {"tag": str(tag)}
+    if settings.EMBY_API_KEY:
+        params["api_key"] = settings.EMBY_API_KEY
+    return f"{base_url.rstrip('/')}/Items/{item_id}/Images/Primary?{urlencode(params)}"
 
 
 def _queue_item(notification: LibraryNewNotificationModel) -> dict[str, Any]:
@@ -54,7 +85,19 @@ def _queue_item(notification: LibraryNewNotificationModel) -> dict[str, Any]:
         "status": "pending" if notification.status == "pending_completion" else notification.status or "pending",
         "search_keyword": search_keyword,
         "search_count": len(_search_cache.get(str(notification.id), [])),
-        "image_url": payload_item.get("ImageUrl") or payload_item.get("PrimaryImageUrl"),
+        "image_url": _item_image_url(notification, payload_item),
+        "category_options": _CATEGORY_OPTIONS,
+        "source_options": [
+            {"value": name, "label": name}
+            for name in _SOURCES_BY_CATEGORY[category]
+        ],
+        "source_options_by_category": {
+            category_name: [
+                {"value": name, "label": name}
+                for name in sources
+            ]
+            for category_name, sources in _SOURCES_BY_CATEGORY.items()
+        },
     }
 
 
@@ -84,17 +127,23 @@ async def get_queue() -> dict[str, Any]:
     return {"items": items, "total": len(items)}
 
 
-async def search_queue(notification_ids: list[str], keywords: dict[str, str] | None = None) -> list[dict[str, Any]]:
+def _resolve_source(category: str, source_name: str) -> CkDownloadSource:
+    """只允许使用后端注册且属于所选分类的数据源。"""
+    source_class = _SOURCES_BY_CATEGORY.get(category, {}).get(source_name)
+    if source_class is None:
+        raise HTTPException(status_code=400, detail="该分类尚未配置所选数据源")
+    return source_class()
+
+
+async def search_queue(selections: list[dict[str, str]]) -> list[dict[str, Any]]:
     """搜索选中项目，缓存轻量候选结果供本次工作台会话使用。"""
-    source = CkDownloadSource()
     response: list[dict[str, Any]] = []
-    for notification_id in notification_ids:
+    for selection in selections:
+        notification_id = selection["notification_id"]
         item = _queue_item(await _get_notification(notification_id))
-        if item["source"] != "ck-download":
-            response.append({"notification_id": notification_id, "results": []})
-            continue
+        source = _resolve_source(selection["category"], selection["source"])
         try:
-            results = await source.search((keywords or {}).get(notification_id) or item["search_keyword"])
+            results = await source.search(selection["keyword"].strip() or item["search_keyword"])
         except Exception as error:
             raise HTTPException(status_code=502, detail=f"数据源搜索失败：{error}") from error
         serialized = [result.model_dump(mode="json") for result in results]
@@ -113,13 +162,46 @@ async def get_candidate(source: str, source_id: str) -> MetadataCandidate:
         raise HTTPException(status_code=502, detail=f"候选详情抓取失败：{error}") from error
 
 
-async def writeback(notification_id: str, candidate: MetadataCandidate) -> dict[str, Any]:
+async def get_candidate_preview(
+    notification_id: str,
+    source: str,
+    source_id: str,
+) -> dict[str, Any]:
+    """返回候选与当前 Emby 元数据快照，供工作台逐字段比较。"""
+    notification = await _get_notification(notification_id)
+    if not notification.item_id:
+        raise HTTPException(status_code=400, detail="队列项目缺少 Emby Item ID")
+    candidate = await get_candidate(source, source_id)
+    preview = await preview_metadata_candidate_update(notification.item_id, candidate)
+    return {"candidate": candidate.model_dump(mode="json"), "before_item": preview["before_item"]}
+
+
+async def proxy_source_image(url: str, referer: str | None = None) -> tuple[bytes, str]:
+    """通过带请求头的下载器代理数据源图片，避免浏览器防盗链拦截。"""
+    try:
+        return await download_image(url, referer=referer)
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"图片加载失败：{error}") from error
+
+
+async def writeback(
+    notification_id: str,
+    candidate: MetadataCandidate,
+    *,
+    fields: list[str] | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
     """将候选数据写入 Emby 通知状态不改变。"""
     notification = await _get_notification(notification_id)
     if not notification.item_id:
         raise HTTPException(status_code=400, detail="队列项目缺少 Emby Item ID")
     try:
-        result = await apply_metadata_candidate_to_item(notification.item_id, candidate)
+        result = await apply_metadata_candidate_to_item(
+            notification.item_id,
+            candidate,
+            fields=set(fields) if fields else None,
+            overwrite=overwrite,
+        )
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"Emby 写入失败：{error}") from error
     return result or {}

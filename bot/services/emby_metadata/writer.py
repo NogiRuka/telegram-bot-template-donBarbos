@@ -24,7 +24,12 @@ ITEM_UPDATE_DIFF_FIELDS = (
     "Genres",
     "Studios",
     "People",
+    "TagItems",
+    "Taglines",
     "ProviderIds",
+    "CommunityRating",
+    "OfficialRating",
+    "CustomRating",
 )
 
 
@@ -55,15 +60,20 @@ async def _download_image_as_base64(
     referer: str | None = None,
     archive_path: Path | None = None,
 ) -> str:
-    timeout = aiohttp.ClientTimeout(total=15)
-    async with aiohttp.ClientSession(timeout=timeout, headers=_image_headers(url, referer)) as session:
-        async with session.get(url) as response:
-            response.raise_for_status()
-            image_bytes = await response.read()
+    image_bytes, _ = await download_image(url, referer=referer)
     if archive_path is not None:
         archive_path.parent.mkdir(parents=True, exist_ok=True)
         archive_path.write_bytes(image_bytes)
     return base64.b64encode(image_bytes).decode("ascii")
+
+
+async def download_image(url: str, *, referer: str | None = None) -> tuple[bytes, str]:
+    """下载受防盗链保护的远程图片，供预览代理与写入流程共用。"""
+    timeout = aiohttp.ClientTimeout(total=15)
+    async with aiohttp.ClientSession(timeout=timeout, headers=_image_headers(url, referer)) as session:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            return await response.read(), response.content_type
 
 
 def _read_local_image_as_base64(path: str, *, archive_path: Path | None = None) -> str:
@@ -74,7 +84,13 @@ def _read_local_image_as_base64(path: str, *, archive_path: Path | None = None) 
     return base64.b64encode(image_bytes).decode("ascii")
 
 
-def build_item_update_payload(item: dict[str, Any], candidate: MetadataCandidate) -> dict[str, Any]:
+def build_item_update_payload(
+    item: dict[str, Any],
+    candidate: MetadataCandidate,
+    *,
+    fields: set[str] | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
     """根据候选元数据构建 Emby Item 更新载荷。"""
     payload = dict(item)
     payload["Name"] = candidate.title
@@ -91,6 +107,16 @@ def build_item_update_payload(item: dict[str, Any], candidate: MetadataCandidate
     payload["TagItems"] = _named_items_to_payload(candidate.tags)
     payload["Taglines"] = candidate.taglines
     payload["ProviderIds"] = dict(candidate.external_ids)
+    payload["CommunityRating"] = candidate.community_rating
+    payload["OfficialRating"] = candidate.official_rating
+    payload["CustomRating"] = candidate.custom_rating
+    field_mapping = {"Tags": "TagItems"}
+    selected_fields = {field_mapping.get(field, field) for field in fields} if fields else None
+    for field in ITEM_UPDATE_DIFF_FIELDS:
+        if selected_fields is not None and field not in selected_fields:
+            payload[field] = item.get(field)
+        elif not overwrite and item.get(field) not in (None, "", [], {}):
+            payload[field] = item[field]
     return payload
 
 
@@ -135,10 +161,12 @@ async def preview_metadata_candidate_update(
     candidate: MetadataCandidate,
     *,
     user_id: str | None = None,
+    fields: set[str] | None = None,
+    overwrite: bool = False,
 ) -> dict[str, Any]:
     """生成元数据更新预览。"""
     resolved_user_id, before_item = await fetch_item_snapshot(item_id, user_id=user_id)
-    payload = build_item_update_payload(before_item, candidate)
+    payload = build_item_update_payload(before_item, candidate, fields=fields, overwrite=overwrite)
     planned_core_changes = build_item_update_changes(before_item, payload)
     planned_changes = build_item_update_changes(before_item, payload, fields=None)
     return {
@@ -207,11 +235,19 @@ async def apply_metadata_candidate_to_item(
     candidate: MetadataCandidate,
     *,
     user_id: str | None = None,
+    fields: set[str] | None = None,
+    overwrite: bool = False,
     apply_poster: bool = False,
     poster_data: str | None = None,
 ) -> dict[str, Any] | None:
     """执行元数据更新并返回更新前后对比。"""
-    preview = await preview_metadata_candidate_update(item_id, candidate, user_id=user_id)
+    preview = await preview_metadata_candidate_update(
+        item_id,
+        candidate,
+        user_id=user_id,
+        fields=fields,
+        overwrite=overwrite,
+    )
 
     await apply_item_update(
         item_id,
