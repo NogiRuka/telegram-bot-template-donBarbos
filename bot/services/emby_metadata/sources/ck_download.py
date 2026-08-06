@@ -48,6 +48,14 @@ class CkDownloadSource(MetadataSource):
         html = await self._request(f"/product/detail/{source_id}")
         return CkDownloadParser.parse_detail(html, source_id)
 
+    def image_headers(self, referer: str | None = None) -> dict[str, str]:
+        """返回抓取图片所需的来源请求头，包含当前数据源 Cookie。"""
+        return {
+            **self._headers,
+            "Referer": referer or f"{self.base_url}/",
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        }
+
     async def _request(
         self,
         path: str,

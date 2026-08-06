@@ -67,10 +67,18 @@ async def _download_image_as_base64(
     return base64.b64encode(image_bytes).decode("ascii")
 
 
-async def download_image(url: str, *, referer: str | None = None) -> tuple[bytes, str]:
+async def download_image(
+    url: str,
+    *,
+    referer: str | None = None,
+    extra_headers: dict[str, str] | None = None,
+) -> tuple[bytes, str]:
     """下载受防盗链保护的远程图片，供预览代理与写入流程共用。"""
     timeout = aiohttp.ClientTimeout(total=15)
-    async with aiohttp.ClientSession(timeout=timeout, headers=_image_headers(url, referer)) as session:
+    headers = _image_headers(url, referer)
+    if extra_headers:
+        headers.update(extra_headers)
+    async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
         async with session.get(url) as response:
             response.raise_for_status()
             return await response.read(), response.content_type

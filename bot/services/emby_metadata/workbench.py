@@ -179,7 +179,8 @@ async def get_candidate_preview(
 async def proxy_source_image(url: str, referer: str | None = None) -> tuple[bytes, str]:
     """通过带请求头的下载器代理数据源图片，避免浏览器防盗链拦截。"""
     try:
-        return await download_image(url, referer=referer)
+        source = CkDownloadSource()
+        return await download_image(url, referer=referer, extra_headers=source.image_headers(referer))
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"图片加载失败：{error}") from error
 

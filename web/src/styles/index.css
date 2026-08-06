@@ -85,3 +85,67 @@
     height: 0;
   }
 }
+
+/* Emby 元数据队列卡片：图片独占左侧，右侧按名称、路由、搜索分层。 */
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] {
+  grid-template-columns: 36px 132px minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  min-height: 154px;
+}
+
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > :first-child {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  align-self: center;
+}
+
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) {
+  display: contents;
+}
+
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) > img,
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) > div:first-child {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  width: 132px;
+  height: 108px;
+  object-fit: cover;
+}
+
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) > div:last-child {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
+  align-self: start;
+  padding-right: 3.5rem;
+}
+
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(3) {
+  display: contents;
+}
+
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(3) > input {
+  grid-column: 3;
+  grid-row: 3;
+  width: 100%;
+}
+
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(3) > div {
+  grid-column: 3;
+  grid-row: 2;
+  display: flex;
+  width: 100%;
+}
+
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > span:last-child {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+}
+
+/* 当前 Emby 简介最多显示约五行，超出内容在字段内部滚动。 */
+main > section.grid > div:nth-child(3) .divide-y > div:nth-child(4) > div:nth-child(3) {
+  max-height: 7.5rem;
+  overflow-y: auto;
+}

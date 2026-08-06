@@ -90,6 +90,7 @@ export interface MetadataCandidate {
   community_rating?: number; official_rating?: string; custom_rating?: string
   genres: MetadataNamedItem[]; studios: MetadataNamedItem[]; people: MetadataNamedItem[]; tags: MetadataNamedItem[]
   external_ids: Record<string, string>; raw_url: string
+  poster_url?: string
 }
 export interface MetadataOption { value: string; label: string }
 export interface MetadataQueueItem {

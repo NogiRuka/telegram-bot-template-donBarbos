@@ -166,7 +166,10 @@ class CkDownloadParser:
         return cls._unique(
             urljoin(f"{cls.base_url}/", source)
             for image in link.select(".slideshow img")
-            if isinstance((source := image.get("src")), str)
+            if isinstance(
+                (source := image.get("src") or image.get("data-src") or image.get("data-original")),
+                str,
+            )
         )
 
     @classmethod
@@ -235,7 +238,7 @@ class CkDownloadParser:
     def _parse_poster_url(cls, soup: BeautifulSoup, source_id: str) -> str | None:
         expected_suffix = f"/{source_id}/{source_id}_1.jpg"
         for image in soup.select(".detail_page .title_photo img, .detail_page .set_photo img"):
-            source = image.get("src")
+            source = image.get("src") or image.get("data-src") or image.get("data-original")
             if isinstance(source, str) and urlparse(source).path.endswith(expected_suffix):
                 return urljoin(f"{cls.base_url}/", source)
         return None
