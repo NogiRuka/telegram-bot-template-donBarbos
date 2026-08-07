@@ -71,5 +71,6 @@ class MetadataCandidate(BaseModel):
     official_rating: str | None = Field(default=None)
     custom_rating: str | None = Field(default=None)
     poster_url: str | None = Field(default=None, description="商品主图 URL，固定选择编号为 1 的图片")
+    current_image_url: str | None = Field(default=None, description="当前 Emby 主图 URL，仅用于预览")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="搜索候选匹配置信度")
     raw_url: str = Field(description="数据源详情页 URL")

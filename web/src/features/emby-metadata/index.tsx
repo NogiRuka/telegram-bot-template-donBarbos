@@ -58,11 +58,10 @@ function ValueChips({ value }: { value: string }) {
 }
 
 function CoverPreview({ candidate }: { candidate: MetadataCandidate }) {
+  const currentImageUrl = candidate.current_image_url ?? null
   return <div className='mb-4 flex items-center gap-4 rounded-lg border bg-slate-50 p-3'>
-    <div className='flex h-28 w-48 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-200'>
-      {candidate.poster_url ? <img src={apiClient.metadataImageUrl(candidate.poster_url, candidate.raw_url)} alt='封面预览' className='size-full object-contain' /> : <Database className='size-7 text-slate-400' />}
-    </div>
-    <div className='min-w-0'><b className='block text-sm'>封面</b><span className='mt-1 block truncate text-xs text-slate-500'>{candidate.poster_url ?? '数据源未提供封面'}</span></div>
+    <div className='min-w-0 flex-1'><b className='mb-2 block text-sm'>当前 Emby 封面</b><div className='flex h-28 items-center justify-center overflow-hidden rounded bg-slate-200'>{currentImageUrl ? <img src={currentImageUrl} alt='当前 Emby 封面' className='size-full object-contain' /> : <Database className='size-7 text-slate-400' />}</div></div>
+    <div className='min-w-0 flex-1'><b className='mb-2 block text-sm'>抓取封面</b><div className='flex h-28 items-center justify-center overflow-hidden rounded bg-slate-200'>{candidate.poster_url ? <img src={apiClient.metadataImageUrl(candidate.poster_url, candidate.raw_url)} alt='抓取封面' className='size-full object-contain' /> : <Database className='size-7 text-slate-400' />}</div></div>
   </div>
 }
 

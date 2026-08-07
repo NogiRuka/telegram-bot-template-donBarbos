@@ -55,6 +55,19 @@ def _item_image_url(notification: LibraryNewNotificationModel, payload_item: dic
     return f"{base_url.rstrip('/')}/Items/{item_id}/Images/Primary?{urlencode(params)}"
 
 
+def _before_item_image_url(item_id: str, before_item: dict[str, Any]) -> str | None:
+    """根据 Emby 快照生成当前封面地址。"""
+    image_tags = before_item.get("ImageTags") or {}
+    tag = image_tags.get("Primary")
+    base_url = settings.get_emby_base_url()
+    if not (tag and item_id and base_url):
+        return None
+    params = {"tag": str(tag)}
+    if settings.EMBY_API_KEY:
+        params["api_key"] = settings.EMBY_API_KEY
+    return f"{base_url.rstrip('/')}/Items/{item_id}/Images/Primary?{urlencode(params)}"
+
+
 def _queue_item(notification: LibraryNewNotificationModel) -> dict[str, Any]:
     """把新媒体通知转换为前端队列的数据结构。"""
     path = _path_from_payload(notification)
@@ -173,6 +186,10 @@ async def get_candidate_preview(
         raise HTTPException(status_code=400, detail="队列项目缺少 Emby Item ID")
     candidate = await get_candidate(source, source_id)
     preview = await preview_metadata_candidate_update(notification.item_id, candidate)
+    candidate.current_image_url = _before_item_image_url(
+        notification.item_id,
+        preview["before_item"],
+    )
     return {"candidate": candidate.model_dump(mode="json"), "before_item": preview["before_item"]}
 
 

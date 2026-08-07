@@ -9,6 +9,7 @@ import aiohttp
 
 from bot.core.config import settings
 from bot.services.emby_metadata.models import MetadataCandidate, MetadataNamedItem
+from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
 from bot.utils.emby import get_emby_client
 
 IMAGE_ARCHIVE_ROOT = Path("data/emby_metadata/images")
@@ -59,8 +60,9 @@ async def _download_image_as_base64(
     *,
     referer: str | None = None,
     archive_path: Path | None = None,
+    extra_headers: dict[str, str] | None = None,
 ) -> str:
-    image_bytes, _ = await download_image(url, referer=referer)
+    image_bytes, _ = await download_image(url, referer=referer, extra_headers=extra_headers)
     if archive_path is not None:
         archive_path.parent.mkdir(parents=True, exist_ok=True)
         archive_path.write_bytes(image_bytes)
@@ -196,6 +198,7 @@ async def apply_item_update(
     poster_url: str | None = None,
     poster_referer: str | None = None,
     poster_archive_path: Path | None = None,
+    poster_headers: dict[str, str] | None = None,
     people: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     """把载荷和图片写回指定 Emby Item。"""
@@ -212,6 +215,7 @@ async def apply_item_update(
                 poster_url,
                 referer=poster_referer,
                 archive_path=poster_archive_path,
+                extra_headers=poster_headers,
             )
         if image_data:
             await client.upload_item_image(item_id, image_data, "Primary")
@@ -260,11 +264,16 @@ async def apply_metadata_candidate_to_item(
     await apply_item_update(
         item_id,
         preview["payload"],
-        apply_poster=apply_poster,
+        apply_poster=apply_poster or bool(candidate.poster_url),
         poster_data=poster_data,
         poster_url=candidate.poster_url,
         poster_referer=candidate.raw_url,
         poster_archive_path=_archive_path(candidate, "poster.jpg"),
+        poster_headers=(
+            CkDownloadSource().image_headers(candidate.raw_url)
+            if candidate.source == "ck-download"
+            else None
+        ),
         people=[],
     )
 
