@@ -24,11 +24,10 @@ class CkDownloadSource(MetadataSource):
         self._headers = {
             "User-Agent": "EmbyMetadataManager/1.0 (+private metadata lookup)",
             "Accept-Language": "ja,en;q=0.8",
-            "Cookie" : "_ga=GA1.1.1692189232.1770659137; USER_AUTO_LOGIN=Q2FrZQ%3D%3D.ODRmMTA0MmE1OTgwYWEyOTQ4OGQwNmIxZWFlMzI5MmJlMmRkMmNmMGY3OGMzNTgwYzI1OWVhN2ZlNWNhYjIxYhkr8vlTd4nKfhgy8OON70QSMEMzbSn90CyUVvhdm%2BN5PKgOpdXBYfrJOKyPjC0gV1BQNVindccawBTiFhTfeDkCk4YA1LaYRtklek9adL6JTYN1kITkEQy06dIRfDMnXw%3D%3D; COAT=otu2vp05lqlfcop3fuchrf92oi; _ga_4VE1V5J7Q4=GS2.1.s1786029382$o78$g1$t1786030249$j60$l0$h0"
         }
-        # cookie = (cookie_manager or CookieManager()).get_cookie(self.name)
-        # if cookie:
-        #     self._headers["Cookie"] = cookie
+        cookie = (cookie_manager or CookieManager()).get_cookie(self.name)
+        if cookie:
+            self._headers["Cookie"] = cookie
 
     async def search(self, keyword: str, limit: int = 10) -> list[MetadataSearchResult]:
         """提交关键词搜索，只返回结果页基础信息。"""
