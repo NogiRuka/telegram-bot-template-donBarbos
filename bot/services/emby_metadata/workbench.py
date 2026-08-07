@@ -14,6 +14,7 @@ from bot.database.models import LibraryNewNotificationModel
 from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate
 from bot.services.emby_metadata.matching import extract_product_number
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
+from bot.services.emby_metadata.sources.hunk_ch import HunkChSource
 from bot.services.emby_metadata.writer import (
     apply_metadata_candidate_to_item,
     download_image,
@@ -28,8 +29,11 @@ _CATEGORY_OPTIONS = (
     {"value": MediaLibraryCategory.DOMESTIC.value, "label": "国产"},
     {"value": MediaLibraryCategory.WESTERN.value, "label": "欧美"},
 )
-_SOURCES_BY_CATEGORY: dict[str, dict[str, type[CkDownloadSource]]] = {
-    MediaLibraryCategory.JAPANESE_KOREAN.value: {CkDownloadSource.name: CkDownloadSource},
+_SOURCES_BY_CATEGORY: dict[str, dict[str, type[CkDownloadSource] | type[HunkChSource]]] = {
+    MediaLibraryCategory.JAPANESE_KOREAN.value: {
+        CkDownloadSource.name: CkDownloadSource,
+        HunkChSource.name: HunkChSource,
+    },
     MediaLibraryCategory.DOMESTIC.value: {},
     MediaLibraryCategory.WESTERN.value: {},
 }
@@ -75,7 +79,7 @@ def _queue_item(notification: LibraryNewNotificationModel) -> dict[str, Any]:
     if "日韩" in path:
         category = "japanese_korean"
         category_label = "日韩"
-        source = "ck-download"
+        source = CkDownloadSource.name
     elif "欧美" in path:  # 假设路径中包含“欧美”字样则为欧美分类
         category = "western"
         category_label = "欧美"
@@ -140,7 +144,7 @@ async def get_queue() -> dict[str, Any]:
     return {"items": items, "total": len(items)}
 
 
-def _resolve_source(category: str, source_name: str) -> CkDownloadSource:
+def _resolve_source(category: str, source_name: str) -> CkDownloadSource | HunkChSource:
     """只允许使用后端注册且属于所选分类的数据源。"""
     source_class = _SOURCES_BY_CATEGORY.get(category, {}).get(source_name)
     if source_class is None:
@@ -167,10 +171,19 @@ async def search_queue(selections: list[dict[str, str]]) -> list[dict[str, Any]]
 
 async def get_candidate(source: str, source_id: str) -> MetadataCandidate:
     """按来源和来源 ID 获取用户明确选择的候选详情。"""
-    if source != "ck-download":
+    source_class = next(
+        (
+            source_class
+            for sources in _SOURCES_BY_CATEGORY.values()
+            for name, source_class in sources.items()
+            if name == source
+        ),
+        None,
+    )
+    if source_class is None:
         raise HTTPException(status_code=404, detail="不支持的数据源")
     try:
-        return await CkDownloadSource().fetch_detail(source_id)
+        return await source_class().fetch_detail(source_id)
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"候选详情抓取失败：{error}") from error
 

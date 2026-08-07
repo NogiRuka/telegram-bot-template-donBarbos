@@ -63,17 +63,22 @@ class CkDownloadSource(MetadataSource):
         data: dict[str, str] | None = None,
     ) -> str:
         url = urljoin(f"{self.base_url}/", path.lstrip("/"))
-        try:
-            async with aiohttp.ClientSession(timeout=self._timeout, headers=self._headers) as session:
-                async with session.request(method, url, data=data) as response:
-                    if response.status >= 400:
-                        message = f"HTTP {response.status}: {response.reason}"
-                        raise MetadataSourceHTTPError(message, self.name)
-                    return await response.text()
-        except MetadataSourceHTTPError:
-            raise
-        except (aiohttp.ClientError, TimeoutError) as error:
-            raise MetadataSourceNetworkError(str(error), self.name) from error
+        last_error: Exception | None = None
+        for attempt in range(2):
+            try:
+                async with aiohttp.ClientSession(timeout=self._timeout, headers=self._headers) as session:
+                    async with session.request(method, url, data=data) as response:
+                        if response.status >= 400:
+                            message = f"HTTP {response.status}: {response.reason}"
+                            raise MetadataSourceHTTPError(message, self.name)
+                        return await response.text()
+            except MetadataSourceHTTPError:
+                raise
+            except (aiohttp.ClientError, TimeoutError) as error:
+                last_error = error
+                if attempt == 0:
+                    continue
+        raise MetadataSourceNetworkError(str(last_error or "请求失败"), self.name)
 
     @classmethod
     def parse_search_results(cls, html: str, limit: int = 10) -> list[tuple[str, str]]:

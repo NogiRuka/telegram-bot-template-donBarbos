@@ -79,6 +79,7 @@ export function EmbyMetadataWorkspace() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [searchKeywords, setSearchKeywords] = useState<Record<string, string>>({})
   const [routing, setRouting] = useState<Record<string, Routing>>({})
+  const [searching, setSearching] = useState(false)
 
   const queueQuery = useQuery({ queryKey: ['emby-metadata-queue'], queryFn: () => apiClient.getMetadataQueue() })
   const items = queueQuery.data?.items ?? []
@@ -102,13 +103,19 @@ export function EmbyMetadataWorkspace() {
       return { notification_id, keyword: searchKeywords[notification_id] ?? item.search_keyword ?? '', ...route }
     })
     if (selections.some((item) => !item.source)) return toast.error('所选分类尚未配置数据源')
+    const toastId = toast.loading(`正在搜索 ${selections.length} 个项目，请稍候...`)
+    setSearching(true)
     try {
       const response = await apiClient.searchMetadataQueue(selections)
+      if (!response.length) throw new Error('搜索没有返回结果')
       const current = response.find((item) => item.notification_id === (activeId ?? selectedIds[0])) ?? response[0]
       setActiveId(current.notification_id)
       setResultsByItem((previous) => ({ ...previous, ...Object.fromEntries(response.map((item) => [item.notification_id, item.results])) }))
       clearActive()
-    } catch (error) { toast.error(error instanceof Error ? error.message : '搜索失败') }
+      toast.success('搜索完成，请在中间栏查看结果', { id: toastId })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '搜索失败，请稍后重试', { id: toastId })
+    } finally { setSearching(false) }
   }
 
   const selectCandidate = async (result: MetadataSearchResult) => {
@@ -129,6 +136,7 @@ export function EmbyMetadataWorkspace() {
   return <main className='flex min-h-screen flex-col bg-slate-50 text-slate-800'>
     <header className='flex items-start justify-between border-b bg-white px-6 py-4'><div><h1 className='flex items-center gap-2 text-2xl font-bold'>Emby 元数据工作台 <Sparkles className='size-6 text-amber-500' /></h1><p className='mt-1 text-sm text-slate-500'>批量搜索、候选对比与写入 Emby</p></div><div className='flex items-center gap-3'><div className='rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700'><Check className='mr-1 inline size-4' />Emby 连接正常</div><Button variant='outline' onClick={() => void queueQuery.refetch()}><RefreshCw className='size-4' />刷新队列</Button></div></header>
     <section className='mx-5 mt-3 flex items-center gap-3 rounded-lg border bg-white p-2'><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className='w-32'><SelectValue placeholder='全部状态' /></SelectTrigger><SelectContent><SelectItem value='all'>全部状态</SelectItem><SelectItem value='pending'>待搜索</SelectItem><SelectItem value='fetched'>已抓取</SelectItem></SelectContent></Select><Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className='w-32'><SelectValue placeholder='全部分类' /></SelectTrigger><SelectContent><SelectItem value='all'>全部分类</SelectItem><SelectItem value='japanese_korean'>日语动漫</SelectItem><SelectItem value='domestic'>国产</SelectItem><SelectItem value='western'>欧美</SelectItem></SelectContent></Select><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder='搜索词 / 番号 / 名称' className='max-w-sm' /><Button variant='outline' onClick={() => setQuery('')}><X className='size-4' />清空</Button></section>
+    {searching && <div className='mx-5 mt-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700'>正在向数据源发起搜索，请稍候；网络较慢时可能需要几十秒。</div>}
     <section className='grid h-[calc(100vh-158px)] min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,1.15fr)] gap-2 overflow-hidden px-5 py-2'>
       <QueuePanel items={items} visibleItems={visibleItems} active={active} selectedIds={selectedIds} routeFor={routeFor} searchKeywords={searchKeywords} setSearchKeywords={setSearchKeywords} setRouting={setRouting} setActiveId={(id) => { setActiveId(id); clearActive() }} toggle={toggle} searchSelected={searchSelected} setSelectedIds={setSelectedIds} />
       <ResultPanel results={results} active={active} selectedResult={selectedResult} selectCandidate={selectCandidate} clearResults={() => active && setResultsByItem((current) => ({ ...current, [active.notification_id]: [] }))} />

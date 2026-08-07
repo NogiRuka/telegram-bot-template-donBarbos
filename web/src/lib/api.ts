@@ -112,7 +112,7 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: import.meta.env.VITE_API_URL || '/api',
-      timeout: 10000,
+      timeout: 90000,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -182,7 +182,11 @@ class ApiClient {
       const response: AxiosResponse<T> = await this.client.request(config);
       return response.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || error.message || '请求失败');
+      const detail = error.response?.data?.detail;
+      const message = error.code === 'ECONNABORTED'
+        ? '请求超时，数据源响应较慢，请稍后重试'
+        : (error.response?.data?.message || detail || error.message || '请求失败');
+      throw new Error(typeof message === 'string' ? message : '请求失败');
     }
   }
 

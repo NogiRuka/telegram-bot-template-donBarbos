@@ -16,6 +16,7 @@ from bot.services.emby_metadata.models import (
     MetadataSearchResult,
 )
 from bot.services.emby_metadata.parser.ck_download import CkDownloadParser
+from bot.services.emby_metadata.parser.hunk_ch import HunkChParser
 from bot.services.emby_metadata.sources.base import MetadataSourceParseError
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
 from bot.services.emby_metadata.writer import (
@@ -27,6 +28,7 @@ from bot.services.emby_metadata.writer import (
 )
 
 _FIXTURE_ROOT = Path(__file__).parents[1] / "services" / "emby_metadata" / "fixtures" / "ck_download"
+_HUNK_FIXTURE_ROOT = Path(__file__).parents[1] / "services" / "emby_metadata" / "fixtures" / "hunk_ch"
 
 
 class MatchingTests(unittest.TestCase):
@@ -130,6 +132,30 @@ class CkDownloadParserTests(unittest.TestCase):
     def test_invalid_source_id_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             CkDownloadSource.parse_detail("<html></html>", "../33907")
+
+
+class HunkChParserTests(unittest.TestCase):
+    @staticmethod
+    def _read_fixture(name: str) -> str:
+        return (_HUNK_FIXTURE_ROOT / name).read_text(encoding="utf-8")
+
+    def test_parse_search_results(self) -> None:
+        results = HunkChParser.parse_search_results(self._read_fixture("search/OAV135.html"))
+        self.assertEqual([result.source_id for result in results], ["GV-OAV1350", "GV-OAV135_DL"])
+        self.assertEqual(results[0].release_date, date(2026, 8, 4))
+        self.assertEqual(results[0].price_yen, 1080)
+        self.assertTrue(results[0].image_urls[0].endswith("gv-oav1350_pickup01.jpg"))
+
+    def test_parse_detail(self) -> None:
+        candidate = HunkChParser.parse_detail(
+            self._read_fixture("detail/GV-OAV1350.html"), "GV-OAV1350"
+        )
+        self.assertEqual(candidate.category, MediaLibraryCategory.JAPANESE_KOREAN)
+        self.assertEqual(candidate.product_number, "GV-OAV1350")
+        self.assertEqual(candidate.release_date, date(2026, 8, 4))
+        self.assertEqual([studio.name for studio in candidate.studios], ["マラ面接!!"])
+        self.assertTrue(candidate.poster_url.endswith("gv-oav1350_top.jpg"))
+        self.assertTrue(candidate.overview)
 
 
 class WriterTests(unittest.TestCase):
