@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from urllib.parse import urlencode
 
@@ -19,6 +20,7 @@ from bot.services.emby_metadata.writer import (
     apply_metadata_candidate_to_item,
     download_image,
     preview_metadata_candidate_update,
+    fetch_item_snapshot,
 )
 
 
@@ -39,9 +41,9 @@ _SOURCES_BY_CATEGORY: dict[str, dict[str, type[CkDownloadSource] | type[HunkChSo
 }
 
 
-def _path_from_payload(notification: LibraryNewNotificationModel) -> str:
+def _path_from_payload(notification: LibraryNewNotificationModel, current_item: dict[str, Any] | None = None) -> str:
     """兼容不同 Webhook 载荷结构，提取 Emby 媒体路径。"""
-    item = notification.payload.get("Item", {}) if notification.payload else {}
+    item = current_item or (notification.payload.get("Item", {}) if notification.payload else {})
     return str(item.get("Path") or notification.payload.get("Path") or "")
 
 
@@ -72,10 +74,13 @@ def _before_item_image_url(item_id: str, before_item: dict[str, Any]) -> str | N
     return f"{base_url.rstrip('/')}/Items/{item_id}/Images/Primary?{urlencode(params)}"
 
 
-def _queue_item(notification: LibraryNewNotificationModel) -> dict[str, Any]:
+def _queue_item(
+    notification: LibraryNewNotificationModel,
+    current_item: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """把新媒体通知转换为前端队列的数据结构。"""
-    path = _path_from_payload(notification)
-    payload_item = notification.payload.get("Item", {}) if notification.payload else {}
+    path = _path_from_payload(notification, current_item)
+    payload_item = current_item or (notification.payload.get("Item", {}) if notification.payload else {})
     if "日韩" in path:
         category = "japanese_korean"
         category_label = "日韩"
@@ -89,7 +94,12 @@ def _queue_item(notification: LibraryNewNotificationModel) -> dict[str, Any]:
         category_label = "国产"
         source = "未配置"
 
-    item_name = notification.item_name or notification.title or "未命名条目"
+    item_name = str(
+        (current_item or {}).get("Name")
+        or notification.item_name
+        or notification.title
+        or "未命名条目"
+    )
     search_keyword = extract_product_number(item_name) or item_name
     return {
         "notification_id": str(notification.id),
@@ -140,7 +150,17 @@ async def get_queue() -> dict[str, Any]:
             .order_by(LibraryNewNotificationModel.id.desc())
         )
         notifications = list(result.scalars())
-    items = [_queue_item(notification) for notification in notifications]
+    async def load_current_item(notification: LibraryNewNotificationModel) -> dict[str, Any]:
+        if not notification.item_id:
+            return {}
+        try:
+            _, item = await fetch_item_snapshot(notification.item_id)
+            return item
+        except Exception:
+            return {}
+
+    current_items = await asyncio.gather(*(load_current_item(notification) for notification in notifications))
+    items = [_queue_item(notification, current_item) for notification, current_item in zip(notifications, current_items)]
     return {"items": items, "total": len(items)}
 
 

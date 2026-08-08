@@ -4,6 +4,34 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
+RATING_OPTIONS = (
+    "",
+    "TV-Y",
+    "APPROVED",
+    "G",
+    "E",
+    "EC",
+    "TV-G",
+    "TV-Y7",
+    "TV-Y7-FV",
+    "PG",
+    "TV-PG",
+    "PG-13",
+    "T",
+    "TV-14",
+    "R",
+    "M",
+    "TV-MA",
+    "NC-17",
+    "AO",
+    "RP",
+    "UR",
+    "X",
+    "XXX",
+)
+DEFAULT_RATING = "XXX"
+
+
 class MediaLibraryCategory(str, Enum):
     """媒体库分类，用于限制数据源的适用范围。"""
 
@@ -68,8 +96,8 @@ class MetadataCandidate(BaseModel):
         description="对应 Emby ProviderIds，固定使用 source/source_id/source_url/product_number 结构",
     )
     community_rating: float | None = Field(default=None, ge=0, le=10)
-    official_rating: str | None = Field(default=None)
-    custom_rating: str | None = Field(default=None)
+    official_rating: str = Field(default=DEFAULT_RATING)
+    custom_rating: str = Field(default=DEFAULT_RATING)
     poster_url: str | None = Field(default=None, description="商品主图 URL，固定选择编号为 1 的图片")
     current_image_url: str | None = Field(default=None, description="当前 Emby 主图 URL，仅用于预览")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="搜索候选匹配置信度")

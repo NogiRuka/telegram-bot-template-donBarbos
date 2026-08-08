@@ -95,7 +95,13 @@ class HunkChParser:
             people=[],
             tags=[MetadataNamedItem(name=value) for value in genres],
             poster_url=cls._poster_url(soup),
-            external_ids={"source": cls.source_name, "source_id": source_id},
+            external_ids={
+                "source": cls.source_name,
+                "source_id": source_id,
+                "source_url": cls._detail_url(source_id),
+                "product_number": source_id,
+                "Imdb": source_id,
+            },
             raw_url=cls._detail_url(source_id),
         )
 

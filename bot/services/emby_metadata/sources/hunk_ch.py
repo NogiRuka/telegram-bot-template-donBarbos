@@ -28,7 +28,16 @@ class HunkChSource:
     async def search(self, keyword: str, limit: int = 10) -> list[MetadataSearchResult]:
         """搜索 hunk-ch 作品。"""
         html = await self._request("/search.php?" + urlencode({"s": keyword.strip(), "search_flag": "all"}))
-        return HunkChParser.parse_search_results(html, limit)
+        results = HunkChParser.parse_search_results(html, limit)
+        normalized_keyword = "".join(character for character in keyword.upper() if character.isalnum())
+        if normalized_keyword and any(character.isdigit() for character in normalized_keyword):
+            results = [
+                result
+                for result in results
+                if normalized_keyword in "".join(character for character in result.source_id.upper() if character.isalnum())
+                or normalized_keyword in "".join(character for character in result.title.upper() if character.isalnum())
+            ]
+        return results[:limit]
 
     async def fetch_detail(self, source_id: str) -> MetadataCandidate:
         """抓取并解析 hunk-ch 详情。"""
