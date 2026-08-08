@@ -79,7 +79,7 @@ export interface DashboardStats {
 
 export interface MetadataNamedItem { name: string; id?: string }
 export interface MetadataSearchResult {
-  source: string; source_id: string; title: string; release_date?: string
+  source: string; source_id: string; title: string; release_date?: string; price_yen?: number
   statuses: string[]; image_urls: string[]; detail_url: string
 }
 export interface MetadataCandidate {
