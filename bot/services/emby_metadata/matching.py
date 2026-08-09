@@ -21,6 +21,16 @@ def normalize_product_number(value: str) -> str:
     return re.sub(r"[^A-Z0-9]", "", value.upper())
 
 
+def normalize_search_keyword(value: str) -> str:
+    """规范化数据源搜索词；GV- 是 hunk-ch 的站内前缀，不作为番号本体。"""
+    keyword = value.strip()
+    return re.sub(r"^GV-", "", keyword, count=1, flags=re.IGNORECASE).strip()
+
+
+def is_hunk_ch_product_number(value: str) -> bool:
+    return value.strip().upper().startswith("GV-")
+
+
 def calculate_confidence(keyword: str, title: str, product_number: str | None) -> float:
     """按番号精确度优先、标题相似度辅助计算候选置信度。"""
     keyword_number = extract_product_number(keyword)

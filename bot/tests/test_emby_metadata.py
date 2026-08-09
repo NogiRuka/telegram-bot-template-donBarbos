@@ -8,6 +8,7 @@ from bot.services.emby_metadata.matching import (
     calculate_confidence,
     extract_product_number,
     normalize_product_number,
+    normalize_search_keyword,
 )
 from bot.services.emby_metadata.models import (
     MediaLibraryCategory,
@@ -40,6 +41,9 @@ class MatchingTests(unittest.TestCase):
 
     def test_normalize_product_number(self) -> None:
         self.assertEqual(normalize_product_number("co me-00059"), "COME00059")
+
+    def test_gv_prefix_is_removed_for_search_keyword(self) -> None:
+        self.assertEqual(normalize_search_keyword("GV-OAV1350"), "OAV1350")
 
     def test_exact_product_number_has_highest_confidence(self) -> None:
         exact = calculate_confidence("CO-ME00059 标题", "Different title", "CO-ME-00059")
@@ -151,7 +155,8 @@ class HunkChParserTests(unittest.TestCase):
             self._read_fixture("detail/GV-OAV1350.html"), "GV-OAV1350"
         )
         self.assertEqual(candidate.category, MediaLibraryCategory.JAPANESE_KOREAN)
-        self.assertEqual(candidate.product_number, "GV-OAV1350")
+        self.assertEqual(candidate.product_number, "OAV1350")
+        self.assertEqual(candidate.genres, [])
         self.assertEqual(candidate.release_date, date(2026, 8, 4))
         self.assertEqual([studio.name for studio in candidate.studios], ["マラ面接!!"])
         self.assertTrue(candidate.poster_url.endswith("gv-oav1350_top.jpg"))

@@ -13,7 +13,7 @@ from bot.core.config import settings
 from bot.database.database import sessionmaker
 from bot.database.models import LibraryNewNotificationModel
 from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate
-from bot.services.emby_metadata.matching import extract_product_number
+from bot.services.emby_metadata.matching import extract_product_number, is_hunk_ch_product_number, normalize_search_keyword
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
 from bot.services.emby_metadata.sources.hunk_ch import HunkChSource
 from bot.services.emby_metadata.writer import (
@@ -100,7 +100,10 @@ def _queue_item(
         or notification.title
         or "未命名条目"
     )
-    search_keyword = extract_product_number(item_name) or item_name
+    extracted_number = extract_product_number(item_name)
+    search_keyword = normalize_search_keyword(extracted_number or item_name)
+    if extracted_number and is_hunk_ch_product_number(extracted_number):
+        source = HunkChSource.name
     return {
         "notification_id": str(notification.id),
         "item_id": notification.item_id or "",
@@ -178,9 +181,11 @@ async def search_queue(selections: list[dict[str, str]]) -> list[dict[str, Any]]
     for selection in selections:
         notification_id = selection["notification_id"]
         item = _queue_item(await _get_notification(notification_id))
-        source = _resolve_source(selection["category"], selection["source"])
+        keyword = normalize_search_keyword(selection["keyword"].strip() or item["search_keyword"])
+        source_name = HunkChSource.name if is_hunk_ch_product_number(selection["keyword"]) else (selection["source"] or item["source"])
+        source = _resolve_source(selection["category"], source_name)
         try:
-            results = await source.search(selection["keyword"].strip() or item["search_keyword"])
+            results = await source.search(keyword)
         except Exception as error:
             raise HTTPException(status_code=502, detail=f"数据源搜索失败：{error}") from error
         serialized = [result.model_dump(mode="json") for result in results]
@@ -218,6 +223,7 @@ async def get_candidate_preview(
     if not notification.item_id:
         raise HTTPException(status_code=400, detail="队列项目缺少 Emby Item ID")
     candidate = await get_candidate(source, source_id)
+    candidate.parse_report = {field: value for field, value in candidate.model_dump(mode="json").items() if field != "parse_report"}
     preview = await preview_metadata_candidate_update(notification.item_id, candidate)
     candidate.current_image_url = _before_item_image_url(
         notification.item_id,

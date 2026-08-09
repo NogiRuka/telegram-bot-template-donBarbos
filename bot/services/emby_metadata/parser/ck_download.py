@@ -111,7 +111,7 @@ class CkDownloadParser:
             overview=cls._parse_overview(soup),
             year=release_date.year if release_date else dvd_year,
             release_date=release_date,
-            genres=[MetadataNamedItem(name=value) for value in play_types],
+            genres=[],
             studios=[MetadataNamedItem(name=manufacturer)] if manufacturer else [],
             people=[MetadataPerson(name=name) for name in performers],
             tags=[MetadataNamedItem(name=value) for value in labels],

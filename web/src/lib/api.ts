@@ -91,6 +91,7 @@ export interface MetadataCandidate {
   genres: MetadataNamedItem[]; studios: MetadataNamedItem[]; people: MetadataNamedItem[]; tags: MetadataNamedItem[]
   external_ids: Record<string, string>; raw_url: string
   poster_url?: string; current_image_url?: string
+  parse_report?: Record<string, unknown>
 }
 export interface MetadataOption { value: string; label: string }
 export interface MetadataQueueItem {

@@ -75,14 +75,16 @@ class HunkChParser:
         data_text = data.get_text(" ", strip=True) if isinstance(data, Tag) else ""
         release_date = cls._date_from_text(data_text)
         runtime = cls._runtime_from_text(data_text)
+        # hunk-ch 的分类词不是稳定的 Genre，默认不写入类型，避免误判。
         genres = cls._category_values(data)
         studio = cls._brand_value(data)
-        title = f"{source_id} {original_title}"
+        product_number = re.sub(r"^GV-", "", source_id, flags=re.IGNORECASE)
+        title = f"{product_number} {original_title}"
         return MetadataCandidate(
             source=cls.source_name,
             source_id=source_id,
             category=cls.category,
-            product_number=source_id,
+            product_number=product_number,
             title=title,
             original_title=original_title,
             sort_name=title,
@@ -90,7 +92,7 @@ class HunkChParser:
             overview=cls._overview(soup),
             year=release_date.year if release_date else None,
             release_date=release_date,
-            genres=[MetadataNamedItem(name=value) for value in genres],
+            genres=[],
             studios=[MetadataNamedItem(name=studio)] if studio else [],
             people=[],
             tags=[MetadataNamedItem(name=value) for value in genres],
@@ -99,7 +101,7 @@ class HunkChParser:
                 "source": cls.source_name,
                 "source_id": source_id,
                 "source_url": cls._detail_url(source_id),
-                "product_number": source_id,
+                "product_number": product_number,
                 "Imdb": source_id,
             },
             raw_url=cls._detail_url(source_id),

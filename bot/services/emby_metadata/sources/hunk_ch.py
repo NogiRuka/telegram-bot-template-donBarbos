@@ -4,6 +4,7 @@ import aiohttp
 
 from bot.services.emby_metadata.auth.cookie_manager import CookieManager
 from bot.services.emby_metadata.errors import MetadataSourceHTTPError, MetadataSourceNetworkError
+from bot.services.emby_metadata.matching import normalize_search_keyword
 from bot.services.emby_metadata.models import MetadataCandidate, MetadataSearchResult
 from bot.services.emby_metadata.parser.hunk_ch import HunkChParser
 
@@ -27,7 +28,8 @@ class HunkChSource:
 
     async def search(self, keyword: str, limit: int = 10) -> list[MetadataSearchResult]:
         """搜索 hunk-ch 作品。"""
-        html = await self._request("/search.php?" + urlencode({"s": keyword.strip(), "search_flag": "all"}))
+        keyword = normalize_search_keyword(keyword)
+        html = await self._request("/search.php?" + urlencode({"s": keyword, "search_flag": "all"}))
         results = HunkChParser.parse_search_results(html, limit)
         normalized_keyword = "".join(character for character in keyword.upper() if character.isalnum())
         if normalized_keyword and any(character.isdigit() for character in normalized_keyword):
