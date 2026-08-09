@@ -140,8 +140,8 @@ class HunkChParser:
     @classmethod
     def _statuses(cls, table: Tag) -> list[str]:
         values = []
-        for image in table.select("img[title], img[alt]"):
-            value = image.get("title") or image.get("alt")
+        for image in table.select("img[title]"):
+            value = image.get("title")
             if isinstance(value, str) and value and value not in {"m_picture"}:
                 values.append(value)
         return cls._unique(values)

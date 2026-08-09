@@ -149,3 +149,11 @@ main > section.grid > div:nth-child(3) .divide-y > div:nth-child(4) > div:nth-ch
   max-height: 7.5rem;
   overflow-y: auto;
 }
+
+/* 候选详情底部只保留来源链接，来源链接与底部操作区保持同一视觉层级。 */
+main > section.grid > div:nth-child(3) .mt-4.rounded.border.bg-slate-50.p-3.text-xs {
+  font-size: 0;
+}
+main > section.grid > div:nth-child(3) .mt-4.rounded.border.bg-slate-50.p-3.text-xs a {
+  font-size: 0.75rem;
+}
