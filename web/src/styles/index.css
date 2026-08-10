@@ -152,7 +152,28 @@ main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > span:
 /* 当前 Emby 简介最多显示约五行，超出内容在字段内部滚动。 */
 main > section.grid > div:nth-child(3) .divide-y > div:nth-child(4) > div:nth-child(3) {
   max-height: 7.5rem;
-  overflow-y: auto;
+  overflow: hidden;
+}
+
+/* 字段行左右两侧按同一行高拉伸，名称候选输入框跟随左侧内容高度。 */
+main > section.grid > div:nth-child(3) .divide-y > div {
+  align-items: stretch;
+}
+main > section.grid > div:nth-child(3) .divide-y > div > div:last-child {
+  align-self: stretch;
+}
+main > section.grid > div:nth-child(3) .divide-y > div > div:last-child > input,
+main > section.grid > div:nth-child(3) .divide-y > div > div:last-child [data-slot='select-trigger'] {
+  height: 100% !important;
+  min-height: 2.25rem;
+}
+
+/* 保留滚轮滚动能力，但隐藏详情编辑区右侧的外层滚动条。 */
+main > section.grid > div:nth-child(3) [data-slot='tabs-content'] {
+  scrollbar-width: none;
+}
+main > section.grid > div:nth-child(3) [data-slot='tabs-content']::-webkit-scrollbar {
+  display: none;
 }
 
 /* 候选详情底部只保留来源链接，来源链接与底部操作区保持同一视觉层级。 */
@@ -261,4 +282,25 @@ main > section.grid > div:nth-child(3) .mt-4.rounded.border.bg-slate-50.p-3.text
 /* 搜索结果没有状态时不显示占位文字。 */
 .mb-1.flex.min-h-5.flex-wrap.gap-1 > span.text-\[10px\].text-slate-400 {
   display: none;
+}
+
+/* 候选值多行输入框与左侧字段保持同高，不显示内部滚动条。 */
+main > section.grid > div:nth-child(3) textarea {
+  height: 100%;
+  max-height: 5rem;
+  overflow-y: auto !important;
+  scrollbar-width: none;
+  resize: none;
+}
+main > section.grid > div:nth-child(3) textarea::-webkit-scrollbar {
+  display: none;
+}
+
+/* 名称候选值与简介使用相同的多行编辑框尺寸。 */
+main > section.grid > div:nth-child(3) .divide-y > div:first-child > div:last-child > input {
+  height: 5rem !important;
+  max-height: 5rem;
+  overflow: hidden;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }

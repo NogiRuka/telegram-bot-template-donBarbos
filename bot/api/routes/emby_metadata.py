@@ -2,11 +2,13 @@
 
 from typing import Any
 
+import aiohttp
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from bot.services.emby_metadata import workbench
 from bot.services.emby_metadata.models import MetadataCandidate
+from bot.services.emby_metadata.translation import translate_to_chinese
 
 router = APIRouter(prefix="/emby/metadata")
 
@@ -35,10 +37,27 @@ class WritebackRequest(BaseModel):
     confirmed: bool = False
 
 
+class TranslationRequest(BaseModel):
+    """简介翻译请求。"""
+
+    text: str = Field(min_length=1, max_length=20000)
+
+
 @router.get("/queue")
 async def get_queue() -> dict[str, Any]:
     """获取待处理队列。"""
     return await workbench.get_queue()
+
+
+@router.post("/translate")
+async def translate_metadata(request: TranslationRequest) -> dict[str, str]:
+    """将简介翻译成中文。"""
+    try:
+        return {"translation": await translate_to_chinese(request.text)}
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except aiohttp.ClientError as error:
+        raise HTTPException(status_code=502, detail="xAI 翻译服务暂时不可用") from error
 
 
 @router.post("/queue/search")

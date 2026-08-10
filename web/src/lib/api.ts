@@ -258,6 +258,11 @@ class ApiClient {
     return this.request({ method: 'GET', url: `/emby/metadata/queue/${notificationId}/candidates/${source}/${sourceId}` })
   }
 
+  async translateMetadata(text: string): Promise<string> {
+    const response = await this.request<{ translation: string }>({ method: 'POST', url: '/emby/metadata/translate', data: { text } })
+    return response.translation
+  }
+
   metadataImageUrl(url: string, referer: string): string {
     return `${this.client.defaults.baseURL}/emby/metadata/images?${new URLSearchParams({ url, referer })}`
   }

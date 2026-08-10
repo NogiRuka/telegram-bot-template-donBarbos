@@ -39,7 +39,12 @@ class KoShopSource(MetadataSource):
         last_error: Exception | None = None
         for attempt in range(2):
             try:
-                async with aiohttp.ClientSession(timeout=self._timeout, headers=self._headers) as session:
+                connector = aiohttp.TCPConnector(ssl=False)
+                async with aiohttp.ClientSession(
+                    timeout=self._timeout,
+                    headers=self._headers,
+                    connector=connector,
+                ) as session:
                     async with session.get(url) as response:
                         if response.status >= 400:
                             raise MetadataSourceHTTPError(f"HTTP {response.status}: {response.reason}", self.name)
