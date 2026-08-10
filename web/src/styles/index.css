@@ -152,7 +152,16 @@ main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > span:
 /* 当前 Emby 简介最多显示约五行，超出内容在字段内部滚动。 */
 main > section.grid > div:nth-child(3) .divide-y > div:nth-child(4) > div:nth-child(3) {
   max-height: 7.5rem;
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* 当前 Emby 值较长时在字段单元格内滚动，避免内容被外层面板截断。 */
+main > section.grid > div:nth-child(3) .divide-y > div > div:nth-child(3) {
+  min-width: 0;
+  max-height: 13rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 /* 字段行左右两侧按同一行高拉伸，名称候选输入框跟随左侧内容高度。 */
