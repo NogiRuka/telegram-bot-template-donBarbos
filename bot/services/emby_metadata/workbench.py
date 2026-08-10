@@ -16,6 +16,10 @@ from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCand
 from bot.services.emby_metadata.matching import extract_product_number, is_hunk_ch_product_number, normalize_search_keyword
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
 from bot.services.emby_metadata.sources.hunk_ch import HunkChSource
+from bot.services.emby_metadata.sources.jgvdata import JgvdataSource
+from bot.services.emby_metadata.sources.ko_shop import KoShopSource
+from bot.services.emby_metadata.sources.mensrush import MensrushSource
+from bot.services.emby_metadata.sources.base import MetadataSource
 from bot.services.emby_metadata.writer import (
     apply_metadata_candidate_to_item,
     download_image,
@@ -31,10 +35,13 @@ _CATEGORY_OPTIONS = (
     {"value": MediaLibraryCategory.DOMESTIC.value, "label": "国产"},
     {"value": MediaLibraryCategory.WESTERN.value, "label": "欧美"},
 )
-_SOURCES_BY_CATEGORY: dict[str, dict[str, type[CkDownloadSource] | type[HunkChSource]]] = {
+_SOURCES_BY_CATEGORY: dict[str, dict[str, type[MetadataSource]]] = {
     MediaLibraryCategory.JAPANESE_KOREAN.value: {
         CkDownloadSource.name: CkDownloadSource,
         HunkChSource.name: HunkChSource,
+        JgvdataSource.name: JgvdataSource,
+        KoShopSource.name: KoShopSource,
+        MensrushSource.name: MensrushSource,
     },
     MediaLibraryCategory.DOMESTIC.value: {},
     MediaLibraryCategory.WESTERN.value: {},
@@ -167,7 +174,7 @@ async def get_queue() -> dict[str, Any]:
     return {"items": items, "total": len(items)}
 
 
-def _resolve_source(category: str, source_name: str) -> CkDownloadSource | HunkChSource:
+def _resolve_source(category: str, source_name: str) -> MetadataSource:
     """只允许使用后端注册且属于所选分类的数据源。"""
     source_class = _SOURCES_BY_CATEGORY.get(category, {}).get(source_name)
     if source_class is None:
