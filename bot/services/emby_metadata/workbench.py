@@ -243,7 +243,13 @@ async def proxy_source_image(url: str, referer: str | None = None) -> tuple[byte
     """通过带请求头的下载器代理数据源图片，避免浏览器防盗链拦截。"""
     try:
         source = CkDownloadSource()
-        return await download_image(url, referer=referer, extra_headers=source.image_headers(referer))
+        verify_ssl = "ko-shop.com" not in url.lower()
+        return await download_image(
+            url,
+            referer=referer,
+            extra_headers=source.image_headers(referer),
+            verify_ssl=verify_ssl,
+        )
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"图片加载失败：{error}") from error
 

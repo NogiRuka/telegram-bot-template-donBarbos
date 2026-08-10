@@ -74,13 +74,15 @@ async def download_image(
     *,
     referer: str | None = None,
     extra_headers: dict[str, str] | None = None,
+    verify_ssl: bool = True,
 ) -> tuple[bytes, str]:
     """下载受防盗链保护的远程图片，供预览代理与写入流程共用。"""
     timeout = aiohttp.ClientTimeout(total=15)
     headers = _image_headers(url, referer)
     if extra_headers:
         headers.update(extra_headers)
-    async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+    connector = aiohttp.TCPConnector(ssl=verify_ssl)
+    async with aiohttp.ClientSession(timeout=timeout, headers=headers, connector=connector) as session:
         async with session.get(url) as response:
             response.raise_for_status()
             return await response.read(), response.content_type
