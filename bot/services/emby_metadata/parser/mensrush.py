@@ -71,6 +71,7 @@ class MensrushParser:
         if not isinstance(heading, Tag) or not heading.get_text(strip=True):
             raise MetadataSourceParseError("详情页缺少作品标题", cls.source_name)
         original_title = cls._clean_text(heading.get_text(" ", strip=True))
+        product_number = re.sub(r"_DL$", "", source_id, flags=re.IGNORECASE)
         movie = soup.select_one(".movie_detail")
         fields = cls._linked_fields(movie if isinstance(movie, Tag) else soup)
         overview = cls._overview(movie)
@@ -79,11 +80,11 @@ class MensrushParser:
             source=cls.source_name,
             source_id=source_id,
             category=cls.category,
-            product_number=source_id,
-            title=f"{source_id} {original_title}",
+            product_number=product_number,
+            title=f"{product_number} {original_title}",
             original_title=original_title,
-            sort_name=f"{source_id} {original_title}",
-            forced_sort_name=f"{source_id} {original_title}",
+            sort_name=f"{product_number} {original_title}",
+            forced_sort_name=f"{product_number} {original_title}",
             overview=overview,
             year=None,
             release_date=None,
@@ -95,8 +96,8 @@ class MensrushParser:
                 "source": cls.source_name,
                 "source_id": source_id,
                 "source_url": cls._detail_url(source_id),
-                "product_number": source_id,
-                "Imdb": source_id,
+                "product_number": product_number,
+                "Imdb": product_number,
             },
             poster_url=cls._poster_url(soup),
             raw_url=cls._detail_url(source_id),

@@ -52,7 +52,8 @@ class JgvdataParser:
                     source_id=code,
                     category=cls.category,
                     title=title,
-                    release_date=cls._date(article.get_text(" ", strip=True)),
+                    release_date=cls._search_date(article),
+                    statuses=cls._statuses(article),
                     image_urls=cls._images(article),
                     detail_url=urljoin(f"{cls.base_url}/", str(link["href"])),
                 )
@@ -154,6 +155,13 @@ class JgvdataParser:
                 values.append(urljoin(f"{cls.base_url}/", match.group(1)))
         return cls._unique(values)
 
+    @classmethod
+    def _statuses(cls, article: Tag) -> list[str]:
+        return cls._unique(
+            cls._clean_text(link.get_text(" ", strip=True))
+            for link in article.select(".mg-blog-category a")
+        )
+
     @staticmethod
     def _first_line(value: str) -> str:
         return value.split()[0] if value.split() else ""
@@ -176,6 +184,13 @@ class JgvdataParser:
             return datetime.strptime(" ".join(match.groups()), "%b %d %Y").date()
         except ValueError:
             return None
+
+    @classmethod
+    def _search_date(cls, article: Tag) -> date | None:
+        date_node = article.select_one(".mg-blog-date") or article.select_one(".media-body .mg-blog-date")
+        if isinstance(date_node, Tag):
+            return cls._date(date_node.get_text(" ", strip=True))
+        return cls._date(article.get_text(" ", strip=True))
 
     @staticmethod
     def _unique(values: Iterable[str]) -> list[str]:

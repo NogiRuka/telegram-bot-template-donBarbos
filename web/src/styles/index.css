@@ -257,3 +257,8 @@ main > section.grid > div:nth-child(3) .mt-4.rounded.border.bg-slate-50.p-3.text
 [data-slot='select-item'][data-value='str8boys2023']::before {
   content: none !important;
 }
+
+/* 搜索结果没有状态时不显示占位文字。 */
+.mb-1.flex.min-h-5.flex-wrap.gap-1 > span.text-\[10px\].text-slate-400 {
+  display: none;
+}

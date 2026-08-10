@@ -1,20 +1,20 @@
 import * as React from 'react'
 import * as SelectPrimitive from '@radix-ui/react-select'
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
-import ckDownloadIcon from '@/assets/metadata-sources/ck-download.ico'
-import hunkChIcon from '@/assets/metadata-sources/hunk-ch.ico'
-import koShopIcon from '@/assets/metadata-sources/ko-shop.ico'
-import mensrushIcon from '@/assets/metadata-sources/mensrush.ico'
-import str8boys2023Icon from '@/assets/metadata-sources/str8boys2023.ico'
 import { cn } from '@/lib/utils'
 
-const metadataSourceIcons: Record<string, string> = {
-  'ck-download': ckDownloadIcon,
-  'hunk-ch': hunkChIcon,
-  'ko-shop': koShopIcon,
-  mensrush: mensrushIcon,
-  str8boys2023: str8boys2023Icon,
-}
+const metadataSourceIconFiles = import.meta.glob('../../assets/metadata-sources/*.ico', {
+  eager: true,
+  import: 'default',
+  query: '?url',
+}) as Record<string, string>
+
+const metadataSourceIcons: Record<string, string> = Object.fromEntries(
+  Object.entries(metadataSourceIconFiles).map(([filePath, iconUrl]) => [
+    filePath.split('/').pop()?.replace(/\.ico$/i, '') ?? '',
+    iconUrl,
+  ]),
+)
 
 const selectValueContext = React.createContext<string | undefined>(undefined)
 
