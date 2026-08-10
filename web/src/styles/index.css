@@ -88,10 +88,13 @@
 
 /* Emby 元数据队列卡片：图片独占左侧，右侧按名称、路由、搜索分层。 */
 main > section.grid > div:first-child > div.min-h-0 > div[role='button'] {
-  grid-template-columns: 36px 132px minmax(0, 1fr);
-  grid-template-rows: auto auto auto;
+  grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto auto;
   align-items: center;
-  min-height: 154px;
+  height: 180px;
+  min-height: 180px;
+  max-height: 180px;
+  overflow: hidden;
 }
 
 main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > :first-child {
@@ -108,9 +111,11 @@ main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:n
 main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) > div:first-child {
   grid-column: 2;
   grid-row: 1 / span 3;
-  width: 132px;
-  height: 108px;
-  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  align-self: stretch;
+  object-fit: contain;
 }
 
 main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) > div:last-child {
@@ -156,4 +161,99 @@ main > section.grid > div:nth-child(3) .mt-4.rounded.border.bg-slate-50.p-3.text
 }
 main > section.grid > div:nth-child(3) .mt-4.rounded.border.bg-slate-50.p-3.text-xs a {
   font-size: 0.75rem;
+}
+
+/* 元数据待处理列表：放大分类/数据源选择文字，并给数据源选项显示站点图标。 */
+[data-slot='select-trigger'] {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+}
+
+[data-slot='select-item'][data-value='ck-download'],
+[data-slot='select-item'][data-value='hunk-ch'],
+[data-slot='select-item'][data-value='ko-shop'],
+[data-slot='select-item'][data-value='mensrush'],
+[data-slot='select-item'][data-value='str8boys2023'] {
+  padding-left: 2rem;
+  background-position: 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem 1rem;
+}
+
+[data-slot='select-item'][data-value='ck-download'] {
+  background-image: url('../assets/metadata-sources/ck-download.ico');
+}
+
+[data-slot='select-item'][data-value='hunk-ch'] {
+  background-image: url('../assets/metadata-sources/hunk-ch.ico');
+}
+
+[data-slot='select-item'][data-value='ko-shop'] {
+  background-image: url('../assets/metadata-sources/ko-shop.ico');
+}
+
+[data-slot='select-item'][data-value='mensrush'] {
+  background-image: url('../assets/metadata-sources/mensrush.ico');
+}
+
+[data-slot='select-item'][data-value='str8boys2023'] {
+  background-image: url('../assets/metadata-sources/str8boys2023.ico');
+}
+
+[data-slot='select-item'][data-value='ck-download']::before,
+[data-slot='select-item'][data-value='hunk-ch']::before,
+[data-slot='select-item'][data-value='ko-shop']::before,
+[data-slot='select-item'][data-value='mensrush']::before,
+[data-slot='select-item'][data-value='str8boys2023']::before {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  content: '';
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+[data-slot='select-item'][data-value='ck-download']::before {
+  background-image: url('../assets/metadata-sources/ck-download.ico');
+}
+
+[data-slot='select-item'][data-value='hunk-ch']::before {
+  background-image: url('../assets/metadata-sources/hunk-ch.ico');
+}
+
+[data-slot='select-item'][data-value='ko-shop']::before {
+  background-image: url('../assets/metadata-sources/ko-shop.ico');
+}
+
+[data-slot='select-item'][data-value='mensrush']::before {
+  background-image: url('../assets/metadata-sources/mensrush.ico');
+}
+
+[data-slot='select-item'][data-value='str8boys2023']::before {
+  background-image: url('../assets/metadata-sources/str8boys2023.ico');
+}
+
+/* 搜索结果卡片不单独展示数据源信息，数据源只在左侧待处理列表中选择。 */
+.mb-1.flex.items-center.gap-1.text-\[10px\].text-slate-500 {
+  display: none;
+}
+
+/* 图标由 SelectItem 直接渲染，关闭旧的背景图方案，避免重复显示。 */
+[data-slot='select-item'][data-value='ck-download'],
+[data-slot='select-item'][data-value='hunk-ch'],
+[data-slot='select-item'][data-value='ko-shop'],
+[data-slot='select-item'][data-value='mensrush'],
+[data-slot='select-item'][data-value='str8boys2023'] {
+  padding-left: 0.5rem;
+  background-image: none !important;
+}
+
+[data-slot='select-item'][data-value='ck-download']::before,
+[data-slot='select-item'][data-value='hunk-ch']::before,
+[data-slot='select-item'][data-value='ko-shop']::before,
+[data-slot='select-item'][data-value='mensrush']::before,
+[data-slot='select-item'][data-value='str8boys2023']::before {
+  content: none !important;
 }

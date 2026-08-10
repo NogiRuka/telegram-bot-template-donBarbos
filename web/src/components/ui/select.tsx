@@ -1,12 +1,31 @@
 import * as React from 'react'
 import * as SelectPrimitive from '@radix-ui/react-select'
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
+import ckDownloadIcon from '@/assets/metadata-sources/ck-download.ico'
+import hunkChIcon from '@/assets/metadata-sources/hunk-ch.ico'
+import koShopIcon from '@/assets/metadata-sources/ko-shop.ico'
+import mensrushIcon from '@/assets/metadata-sources/mensrush.ico'
+import str8boys2023Icon from '@/assets/metadata-sources/str8boys2023.ico'
 import { cn } from '@/lib/utils'
+
+const metadataSourceIcons: Record<string, string> = {
+  'ck-download': ckDownloadIcon,
+  'hunk-ch': hunkChIcon,
+  'ko-shop': koShopIcon,
+  mensrush: mensrushIcon,
+  str8boys2023: str8boys2023Icon,
+}
+
+const selectValueContext = React.createContext<string | undefined>(undefined)
 
 function Select({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot='select' {...props} />
+  return (
+    <selectValueContext.Provider value={props.value}>
+      <SelectPrimitive.Root data-slot='select' {...props} />
+    </selectValueContext.Provider>
+  )
 }
 
 function SelectGroup({
@@ -18,7 +37,15 @@ function SelectGroup({
 function SelectValue({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Value>) {
-  return <SelectPrimitive.Value data-slot='select-value' {...props} />
+  const value = React.useContext(selectValueContext)
+  const icon = value ? metadataSourceIcons[value] : undefined
+
+  return (
+    <span data-slot='select-value' className='flex min-w-0 items-center gap-2'>
+      {icon ? <img src={icon} alt='' className='size-4 shrink-0 object-contain' /> : null}
+      <SelectPrimitive.Value {...props} />
+    </span>
+  )
 }
 
 function SelectTrigger({
@@ -100,6 +127,8 @@ function SelectItem({
   children,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Item>) {
+  const icon = props.value ? metadataSourceIcons[props.value] : undefined
+
   return (
     <SelectPrimitive.Item
       data-slot='select-item'
@@ -114,6 +143,7 @@ function SelectItem({
           <CheckIcon className='size-4' />
         </SelectPrimitive.ItemIndicator>
       </span>
+      {icon ? <img src={icon} alt='' className='size-4 shrink-0 object-contain' /> : null}
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
   )

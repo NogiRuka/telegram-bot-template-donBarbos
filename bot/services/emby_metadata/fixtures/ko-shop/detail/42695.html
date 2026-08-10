@@ -1,0 +1,1881 @@
+<body style="">
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-P8FVS3JB" height="0" width="0"
+            style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
+    <noscript>
+        <p>JavaScript を有効にしてご利用下さい.</p>
+    </noscript>
+
+    <div id="header">
+        <div class="header_in_bg">
+            <div class="header_in">
+                <h1><a href="https://www.ko-shop.com/"></a></h1>
+                <div class="right_head_col">
+                    <div class="user_info">
+                        こんばんは！ゲストさま </div>
+                    <div class="cart_info">
+                        <a href="https://www.ko-shop.com/cart/">
+                            <span class="cart_info_l"><i class="icon-basket"></i><span
+                                    class="cart_info_text">カートを見る</span></span>
+                            <span class="white_zone">0円（0点）</span>
+                        </a>
+                    </div>
+                </div>
+                <!--/right_head_col-->
+            </div>
+            <!--/header_in-->
+        </div>
+        <div style="text-align: center; background-color: #f5f5f5; padding: 8px; font-size: 12px; color: #666;">
+            当サイトに掲載されている作品は全て創作表現です
+        </div>
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+        <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+        <script type="text/javascript">
+            $(function () {
+                $("#word_box").autocomplete({
+                    source: function (req, resp) {
+                        var post = {};
+                        post['mode'] = 'autocomplete';
+                        post['word'] = req.term;
+                        post['transactionid'] = '4a03fd9e47a67d808ece69235a076ebccfacc15a';
+                        $.ajax({
+                            url: "/frontparts/bloc/autocomplete.php",
+                            type: "POST",
+                            cache: false,
+                            dataType: "json",
+                            data: post,
+                            success: function (o) {
+                                resp(o);
+                            },
+                            error: function (xhr, ts, err) {
+                            }
+                        });
+                    },
+                    minLength: 2
+                });
+            });
+        </script> <!-- ▼ヘッダーメニュー -->
+        <div class="gmenu">
+            <div class="gmenu_in">
+                <ul id="topnav">
+                    <li><a href="https://www.ko-shop.com/information/">新着情報</a></li>
+                    <li><a href="https://www.ko-shop.com/products/list.php?product_type_id=1">早割(予約)DVD</a></li>
+                    <li><a href="https://www.ko-shop.com/products/list.php?class_id=1">DVD</a>
+                        <div class="sub" style="opacity: 0;">
+                            <ul>
+                                <strong>商品タイプ</strong>
+                                <li><a href="/products/list.php?product_type_id=1"><i
+                                            class="icon-right-open"></i>早割り商品</a></li>
+                                <li><a href="/products/list.php?product_type_id=2"><i
+                                            class="icon-right-open"></i>新作商品</a></li>
+                                <li><a href="/products/list.php?product_type_id=9"><i
+                                            class="icon-right-open"></i>レギュラー商品</a></li>
+                                <li><a href="/products/list.php?product_type_id=3"><i
+                                            class="icon-right-open"></i>新ミドル価格品</a></li>
+                                <li><a href="/products/list.php?product_type_id=4"><i
+                                            class="icon-right-open"></i>ミドル価格品</a></li>
+                                <li><a href="/products/list.php?product_type_id=5"><i
+                                            class="icon-right-open"></i>新作アウトレット価格品</a></li>
+                                <li><a href="/products/list.php?product_type_id=6"><i
+                                            class="icon-right-open"></i>アウトレット価格品</a></li>
+                                <li><a href="/products/list.php?product_type_id=7"><i
+                                            class="icon-right-open"></i>セール商品</a></li>
+                                <li><a href="/products/list.php?product_type_id=8"><i
+                                            class="icon-right-open"></i>サンプル動画あり商品</a></li>
+                            </ul>
+                            <ul>
+                                <strong>モデルタイプ</strong>
+                                <li>
+                                    <a href="/products/list.php?category_id=24"><i
+                                            class="icon-right-open"></i>スリム・スジ筋系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=2"><i
+                                            class="icon-right-open"></i>カワイイ・美少年系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=3"><i
+                                            class="icon-right-open"></i>さわやか・カッコイイ系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=4"><i
+                                            class="icon-right-open"></i>ギャル男・ホスト系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=5"><i
+                                            class="icon-right-open"></i>短髪・ヒゲ・野郎系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=6"><i class="icon-right-open"></i>体育会系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=7"><i class="icon-right-open"></i>マッチョ系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=8"><i class="icon-right-open"></i>ガチムチ系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=9"><i class="icon-right-open"></i>太め系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=10"><i class="icon-right-open"></i>オヤジ系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=11"><i class="icon-right-open"></i>外国人系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=22"><i class="icon-right-open"></i>巨根系</a>
+                                </li>
+                                <li>
+                                    <a href="/products/list.php?category_id=13"><i class="icon-right-open"></i>数量限定</a>
+                                </li>
+                            </ul>
+                            <ul>
+                                <strong>キーワード</strong>
+                                <li><a href="/products/list.php?play_id=67"><i class="icon-right-open"></i>KO
+                                        WEEKLYSALE</a></li>
+                                <li><a href="/products/list.php?play_id=66"><i
+                                            class="icon-right-open"></i>WEEKLYSALE</a></li>
+                                <li><a href="/products/list.php?play_id=107"><i
+                                            class="icon-right-open"></i>マンハウス最安SALE</a></li>
+                                <li><a href="/products/list.php?play_id=73"><i class="icon-right-open"></i>生セックス</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=76"><i class="icon-right-open"></i>中出し</a></li>
+                                <li><a href="/products/list.php?play_id=86"><i class="icon-right-open"></i>オナニー</a></li>
+                                <li><a href="/products/list.php?play_id=78"><i class="icon-right-open"></i>ノンケ</a></li>
+                                <li><a href="/products/list.php?play_id=79"><i class="icon-right-open"></i>拘束</a></li>
+                                <li><a href="/products/list.php?play_id=77"><i class="icon-right-open"></i>顔射</a></li>
+                                <li><a href="/products/list.php?play_id=72"><i class="icon-right-open"></i>アナルセックス</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=80"><i class="icon-right-open"></i>マッサージ</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=97"><i class="icon-right-open"></i>腹筋</a></li>
+                                <li><a href="/products/list.php?play_id=74"><i class="icon-right-open"></i>フェラ</a></li>
+                                <li><a href="/products/list.php?play_id=91"><i class="icon-right-open"></i>痴漢</a></li>
+                                <li><a href="/products/list.php?play_id=75"><i class="icon-right-open"></i>手コキ</a></li>
+                                <li><a href="/products/list.php?play_id=100"><i class="icon-right-open"></i>ナンパ</a></li>
+                                <li><a href="/products/list.php?play_id=99"><i class="icon-right-open"></i>競パン</a></li>
+                                <li><a href="/products/list.php?play_id=98"><i class="icon-right-open"></i>ウリセン</a></li>
+                                <li><a href="/products/list.php?play_id=94"><i class="icon-right-open"></i>野球部</a></li>
+                                <li><a href="/products/list.php?play_id=96"><i class="icon-right-open"></i>サッカー部</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=85"><i class="icon-right-open"></i>アナル開発</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=95"><i class="icon-right-open"></i>面接</a></li>
+                                <li><a href="/products/list.php?play_id=92"><i class="icon-right-open"></i>トコロテン</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=90"><i class="icon-right-open"></i>潮噴き</a></li>
+                                <li><a href="/products/list.php?play_id=89"><i class="icon-right-open"></i>男女絡み</a></li>
+                                <li><a href="/products/list.php?play_id=87"><i class="icon-right-open"></i>複数</a></li>
+                                <li><a href="/products/list.php?play_id=88"><i class="icon-right-open"></i>ガン掘り</a></li>
+                                <li><a href="/products/list.php?play_id=84"><i class="icon-right-open"></i>口内射精</a></li>
+                                <li><a href="/products/list.php?play_id=83"><i class="icon-right-open"></i>童貞</a></li>
+                                <li><a href="/products/list.php?play_id=82"><i class="icon-right-open"></i>巨根</a></li>
+                                <li><a href="/products/list.php?play_id=81"><i class="icon-right-open"></i>野外</a></li>
+                                <li><a href="/products/list.php?play_id=105"><i class="icon-right-open"></i>ミドル</a></li>
+                                <li><a href="/products/list.php?play_id=104"><i class="icon-right-open"></i>アウトレット</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=106"><i class="icon-right-open"></i>2枚組</a></li>
+                                <li><a href="/products/list.php?play_id=59"><i class="icon-right-open"></i>ローション</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=61"><i class="icon-right-open"></i>オナホール</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=70"><i class="icon-right-open"></i>コックリング</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=64"><i class="icon-right-open"></i>洗浄グッズ</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=60"><i class="icon-right-open"></i>コンドーム</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=69"><i class="icon-right-open"></i>バイブ /
+                                        ローター</a></li>
+                                <li><a href="/products/list.php?play_id=62"><i class="icon-right-open"></i>アナルグッズ</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=68"><i class="icon-right-open"></i>ディルド</a></li>
+                                <li><a href="/products/list.php?play_id=71"><i class="icon-right-open"></i>アナルビーズ</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=102"><i class="icon-right-open"></i>SMグッズ</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=101"><i class="icon-right-open"></i>電動グッズ</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=103"><i class="icon-right-open"></i>エネマグラ</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=63"><i class="icon-right-open"></i>サプリ</a></li>
+                                <li><a href="/products/list.php?play_id=65"><i class="icon-right-open"></i>下着・コスチューム</a>
+                                </li>
+                                <li><a href="/products/list.php?play_id=57"><i class="icon-right-open"></i>廃盤タイトル</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li><a href="https://www.ko-shop.com/products/list.php?class_id=4">グッズ</a>
+                        <div class="sub" style="opacity: 0;">
+                            <ul>
+                                <li><a href="https://www.ko-shop.com/products/list.php?play_id=60"><i
+                                            class="icon-right-open"></i>コンドーム</a></li>
+                                <li><a href="https://www.ko-shop.com/products/list.php?play_id=59"><i
+                                            class="icon-right-open"></i>ローション</a></li>
+                                <li><a href="https://www.ko-shop.com/products/list.php?play_id=62"><i
+                                            class="icon-right-open"></i>アナルグッズ</a></li>
+                                <li><a href="https://www.ko-shop.com/products/list.php?play_id=61"><i
+                                            class="icon-right-open"></i>オナホール</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li><a href="https://www.ko-shop.com/present/">プレゼント</a></li>
+                </ul>
+            </div>
+            <!--/gmenu_in-->
+        </div>
+        <!--/gmenu-->
+
+        <!-- ▲ヘッダーメニュー -->
+        <div class="salesbar">
+            <a style="background-image:url('/upload/save_image/banner/08070951_6a752c08a1af0.gif');"
+                href="https://www.ko-shop.com/"></a>
+        </div>
+    </div>
+    <div class="colmask holygrail">
+        <div class="colmid">
+            <div class="colleft">
+                <div class="col1wrap">
+                    <div class="col4">
+
+                        <script type="text/javascript">
+                            $(function () {
+                                // カートポップアップの[x]押下
+                                $('.cart-window .close, .cart-back').click(function () {
+                                    cartPopUp('off');
+                                });
+                            });
+                            var doLocation = function (url) {
+                                location.href = url;
+                            };
+                            // カート挿入後のポップアップ表示制御
+                            var cartPopUp = function (value) {
+                                switch (value) {
+                                    case 'on':
+                                        $('.cart-overlay').removeClass('cart-overlay-off')
+                                            .addClass('cart-overlay-on');
+                                        $('body').addClass('no_scroll');
+                                        break;
+                                    case 'off':
+                                    default:
+                                        $('.cart-overlay').removeClass('cart-overlay-on')
+                                            .addClass('cart-overlay-off');
+                                        $('body').removeClass('no_scroll');
+                                        break;
+                                }
+
+                            };
+                            // カートに追加
+                            var addCart = (function () {
+                                var in_progress = false;
+                                return function (product_id, quantity) {
+                                    if (in_progress) {
+                                        alert("処理中です。");
+                                        return;
+                                    }
+                                    in_progress = true;
+                                    var post = {};
+                                    post['mode'] = 'add';
+                                    post['transactionid'] = '4a03fd9e47a67d808ece69235a076ebccfacc15a';
+                                    post['product_id'] = product_id;
+                                    post['quantity'] = quantity;
+                                    if (quantity == undefined) {
+                                        post['quantity'] = 1;
+                                    }
+                                    $.ajax({
+                                        url: "/frontparts/add_cart.php",
+                                        type: "POST",
+                                        cache: false,
+                                        dataType: "json",
+                                        data: post,
+                                        success: function (data) {
+                                            in_progress = false;
+                                            $("span.white_zone").html("").html(data.total + "円（" + data.quantity + "点）");
+                                            cartPopUp('on');
+                                            // お支払い方法制限商品なら文言追加
+                                            if (data.payment_limited > 0) {
+                                                $('.cart-window p.text').append('<span style="color:red;"><br>※お支払い方法が限定されている商品が追加されました。</span>');
+                                            }
+                                        },
+                                        error: function (xhr, ts, err) {
+                                            in_progress = false;
+                                            alert("システムエラーが発生したため、商品を追加できませんでした。");
+                                        },
+                                    });
+                                };
+                            })();
+                            // 今すぐ購入
+                            var buyNow = (function () {
+                                var in_progress = false;
+                                return function (product_id) {
+                                    if (in_progress) {
+                                        alert("処理中です。");
+                                        return;
+                                    }
+                                    in_progress = true;
+                                    var post = {};
+                                    post['mode'] = 'add';
+                                    post['transactionid'] = '4a03fd9e47a67d808ece69235a076ebccfacc15a';
+                                    post['product_id'] = product_id;
+                                    post['quantity'] = 1;
+                                    $.ajax({
+                                        url: "/frontparts/add_cart.php",
+                                        type: "POST",
+                                        cache: false,
+                                        dataType: "json",
+                                        data: post,
+                                        success: function (data) {
+                                            in_progress = false;
+                                            location.href = 'https://www.ko-shop.com/cart/';
+                                        },
+                                        error: function (xhr, ts, err) {
+                                            in_progress = false;
+                                            alert("システムエラーが発生したため、カートに追加できませんでした。");
+                                        },
+                                    });
+                                };
+                            })();
+                        </script>
+                        <div class="cart-overlay cart-overlay-off">
+                            <div class="cart-window">
+                                <label class="close" for="pop-up">×</label>
+                                <h4>ショッピングカートに追加しました。</h4>
+                                <p class="text">このまま購入される場合は<br>「ご購入手続きに進む」を押してください。</p>
+
+                                <div class="cart_navi">
+                                    <label for="cartin-trigger" class="cart-back">買い物を続ける</label>
+                                    <input type="button" value="ご購入手続きに進む"
+                                        onclick="doLocation('https://www.ko-shop.com/cart/');">
+                                </div>
+                            </div>
+                        </div>
+                        <script type="text/javascript">
+
+                            // 並び順を変更
+                            function fnChangeOrderby(orderby) {
+                                fnSetVal('orderby', orderby);
+                                fnSetVal('mode', "sort");
+                                $('#form1').attr('action', $('#form1').attr('action') + '#reviewers');
+                                fnSubmit();
+                            }
+
+                            var fnConfirm = function () {
+                                if (window.confirm('ログインが必要です。ログインページに移動しますか？')) {
+                                    return true;
+                                }
+                                return false;
+                            };
+
+                            $(document).ready(function () {
+                                $("a.video_link").fancybox({
+                                    'width': 540,
+                                    'height': 400,
+                                    'type': 'iframe',
+                                    'scrolling': 'no',
+                                });
+                            });
+
+                            $(document).ready(function () {
+                                $("a.gallery").fancybox({
+                                    'overlayShow': true,
+                                    'transitionIn': 'elastic',
+                                    'transitionOut': 'elastic',
+                                    'titlePosition': 'inside'
+                                });
+                                $("a[rel=example_group]").fancybox({
+                                    'transitionIn': 'elastic',
+                                    'transitionOut': 'elastic',
+                                    'titlePosition': 'over',
+                                    'titleFormat': function (title, currentArray, currentIndex, currentOpts) {
+                                        return '<span id="fancybox-title-over">Image ' + (currentIndex + 1) + ' / ' + currentArray.length + (title.length ? ' &nbsp; ' + title : '') + '</span>';
+                                    }
+                                });
+                                /* 2016.12.20 add */
+                                // $(window).trigger('resize');
+                                $(".owl-stage").each(function (i) {
+                                    $(this).width($(this).width() + 25);
+                                });
+                            });
+                            $(function () {
+                                $('a[href^=#]').click(function () {
+                                    var speed = 900;
+                                    var href = $(this).attr("href");
+                                    var target = $(href == "#" || href == "" ? 'html' : href);
+                                    var position = target.offset().top;
+                                    $("html, body").animate({ scrollTop: position }, speed, "swing");
+                                    return false;
+                                });
+                            });
+                        </script>
+
+                        <ul class="topicpath">
+                            <li><a href="/products/list.php?class_idDVD">DVD</a>&nbsp;&gt;&nbsp;</li>
+                            <li><a href="/products/list.php?maker_id=1">KOカンパニー</a>&nbsp;&gt;&nbsp;</li>
+                            <li><a href="/products/list.php?series_id=512">今ヌキ隊</a>&nbsp;&gt;&nbsp;</li>
+                            <li>大嫌いな上司と相部屋で死ぬほどイカされて…</li>
+                        </ul>
+                        <section class="shoppingcontents_detail_col">
+                            <form name="form1" id="form1" method="post" action="?">
+                                <input type="hidden" name="transactionid"
+                                    value="4a03fd9e47a67d808ece69235a076ebccfacc15a">
+                                <input type="hidden" name="mode" value="cart">
+                                <input type="hidden" name="quantity" value="1">
+                                <input type="hidden" name="product_id" value="42695">
+                                <input type="hidden" name="favorite_product_id" value="">
+                                <input type="hidden" name="orderby" value="">
+
+                                <div class="center_col">
+                                    <div class="detail_main_img"><a class="fancybox"
+                                            href="/upload/save_image/512/KZER011.jpg?t=1785996002"
+                                            title="大嫌いな上司と相部屋で死ぬほどイカされて…"><img
+                                                src="/resize_image.php?image=512/KZER011.jpg&amp;width=300&amp;height=300">
+                                            <span>イメージを拡大する</span> </a>
+                                    </div>
+                                    <!--/detail_main_img-->
+                                    <div class="detail_product">
+                                        <div class="list_tag">
+                                            <span class="icon_shin">新</span>
+                                            <span class="icon_coupon">ク</span>
+                                            <div class="badge-wrapper"> <i
+                                                    class="a-icon a-icon-addon p13n-best-seller-badge">週間ランキング1位</i>
+                                            </div> <span><a class="float_r"
+                                                    href="#icon_description">アイコンの説明はコチラ</a></span>
+                                        </div>
+                                        <!--/list_tag-->
+                                        <h2>
+                                            大嫌いな上司と相部屋で死ぬほどイカされて…
+                                        </h2>
+                                        <dl>
+                                            <dt>メーカー</dt>
+                                            <dd>&nbsp;:&nbsp;<a href="/products/list.php?maker_id=1">KOカンパニー</a></dd>
+                                            <dt>シリーズ</dt>
+                                            <dd>&nbsp;:&nbsp;<a href="/products/list.php?series_id=512">今ヌキ隊</a></dd>
+
+                                            <dt>商品種別</dt>
+                                            <dd>&nbsp;:&nbsp;DVD</dd>
+                                            <dt>発売日</dt>
+                                            <dd>&nbsp;:&nbsp;2026年08月 7日</dd>
+                                            <dt>収録時間</dt>
+                                            <dd>&nbsp;:&nbsp;125分</dd>
+                                            <dt>モデルタイプ</dt>
+                                            <dd>&nbsp;:&nbsp;<a href="/products/list.php?category_id=2">カワイイ・美少年系</a>
+                                                &nbsp;/&nbsp;
+                                                <a href="/products/list.php?category_id=3">さわやか・カッコイイ系</a>
+                                                &nbsp;/&nbsp;
+                                                <a href="/products/list.php?category_id=24">スリム・スジ筋系</a>
+                                            </dd>
+                                            <dt>商品コード</dt>
+                                            <dd>&nbsp;:&nbsp;KZER011</dd>
+                                        </dl>
+                                    </div>
+                                    <!--/detail_product-->
+                                </div>
+                                <!--/center_col-->
+                                <div class="right_col">
+                                    <div class="ma_b10">
+                                        <span>数量:</span>
+                                        <span>
+                                            <select name="quantity" id="quantity"
+                                                onchange="$('#form1').val(this.value);">
+                                                <option label="1" value="1">1</option>
+                                                <option label="2" value="2">2</option>
+                                                <option label="3" value="3">3</option>
+                                                <option label="4" value="4">4</option>
+                                                <option label="5" value="5">5</option>
+                                                <option label="6" value="6">6</option>
+                                                <option label="7" value="7">7</option>
+                                                <option label="8" value="8">8</option>
+                                                <option label="9" value="9">9</option>
+                                                <option label="10" value="10">10</option>
+                                                <option label="11" value="11">11</option>
+                                                <option label="12" value="12">12</option>
+                                                <option label="13" value="13">13</option>
+                                                <option label="14" value="14">14</option>
+                                                <option label="15" value="15">15</option>
+                                                <option label="16" value="16">16</option>
+                                                <option label="17" value="17">17</option>
+                                                <option label="18" value="18">18</option>
+                                                <option label="19" value="19">19</option>
+                                                <option label="20" value="20">20</option>
+
+                                            </select>
+                                        </span>
+                                    </div>
+
+                                    <div class="price_detail ma_b10">
+                                        <span class="strike">¥12,100</span>&nbsp;→&nbsp;
+                                        <span class="this_red">¥7,260</span>
+                                        <span class="per_off">
+                                            40%OFF!
+                                        </span>
+                                    </div>
+                                    <!--/price_detail-->
+                                    <div class="cart_btn"> <a href="javascript:;"
+                                            onclick="addCart(42695, $('#quantity').val());"><i
+                                                class="icon-basket"></i>カートに入れる</a> </div>
+                                    <div class="buynow_btn"> <a href="javascript:;" onclick="buyNow(42695);">今すぐ購入</a>
+                                    </div>
+                                    <!--/cart_detail_btn-->
+
+
+                                    <p class="text_r small85"><a href="/user_guide/?type=use">割引・ポイントについて</a></p>
+                                    <div class="service_count">
+                                        <p>プレゼントまであと ¥5,500</p>
+                                        <p class="present_link"><a
+                                                href="https://www.ko-shop.com/present/">プレゼント一覧をみる</a></p>
+                                    </div>
+                                    <!--/service_count-->
+                                    <div class="like_detail_btn">
+                                        <a href="https://www.ko-shop.com/mypage/login.php"
+                                            onclick="return fnConfirm();">お気に入りリストに追加</a>
+                                    </div>
+                                    <!--/like_detail_btn-->
+                                    <p class="fax"><a href="/user_data/packages/default/pdf/fax_order.pdf"
+                                            target="_blank">FAXでも注文できます</a></p>
+                                </div>
+                                <!--/right_col-->
+                                <div class="under_col">
+                                    <div class="sample_img">
+                                        <h2 class="ma_b10">サンプル画像</h2>
+                                        <ul>
+                                            <li><a class="fancybox" data-fancybox-group="gallery"
+                                                    href="/upload/save_image/512/KZER011_1.jpg?t=1785996002"><img
+                                                        src="/upload/save_image/512/KZER011_1.jpg?t=1785996002"
+                                                        alt="サンプル画像" name="sn-sample1"></a></li>
+                                            <li><a class="fancybox" data-fancybox-group="gallery"
+                                                    href="/upload/save_image/512/KZER011_2.jpg?t=1785996002"><img
+                                                        src="/upload/save_image/512/KZER011_2.jpg?t=1785996002"
+                                                        alt="サンプル画像" name="sn-sample2"></a></li>
+                                            <li><a class="fancybox" data-fancybox-group="gallery"
+                                                    href="/upload/save_image/512/KZER011_3.jpg?t=1785996002"><img
+                                                        src="/upload/save_image/512/KZER011_3.jpg?t=1785996002"
+                                                        alt="サンプル画像" name="sn-sample3"></a></li>
+                                            <li><a class="fancybox" data-fancybox-group="gallery"
+                                                    href="/upload/save_image/512/KZER011_4.jpg?t=1785996002"><img
+                                                        src="/upload/save_image/512/KZER011_4.jpg?t=1785996002"
+                                                        alt="サンプル画像" name="sn-sample4"></a></li>
+                                            <li><a class="fancybox" data-fancybox-group="gallery"
+                                                    href="/upload/save_image/512/KZER011_5.jpg?t=1785996002"><img
+                                                        src="/upload/save_image/512/KZER011_5.jpg?t=1785996002"
+                                                        alt="サンプル画像" name="sn-sample5"></a></li>
+                                            <li><a class="fancybox" data-fancybox-group="gallery"
+                                                    href="/upload/save_image/512/KZER011_6.jpg?t=1785996002"><img
+                                                        src="/upload/save_image/512/KZER011_6.jpg?t=1785996002"
+                                                        alt="サンプル画像" name="sn-sample6"></a></li>
+                                            <li><a class="fancybox" data-fancybox-group="gallery"
+                                                    href="/upload/save_image/512/KZER011_7.jpg?t=1785996002"><img
+                                                        src="/upload/save_image/512/KZER011_7.jpg?t=1785996002"
+                                                        alt="サンプル画像" name="sn-sample7"></a></li>
+                                            <li><a class="fancybox" data-fancybox-group="gallery"
+                                                    href="/upload/save_image/512/KZER011_8.jpg?t=1785996002"><img
+                                                        src="/upload/save_image/512/KZER011_8.jpg?t=1785996002"
+                                                        alt="サンプル画像" name="sn-sample8"></a></li>
+                                            <li><a class="fancybox" data-fancybox-group="gallery"
+                                                    href="/upload/save_image/512/KZER011_9.jpg?t=1785996002"><img
+                                                        src="/upload/save_image/512/KZER011_9.jpg?t=1785996002"
+                                                        alt="サンプル画像" name="sn-sample9"></a></li>
+                                            <li><a class="fancybox" data-fancybox-group="gallery"
+                                                    href="/upload/save_image/512/KZER011_10.jpg?t=1785996002"><img
+                                                        src="/upload/save_image/512/KZER011_10.jpg?t=1785996002"
+                                                        alt="サンプル画像" name="sn-sample10"></a></li>
+                                        </ul>
+                                        <p class="clear">画像はイメージです。実際の商品画像とは異なる場合がございます。</p>
+                                    </div>
+                                    <!--/sample_img-->
+
+                                    <div class="ma_b30">
+                                        <h2 class="ma_b10">商品説明</h2>
+                                        <div
+                                            style="padding: 15px; background-color: #f4f4f4; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); max-width: 600px; margin: 0; text-align: left;">
+                                            <h2 style="color: #333; font-size: 1.5em;">予告映像</h2>
+                                            <div style="border-radius: 10px; overflow: hidden; max-width: 100%;">
+                                                <video style="width: 100%; height: auto; border-radius: 10px;"
+                                                    controls="">
+                                                    <source
+                                                        src="https://ko-video.com/upload/save_image/imanukitai/KZER011_DVD/KZER011_DVD.mp4">
+                                                    Your browser does not support the video tag.<br>
+                                                </video><br>
+                                            </div>
+                                            <p style="margin-top: 10px; color: #888; font-size: 0.8em;">
+                                                ※通信環境により再生まで時間がかかる場合があります</p>
+                                        </div>
+                                        <br>
+                                        <br>
+                                        出張先で同室になった変態上司に狙われた新入社員達。無理やりねじこまれたチンポが思いのほか気持ち良くて…。<br>
+                                        大嫌いな上司の凄テクに、若くしなやかな肢体が乱れてゆく…。こんなはずじゃなかったのにカラダが勝手に感じて…。<br>
+                                        <br>
+                                        1. 大嫌いなオヤジ上司と出張先で相部屋を仕組まれた新入社員・海。疲れから寝入ってしまった海の下半身にオヤジ上司の魔の手が迫る…!<br>
+                                        汗ばんだ若いカラダに欲情した上司は貪るように海を蹂躙し続けるのだった。<br>
+                                        <br>
+                                        2. 以前から不快感を抱いていたボディタッチの多いキモ上司と二人きりで出張に行くことになった航矢。<br>
+                                        飲み物に仕込まれた媚薬で身動きの取れないのをいいことに、キモ上司は航矢の唇に舌を挿し入れ、全身を舐め回し始める…。<br>
+                                        不本意にも勃起してしまった巨根を吸い尽くすように味わい、極太チンポで航矢のアナルを貫いてゆく…。<br>
+                                        <br>
+                                        3. 仕事はできるが会社でチラチラ見てくる上司と出張に行くことに。<br>
+                                        なぜか相部屋に泊まることになった雅樹は夜通しスマホゲームをしようと思っていたが不覚にも媚薬入りのお茶を飲んで倒れてしまう。<br>
+                                        深夜25時、全身が敏感になった雅樹のカラダを上司がまさぐり始める…。<br>
+                                        <br>
+                                        4. 社内で人気の美青年・由良が変態上司に二人きりの出張に誘い出される。<br>
+                                        相部屋での宿泊を仕組んだ上司は由良に買い出しを命じた後、酒に媚薬を混ぜ込む。<br>
+                                        知らずに飲んでしまった由良の意識は遠のき、顔に似合わぬ巨根はギンギンに。<br>
+                                        変態上司が欲望のままに繰り出す性戯に由良は美しい顔を歪ませて感じ始めてしまう…。
+                                    </div>
+
+
+                                    <div class="white_radius_col icon_exp" id="icon_description">
+                                        <h3>アイコンの説明</h3>
+                                        <span class="icon_haya">早</span>･･･早割作品&nbsp;/&nbsp; <span
+                                            class="icon_shin">新</span>･･･新作&nbsp;/&nbsp; <span
+                                            class="icon_middle_new">新ミ</span>･･･新作ミドル商品&nbsp;/&nbsp; <span
+                                            class="icon_middle">ミ</span>･･･ミドル商品&nbsp;/&nbsp; <span
+                                            class="icon_outlet_new">新ア</span>･･･新作アウトレット商品&nbsp;/&nbsp; <span
+                                            class="icon_outlet">ア</span>･･･アウトレット商品&nbsp;/&nbsp; <span
+                                            class="icon_sale">S</span>･･･セール商品&nbsp;/&nbsp; <span class="sample_mv"><i
+                                                class="icon-play-circled2"></i></span>･･･サンプル動画あり&nbsp;/&nbsp; <span
+                                            class="icon_coupon">ク</span>･･･クーポン封入&nbsp;/&nbsp; <span
+                                            class="icon_pickup">！</span>･･･イチオシ!&nbsp;/&nbsp; <span
+                                            class="icon_review"><i
+                                                class="icon-pencil"></i></span>･･･レビュー投稿あり&nbsp;/&nbsp; <span
+                                            class="icon_limit">数限</span>･･･数量限定&nbsp;/&nbsp; <span
+                                            class="icon_kaiwari">買割</span>･･･買うほど割引&nbsp;/&nbsp; <span
+                                            class="icon_nimai">2枚</span>･･･2枚目タダ!
+                                    </div>
+                                    <div class="related_item">
+                                        <h2 class="ma_b10">関連商品</h2>
+                                        <div class="elastislide-wrapper elastislide-horizontal">
+                                            <div class="elastislide-carousel">
+                                                <ul id="carousel_related_item" class="elastislide-list"
+                                                    style="display: block; max-height: 146px; transition: 500ms ease-in-out;">
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;">
+                                                        <a href="/products/detail.php?product_id=40885">
+                                                            <img src="/upload/save_image/512/KZER002_DVD_result.jpg"
+                                                                alt="MUSCLE ROOM 〜妄想AI彼氏〜"><span>MUSCLE ROOM
+                                                                〜妄想AI彼氏〜</span>
+                                                        </a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;">
+                                                        <a href="/products/detail.php?product_id=42351">
+                                                            <img src="/upload/save_image/512/KZER008_A.jpg"
+                                                                alt="立場逆転"><span>立場逆転</span>
+                                                        </a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;">
+                                                        <a href="/products/detail.php?product_id=41728">
+                                                            <img src="/upload/save_image/512/KZER006_DVD_a.jpg"
+                                                                alt="全員大量潮吹き 腹筋アスリート衝撃SEX"><span>全員大量潮吹き
+                                                                腹筋アスリート衝撃SEX</span>
+                                                        </a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;">
+                                                        <a href="/products/detail.php?product_id=40857">
+                                                            <img src="/upload/save_image/512/KZER001_DVD_result.jpg"
+                                                                alt="時間よ、止まれ〜被害者はマッチョ体育会部員4名〜"><span>時間よ、止まれ〜被害者はマッチョ体育会部員4名〜</span>
+                                                        </a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;">
+                                                        <a href="/products/detail.php?product_id=41672">
+                                                            <img src="/upload/save_image/512/KZER005_DVD_result.jpg"
+                                                                alt="俺のでかまらちんぽ好きなんでしょ?"><span>俺のでかまらちんぽ好きなんでしょ?</span>
+                                                        </a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;">
+                                                        <a href="/products/detail.php?product_id=41754">
+                                                            <img src="/upload/save_image/512/KZER007_A.jpg"
+                                                                alt="媚●漬けヌードデッサンマッチョ"><span>媚●漬けヌードデッサンマッチョ</span>
+                                                        </a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;">
+                                                        <a href="/products/detail.php?product_id=42621">
+                                                            <img src="/upload/save_image/512/KZER009A_7.jpg"
+                                                                alt="恋人の横で他人棒で寝取られイカされて、淫乱な姿に…いつもより興奮してしまう変態男子"><span>恋人の横で他人棒で寝取られイカされて、淫乱な姿に…いつもより興奮してしまう変態男子</span>
+                                                        </a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;">
+                                                        <a href="/products/detail.php?product_id=42512">
+                                                            <img src="/upload/save_image/512/KZER010_A.jpg"
+                                                                alt="極楽雌堕 ヌードデッサンマッチョ2"><span>極楽雌堕 ヌードデッサンマッチョ2</span>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <nav><span class="elastislide-prev"
+                                                    style="display: none;">Previous</span><span class="elastislide-next"
+                                                    style="display: none;">Next</span></nav>
+                                        </div>
+                                    </div>
+                                    <!--/related_item-->
+                                    <script type="text/javascript">
+                                        $(function () {
+                                            $(window).on('load', function () {
+                                                $('#carousel_related_item').elastislide({
+                                                    minItems: 2
+                                                });
+                                            });
+                                        });
+                                    </script>
+
+                                    <div class="check_item">
+                                        <h2 class="ma_b10">最近チェックしたアイテム</h2>
+                                        <div class="elastislide-wrapper elastislide-horizontal">
+                                            <div class="elastislide-carousel">
+                                                <ul id="carousel_check_item" class="elastislide-list"
+                                                    style="display: block; max-height: 146px; transition: 500ms ease-in-out;">
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42695"><img
+                                                                src="/upload/save_image/512/KZER011_A.jpg"><span>大嫌いな上司と相部屋で死ぬほどイカされて…</span></a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42629"><img
+                                                                src="/upload/save_image/252/GAMS904_A.jpg"><span>バキStriker
+                                                                vol.6</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=41739"><img
+                                                                src="/upload/save_image/225/WEWEDV1603_result.jpg"><span>Style
+                                                                One Title No.66 Harumi from Men's WorkOut</span></a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=40411"><img
+                                                                src="/upload/save_image/513/COAT1808_DVD_A.jpg"><span>解禁Special　中出し4SEX　優介</span></a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42281"><img
+                                                                src="/upload/save_image/239/COCODV1005h.jpg"><span>birth
+                                                                慧都 2nd stage -ノンフィクションエクスタシー-</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42456"><img
+                                                                src="/upload/save_image/235/COCODV747_A.jpg"><span>PRISONER
+                                                                JOSHIRO 2</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42656"><img
+                                                                src="/upload/save_image/32/COCODV495_A.jpg"><span>Precious
+                                                                JIN 2 -HARD MULTI FUCK-</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42455"><img
+                                                                src="/upload/save_image/513/COCODV559_A.jpg"><span>解禁Special
+                                                                中出し4SEX 飛貴</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=40299"><img
+                                                                src="/upload/save_image/13/COAT1797_DVD_A.jpg"><span>巨根男子
+                                                                亮介 3 -ナマ中出しSEX解禁-</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=40663"><img
+                                                                src="/upload/save_image/29/WEWEDV546_result.jpg"><span>ONLY
+                                                                SHINING STAR RUI</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=37450"><img
+                                                                src="/upload/save_image/93/BWB287_DVD_A.jpg"><span>アナルの呼吸</span></a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=40097"><img
+                                                                src="/upload/save_image/93/BWB337_DVD_A.jpg"><span>覆面消防士
+                                                                アナルの呼吸2</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=40662"><img
+                                                                src="/upload/save_image/235/COCODV739_result.jpg"><span>PRISONER
+                                                                TAIKI 2</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=40207"><img
+                                                                src="/upload/save_image/235/COAT1789_DVD_A.jpg"><span>PRISONER
+                                                                TAIKI</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42009"><img
+                                                                src="/upload/save_image/514/COCODV553_A.jpg"><span>SPARK
+                                                                エロ汁搾り抜き性感メンズエステ 日向</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=39247"><img
+                                                                src="/upload/save_image/398/COAT1686_DVD_A.jpg"><span>BACK
+                                                                SNIPER BEST B</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42277"><img
+                                                                src="/upload/save_image/252/urg-070_A.jpg"><span>超のぞき第12弾
+                                                                〜俺のSEX再現しました。〜</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42292"><img
+                                                                src="/upload/save_image/338/KRA072_DVD_A.jpg"><span>RAIYA</span></a>
+                                                    </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42288"><img
+                                                                src="/upload/save_image/2/KBEA386_DVD_A.jpg"><span>解禁淫交
+                                                                霧島瞬</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=38325"><img
+                                                                src="/upload/save_image/235/COAT1573_DVD_A.jpg"><span>PRISONER
+                                                                TAIGA</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42284"><img
+                                                                src="/upload/save_image/225/WEWEDV1605h.jpg"><span>Style
+                                                                One Title No.68 Tsurugi 2</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=40102"><img
+                                                                src="/upload/save_image/31/COAT1778_DVD_A.jpg"><span>POWER
+                                                                GRIP 218 オトナの時間 47</span></a> </li>
+                                                    <li style="width: 49.9531%; max-width: 98px; max-height: 146px;"> <a
+                                                            href="/products/detail.php?product_id=42283"><img
+                                                                src="/upload/save_image/40/COCODV162h.jpg"><span>体育会制覇
+                                                                「力斗 -RIKITO-」</span></a> </li>
+                                                </ul>
+                                            </div>
+                                            <nav><span class="elastislide-prev"
+                                                    style="display: none;">Previous</span><span
+                                                    class="elastislide-next">Next</span></nav>
+                                        </div>
+                                    </div>
+                                    <!--/check_item-->
+                                    <script type="text/javascript">
+                                        $(function () {
+                                            $(window).on('load', function () {
+                                                $('#carousel_check_item').elastislide({
+                                                    imageW: 94,
+                                                    minItems: 2
+                                                });
+                                            });
+                                        });
+                                    </script>
+                                </div>
+                                <!--/under_col-->
+                            </form>
+                        </section>
+                        <!--/shoppingcontents_col-->
+
+                        <!-- ▼下バナー -->
+                        <script type="text/javascript">
+                            $(document).ready(function () {
+                                $("a.banner").fancybox({
+                                    'transitionIn': 'elastic',
+                                    'transitionOut': 'elastic'
+                                });
+                            });
+                        </script>
+
+                        <div class="bottom_banner_col">
+                            <ul>
+                                <li>
+                                    <a href="javascript:void(0);" style="pointer-events:none;"><img
+                                            src="/upload/save_image/banner/03081758_62271ab6cc0fd.jpg"></a>
+                                </li>
+                                <li>
+                                    <a href="https://www.ko-shop.com/products/list.php?category_id=23"><img
+                                            src="/upload/save_image/banner/07111716_6870c8649c444.jpg"></a>
+                                </li>
+                                <li>
+                                    <a href="https://www.ko-shop.com/products/detail.php?product_id=42693"><img
+                                            src="/upload/save_image/banner/07241732_6a632324834c0.png"></a>
+                                </li>
+                                <li>
+                                    <a href="https://www.ko-shop.com/products/sale.php?sale_id=1031"><img
+                                            src="/upload/save_image/banner/08041329_6890372b5b1f9.jpg"></a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- ▲下バナー -->
+                    </div>
+                    <!--/col1-->
+                </div>
+                <!--CENTER COLUMN-->
+
+                <div class="col2">
+                    <!-- ▼メーカーシリーズ一覧 -->
+                    <section class="side_navi dropmenu">
+                        <h2>DVDメーカー</h2>
+                        <ul>
+                            <li><a href="/products/list.php?maker_id=1">KOカンパニー</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=344">アブSEX</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=2">BEAST</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=267">BUMP</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=390">boys Crash</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=405">BOYS PROJECT</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=409">ぶっこみ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=346">超エロ男子</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=404">CHAOS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=3">DEEP</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=315">男子学園</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=407">どぴゅノンケ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=4">EROS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=392">エンドレス</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=5">Go guy</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=187">GIGOLO</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=268">ガキエロ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=340">ガチ撮り</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=499">合法シ☆タ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=188">HUNTER</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=217">INDIES</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=512">今ヌキ隊</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=216">JUNO</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=394">JOKER</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=1">KO</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=11">KURUU</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=348">強豪</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=403">KO-EAST</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=214">LINE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=6">Mania Club</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=345">MONSTER</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=410">益荒男</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=479">Model’s</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=302">Non Fiction</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=227">Papillon</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=215">PANDORA</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=7">Secret Film</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=8">Sportus</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=9">SURPRISE!</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=243">SUPER STAR</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=351">SUITS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=391">SUNRISE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=10">TYSON</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=389">TOKYOボーイズ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=406">V-STYLE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=283">XXX</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=477">X-BODY</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=412">うまのすけ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=510">キュンC</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=12">KOその他</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=338">裸王</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=2">COAT</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=14">ACE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=15">ACTIVE BODY</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=16">ANOTHER VERSION</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=411">@nonke.com</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=17">Babylon</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=239">birth</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=398">BACK SNIPER</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=13">COAT</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=231">COAT WEST</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=349">COLLECTORS EDITION</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=350">CUTTING EDGE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=254">D.M.T.</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=291">EXTRA LEGEND</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=402">EXPOSE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=408">エロコレ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=483">EMERGENCY!!</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=19">Fine</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=261">Funky Innovation</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=480">FIXER</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=20">GRAND SLAM</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=21">Hello!</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=226">Jump!</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=23">KISS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=232">KURATATSU</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=513">解禁Special</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=233">LUCINA</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=25">Maniac</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=26">MVP</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=28">Number</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=400">NONKE PLAY ROOM</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=29">ONLY SHINING STAR</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=30">OUT STAFF</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=31">POWER GRIP</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=32">Precious</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=235">PRISONER</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=34">ROCK BULL</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=395">ROOKIE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=397">R-30</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=35">SHOOT</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=36">Smart</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=37">Straight Style</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=237">Story</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=225">Style One</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=514">SPARK</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=399">TRAP HOLE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=413">TOP 1 CK style</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=396">バーチャル彼氏</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=236">ザ・シリーズ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=40">体育会制覇</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=42">フェラ三昧</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=5">G@MES</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=47">COLLECTION</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=417">CRUISING</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=252">HUNK VIDEO</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=416">ノンケ限界面接!!</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=415">雄穴中出し</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=414">宅配ちんこ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=46">WILD GAMES</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=279">裏GAMES</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=48">体育会Yeaah!</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=54">泥酔わいせつ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=49">のぞき</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=52">バーチャルデート</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=48">EXFEED</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=146">EXFEED</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=101">G-BOT</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=448">DOWNLOAD SELECTION</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=445">G-WAVE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=447">G-STARS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=455">GLORY</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=482">HUNTMAN</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=478">Man Power</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=443">NEXT GENERATION</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=444">NONSTOP</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=454">NONKE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=451">PRIDE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=456">PERSONAL FILE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=449">STUCK ON</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=450">SUPER STARS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=452">STARLIGHT</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=442">体育会SPIRITS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=446">脱がしの達人</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=31">BRAVO-WORKS</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=321">AJITO</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=93">BRAVO!</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=393">GAYSIAN</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=258">Lucifer</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=94">OOOOPS!!</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=13">マンハウス</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=68">heat up</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=523">LIVE SHOCK</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=69">Mr.HAT</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=70">Mr.Leo</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=66">アトリエイマーゴ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=67">エロティックスキャン</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=65">マンハウス</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=43">ACCEED</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=134">ACCEEDカタログ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=135">ACCEED</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=126">BLACK HOLE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=131">IKUZE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=127">メンコレキュート</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=130">Smash!!</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=128">女装っ子くらぶ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=132">ぶらりちん道中</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=129">悶絶少年</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=23">JUSTICE</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=334">GUILTY</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=84">JUSTICE</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=12">V Factory</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=64">V Factory</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=7">JAPAN PICTURES</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=57">JAPAN PICTURES</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=8">SUPER THREE</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=58">SUPER THREE</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=100">AMENITY PLANNING</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=441">AMENITY PLANNING</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=504">AMENITY</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=500">BelAmi</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=502">freshmen</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=501">LUKAS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=503">2枚組</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=509">特価</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=18">ADONIS LAND</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=79">ADONIS LAND</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=505">at-B</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=506">Visual (i) Land</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=4">海鳴館</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=44">海鳴館</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=45">豊漫</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=63">AMBITIOUS</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=218">AMBITIOUS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=136">HERCULES</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=137">Wrestle Factory</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=255">Wrestle Factory Premier</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=10">DNA</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=60">DNA</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=15">テキーラ</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=76">ATOMICちゃぶ</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=75">サンダー</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=74">テキーラ</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=99">AXIS PICTURES</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=290">AXIS PICTURES</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=102">BOYSLAB</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=466">Bitter</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=468">BOYSLAB AWARD</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=474">BEST COUPLE</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=475">BEST COUPLE THE STORY</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=463">DELICIOUS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=472">EROTICA</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=462">Fall in Lovelunch</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=457">LEGNA</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=469">LABLYMPIC</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=473">LAB ACADEMY</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=458">Mr. My Universe</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=471">POISON</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=459">Sweets</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=460">STYLE SELECT</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=461">Secret Rendezvous</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=464">SHINWA -震話-</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=476">The Gift</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=470">主従関係</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=465">ラボトラベラー</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=79">PRISM</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=311">PRISM</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=313">GIRA</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=312">ZAPPY</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=92">KO(その他)</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=342">オリジナルグッズ</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=77">Project DIAMOND</a>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section class="side_navi dropmenu">
+                        <h2>その他のカテゴリー</h2>
+                        <ul>
+                            <li><a href="/products/list.php?maker_id=39">グッズ</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=519">A-one</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=517">HATOPURA</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=524">MEN’S MAX</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=516">未分類</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=522">TENGA</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=518">TOAMI</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=520">TAMA-TOYS</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=521">Yuira</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=84">書籍</a>
+                                <ul>
+                                    <li>
+                                        <a href="/products/list.php?series_id=323">Badi</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=453">G-BOT</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=326">その他</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=325">ピアス</a>
+                                    </li>
+                                    <li>
+                                        <a href="/products/list.php?series_id=324">サムソン</a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="/products/list.php?maker_id=104">ギフトカード</a>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <!-- ▲メーカーシリーズ一覧 -->
+                    <!-- ▼カテゴリ一覧 -->
+                    <section class="side_navi">
+                        <h2>カテゴリー検索</h2>
+                        <strong>モデルタイプ</strong>
+                        <ul>
+                            <li><a href="/products/list.php?category_id=24">スリム・スジ筋系</a></li>
+                            <li><a href="/products/list.php?category_id=2">カワイイ・美少年系</a></li>
+                            <li><a href="/products/list.php?category_id=3">さわやか・カッコイイ系</a></li>
+                            <li><a href="/products/list.php?category_id=4">ギャル男・ホスト系</a></li>
+                            <li><a href="/products/list.php?category_id=5">短髪・ヒゲ・野郎系</a></li>
+                            <li><a href="/products/list.php?category_id=6">体育会系</a></li>
+                            <li><a href="/products/list.php?category_id=7">マッチョ系</a></li>
+                            <li><a href="/products/list.php?category_id=8">ガチムチ系</a></li>
+                            <li><a href="/products/list.php?category_id=9">太め系</a></li>
+                            <li><a href="/products/list.php?category_id=10">オヤジ系</a></li>
+                            <li><a href="/products/list.php?category_id=11">外国人系</a></li>
+                            <li><a href="/products/list.php?category_id=22">巨根系</a></li>
+                            <li><a href="/products/list.php?category_id=13">数量限定</a></li>
+                        </ul>
+                        <strong>キーワード</strong>
+                        <ul>
+                            <li><a href="/products/list.php?play_id=67">KO WEEKLYSALE</a></li>
+                            <li><a href="/products/list.php?play_id=66">WEEKLYSALE</a></li>
+                            <li><a href="/products/list.php?play_id=107">マンハウス最安SALE</a></li>
+                            <li><a href="/products/list.php?play_id=73">生セックス</a></li>
+                            <li><a href="/products/list.php?play_id=76">中出し</a></li>
+                            <li><a href="/products/list.php?play_id=86">オナニー</a></li>
+                            <li><a href="/products/list.php?play_id=78">ノンケ</a></li>
+                            <li><a href="/products/list.php?play_id=79">拘束</a></li>
+                            <li><a href="/products/list.php?play_id=77">顔射</a></li>
+                            <li><a href="/products/list.php?play_id=72">アナルセックス</a></li>
+                            <li><a href="/products/list.php?play_id=80">マッサージ</a></li>
+                            <li><a href="/products/list.php?play_id=97">腹筋</a></li>
+                            <li><a href="/products/list.php?play_id=74">フェラ</a></li>
+                            <li><a href="/products/list.php?play_id=91">痴漢</a></li>
+                            <li><a href="/products/list.php?play_id=75">手コキ</a></li>
+                            <li><a href="/products/list.php?play_id=100">ナンパ</a></li>
+                            <li><a href="/products/list.php?play_id=99">競パン</a></li>
+                            <li><a href="/products/list.php?play_id=98">ウリセン</a></li>
+                            <li><a href="/products/list.php?play_id=94">野球部</a></li>
+                            <li><a href="/products/list.php?play_id=96">サッカー部</a></li>
+                            <li><a href="/products/list.php?play_id=85">アナル開発</a></li>
+                            <li><a href="/products/list.php?play_id=95">面接</a></li>
+                            <li><a href="/products/list.php?play_id=92">トコロテン</a></li>
+                            <li><a href="/products/list.php?play_id=90">潮噴き</a></li>
+                            <li><a href="/products/list.php?play_id=89">男女絡み</a></li>
+                            <li><a href="/products/list.php?play_id=87">複数</a></li>
+                            <li><a href="/products/list.php?play_id=88">ガン掘り</a></li>
+                            <li><a href="/products/list.php?play_id=84">口内射精</a></li>
+                            <li><a href="/products/list.php?play_id=83">童貞</a></li>
+                            <li><a href="/products/list.php?play_id=82">巨根</a></li>
+                            <li><a href="/products/list.php?play_id=81">野外</a></li>
+                            <li><a href="/products/list.php?play_id=105">ミドル</a></li>
+                            <li><a href="/products/list.php?play_id=104">アウトレット</a></li>
+                            <li><a href="/products/list.php?play_id=106">2枚組</a></li>
+                            <li><a href="/products/list.php?play_id=59">ローション</a></li>
+                            <li><a href="/products/list.php?play_id=61">オナホール</a></li>
+                            <li><a href="/products/list.php?play_id=70">コックリング</a></li>
+                            <li><a href="/products/list.php?play_id=64">洗浄グッズ</a></li>
+                            <li><a href="/products/list.php?play_id=60">コンドーム</a></li>
+                            <li><a href="/products/list.php?play_id=69">バイブ / ローター</a></li>
+                            <li><a href="/products/list.php?play_id=62">アナルグッズ</a></li>
+                            <li><a href="/products/list.php?play_id=68">ディルド</a></li>
+                            <li><a href="/products/list.php?play_id=71">アナルビーズ</a></li>
+                            <li><a href="/products/list.php?play_id=102">SMグッズ</a></li>
+                            <li><a href="/products/list.php?play_id=101">電動グッズ</a></li>
+                            <li><a href="/products/list.php?play_id=103">エネマグラ</a></li>
+                            <li><a href="/products/list.php?play_id=63">サプリ</a></li>
+                            <li><a href="/products/list.php?play_id=65">下着・コスチューム</a></li>
+                            <li><a href="/products/list.php?play_id=57">廃盤タイトル</a></li>
+                        </ul>
+                    </section>
+
+                    <!-- ▲カテゴリ一覧 -->
+                    <!-- ▼検索フォーム -->
+                    <form name="modal_maker_search" id="modal_maker_search" method="get" action="/products/list.php">
+                    </form>
+
+                    <form name="modal_kodawari_search" id="modal_kodawari_search" method="get"
+                        action="/products/list.php">
+                    </form>
+
+                    <section class="side_navi">
+                        <ul>
+                            <li><a href="/products/list.php?product_type_id=2">新作から探す</a></li>
+                            <li><a class="fancybox fancybox.iframe"
+                                    href="/frontparts/bloc/modal_maker_search.php">メーカーから探す</a></li>
+                            <li><a class="fancybox fancybox.iframe"
+                                    href="/frontparts/bloc/modal_kodawari_search.php">こだわり条件から探す</a></li>
+                        </ul>
+                    </section>
+                    <!-- ▲検索フォーム -->
+                </div>
+                <!--/col2-->
+            </div>
+        </div>
+    </div>
+
+    <div id="footer" style="top: 0px;">
+        <div class="footer_menu">
+            <ul>
+                <li><a href="https://www.ko-shop.com/abouts/kiyaku.php">ご利用規約</a></li>
+                <li><a href="https://www.ko-shop.com/order/">特定商取引に関する法律に基づく表記</a></li>
+                <li><a href="http://www.ko-company.com/info/privacy.php" target="_blank">個人情報保護方針</a></li>
+                <li><a href="https://www.ko-shop.com/abouts/">会社概要</a></li>
+                <li><a href="http://www.ko-company.com/top.php#service" target="_blank">KOグループ</a></li>
+                <li><a
+                        href="https://docs.google.com/forms/d/e/1FAIpQLScYNuJklDxqd6dTAdFTCRDdsfXB6oBS-TXdGEHYCD9yE1pk-A/viewform">お問い合わせ</a>
+                </li>
+                <li><a href="https://www.ko-shop.com/mail/regist.php">メルマガ登録</a></li>
+                <li><a href="https://www.ko-shop.com/user_guide/">ご利用ガイド</a></li>
+                <li><a href="https://www.ko-shop.com/link/">相互リンク</a></li>
+                <li><a href="https://www.ko-shop.com/faq/">よくあるご質問</a></li>
+            </ul>
+            <div class="credix_txt">CREDIX SURELINKS Netherlands B.V. Herikerbergweg 194, Luna Arena, 1101CM Amsterdam,
+                the Netherlands</div>
+            <div class="credix_txt">BRACE GROVE UK LIMITED Mabledon Place, Hamilton House, Bloomsbury, London, WC1H 9BB
+                United Kingdom</div>
+            <div class="credix_txt">T2ECOM EU EOOD Sredets region,19 Vitosha Blvd, 1st floor Sofia BULGARIA 1000</div>
+            <div class="credix_txt">SHIMATOMO ITALY S.R.L.S. VIA DEL LAURO 9 20121 MILANO MI ITALY</div>
+        </div>
+        <!--/footer_menu-->
+        <div class="copyright">
+            <p>Copyright 2011-2026 株式会社 KOカンパニー All Rights Reserved.</p>
+        </div>
+    </div>
+    <!--/footer-->
+    <script type="text/javascript">
+        $.fn.raty.defaults.path = "images";
+        $('.star_jadge').raty();
+    </script>
+
+
+    <style>
+        .modal {
+            position: fixed;
+            display: none;
+            z-index: 9999;
+            top: 35%;
+            left: 50%;
+            width: 500px;
+            height: 300px;
+            margin: -116px 0 0 -291px;
+            padding: 90px 40px 150px;
+            color: #FFF;
+            text-align: center;
+            border: 1px solid #FFF;
+            border-radius: 10px;
+            background: #FFFFFF;
+        }
+
+        .modal p {
+            margin-bottom: 10px;
+        }
+
+        .modal a {
+            cursor: pointer;
+        }
+
+        .modal img {
+            vertical-align: bottom;
+        }
+
+        .modal ul {
+            text-align: center;
+        }
+
+        .modal li {
+            display: inline;
+        }
+    </style>
+
+    <script>
+        $(function () {
+            /* スクロール制御 */
+            var noScroll = function ($ele) {
+                //PC用
+                var scroll_event = 'onwheel' in document ? 'wheel' : 'onmousewheel' in document ? 'mousewheel' : 'DOMMouseScroll';
+                $ele.on(scroll_event, function (e) { e.preventDefault(); });
+                //SP用
+                $ele.on('touchmove.noScroll', function (e) { e.preventDefault(); });
+            }
+
+            /**
+             * @description [KO-SHOP年齢認証モーダル]
+             */
+            var modal = $(".modal");//モーダルウインドウのクラス
+            var opacity = 0.9;//モーダル背景の透明度
+            var button = $(".close_modal");//モーダル解除ボタンのクラス
+            var limit = 365; //Cookieの有効期限(日)
+            var storage = app.storage;
+            // var cookie = $.cookie("modal");
+            if (storage.get("modal") !== "off") {
+                var overlay = $("<div id='overlay_agecheck'></div>");
+                overlay.css({
+                    "position": "fixed",
+                    "z-index": 100,
+                    "top": 0,
+                    "left": 0,
+                    "height": 130 + "%",
+                    "width": 100 + "%",
+                    "background": "#000",
+                    "opacity": opacity
+                });
+                /* スクロール制御 */
+                noScroll(overlay);
+                $("body").append(overlay);
+                modal.css("display", "block");
+                /* スクロール制御 */
+                noScroll(modal);
+            }
+            button.click(function () {
+                $(overlay).fadeOut("slow");
+                $(modal).hide();
+                storage.set("modal", "off", limit);
+            });
+        });
+    </script>
+
+    <div class="modal">
+        <p>
+            <img src="/user_data/packages/default/images/age_logo.png">
+        </p>
+        <strong>年齢確認</strong>
+        <p style="color:#000000; font-size:140%;font-weight: bold;">このページにはアダルト商品画像および<br>
+            18歳未満の方には不適切な表現内容が含まれています</p>
+        <img src="/user_data/packages/default/images/logo-18.png" style="margin: 0 0 10px 0;">
+        <p style="color:#000000;font-size:210%; font-weight: bold;">あなたは18歳以上ですか？</p>
+        <div class="auth_btn">
+            <ul>
+                <li><a class="close_modal">はい</a></li>
+                <li><a href="https://www.google.co.jp/" target="_blank">いいえ</a></li>
+            </ul>
+        </div>
+    </div><!-- /modal -->
+
+    <a id="scrollUp" href="#top" title="Scroll to top" style="display: none; position: fixed; z-index: 2147483647;"></a>
+    <div id="scrollUp-active" style="position: absolute; top: 300px; width: 100%; z-index: 2147483647;"></div>
+    <div class="nogiruka-btn-container"><button class="nogiruka-scroll-btn" data-direction="up"><svg
+                viewBox="0 0 384 512">
+                <path
+                    d="M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2V448c0 17.7 14.3 32 32 32s32-14.3 32-32V141.2L329.4 246.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z">
+                </path>
+            </svg></button><button class="nogiruka-scroll-btn" data-direction="down"><svg viewBox="0 0 384 512">
+                <path
+                    d="M169.4 470.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 370.8V64c0-17.7-14.3-32-32-32s-32 14.3-32 32v306.8L54.6 246.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5 32.8 0 45.3l160 160z">
+                </path>
+            </svg></button></div>
+    <div style="visibility: hidden; position: absolute; top: 0px;">S</div>
+</body>
