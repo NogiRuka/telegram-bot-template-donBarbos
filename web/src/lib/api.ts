@@ -95,7 +95,7 @@ export interface MetadataCandidate {
 }
 export interface MetadataOption { value: string; label: string }
 export interface MetadataQueueItem {
-  notification_id: string; item_id: string; item_name: string; path: string
+  notification_id: string; item_id: string; emby_url?: string; item_name: string; path: string
   category: string; category_label: string; source: string; status: string
   search_keyword?: string; search_count?: number; image_url?: string
   category_options: MetadataOption[]; source_options: MetadataOption[]

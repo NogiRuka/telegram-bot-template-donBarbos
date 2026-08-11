@@ -748,3 +748,53 @@ main > section.grid > div:nth-child(3) .mt-4.rounded.border.bg-slate-50.p-3.text
   right: 0.75rem;
   bottom: auto;
 }
+
+/* 紧凑工作台调整。 */
+main > header p.mt-1.text-sm {
+  display: none;
+}
+main > section.grid > div:nth-child(2) > div:first-child {
+  align-items: center;
+}
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] span.mt-1.block.h-\[3\.75rem\] {
+  text-overflow: ellipsis;
+}
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] span[title] {
+  display: -webkit-box;
+  overflow: hidden;
+  max-height: 3.75rem;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] .space-y-1 > .flex.gap-1 > button:first-child {
+  flex: 0 0 42%;
+  max-width: 42%;
+}
+.queue-status {
+  display: inline-flex;
+  max-width: 4.5rem;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  padding: 0.1rem 0.4rem;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.queue-status-pending { background: #fff7ed; color: #c2410c; }
+.queue-status-searched { background: #eff6ff; color: #1d4ed8; }
+.queue-status-fetched { background: #ecfdf5; color: #047857; }
+.queue-status-written { background: #f0fdf4; color: #15803d; }
+.queue-status-failed { background: #fef2f2; color: #b91c1c; }
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] button.shrink-0.rounded.bg-slate-100 {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+  cursor: pointer;
+}
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] button.shrink-0.rounded.bg-slate-100:hover {
+  background: #dbeafe;
+}

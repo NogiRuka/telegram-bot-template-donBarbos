@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -106,6 +106,17 @@ def _before_item_image_url(item_id: str, before_item: dict[str, Any]) -> str | N
     return f"{base_url.rstrip('/')}/Items/{item_id}/Images/Primary?{urlencode(params)}"
 
 
+def _item_emby_url(item_id: str | None) -> str | None:
+    """生成 Emby Web 中对应 Item 的详情页地址。"""
+    base_url = settings.get_emby_base_url()
+    if not base_url or not item_id:
+        return None
+    url = f"{base_url.rstrip('/')}/web/index.html#!/item?id={quote(str(item_id))}"
+    if settings.EMBY_SERVER_ID:
+        url += f"&serverId={quote(settings.EMBY_SERVER_ID)}"
+    return url
+
+
 def _queue_item(
     notification: LibraryNewNotificationModel,
     current_item: dict[str, Any] | None = None,
@@ -135,6 +146,7 @@ def _queue_item(
     return {
         "notification_id": str(notification.id),
         "item_id": notification.item_id or "",
+        "emby_url": _item_emby_url(notification.item_id),
         "item_name": item_name,
         "path": path,
         "category": category,

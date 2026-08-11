@@ -101,10 +101,24 @@ export function EmbyMetadataWorkspace() {
   const [autoTranslate, setAutoTranslate] = useState(false)
   const [searchKeywords, setSearchKeywords] = useState<Record<string, string>>({})
   const [routing, setRouting] = useState<Record<string, Routing>>({})
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({})
   const [, setSearching] = useState(false)
 
   const queueQuery = useQuery({ queryKey: ['emby-metadata-queue'], queryFn: () => apiClient.getMetadataQueue() })
   const items = queueQuery.data?.items ?? []
+  useEffect(() => {
+    const openItemInEmby = (event: globalThis.MouseEvent) => {
+      const button = event.target instanceof Element ? event.target.closest('button') : null
+      if (!button || !button.classList.contains('shrink-0') || !button.classList.contains('text-[10px]')) return
+      const item = items.find((value) => value.item_id === button.textContent?.trim())
+      if (!item?.emby_url) return
+      event.preventDefault()
+      event.stopPropagation()
+      window.open(item.emby_url, '_blank', 'noopener,noreferrer')
+    }
+    document.addEventListener('click', openItemInEmby, true)
+    return () => document.removeEventListener('click', openItemInEmby, true)
+  }, [items])
   const active = items.find((item) => item.notification_id === activeId) ?? items[0]
   const resultGroups = Object.entries(resultsByItem)
     .map(([notificationId, itemResults]) => ({
@@ -112,11 +126,14 @@ export function EmbyMetadataWorkspace() {
       results: itemResults,
     }))
     .filter((group): group is ResultGroup => Boolean(group.item))
-  const visibleItems = useMemo(() => items.filter((item) =>
-    (statusFilter === 'all' || item.status === statusFilter) &&
-    (categoryFilter === 'all' || item.category === categoryFilter) &&
-    (!query || item.item_name.toLowerCase().includes(query.toLowerCase())),
-  ), [items, query, statusFilter, categoryFilter])
+  const visibleItems = useMemo(() => items
+    .filter((item) =>
+      (statusFilter === 'all' || (statusOverrides[item.notification_id] ?? item.status) === statusFilter) &&
+      (categoryFilter === 'all' || item.category === categoryFilter) &&
+      (!query || item.item_name.toLowerCase().includes(query.toLowerCase())),
+    )
+    .map((item) => ({ ...item, status: statusOverrides[item.notification_id] ?? item.status })),
+  [items, query, statusFilter, categoryFilter, statusOverrides])
 
   const routeFor = (item: MetadataQueueItem): Routing => routing[item.notification_id] ?? { category: item.category, source: item.source }
   const toggle = (id: string) => setSelectedIds((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id])
@@ -148,6 +165,7 @@ export function EmbyMetadataWorkspace() {
       const current = response.find((item) => item.notification_id === (activeId ?? selectedIds[0])) ?? response[0]
       setActiveId(current.notification_id)
       setResultsByItem((previous) => ({ ...previous, ...Object.fromEntries(response.map((item) => [item.notification_id, item.results])) }))
+      setStatusOverrides((current) => ({ ...current, ...Object.fromEntries(response.map((item) => [item.notification_id, 'searched'])) }))
       setCandidatesByItem((previous) => Object.fromEntries(Object.entries(previous).filter(([notificationId]) => !selectedIds.includes(notificationId))))
       setBeforeItemsByItem((previous) => Object.fromEntries(Object.entries(previous).filter(([notificationId]) => !selectedIds.includes(notificationId))))
       setSelectedResultsByItem((previous) => Object.fromEntries(Object.entries(previous).filter(([notificationId]) => !selectedIds.includes(notificationId))))
@@ -183,6 +201,7 @@ export function EmbyMetadataWorkspace() {
         } catch (error) { toast.error(error instanceof Error ? error.message : '自动翻译失败') }
       }
       setCandidate(nextCandidate)
+      setStatusOverrides((current) => ({ ...current, [owner.notification_id]: 'fetched' }))
       setCandidatesByItem((current) => ({ ...current, [owner.notification_id]: nextCandidate }))
       setBeforeItem(response.before_item)
       setBeforeItemsByItem((current) => ({ ...current, [owner.notification_id]: response.before_item }))
@@ -191,7 +210,7 @@ export function EmbyMetadataWorkspace() {
 
   const writeback = async () => {
     if (!active || !candidate) return toast.error('请先选择候选结果')
-    try { await apiClient.writebackMetadata(active.notification_id, { candidate, fields: fields.map(([key]) => key), overwrite: true, confirmed: true }); toast.success('元数据已写入 Emby'); void queueQuery.refetch() }
+    try { await apiClient.writebackMetadata(active.notification_id, { candidate, fields: fields.map(([key]) => key), overwrite: true, confirmed: true }); setStatusOverrides((current) => ({ ...current, [active.notification_id]: 'written' })); toast.success('元数据已写入 Emby'); void queueQuery.refetch() }
     catch (error) { toast.error(error instanceof Error ? error.message : '写入失败') }
   }
 
@@ -210,6 +229,7 @@ export function EmbyMetadataWorkspace() {
           overwrite: true,
           confirmed: true,
         })
+        setStatusOverrides((current) => ({ ...current, [target.notificationId]: 'written' }))
       } catch {
         failed.push(target.notificationId)
       }
@@ -224,14 +244,14 @@ export function EmbyMetadataWorkspace() {
     <header className='flex items-start justify-between border-b bg-white px-6 py-4'><div><h1 className='flex items-center gap-2 text-2xl font-bold'>Emby 元数据工作台 <Sparkles className='size-6 text-amber-500' /></h1><p className='mt-1 text-sm text-slate-500'>批量搜索、候选对比与写入 Emby</p></div><div className='flex items-center gap-3'><div className='rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700'><Check className='mr-1 inline size-4' />Emby 连接正常</div><Button variant='outline' onClick={() => void queueQuery.refetch()}><RefreshCw className='size-4' />刷新队列</Button></div></header>
     <section className='mx-5 mt-2 flex items-center gap-3 rounded-lg border bg-white p-2'><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className='w-32'><SelectValue placeholder='全部状态' /></SelectTrigger><SelectContent><SelectItem value='all'>全部状态</SelectItem><SelectItem value='pending'>待搜索</SelectItem><SelectItem value='fetched'>已抓取</SelectItem></SelectContent></Select><Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className='w-32'><SelectValue placeholder='全部分类' /></SelectTrigger><SelectContent><SelectItem value='all'>全部分类</SelectItem><SelectItem value='japanese_korean'>日韩</SelectItem><SelectItem value='domestic'>国产</SelectItem><SelectItem value='western'>欧美</SelectItem></SelectContent></Select><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder='搜索词 / 番号 / 名称' className='max-w-sm' /><Button variant='outline' onClick={() => setQuery('')}><X className='size-4' />清空</Button></section>
     <section className='grid h-[calc(100vh-158px)] min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,1.15fr)] gap-2 overflow-hidden px-5 py-2'>
-      <CompactQueuePanel items={items} visibleItems={visibleItems} active={active} selectedIds={selectedIds} routeFor={routeFor} searchKeywords={searchKeywords} setSearchKeywords={setSearchKeywords} setRouting={setRouting} setActiveId={activateItem} toggle={toggle} searchSelected={searchSelected} setSelectedIds={setSelectedIds} />
+      <CompactQueuePanel items={items} visibleItems={visibleItems} active={active} selectedIds={selectedIds} statusOverrides={statusOverrides} routeFor={routeFor} searchKeywords={searchKeywords} setSearchKeywords={setSearchKeywords} setRouting={setRouting} setActiveId={activateItem} toggle={toggle} searchSelected={searchSelected} setSelectedIds={setSelectedIds} />
       <CompactGroupedResultPanel groups={resultGroups} activeId={active?.notification_id} selectedResult={selectedResult} setActiveId={activateItem} selectCandidate={selectCandidate} clearResults={() => active && setResultsByItem((current) => ({ ...current, [active.notification_id]: [] }))} />
       <MetadataEditorPanel candidate={candidate} beforeItem={beforeItem} autoTranslate={autoTranslate} setAutoTranslate={setAutoTranslate} fieldSelection={fieldSelection} setFieldSelection={setFieldSelection} setCandidate={setCandidate} writeback={writeback} batchWriteback={batchWriteback} batchCount={selectedIds.length} />
     </section>
   </main>
 }
 
-function CompactQueuePanel({ items, visibleItems, active, selectedIds, routeFor, searchKeywords, setSearchKeywords, setRouting, setActiveId, toggle, searchSelected, setSelectedIds }: { items: MetadataQueueItem[]; visibleItems: MetadataQueueItem[]; active?: MetadataQueueItem; selectedIds: string[]; routeFor: (item: MetadataQueueItem) => Routing; searchKeywords: Record<string, string>; setSearchKeywords: (value: (current: Record<string, string>) => Record<string, string>) => void; setRouting: (value: (current: Record<string, Routing>) => Record<string, Routing>) => void; setActiveId: (id: string) => void; toggle: (id: string) => void; searchSelected: () => void; setSelectedIds: (ids: string[]) => void }) {
+function CompactQueuePanel({ items, visibleItems, active, selectedIds, statusOverrides, routeFor, searchKeywords, setSearchKeywords, setRouting, setActiveId, toggle, searchSelected, setSelectedIds }: { items: MetadataQueueItem[]; visibleItems: MetadataQueueItem[]; active?: MetadataQueueItem; selectedIds: string[]; statusOverrides: Record<string, string>; routeFor: (item: MetadataQueueItem) => Routing; searchKeywords: Record<string, string>; setSearchKeywords: (value: (current: Record<string, string>) => Record<string, string>) => void; setRouting: (value: (current: Record<string, Routing>) => Record<string, Routing>) => void; setActiveId: (id: string) => void; toggle: (id: string) => void; searchSelected: () => void; setSelectedIds: (ids: string[]) => void }) {
   return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='flex justify-between border-b px-3 py-2'><b className='text-sm'>待处理列表</b><span className='text-xs text-slate-500'>共 {items.length} 条</span></div><div className='grid grid-cols-[28px_minmax(0,1fr)_minmax(150px,.65fr)] items-center gap-2 border-b bg-slate-50 px-2 py-1.5 text-[11px] text-slate-500'><Checkbox className='justify-self-center' checked={!!items.length && selectedIds.length === items.length} onCheckedChange={() => setSelectedIds(selectedIds.length === items.length ? [] : items.map((item) => item.notification_id))} /><span>项目</span><span>搜索与数据源</span></div><div className='min-h-0 flex-1 overflow-y-auto'>{visibleItems.map((item) => { const route = routeFor(item); const sourceOptions = item.source_options_by_category[route.category] ?? []; return <div role='button' tabIndex={0} key={item.notification_id} onClick={() => setActiveId(item.notification_id)} className={`relative grid grid-cols-[28px_minmax(0,1fr)_minmax(150px,.65fr)] items-center gap-2 border-b px-2 py-2 text-left ${active?.notification_id === item.notification_id ? 'bg-blue-50' : ''}`}><Checkbox className='justify-self-center' checked={selectedIds.includes(item.notification_id)} onClick={(event) => event.stopPropagation()} onCheckedChange={() => toggle(item.notification_id)} /><div className='flex min-w-0 items-center gap-2'>{item.image_url ? <img src={item.image_url} alt='' className='h-14 w-14 shrink-0 rounded object-cover' /> : <div className='flex h-14 w-14 shrink-0 items-center justify-center rounded bg-slate-100'><Database className='size-4 text-slate-400' /></div>}<div className='min-w-0'><div className='flex items-center gap-1'><button type='button' className='shrink-0 rounded bg-slate-100 px-1 py-0.5 text-[10px]' onClick={(event) => { event.stopPropagation(); void navigator.clipboard.writeText(item.item_id); toast.success(`已复制 Item ID：${item.item_id}`) }}>{item.item_id}</button><Status value={item.status} /></div><span className='mt-1 block h-[3.75rem] overflow-hidden text-sm font-medium leading-5 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]' title={item.item_name}>{item.item_name}</span></div></div><div className='space-y-1' onClick={(event) => event.stopPropagation()}><Input className='h-7 text-xs' value={searchKeywords[item.notification_id] ?? item.search_keyword ?? ''} onChange={(event) => setSearchKeywords((current) => ({ ...current, [item.notification_id]: event.target.value }))} /><div className='flex gap-1'><Select value={route.category} onValueChange={(category) => setRouting((current) => ({ ...current, [item.notification_id]: { category, source: (item.source_options_by_category[category] ?? [])[0]?.value ?? '' } }))}><SelectTrigger className='h-7 min-w-0 flex-1 text-[11px]'><SelectValue /></SelectTrigger><SelectContent>{item.category_options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select><Select value={route.source || undefined} disabled={!sourceOptions.length} onValueChange={(source) => setRouting((current) => ({ ...current, [item.notification_id]: { ...route, source } }))}><SelectTrigger className='h-7 min-w-0 flex-1 text-[11px]'><SelectValue placeholder='未配置' /></SelectTrigger><SelectContent>{sourceOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div></div></div> })}</div><div className='flex gap-2 border-t p-2'><span className='mr-auto self-center text-xs text-blue-600'>已选择 {selectedIds.length} 项</span><Button size='sm' onClick={searchSelected}><Search className='size-3' />批量搜索</Button><Button size='sm' variant='outline' onClick={() => setSelectedIds([])}>取消选择</Button></div></div>
 }
 
@@ -339,7 +359,10 @@ function FieldRowLegacy({ field, label, candidate, beforeItem, checked, onCheck,
   return field === 'SortName' || field === 'ForcedSortName' || field === 'ExternalIds' ? <details className='rounded border-b px-2'><summary className='cursor-pointer py-2 text-sm font-medium text-slate-600'>{label}</summary>{row}</details> : row
 }
 
-function Status({ value }: { value: string }) { return <span className='inline-flex max-w-20 truncate rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700'>{value === 'pending' ? '待搜索' : value}</span> }
+function Status({ value }: { value: string }) {
+  const labels: Record<string, string> = { pending: '待搜索', searched: '已搜索', fetched: '已抓取', written: '已写入', failed: '失败' }
+  return <span className={`queue-status queue-status-${value}`}>{labels[value] ?? value}</span>
+}
 function Empty({ title, text }: { title: string; text: string }) { return <div className='flex h-full min-h-48 flex-col items-center justify-center text-center'><CircleHelp className='mb-3 size-8 text-slate-300' /><b className='text-sm'>{title}</b><p className='mt-1 text-sm text-slate-500'>{text}</p></div> }
 
 export { EditorPanel, QueuePanel, ResultPanel }
