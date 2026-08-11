@@ -122,7 +122,10 @@ def build_item_update_payload(
     payload["CommunityRating"] = candidate.community_rating
     payload["OfficialRating"] = candidate.official_rating
     payload["CustomRating"] = candidate.custom_rating
-    field_mapping = {"Tags": "TagItems"}
+    field_mapping = {
+        "Tags": "TagItems",
+        "ExternalIds": "ProviderIds",
+    }
     selected_fields = {field_mapping.get(field, field) for field in fields} if fields else None
     for field in ITEM_UPDATE_DIFF_FIELDS:
         if selected_fields is not None and field not in selected_fields:

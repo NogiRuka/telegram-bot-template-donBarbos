@@ -788,6 +788,13 @@ main > section.grid > div:first-child > div.min-h-0 > div[role='button'] .space-
 .queue-status-fetched { background: #ecfdf5; color: #047857; }
 .queue-status-written { background: #f0fdf4; color: #15803d; }
 .queue-status-failed { background: #fef2f2; color: #b91c1c; }
+main > section.grid > div:nth-child(3) .flex.items-center.justify-end.gap-2.border-t.p-3 > div:first-child > span {
+  font-size: 0;
+}
+main > section.grid > div:nth-child(3) .flex.items-center.justify-end.gap-2.border-t.p-3 > div:first-child > span::after {
+  content: '自动翻译';
+  font-size: 0.875rem;
+}
 main > section.grid > div:first-child > div.min-h-0 > div[role='button'] button.shrink-0.rounded.bg-slate-100 {
   border: 1px solid #bfdbfe;
   background: #eff6ff;
