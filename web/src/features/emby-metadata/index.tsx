@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState, type MouseEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Check, CircleHelp, Database, ExternalLink, RefreshCw, Search, Sparkles, Upload, X } from 'lucide-react'
+import { Check, CircleHelp, Database, ExternalLink, Maximize2, RefreshCw, Search, Sparkles, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { apiClient, type MetadataCandidate, type MetadataQueueItem, type MetadataSearchResult } from '@/lib/api'
 
 const fields = [
@@ -22,6 +22,11 @@ type Routing = { category: string; source: string }
 type ResultGroup = { item: MetadataQueueItem; results: MetadataSearchResult[] }
 const collectionFields = new Set<FieldKey>(['Genres', 'Studios', 'People', 'Tags'])
 const ratingOptions = ['', 'TV-Y', 'APPROVED', 'G', 'E', 'EC', 'TV-G', 'TV-Y7', 'TV-Y7-FV', 'PG', 'TV-PG', 'PG-13', 'T', 'TV-14', 'R', 'M', 'TV-MA', 'NC-17', 'AO', 'RP', 'UR', 'X', 'XXX']
+
+function Checkbox({ checked = false, onCheckedChange, className = '', onClick, disabled = false }: { checked?: boolean; onCheckedChange?: (checked: boolean) => void; className?: string; onClick?: (event: MouseEvent<HTMLDivElement>) => void; disabled?: boolean }) {
+  const id = `check-${useId().replace(/:/g, '')}`
+  return <div className={`checkbox-wrapper ${className}`} onClick={onClick}><input checked={checked} disabled={disabled} type='checkbox' className='check' id={id} onChange={(event) => onCheckedChange?.(event.target.checked)} /><label htmlFor={id} className='label' aria-label='选择'><svg width='45' height='45' viewBox='0 0 95 95' aria-hidden='true'><rect x='30' y='20' width='50' height='50' stroke='black' fill='none' /><g transform='translate(0,-952.36222)'><path d='m 56,963 c -102,122 6,9 7,9 17,-5 -66,69 -38,52 122,-77 -7,14 18,4 29,-11 45,-43 23,-4' stroke='black' strokeWidth='3' fill='none' className='path1' /></g></svg><span className='sr-only'>Checkbox</span></label></div>
+}
 
 function SourceIcon(_props: { source: string; className?: string }) {
   return null
@@ -83,12 +88,14 @@ export function EmbyMetadataWorkspace() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [resultsByItem, setResultsByItem] = useState<Record<string, MetadataSearchResult[]>>({})
+  const [candidatesByItem, setCandidatesByItem] = useState<Record<string, MetadataCandidate>>({})
+  const [beforeItemsByItem, setBeforeItemsByItem] = useState<Record<string, Record<string, unknown>>>({})
   const [candidate, setCandidate] = useState<MetadataCandidate | null>(null)
   const [beforeItem, setBeforeItem] = useState<Record<string, unknown>>({})
   const [selectedResult, setSelectedResult] = useState<string | null>(null)
+  const [selectedResultsByItem, setSelectedResultsByItem] = useState<Record<string, string>>({})
   const [query, setQuery] = useState('')
   const [fieldSelection, setFieldSelection] = useState<string[]>(fields.map(([key]) => key))
-  const overwrite = true
   const [statusFilter, setStatusFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [autoTranslate, setAutoTranslate] = useState(false)
@@ -114,6 +121,16 @@ export function EmbyMetadataWorkspace() {
   const routeFor = (item: MetadataQueueItem): Routing => routing[item.notification_id] ?? { category: item.category, source: item.source }
   const toggle = (id: string) => setSelectedIds((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id])
   const clearActive = () => { setCandidate(null); setSelectedResult(null); setBeforeItem({}) }
+  const activateItem = (notificationId: string) => {
+    setActiveId(notificationId)
+    setCandidate(candidatesByItem[notificationId] ?? null)
+    setBeforeItem(beforeItemsByItem[notificationId] ?? {})
+    setSelectedResult(selectedResultsByItem[notificationId] ?? null)
+  }
+
+  useEffect(() => {
+    if (activeId && candidate) setCandidatesByItem((current) => ({ ...current, [activeId]: candidate }))
+  }, [activeId, candidate])
 
   const searchSelected = async () => {
     if (!selectedIds.length) return toast.error('请先勾选要搜索的项目')
@@ -131,6 +148,9 @@ export function EmbyMetadataWorkspace() {
       const current = response.find((item) => item.notification_id === (activeId ?? selectedIds[0])) ?? response[0]
       setActiveId(current.notification_id)
       setResultsByItem((previous) => ({ ...previous, ...Object.fromEntries(response.map((item) => [item.notification_id, item.results])) }))
+      setCandidatesByItem((previous) => Object.fromEntries(Object.entries(previous).filter(([notificationId]) => !selectedIds.includes(notificationId))))
+      setBeforeItemsByItem((previous) => Object.fromEntries(Object.entries(previous).filter(([notificationId]) => !selectedIds.includes(notificationId))))
+      setSelectedResultsByItem((previous) => Object.fromEntries(Object.entries(previous).filter(([notificationId]) => !selectedIds.includes(notificationId))))
       clearActive()
       toast.success('搜索完成，请在中间栏查看结果', { id: toastId })
     } catch (error) {
@@ -146,6 +166,13 @@ export function EmbyMetadataWorkspace() {
     if (!owner) return
     setActiveId(owner.notification_id)
     setSelectedResult(result.source_id)
+    setSelectedResultsByItem((current) => ({ ...current, [owner.notification_id]: result.source_id }))
+    const cachedCandidate = candidatesByItem[owner.notification_id]
+    if (cachedCandidate && selectedResultsByItem[owner.notification_id] === result.source_id) {
+      setCandidate(cachedCandidate)
+      setBeforeItem(beforeItemsByItem[owner.notification_id] ?? {})
+      return
+    }
     try {
       const response = await apiClient.getMetadataCandidate(owner.notification_id, result.source, result.source_id)
       let nextCandidate = response.candidate
@@ -155,23 +182,51 @@ export function EmbyMetadataWorkspace() {
           nextCandidate = { ...response.candidate, overview: `${translation}\n\n---\n\n${response.candidate.overview}` }
         } catch (error) { toast.error(error instanceof Error ? error.message : '自动翻译失败') }
       }
-      setCandidate(nextCandidate); setBeforeItem(response.before_item)
+      setCandidate(nextCandidate)
+      setCandidatesByItem((current) => ({ ...current, [owner.notification_id]: nextCandidate }))
+      setBeforeItem(response.before_item)
+      setBeforeItemsByItem((current) => ({ ...current, [owner.notification_id]: response.before_item }))
     } catch (error) { toast.error(error instanceof Error ? error.message : '获取详情失败') }
   }
 
   const writeback = async () => {
     if (!active || !candidate) return toast.error('请先选择候选结果')
-    try { await apiClient.writebackMetadata(active.notification_id, { candidate, fields: fieldSelection, overwrite, confirmed: true }); toast.success('元数据已写入 Emby'); void queueQuery.refetch() }
+    try { await apiClient.writebackMetadata(active.notification_id, { candidate, fields: fields.map(([key]) => key), overwrite: true, confirmed: true }); toast.success('元数据已写入 Emby'); void queueQuery.refetch() }
     catch (error) { toast.error(error instanceof Error ? error.message : '写入失败') }
+  }
+
+  const batchWriteback = async () => {
+    const targets = selectedIds.map((notificationId) => ({ notificationId, candidate: candidatesByItem[notificationId] }))
+    const unconfirmed = targets.filter((target) => !target.candidate).map((target) => target.notificationId)
+    const ready = targets.filter((target): target is { notificationId: string; candidate: MetadataCandidate } => Boolean(target.candidate))
+    if (!ready.length) return toast.error('所选项目都还没有确认候选结果')
+    const failed: string[] = []
+    const toastId = toast.loading(`正在写入 ${ready.length} 个项目...`)
+    for (const target of ready) {
+      try {
+        await apiClient.writebackMetadata(target.notificationId, {
+          candidate: target.candidate,
+          fields: fields.map(([key]) => key),
+          overwrite: true,
+          confirmed: true,
+        })
+      } catch {
+        failed.push(target.notificationId)
+      }
+    }
+    void queueQuery.refetch()
+    const summary = `写入成功 ${ready.length - failed.length} 项${failed.length ? `，失败 ${failed.length} 项` : ''}${unconfirmed.length ? `，未确认 ${unconfirmed.length} 项` : ''}`
+    if (failed.length || unconfirmed.length) toast.warning(summary, { id: toastId })
+    else toast.success(summary, { id: toastId })
   }
 
   return <main className='flex min-h-screen flex-col bg-slate-50 text-slate-800'>
     <header className='flex items-start justify-between border-b bg-white px-6 py-4'><div><h1 className='flex items-center gap-2 text-2xl font-bold'>Emby 元数据工作台 <Sparkles className='size-6 text-amber-500' /></h1><p className='mt-1 text-sm text-slate-500'>批量搜索、候选对比与写入 Emby</p></div><div className='flex items-center gap-3'><div className='rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700'><Check className='mr-1 inline size-4' />Emby 连接正常</div><Button variant='outline' onClick={() => void queueQuery.refetch()}><RefreshCw className='size-4' />刷新队列</Button></div></header>
-    <section className='mx-5 mt-3 flex items-center gap-3 rounded-lg border bg-white p-2'><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className='w-32'><SelectValue placeholder='全部状态' /></SelectTrigger><SelectContent><SelectItem value='all'>全部状态</SelectItem><SelectItem value='pending'>待搜索</SelectItem><SelectItem value='fetched'>已抓取</SelectItem></SelectContent></Select><Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className='w-32'><SelectValue placeholder='全部分类' /></SelectTrigger><SelectContent><SelectItem value='all'>全部分类</SelectItem><SelectItem value='japanese_korean'>日韩</SelectItem><SelectItem value='domestic'>国产</SelectItem><SelectItem value='western'>欧美</SelectItem></SelectContent></Select><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder='搜索词 / 番号 / 名称' className='max-w-sm' /><Button variant='outline' onClick={() => setQuery('')}><X className='size-4' />清空</Button></section>
+    <section className='mx-5 mt-2 flex items-center gap-3 rounded-lg border bg-white p-2'><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className='w-32'><SelectValue placeholder='全部状态' /></SelectTrigger><SelectContent><SelectItem value='all'>全部状态</SelectItem><SelectItem value='pending'>待搜索</SelectItem><SelectItem value='fetched'>已抓取</SelectItem></SelectContent></Select><Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className='w-32'><SelectValue placeholder='全部分类' /></SelectTrigger><SelectContent><SelectItem value='all'>全部分类</SelectItem><SelectItem value='japanese_korean'>日韩</SelectItem><SelectItem value='domestic'>国产</SelectItem><SelectItem value='western'>欧美</SelectItem></SelectContent></Select><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder='搜索词 / 番号 / 名称' className='max-w-sm' /><Button variant='outline' onClick={() => setQuery('')}><X className='size-4' />清空</Button></section>
     <section className='grid h-[calc(100vh-158px)] min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,1.15fr)] gap-2 overflow-hidden px-5 py-2'>
-      <CompactQueuePanel items={items} visibleItems={visibleItems} active={active} selectedIds={selectedIds} routeFor={routeFor} searchKeywords={searchKeywords} setSearchKeywords={setSearchKeywords} setRouting={setRouting} setActiveId={(id) => { setActiveId(id); clearActive() }} toggle={toggle} searchSelected={searchSelected} setSelectedIds={setSelectedIds} />
-      <CompactGroupedResultPanel groups={resultGroups} activeId={active?.notification_id} selectedResult={selectedResult} setActiveId={(id) => { setActiveId(id); clearActive() }} selectCandidate={selectCandidate} clearResults={() => active && setResultsByItem((current) => ({ ...current, [active.notification_id]: [] }))} />
-      <MetadataEditorPanel candidate={candidate} beforeItem={beforeItem} autoTranslate={autoTranslate} setAutoTranslate={setAutoTranslate} fieldSelection={fieldSelection} setFieldSelection={setFieldSelection} setCandidate={setCandidate} writeback={writeback} />
+      <CompactQueuePanel items={items} visibleItems={visibleItems} active={active} selectedIds={selectedIds} routeFor={routeFor} searchKeywords={searchKeywords} setSearchKeywords={setSearchKeywords} setRouting={setRouting} setActiveId={activateItem} toggle={toggle} searchSelected={searchSelected} setSelectedIds={setSelectedIds} />
+      <CompactGroupedResultPanel groups={resultGroups} activeId={active?.notification_id} selectedResult={selectedResult} setActiveId={activateItem} selectCandidate={selectCandidate} clearResults={() => active && setResultsByItem((current) => ({ ...current, [active.notification_id]: [] }))} />
+      <MetadataEditorPanel candidate={candidate} beforeItem={beforeItem} autoTranslate={autoTranslate} setAutoTranslate={setAutoTranslate} fieldSelection={fieldSelection} setFieldSelection={setFieldSelection} setCandidate={setCandidate} writeback={writeback} batchWriteback={batchWriteback} batchCount={selectedIds.length} />
     </section>
   </main>
 }
@@ -192,12 +247,12 @@ export function GroupedResultPanel({ groups, activeId, selectedResult, setActive
   return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='flex justify-between border-b px-4 py-3'><b>搜索结果</b><Button size='icon' variant='ghost' onClick={clearResults}><X className='size-4' /></Button></div><div className='min-h-0 flex-1 space-y-2 overflow-y-auto p-3'>{groups.length ? groups.map((group) => <details key={group.item.notification_id} open={group.item.notification_id === activeId} className={`rounded-lg border ${group.item.notification_id === activeId ? 'border-blue-400 bg-blue-50/40' : 'bg-white'}`} onToggle={(event) => { if ((event.currentTarget as HTMLDetailsElement).open) setActiveId(group.item.notification_id) }}><summary className='cursor-pointer list-none px-3 py-2 text-sm font-semibold'>{group.item.item_name}<span className='ml-2 text-xs font-normal text-slate-500'>（{group.results.length} 条结果）</span></summary><div className='space-y-2 border-t p-2'>{group.results.length ? group.results.map((result) => <div key={`${group.item.notification_id}-${result.source}-${result.source_id}`} className='flex items-center gap-2 rounded border bg-white p-2'><div className='flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-100'>{result.image_urls[0] ? <img src={apiClient.metadataImageUrl(result.image_urls[0], result.detail_url)} alt='' className='size-full object-contain' /> : <Database className='size-5 text-slate-400' />}</div><div className='min-w-0 flex-1'><b className='line-clamp-2 text-xs'>{result.title}</b><p className='mt-1 line-clamp-2 text-[11px] text-slate-500'>{result.release_date ?? '日期未知'} · {result.statuses.join(' · ')}</p></div><Button size='sm' className='shrink-0' variant={selectedResult === result.source_id && group.item.notification_id === activeId ? 'default' : 'outline'} onClick={() => { setActiveId(group.item.notification_id); selectCandidate(result, group.item.notification_id) }}>{selectedResult === result.source_id && group.item.notification_id === activeId ? '已选择' : '选择并抓取'} <ExternalLink className='ml-1 size-3' /></Button></div>) : <p className='p-2 text-sm text-slate-500'>该项目没有匹配结果。</p>}</div></details>) : <Empty title='尚未加载搜索结果' text='勾选左侧项目后，点击“批量搜索”。' />}</div></div>
 }
 
-function MetadataEditorPanel({ candidate, beforeItem, autoTranslate, setAutoTranslate, setCandidate, writeback }: { candidate: MetadataCandidate | null; beforeItem: Record<string, unknown>; autoTranslate: boolean; setAutoTranslate: (value: boolean) => void; fieldSelection?: string[]; setFieldSelection?: (value: (current: string[]) => string[]) => void; setCandidate: (value: (current: MetadataCandidate | null) => MetadataCandidate | null) => void; writeback: () => void }) {
-  return <div className='flex min-h-0 min-w-0 flex-col gap-2'><div className='flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm'><span>自动翻译简介</span><Button type='button' size='sm' variant={autoTranslate ? 'default' : 'outline'} onClick={() => setAutoTranslate(!autoTranslate)}>{autoTranslate ? '已开启' : '已关闭'}</Button></div><MetadataEditorPanelLegacy candidate={candidate} beforeItem={beforeItem} setCandidate={setCandidate} writeback={writeback} /></div>
+function MetadataEditorPanel({ candidate, beforeItem, autoTranslate, setAutoTranslate, setCandidate, writeback, batchWriteback, batchCount }: { candidate: MetadataCandidate | null; beforeItem: Record<string, unknown>; autoTranslate: boolean; setAutoTranslate: (value: boolean) => void; fieldSelection?: string[]; setFieldSelection?: (value: (current: string[]) => string[]) => void; setCandidate: (value: (current: MetadataCandidate | null) => MetadataCandidate | null) => void; writeback: () => void; batchWriteback: () => void; batchCount: number }) {
+  return <MetadataEditorPanelLegacy candidate={candidate} beforeItem={beforeItem} autoTranslate={autoTranslate} setAutoTranslate={setAutoTranslate} setCandidate={setCandidate} writeback={writeback} batchWriteback={batchWriteback} batchCount={batchCount} />
 }
 
-function MetadataEditorPanelLegacy({ candidate, beforeItem, setCandidate, writeback }: { candidate: MetadataCandidate | null; beforeItem: Record<string, unknown>; fieldSelection?: string[]; setFieldSelection?: (value: (current: string[]) => string[]) => void; setCandidate: (value: (current: MetadataCandidate | null) => MetadataCandidate | null) => void; writeback: () => void }) {
-  return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='border-b px-4 py-3'><b>编辑元数据</b></div><Tabs defaultValue='basic' className='flex min-h-0 flex-1 flex-col'><TabsList className='justify-start rounded-none border-b bg-white px-3'><TabsTrigger value='basic'>基本信息</TabsTrigger><TabsTrigger value='images'>演员图片</TabsTrigger><TabsTrigger value='history'>操作记录</TabsTrigger></TabsList><TabsContent value='basic' className='min-h-0 flex-1 overflow-y-auto p-4'>{candidate ? <><CoverPreview candidate={candidate} /><div className='grid grid-cols-[76px_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b pb-2 text-xs text-slate-500'><span>字段</span><span>当前 Emby 值</span><span>候选值</span></div><div className='divide-y'>{fields.map(([key, label]) => <FieldRow key={key} field={key} label={label} candidate={candidate} beforeItem={beforeItem} hideCheckbox onChange={(value) => setCandidate((current) => current ? updateCandidate(current, key, value) : current)} />)}</div><details className='mt-4 rounded border bg-amber-50 p-3 text-xs'><summary className='cursor-pointer font-semibold text-amber-800'>解析结果回报（请逐项核对）</summary><div className='mt-2 space-y-1'>{Object.entries(candidate.parse_report ?? candidateValues(candidate)).map(([key, value]) => <div key={key} className='grid grid-cols-[120px_minmax(0,1fr)] gap-2 border-b border-amber-100 py-1'><span className='font-medium text-amber-900'>{key}</span><span className='break-all whitespace-pre-wrap'>{typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—')}</span></div>)}</div></details><div className='mt-4 rounded border bg-slate-50 p-3 text-xs'>数据源：{candidate.source}　编号：{candidate.source_id}<br />产品番号：{candidate.product_number ?? '—'}<br /><a href={candidate.raw_url} target='_blank' rel='noreferrer' className='text-blue-600'>打开来源页</a></div></> : <Empty title='等待候选详情' text='从中栏选择一条搜索结果。' />}</TabsContent><TabsContent value='images' className='min-h-0 flex-1 overflow-y-auto p-4 text-sm text-slate-500'>{candidate ? <div className='space-y-3'>{candidate.people.map((person, index) => <div key={`${person.name}-${index}`} className='flex items-center gap-3 rounded border p-2'><div className='flex size-12 items-center justify-center rounded bg-slate-100'><Database className='size-4 text-slate-400' /></div><span>{person.name}</span></div>)}</div> : <Empty title='等待候选详情' text='从中栏选择一条搜索结果。' />}</TabsContent><TabsContent value='history' className='p-4 text-sm text-slate-500'>写入完成后将在此展示本次字段变更记录。</TabsContent></Tabs><div className='flex justify-end gap-3 border-t p-3'><Button variant='outline' disabled={!candidate}>保存为草稿</Button><Button onClick={writeback} disabled={!candidate}><Upload className='size-4' />确认写入 Emby</Button></div></div>
+function MetadataEditorPanelLegacy({ candidate, beforeItem, autoTranslate, setAutoTranslate, setCandidate, writeback, batchWriteback, batchCount }: { candidate: MetadataCandidate | null; beforeItem: Record<string, unknown>; autoTranslate: boolean; setAutoTranslate: (value: boolean) => void; fieldSelection?: string[]; setFieldSelection?: (value: (current: string[]) => string[]) => void; setCandidate: (value: (current: MetadataCandidate | null) => MetadataCandidate | null) => void; writeback: () => void; batchWriteback: () => void; batchCount: number }) {
+  return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='border-b px-4 py-3'><b>编辑元数据</b></div><Tabs defaultValue='basic' className='flex min-h-0 flex-1 flex-col'><TabsList className='justify-start rounded-none border-b bg-white px-3'><TabsTrigger value='basic'>基本信息</TabsTrigger><TabsTrigger value='images'>演员图片</TabsTrigger><TabsTrigger value='history'>操作记录</TabsTrigger></TabsList><TabsContent value='basic' className='min-h-0 flex-1 overflow-y-auto p-4'>{candidate ? <><CoverPreview candidate={candidate} /><div className='grid grid-cols-[76px_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b pb-2 text-xs text-slate-500'><span>字段</span><span>当前 Emby 值</span><span>候选值</span></div><div className='divide-y'>{fields.map(([key, label]) => <FieldRow key={key} field={key} label={label} candidate={candidate} beforeItem={beforeItem} hideCheckbox onChange={(value) => setCandidate((current) => current ? updateCandidate(current, key, value) : current)} />)}</div><details className='mt-4 rounded border bg-amber-50 p-3 text-xs'><summary className='cursor-pointer font-semibold text-amber-800'>解析结果回报（请逐项核对）</summary><div className='mt-2 space-y-1'>{Object.entries(candidate.parse_report ?? candidateValues(candidate)).map(([key, value]) => <div key={key} className='grid grid-cols-[120px_minmax(0,1fr)] gap-2 border-b border-amber-100 py-1'><span className='font-medium text-amber-900'>{key}</span><span className='break-all whitespace-pre-wrap'>{typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—')}</span></div>)}</div></details><div className='mt-4 rounded border bg-slate-50 p-3 text-xs'>数据源：{candidate.source}　编号：{candidate.source_id}<br />产品番号：{candidate.product_number ?? '—'}<br /><a href={candidate.raw_url} target='_blank' rel='noreferrer' className='text-blue-600'>打开来源页</a></div></> : <Empty title='等待候选详情' text='从中栏选择一条搜索结果。' />}</TabsContent><TabsContent value='images' className='min-h-0 flex-1 overflow-y-auto p-4 text-sm text-slate-500'>{candidate ? <div className='space-y-3'>{candidate.people.map((person, index) => <div key={`${person.name}-${index}`} className='flex items-center gap-3 rounded border p-2'><div className='flex size-12 items-center justify-center rounded bg-slate-100'><Database className='size-4 text-slate-400' /></div><span>{person.name}</span></div>)}</div> : <Empty title='等待候选详情' text='从中栏选择一条搜索结果。' />}</TabsContent><TabsContent value='history' className='p-4 text-sm text-slate-500'>写入完成后将在此展示本次字段变更记录。</TabsContent></Tabs><div className='flex items-center justify-end gap-2 border-t p-3'><div className='mr-auto flex items-center gap-2 text-sm'><span>自动翻译简介</span><Button type='button' size='sm' variant={autoTranslate ? 'default' : 'outline'} onClick={() => setAutoTranslate(!autoTranslate)}>{autoTranslate ? '已开启' : '已关闭'}</Button></div><Button variant='outline' disabled={!candidate}>保存为草稿</Button><Button variant='outline' disabled={batchCount < 2} onClick={batchWriteback}>批量写入 Emby</Button><Button onClick={writeback} disabled={!candidate}><Upload className='size-4' />确认写入 Emby</Button></div></div>
 }
 
 function ResultPanel({ results, active, selectedResult, selectCandidate, clearResults }: { results: MetadataSearchResult[]; active?: MetadataQueueItem; selectedResult: string | null; selectCandidate: (result: MetadataSearchResult) => void; clearResults: () => void }) {
@@ -231,15 +286,32 @@ function TagEditor({ value, onChange }: { value: string; onChange: (value: strin
   return <div className='flex min-h-9 flex-wrap items-center gap-1 rounded border bg-slate-50 p-2'>{values.map((tag) => <span key={tag} className='inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700'>{tag}<button type='button' className='text-blue-500 hover:text-red-600' onClick={() => onChange(values.filter((item) => item !== tag).join('、'))}><X className='size-3' /></button></span>)}<input className='min-w-20 flex-1 bg-transparent text-xs outline-none' value={draft} placeholder={values.length ? '回车添加' : '输入后回车添加'} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); add() } }} /></div>
 }
 
-function OverviewEditor({ value, onChange, onTranslate }: { value: string; onChange: (value: string) => void; onTranslate: (text: string) => Promise<string> }) {
+function OverviewEditorLegacy({ value, currentValue, onChange, onTranslate }: { value: string; currentValue: string; onChange: (value: string) => void; onTranslate: (text: string) => Promise<string> }) {
   const separator = '\n\n---\n\n'
   const splitValue = (input: string) => { const index = input.indexOf(separator); return index >= 0 ? { translation: input.slice(0, index), original: input.slice(index + separator.length) } : { translation: '', original: input } }
   const [parts, setParts] = useState(() => splitValue(value))
   const [translating, setTranslating] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [showFinalValue, setShowFinalValue] = useState(false)
   useEffect(() => setParts(splitValue(value)), [value])
+  useEffect(() => { if (!expanded) setShowFinalValue(false) }, [expanded])
   const commit = (translation: string, original: string) => { setParts({ translation, original }); onChange(translation.trim() ? `${translation.trim()}${separator}${original}` : original) }
   const translate = async () => { if (!parts.original.trim()) return; setTranslating(true); try { commit(await onTranslate(parts.original), parts.original) } catch (error) { toast.error(error instanceof Error ? error.message : '翻译失败') } finally { setTranslating(false) } }
-  return <div className='flex h-full min-h-0 flex-col gap-1'><div className='flex items-center justify-between text-[11px] text-slate-500'><span>翻译</span><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? '翻译中…' : '翻译'}</Button></div><textarea className='min-h-0 flex-1 resize-none rounded border px-2 py-1 text-sm' value={parts.translation} placeholder='点击“翻译”生成中文，也可以手动修改' onChange={(event) => commit(event.target.value, parts.original)} /><div className='py-0.5 text-center text-xs text-slate-400'>---</div><div className='text-[11px] text-slate-500'>原文</div><div className='min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap rounded border bg-slate-50 px-2 py-1 text-sm text-slate-500'>{parts.original || '—'}</div></div>
+  return <><div className='overview-editor flex h-full min-h-0 w-full flex-col gap-1'><div className='flex shrink-0 items-center justify-between text-[11px] text-slate-500'><span>翻译</span><div className='flex items-center gap-1'><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? '翻译中…' : '翻译'}</Button><Button type='button' size='icon' variant='ghost' className='size-6' title='放大查看当前 Emby 值和候选值' onClick={() => setExpanded(true)}><Maximize2 className='size-3.5' /></Button></div></div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm' value={parts.translation} placeholder='点击“翻译”生成中文，也可以手动修改' onChange={(event) => commit(event.target.value, parts.original)} /><div className='shrink-0 text-[11px] text-slate-500'>原文</div><textarea className='overview-editor-textarea resize-none rounded border bg-slate-50 px-2 py-1 text-sm text-slate-500' value={parts.original} placeholder='原文' onChange={(event) => commit(parts.translation, event.target.value)} /></div><Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className='h-[85vh] w-[92vw] max-w-[1500px] sm:max-w-[1500px]'><DialogHeader><div className='flex items-center justify-between pr-8'><DialogTitle>简介对比</DialogTitle><Button type='button' size='sm' variant='outline' onClick={() => setShowFinalValue((visible) => !visible)}>{showFinalValue ? '返回翻译和原文' : '查看最终写入值'}</Button></div></DialogHeader><div className='grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-3'><div className='min-w-0'><div className='mb-1 text-sm font-medium'>当前 Emby 值</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={currentValue} readOnly /></div>{showFinalValue ? <div className='min-w-0 md:col-span-2'><div className='mb-1 text-sm font-medium'>最终写入值</div><textarea className='h-[68vh] w-full resize-none rounded border bg-amber-50 p-3 text-sm' value={value} readOnly /></div> : <><div className='min-w-0'><div className='mb-1 flex items-center justify-between text-sm font-medium'><span>翻译</span><Button type='button' size='sm' variant='outline' className='h-7 px-2 text-xs' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? '翻译中…' : '翻译'}</Button></div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.translation} onChange={(event) => commit(event.target.value, parts.original)} /></div><div className='min-w-0'><div className='mb-1 text-sm font-medium'>原文</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.original} onChange={(event) => commit(parts.translation, event.target.value)} /></div></>}</div></DialogContent></Dialog></>
+}
+
+function OverviewEditor({ value, currentValue, onChange, onTranslate }: { value: string; currentValue: string; onChange: (value: string) => void; onTranslate: (text: string) => Promise<string> }) {
+  const separator = '\n\n---\n\n'
+  const splitValue = (input: string) => { const index = input.indexOf(separator); return index >= 0 ? { translation: input.slice(0, index), original: input.slice(index + separator.length) } : { translation: '', original: input } }
+  const [parts, setParts] = useState(() => splitValue(value))
+  const [translating, setTranslating] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [showFinalValue, setShowFinalValue] = useState(false)
+  useEffect(() => setParts(splitValue(value)), [value])
+  useEffect(() => { if (!expanded) setShowFinalValue(false) }, [expanded])
+  const commit = (translation: string, original: string) => { setParts({ translation, original }); onChange(translation.trim() ? `${translation.trim()}${separator}${original}` : original) }
+  const translate = async () => { if (!parts.original.trim()) return; setTranslating(true); try { commit(await onTranslate(parts.original), parts.original) } catch (error) { toast.error(error instanceof Error ? error.message : '翻译失败') } finally { setTranslating(false) } }
+  return <><div className='overview-editor flex h-full min-h-0 w-full flex-col gap-1'><div className='flex shrink-0 items-center justify-between text-[11px] text-slate-500'><span>翻译</span><div className='flex items-center gap-1'><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? 'AI翻译中…' : 'AI翻译'}</Button><Button type='button' size='icon' variant='ghost' className='size-6' title='放大查看当前 Emby 值和候选值' onClick={() => setExpanded(true)}><Maximize2 className='size-3.5' /></Button></div></div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm' value={parts.translation} placeholder='点击“AI翻译”生成中文，也可以手动修改' onChange={(event) => commit(event.target.value, parts.original)} /><div className='shrink-0 text-[11px] text-slate-500'>原文</div><textarea className='overview-editor-textarea resize-none rounded border bg-slate-50 px-2 py-1 text-sm text-slate-500' value={parts.original} placeholder='原文' onChange={(event) => commit(parts.translation, event.target.value)} /></div><Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className='h-[85vh] w-[92vw] max-w-[1500px] sm:max-w-[1500px]'><DialogHeader><div className='flex items-center justify-between pr-8'><DialogTitle>简介对比</DialogTitle><div className='flex items-center gap-2'><Button type='button' size='sm' variant='outline' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? 'AI翻译中…' : 'AI翻译'}</Button><Button type='button' size='sm' variant='outline' onClick={() => setShowFinalValue((visible) => !visible)}>{showFinalValue ? '返回翻译和原文' : '查看最终写入值'}</Button></div></div></DialogHeader><div className='grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-3'><div className='min-w-0'><div className='mb-1 text-sm font-medium'>当前 Emby 值</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={currentValue} readOnly /></div>{showFinalValue ? <div className='min-w-0 md:col-span-2'><div className='mb-1 text-sm font-medium'>最终写入值</div><textarea className='h-[68vh] w-full resize-none rounded border bg-amber-50 p-3 text-sm' value={value} readOnly /></div> : <><div className='min-w-0'><div className='mb-1 text-sm font-medium'>翻译</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.translation} onChange={(event) => commit(event.target.value, parts.original)} /></div><div className='min-w-0'><div className='mb-1 text-sm font-medium'>原文</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.original} onChange={(event) => commit(parts.translation, event.target.value)} /></div></>}</div></DialogContent></Dialog></>
 }
 
 function FieldRow({ field, label, candidate, beforeItem, checked, onCheck, hideCheckbox = false, onChange }: { field: FieldKey; label: string; candidate: MetadataCandidate; beforeItem: Record<string, unknown>; checked?: boolean; onCheck?: () => void; hideCheckbox?: boolean; onChange: (value: string) => void }) {
@@ -249,9 +321,9 @@ function FieldRow({ field, label, candidate, beforeItem, checked, onCheck, hideC
   const currentText = Array.isArray(current) ? current.map((item) => typeof item === 'object' && item ? String((item as { Name?: string }).Name ?? '') : String(item)).filter(Boolean).join('、') : typeof current === 'object' && current ? JSON.stringify(current, null, 2) : current === undefined || current === null ? '' : String(current)
   const multiline = field === 'Name' || field === 'OriginalTitle' || field === 'Taglines' || field === 'Overview'
   const cellClass = field === 'Overview' ? 'h-52 max-h-52' : multiline ? 'h-20 max-h-20' : 'min-h-9'
-  const editor = collectionFields.has(field) ? <TagEditor value={value} onChange={onChange} /> : field === 'Overview' ? <OverviewEditor value={value} onChange={onChange} onTranslate={(text) => apiClient.translateMetadata(text)} /> : multiline ? <textarea className='h-full max-h-20 w-full resize-none overflow-y-auto rounded border px-2 py-1 text-sm' value={value} onChange={(event) => onChange(event.target.value)} /> : field === 'ExternalIds' ? <ExternalIdsEditor value={value} onChange={onChange} /> : field === 'OfficialRating' || field === 'CustomRating' ? <Select value={value || '__empty__'} onValueChange={(next) => onChange(next === '__empty__' ? '' : next)}><SelectTrigger className='h-9'><SelectValue placeholder='选择评分' /></SelectTrigger><SelectContent>{ratingOptions.map((option) => <SelectItem key={option || '__empty__'} value={option || '__empty__'}>{option || '未设置'}</SelectItem>)}</SelectContent></Select> : <Input className='h-9' type={field === 'CommunityRating' ? 'number' : 'text'} value={value} onChange={(event) => onChange(event.target.value)} />
+  const editor = collectionFields.has(field) ? <TagEditor value={value} onChange={onChange} /> : field === 'Overview' ? <OverviewEditor value={value} currentValue={currentText} onChange={onChange} onTranslate={(text) => apiClient.translateMetadata(text)} /> : multiline ? <textarea className='h-full max-h-20 w-full resize-none overflow-y-auto rounded border px-2 py-1 text-sm' value={value} onChange={(event) => onChange(event.target.value)} /> : field === 'ExternalIds' ? <ExternalIdsEditor value={value} onChange={onChange} /> : field === 'OfficialRating' || field === 'CustomRating' ? <Select value={value || '__empty__'} onValueChange={(next) => onChange(next === '__empty__' ? '' : next)}><SelectTrigger className='h-9'><SelectValue placeholder='选择评分' /></SelectTrigger><SelectContent>{ratingOptions.map((option) => <SelectItem key={option || '__empty__'} value={option || '__empty__'}>{option || '未设置'}</SelectItem>)}</SelectContent></Select> : <Input className='h-9' type={field === 'CommunityRating' ? 'number' : 'text'} value={value} onChange={(event) => onChange(event.target.value)} />
   const gridClass = hideCheckbox ? 'grid-cols-[76px_minmax(0,1fr)_minmax(0,1fr)]' : 'grid-cols-[28px_76px_minmax(0,1fr)_minmax(0,1fr)]'
-  const row = <div className={`grid ${gridClass} items-stretch gap-2 py-2`}>{!hideCheckbox && <Checkbox checked={checked} onCheckedChange={onCheck} />}<label className='self-center text-sm'>{label}</label><div className={`${cellClass} overflow-hidden break-words whitespace-pre-wrap text-sm text-slate-500`}>{field === 'ExternalIds' ? <ExternalIdsView value={current} /> : collectionFields.has(field) ? <ValueChips value={currentText} /> : currentText || '—'}</div><div className={`${cellClass} min-w-0 overflow-hidden`}>{editor}</div></div>
+  const row = <div className={`grid ${gridClass} items-stretch gap-2 py-2`}>{!hideCheckbox && <Checkbox checked={checked} onCheckedChange={onCheck} />}<label className='self-center text-sm'>{label}</label><div className={`${cellClass} ${multiline ? '' : 'flex items-center'} overflow-x-hidden overflow-y-auto break-words whitespace-pre-wrap text-sm text-slate-500`}>{field === 'ExternalIds' ? <ExternalIdsView value={current} /> : collectionFields.has(field) ? <ValueChips value={currentText} /> : currentText || '—'}</div><div className={`${cellClass} ${multiline ? '' : 'flex items-center'} min-w-0 overflow-hidden`}>{editor}</div></div>
   return field === 'SortName' || field === 'ForcedSortName' || field === 'ExternalIds' ? <details className='rounded border-b px-2'><summary className='cursor-pointer py-2 text-sm font-medium text-slate-600'>{label}</summary>{row}</details> : row
 }
 

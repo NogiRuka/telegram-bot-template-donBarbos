@@ -28,7 +28,9 @@ def normalize_search_keyword(value: str) -> str:
 
 
 def is_hunk_ch_product_number(value: str) -> bool:
-    return value.strip().upper().startswith("GV-")
+    normalized = normalize_product_number(value)
+    # HUNK 既可能出现在 Emby 中的 GV-OAV1351，也可能只保存为 OAV1351。
+    return normalized.startswith("GVOAV") or normalized.startswith("OAV")
 
 
 def calculate_confidence(keyword: str, title: str, product_number: str | None) -> float:

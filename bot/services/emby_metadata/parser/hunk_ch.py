@@ -179,7 +179,12 @@ class HunkChParser:
         story = soup.select_one("#product .detail_title img[title='ストーリー']")
         parent = story.parent if isinstance(story, Tag) else None
         paragraph = parent.find_next("p") if isinstance(parent, Tag) else None
-        return cls._clean_text(paragraph.get_text(" ", strip=True)) if isinstance(paragraph, Tag) else None
+        if not isinstance(paragraph, Tag):
+            return None
+        for br in paragraph.find_all("br"):
+            br.replace_with("\n")
+        lines = [cls._clean_text(line) for line in paragraph.get_text("\n").splitlines()]
+        return "\n".join(line for line in lines if line) or None
 
     @staticmethod
     def _unique(values: Iterable[str]) -> list[str]:

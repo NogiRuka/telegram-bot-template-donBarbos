@@ -48,6 +48,31 @@ _SOURCES_BY_CATEGORY: dict[str, dict[str, type[MetadataSource]]] = {
 }
 
 
+def _source_for_product_number(category: str, product_number: str | None) -> str:
+    """根据分类和番号匹配默认数据源；新增规则统一放在这里。"""
+    sources = _SOURCES_BY_CATEGORY.get(category, {})
+    if not sources:
+        return "未配置"
+    if product_number and is_hunk_ch_product_number(product_number):
+        if HunkChSource.name in sources:
+            return HunkChSource.name
+    return next(iter(sources), "未配置")
+
+
+def _source_for_search(
+    category: str,
+    keyword: str,
+    requested_source: str,
+    fallback_source: str,
+) -> str:
+    """为实际搜索选择数据源；番号规则优先于界面上的普通默认值。"""
+    product_number = extract_product_number(keyword) or keyword.strip() or None
+    matched_source = _source_for_product_number(category, product_number)
+    if product_number and is_hunk_ch_product_number(product_number):
+        return matched_source
+    return requested_source or fallback_source or matched_source
+
+
 def _path_from_payload(notification: LibraryNewNotificationModel, current_item: dict[str, Any] | None = None) -> str:
     """兼容不同 Webhook 载荷结构，提取 Emby 媒体路径。"""
     item = current_item or (notification.payload.get("Item", {}) if notification.payload else {})
@@ -91,15 +116,12 @@ def _queue_item(
     if "日韩" in path:
         category = "japanese_korean"
         category_label = "日韩"
-        source = CkDownloadSource.name
     elif "欧美" in path:  # 假设路径中包含“欧美”字样则为欧美分类
         category = "western"
         category_label = "欧美"
-        source = "未配置"
     else:
         category = "domestic"
         category_label = "国产"
-        source = "未配置"
 
     item_name = str(
         (current_item or {}).get("Name")
@@ -109,8 +131,7 @@ def _queue_item(
     )
     extracted_number = extract_product_number(item_name)
     search_keyword = normalize_search_keyword(extracted_number or item_name)
-    if extracted_number and is_hunk_ch_product_number(extracted_number):
-        source = HunkChSource.name
+    source = _source_for_product_number(category, extracted_number)
     return {
         "notification_id": str(notification.id),
         "item_id": notification.item_id or "",
@@ -189,7 +210,12 @@ async def search_queue(selections: list[dict[str, str]]) -> list[dict[str, Any]]
         notification_id = selection["notification_id"]
         item = _queue_item(await _get_notification(notification_id))
         keyword = normalize_search_keyword(selection["keyword"].strip() or item["search_keyword"])
-        source_name = HunkChSource.name if is_hunk_ch_product_number(selection["keyword"]) else (selection["source"] or item["source"])
+        source_name = _source_for_search(
+            selection["category"],
+            selection["keyword"] or item["search_keyword"],
+            selection["source"],
+            item["source"],
+        )
         source = _resolve_source(selection["category"], source_name)
         try:
             results = await source.search(keyword)

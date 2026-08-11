@@ -127,7 +127,10 @@ class MensrushParser:
             if cls._clean_text(heading.get_text(" ", strip=True)) == "作品詳細":
                 paragraph = heading.find_next_sibling("p")
                 if isinstance(paragraph, Tag):
-                    return cls._clean_text(paragraph.get_text(" ", strip=True)) or None
+                    for br in paragraph.find_all("br"):
+                        br.replace_with("\n")
+                    lines = [cls._clean_text(line) for line in paragraph.get_text("\n").splitlines()]
+                    return "\n".join(line for line in lines if line) or None
         return None
 
     @classmethod

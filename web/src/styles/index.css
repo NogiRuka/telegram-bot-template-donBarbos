@@ -97,6 +97,11 @@ main > section.grid > div:first-child > div.min-h-0 > div[role='button'] {
   overflow: hidden;
 }
 
+/* 待处理项固定高度，封面占较小比例，避免不同项目把列表撑成不同高度。 */
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] {
+  grid-template-columns: 36px minmax(0, .75fr) minmax(0, 1.25fr);
+}
+
 main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > :first-child {
   grid-column: 1;
   grid-row: 1 / span 3;
@@ -113,7 +118,6 @@ main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:n
   grid-row: 1 / span 3;
   width: 100%;
   height: 100%;
-  min-height: 180px;
   align-self: stretch;
   object-fit: contain;
 }
@@ -123,7 +127,6 @@ main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:n
   grid-row: 1;
   min-width: 0;
   align-self: start;
-  padding-right: 3.5rem;
 }
 
 main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(3) {
@@ -147,6 +150,161 @@ main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > span:
   position: absolute;
   right: 12px;
   top: 12px;
+}
+
+/* 待处理列表的选择区域占满 item 左侧整块区域，勾选图标仍保持居中。 */
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > [data-slot='checkbox'] {
+  width: 100%;
+  height: 100%;
+  min-height: 2rem;
+  align-self: stretch;
+  justify-self: stretch;
+  border-radius: 0.375rem;
+}
+
+/* Uiverse Checkbox: https://uiverse.io/PriyanshuGupta28/thin-hound-49 */
+.checkbox-wrapper input[type='checkbox'] {
+  visibility: hidden;
+  display: none;
+}
+.checkbox-wrapper,
+.checkbox-wrapper *,
+.checkbox-wrapper ::after,
+.checkbox-wrapper ::before {
+  box-sizing: border-box;
+  user-select: none;
+}
+.checkbox-wrapper {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 45px;
+  height: 45px;
+}
+.checkbox-wrapper .label {
+  display: block;
+  cursor: pointer;
+  width: 45px;
+  height: 45px;
+}
+.checkbox-wrapper .check {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  opacity: 0;
+}
+.checkbox-wrapper .label svg {
+  display: block;
+  vertical-align: middle;
+}
+.checkbox-wrapper .path1 {
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  transition: 0.5s stroke-dashoffset;
+  opacity: 0;
+}
+.checkbox-wrapper .check:checked + .label svg .path1 {
+  stroke-dashoffset: 0;
+  opacity: 1;
+}
+main > section.grid > div:first-child > div:nth-child(2) > .checkbox-wrapper {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  z-index: 4;
+  transform: translateY(-50%);
+}
+main > section.grid > div:first-child > div:nth-child(2) {
+  position: relative;
+  padding-right: 3.25rem;
+}
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > .checkbox-wrapper {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  z-index: 4;
+  transform: translateY(-50%);
+}
+
+/* 将每个待处理项的选择框移到 item 右侧。 */
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 1.25fr);
+  padding-right: 3.25rem;
+}
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > :first-child {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  bottom: auto;
+  z-index: 4;
+  min-height: 2rem;
+  transform: translateY(-50%);
+  grid-column: auto;
+  grid-row: auto;
+}
+
+/* 顶部全选框也放到最右侧，并垂直居中填充选择区域。 */
+main > section.grid > div:first-child > div.min-h-0 > div:nth-child(2) {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 1.25fr) 2rem;
+}
+main > section.grid > div:first-child > div.min-h-0 > div:nth-child(2) > [data-slot='checkbox'] {
+  grid-column: 3;
+  grid-row: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 1.75rem;
+  justify-self: stretch;
+  align-self: stretch;
+}
+main > section.grid > div:first-child > div.min-h-0 > div:nth-child(2) > span:first-of-type {
+  grid-column: 1;
+}
+main > section.grid > div:first-child > div.min-h-0 > div:nth-child(2) > span:last-of-type {
+  grid-column: 2;
+}
+
+/* 实际 DOM 中顶部表头是队列面板的第二个直接子节点。 */
+main > section.grid > div:first-child > div:nth-child(2) {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 1.25fr) 2rem;
+}
+main > section.grid > div:first-child > div:nth-child(2) > [data-slot='checkbox'] {
+  grid-column: 3;
+  grid-row: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 1.75rem;
+  justify-self: stretch;
+  align-self: stretch;
+}
+main > section.grid > div:first-child > div:nth-child(2) > span:first-of-type {
+  grid-column: 1;
+}
+main > section.grid > div:first-child > div:nth-child(2) > span:last-of-type {
+  grid-column: 2;
+}
+
+/* 覆盖旧的整行高度规则，让 item 选择框固定为居中的小方框。 */
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > [data-slot='checkbox'] {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  bottom: auto;
+  width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+  transform: translateY(-50%);
+  align-self: auto;
+  justify-self: auto;
+}
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) > img,
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) > div:first-child {
+  grid-column: 1;
+}
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) > div:last-child,
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(3) > input,
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(3) > div {
+  grid-column: 2;
 }
 
 /* 当前 Emby 简介最多显示约五行，超出内容在字段内部滚动。 */
@@ -180,6 +338,7 @@ main > section.grid > div:nth-child(3) .divide-y > div > div:last-child [data-sl
 /* 保留滚轮滚动能力，但隐藏详情编辑区右侧的外层滚动条。 */
 main > section.grid > div:nth-child(3) [data-slot='tabs-content'] {
   scrollbar-width: none;
+  overflow-y: auto;
 }
 main > section.grid > div:nth-child(3) [data-slot='tabs-content']::-webkit-scrollbar {
   display: none;
@@ -305,6 +464,63 @@ main > section.grid > div:nth-child(3) textarea::-webkit-scrollbar {
   display: none;
 }
 
+/* 简介的翻译和原文各占一块多行编辑区域，避免被通用 textarea 高度规则压成单行。 */
+main > section.grid > div:nth-child(3) .overview-editor {
+  height: 100% !important;
+  width: 100% !important;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 1.5rem minmax(0, 1fr) 1.5rem minmax(0, 1fr);
+}
+main > section.grid > div:nth-child(3) .overview-editor-textarea {
+  display: block;
+  width: 100%;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  flex: none;
+  overflow-y: auto !important;
+  scrollbar-width: none;
+}
+main > section.grid > div:nth-child(3) .overview-editor-textarea::-webkit-scrollbar {
+  display: none;
+}
+
+/* 简介行固定高度，翻译和原文两个编辑框平分右侧高度。 */
+main > section.grid > div:nth-child(3) .divide-y > div:nth-child(4),
+main > section.grid > div:nth-child(3) .divide-y > div:nth-child(4) > div {
+  min-height: 18rem !important;
+}
+main > section.grid > div:nth-child(3) .divide-y > div:nth-child(4) > div:nth-child(4) {
+  display: block;
+  overflow: visible;
+}
+main > section.grid > div:nth-child(3) .divide-y > div:nth-child(4) > div:nth-child(3) {
+  overflow-y: auto;
+}
+
+/* 多行字段只在字段自身滚动，编辑面板外层不显示滚动条。 */
+main > section.grid > div:nth-child(3) .divide-y > div > div:nth-child(3),
+main > section.grid > div:nth-child(3) .divide-y > div > div:nth-child(4),
+main > section.grid > div:nth-child(3) .divide-y > div > div:nth-child(3) textarea,
+main > section.grid > div:nth-child(3) .divide-y > div > div:nth-child(4) textarea {
+  scrollbar-width: none;
+}
+main > section.grid > div:nth-child(3) .divide-y > div > div:nth-child(3)::-webkit-scrollbar,
+main > section.grid > div:nth-child(3) .divide-y > div > div:nth-child(4)::-webkit-scrollbar,
+main > section.grid > div:nth-child(3) .divide-y > div > div:nth-child(3) textarea::-webkit-scrollbar,
+main > section.grid > div:nth-child(3) .divide-y > div > div:nth-child(4) textarea::-webkit-scrollbar {
+  display: none;
+}
+
+/* 队列封面不裁剪，并在固定 item 高度内居中。 */
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) > img,
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > div:nth-child(2) > div:first-child {
+  width: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
 /* 名称候选值与简介使用相同的多行编辑框尺寸。 */
 main > section.grid > div:nth-child(3) .divide-y > div:first-child > div:last-child > input {
   height: 5rem !important;
@@ -312,4 +528,223 @@ main > section.grid > div:nth-child(3) .divide-y > div:first-child > div:last-ch
   overflow: hidden;
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
+}
+
+/* 自动翻译：使用滑块开关样式，保留原有按钮的点击逻辑。 */
+main > section.grid > div:nth-child(3) > div:last-child .border-t.p-3 > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+main > section.grid > div:nth-child(3) > div:last-child .border-t.p-3 > div:first-child > button {
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  color: transparent;
+  font-size: 0;
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 12%);
+}
+main > section.grid > div:nth-child(3) > div:last-child .border-t.p-3 > div:first-child > button::before {
+  position: absolute;
+  top: 0.18rem;
+  left: 0.18rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 9999px;
+  background: white;
+  content: '';
+  box-shadow: 0 1px 3px rgb(15 23 42 / 30%);
+  transition: transform 180ms ease;
+}
+main > section.grid > div:nth-child(3) > div:last-child .border-t.p-3 > div:first-child > button.bg-primary {
+  border-color: #0f766e;
+  background: #14b8a6;
+}
+main > section.grid > div:nth-child(3) > div:last-child .border-t.p-3 > div:first-child > button.bg-primary::before {
+  transform: translateX(1.2rem);
+}
+
+/* 来源链接固定在编辑器底部左侧，不再占用字段滚动区域。 */
+main > section.grid > div:nth-child(3) > div:last-child {
+  position: relative;
+}
+main > section.grid > div:nth-child(3) > div:last-child .mt-4.rounded.border.bg-slate-50.p-3.text-xs {
+  position: absolute;
+  bottom: 0.8rem;
+  right: 17rem;
+  left: auto;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0;
+}
+main > section.grid > div:nth-child(3) > div:last-child .mt-4.rounded.border.bg-slate-50.p-3.text-xs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  background: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* 统一表头与 item 的两列布局，保证上下字段严格对齐。 */
+main > section.grid > div:first-child > div:nth-child(2),
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 1.25fr) 2rem !important;
+  column-gap: 0.5rem;
+  padding-right: 0.5rem;
+}
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] {
+}
+
+/* 选择框采用 Uiverse checkbox 的浅灰圆角卡片风格。 */
+main > section.grid > div:first-child > div:nth-child(2) > [data-slot='checkbox'],
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > [data-slot='checkbox'] {
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  min-height: 1.5rem !important;
+  border: 2px solid #e8e8e8;
+  border-radius: 0.35rem;
+  background: #e8e8e8;
+  box-shadow: 3px 3px 6px rgb(0 0 0 / 12%), -3px -3px 6px rgb(255 255 255 / 85%);
+}
+main > section.grid > div:first-child > div:nth-child(2) > [data-slot='checkbox'][data-state='checked'],
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > [data-slot='checkbox'][data-state='checked'] {
+  border-color: #212121;
+  background: #212121;
+  color: white;
+  box-shadow: inset 2px 2px 4px rgb(0 0 0 / 30%), inset -2px -2px 4px rgb(255 255 255 / 12%);
+}
+
+/* 右侧 item 选择框保持在同一列的垂直中心。 */
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > [data-slot='checkbox'] {
+  top: 50% !important;
+  right: 0.5rem !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
+}
+
+/* 兼容实际渲染层级：底部栏直接使用其稳定 class 定位。 */
+main > section.grid > div:nth-child(3) .flex.items-center.justify-end.gap-2.border-t.p-3 > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+main > section.grid > div:nth-child(3) .flex.items-center.justify-end.gap-2.border-t.p-3 > div:first-child > button {
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  color: transparent;
+  font-size: 0;
+}
+main > section.grid > div:nth-child(3) .flex.items-center.justify-end.gap-2.border-t.p-3 > div:first-child > button::before {
+  position: absolute;
+  top: 0.18rem;
+  left: 0.18rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 9999px;
+  background: white;
+  content: '';
+  box-shadow: 0 1px 3px rgb(15 23 42 / 30%);
+  transition: transform 180ms ease;
+}
+main > section.grid > div:nth-child(3) .flex.items-center.justify-end.gap-2.border-t.p-3 > div:first-child > button.bg-primary {
+  border-color: #0f766e;
+  background: #14b8a6;
+}
+main > section.grid > div:nth-child(3) .flex.items-center.justify-end.gap-2.border-t.p-3 > div:first-child > button.bg-primary::before {
+  transform: translateX(1.2rem);
+}
+
+/* 队列选择框缩小到与行高匹配，避免右侧出现过宽的空白选择列。 */
+main > section.grid > div:first-child > div:nth-child(2),
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 1.25fr) 2rem !important;
+}
+main > section.grid > div:first-child > div:nth-child(2) > .checkbox-wrapper,
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > .checkbox-wrapper {
+  width: 2rem;
+  height: 2rem;
+}
+main > section.grid > div:first-child > div:nth-child(2) > .checkbox-wrapper .label,
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > .checkbox-wrapper .label {
+  width: 2rem;
+  height: 2rem;
+}
+main > section.grid > div:first-child > div:nth-child(2) > .checkbox-wrapper svg,
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > .checkbox-wrapper svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* 点击区域覆盖整列，视觉上的小方框仍保持居中。 */
+main > section.grid > div:first-child > div:nth-child(2) > .checkbox-wrapper,
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > .checkbox-wrapper {
+  top: 0 !important;
+  right: 0 !important;
+  width: 2rem !important;
+  height: 100% !important;
+  margin-right: 0.5rem;
+  transform: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+main > section.grid > div:first-child > div:nth-child(2) > .checkbox-wrapper .label,
+main > section.grid > div:first-child > div.min-h-0 > div[role='button'] > .checkbox-wrapper .label {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+main > section.grid > div:nth-child(3) {
+  position: relative;
+}
+main > section.grid > div:nth-child(3) .mt-4.rounded.border.bg-slate-50.p-3.text-xs {
+  position: absolute;
+  bottom: 0.8rem;
+  right: 17rem;
+  left: auto;
+  z-index: 3;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0;
+}
+main > section.grid > div:nth-child(3) .mt-4.rounded.border.bg-slate-50.p-3.text-xs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  background: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* 将来源页按钮视觉上放到编辑元数据标题栏最右侧。 */
+main > section.grid > div:nth-child(3) .mt-4.rounded.border.bg-slate-50.p-3.text-xs {
+  top: 0.45rem;
+  right: 0.75rem;
+  bottom: auto;
 }

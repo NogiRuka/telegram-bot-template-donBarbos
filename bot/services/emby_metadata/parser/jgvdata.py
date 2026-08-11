@@ -121,7 +121,7 @@ class JgvdataParser:
             return values
         key: str | None = None
         for node in definition.find_all(["dt", "dd"], recursive=False):
-            text = cls._clean_text(node.get_text(" ", strip=True))
+            text = cls._multiline_text(node) if node.name == "dd" else cls._clean_text(node.get_text(" ", strip=True))
             if node.name == "dt":
                 key = text.rstrip(":")
             elif key and text:
@@ -169,6 +169,11 @@ class JgvdataParser:
     @staticmethod
     def _clean_text(value: str) -> str:
         return " ".join(value.split())
+
+    @staticmethod
+    def _multiline_text(node: Tag) -> str:
+        lines = [" ".join(line.split()) for line in node.get_text("\n").splitlines()]
+        return "\n".join(line for line in lines if line)
 
     @staticmethod
     def _parse_date(value: str) -> date | None:

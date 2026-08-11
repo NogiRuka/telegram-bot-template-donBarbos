@@ -260,7 +260,10 @@ class ApiClient {
 
   async translateMetadata(text: string): Promise<string> {
     const response = await this.request<{ translation: string }>({ method: 'POST', url: '/emby/metadata/translate', data: { text } })
-    return response.translation
+    if (!response.translation?.trim()) {
+      throw new Error('翻译接口返回为空，请检查后端服务和 XAI 配置')
+    }
+    return response.translation.trim()
   }
 
   metadataImageUrl(url: string, referer: string): string {
