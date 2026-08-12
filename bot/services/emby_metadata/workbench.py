@@ -106,6 +106,32 @@ def _before_item_image_url(item_id: str, before_item: dict[str, Any]) -> str | N
     return f"{base_url.rstrip('/')}/Items/{item_id}/Images/Primary?{urlencode(params)}"
 
 
+def _before_person_image_url(person: dict[str, Any]) -> str | None:
+    """为当前 Emby 演员生成可直接展示的主图地址。"""
+    person_id = person.get("Id") or person.get("id")
+    tag = person.get("PrimaryImageTag")
+    base_url = settings.get_emby_base_url()
+    if not (person_id and tag and base_url):
+        return None
+    params = {"tag": str(tag)}
+    if settings.EMBY_API_KEY:
+        params["api_key"] = settings.EMBY_API_KEY
+    return f"{base_url.rstrip('/')}/Items/{person_id}/Images/Primary?{urlencode(params)}"
+
+
+def _with_person_image_urls(before_item: dict[str, Any]) -> dict[str, Any]:
+    """只为工作台响应补充图片地址，不改变后续写入用的原始快照。"""
+    response_item = dict(before_item)
+    people = before_item.get("People")
+    if isinstance(people, list):
+        response_item["People"] = [
+            {**person, **({"ImageUrl": image_url} if (image_url := _before_person_image_url(person)) else {})}
+            if isinstance(person, dict) else person
+            for person in people
+        ]
+    return response_item
+
+
 def _item_emby_url(item_id: str | None) -> str | None:
     """生成 Emby Web 中对应 Item 的详情页地址。"""
     base_url = settings.get_emby_base_url()
@@ -274,7 +300,7 @@ async def get_candidate_preview(
         notification.item_id,
         preview["before_item"],
     )
-    return {"candidate": candidate.model_dump(mode="json"), "before_item": preview["before_item"]}
+    return {"candidate": candidate.model_dump(mode="json"), "before_item": _with_person_image_urls(preview["before_item"])}
 
 
 async def proxy_source_image(url: str, referer: str | None = None) -> tuple[bytes, str]:

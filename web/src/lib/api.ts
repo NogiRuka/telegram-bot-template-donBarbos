@@ -78,6 +78,15 @@ export interface DashboardStats {
 }
 
 export interface MetadataNamedItem { name: string; id?: string }
+export interface MetadataPerson extends MetadataNamedItem {
+  role?: string
+  type?: string
+  image_url?: string
+  image_data?: string
+  image_path?: string
+  ImageUrl?: string
+  PrimaryImageTag?: string
+}
 export interface MetadataSearchResult {
   source: string; source_id: string; title: string; release_date?: string; price_yen?: number
   statuses: string[]; image_urls: string[]; detail_url: string
@@ -88,7 +97,7 @@ export interface MetadataCandidate {
   sort_name: string; forced_sort_name: string
   overview?: string; year?: number; release_date?: string; taglines?: string
   community_rating?: number; official_rating?: string; custom_rating?: string
-  genres: MetadataNamedItem[]; studios: MetadataNamedItem[]; people: MetadataNamedItem[]; tags: MetadataNamedItem[]
+  genres: MetadataNamedItem[]; studios: MetadataNamedItem[]; people: MetadataPerson[]; tags: MetadataNamedItem[]
   external_ids: Record<string, string>; raw_url: string
   poster_url?: string; current_image_url?: string
   parse_report?: Record<string, unknown>

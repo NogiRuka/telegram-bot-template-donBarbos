@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { apiClient, type MetadataCandidate, type MetadataQueueItem, type MetadataSearchResult } from '@/lib/api'
+import { apiClient, type MetadataCandidate, type MetadataPerson, type MetadataQueueItem, type MetadataSearchResult } from '@/lib/api'
 
 const fields = [
   ['Name', '名称'], ['OriginalTitle', '原标题'], ['Taglines', '宣传语'], ['Overview', '简介'],
@@ -45,7 +45,11 @@ function candidateValues(candidate: MetadataCandidate): Record<FieldKey, string>
   }
 }
 
-function updateCandidate(candidate: MetadataCandidate, field: FieldKey, value: string): MetadataCandidate {
+type FieldValue = string | MetadataPerson[]
+
+function updateCandidate(candidate: MetadataCandidate, field: FieldKey, value: FieldValue): MetadataCandidate {
+  if (field === 'People' && Array.isArray(value)) return { ...candidate, people: value }
+  if (typeof value !== 'string') return candidate
   const items = value.split(/[、,，]/).map((name) => name.trim()).filter(Boolean).map((name) => ({ name }))
   if (field === 'Name') return { ...candidate, title: value }
   if (field === 'OriginalTitle') return { ...candidate, original_title: value }
@@ -355,16 +359,74 @@ function OverviewEditor({ value, currentValue, title, onChange, onTranslate, onT
   return <><div className='overview-editor flex h-full min-h-0 w-full flex-col gap-1'><div className='flex shrink-0 items-center justify-between text-[11px] text-slate-500'><span>翻译</span><div className='flex items-center gap-1'><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={titleTranslating || !title.trim()} onClick={() => void translateTitle()}>{titleTranslating ? '标题翻译中…' : '标题翻译'}</Button><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? 'AI翻译中…' : 'AI翻译'}</Button><Button type='button' size='icon' variant='ghost' className='size-6' title='放大查看当前 Emby 值和候选值' onClick={() => setExpanded(true)}><Maximize2 className='size-3.5' /></Button></div></div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm' value={parts.translation} placeholder='点击“AI翻译”生成中文，也可以手动修改' onChange={(event) => commit(event.target.value, parts.original)} /><div className='shrink-0 text-[11px] text-slate-500'>原文</div><textarea className='overview-editor-textarea resize-none rounded border bg-slate-50 px-2 py-1 text-sm text-slate-500' value={parts.original} placeholder='原文' onChange={(event) => commit(parts.translation, event.target.value)} /></div><Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className='h-[85vh] w-[92vw] max-w-[1500px] sm:max-w-[1500px]'><DialogHeader><div className='flex items-center justify-between pr-8'><DialogTitle>简介对比</DialogTitle><div className='flex items-center gap-2'><Button type='button' size='sm' variant='outline' disabled={titleTranslating || !title.trim()} onClick={() => void translateTitle()}>{titleTranslating ? '标题翻译中…' : '标题翻译'}</Button><Button type='button' size='sm' variant='outline' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? 'AI翻译中…' : 'AI翻译'}</Button><Button type='button' size='sm' variant='outline' onClick={() => setShowFinalValue((visible) => !visible)}>{showFinalValue ? '返回翻译和原文' : '查看最终写入值'}</Button></div></div></DialogHeader><div className='grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-3'><div className='min-w-0'><div className='mb-1 text-sm font-medium'>当前 Emby 值</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={currentValue} readOnly /></div>{showFinalValue ? <div className='min-w-0 md:col-span-2'><div className='mb-1 text-sm font-medium'>最终写入值</div><textarea className='h-[68vh] w-full resize-none rounded border bg-amber-50 p-3 text-sm' value={value} readOnly /></div> : <><div className='min-w-0'><div className='mb-1 text-sm font-medium'>翻译</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.translation} onChange={(event) => commit(event.target.value, parts.original)} /></div><div className='min-w-0'><div className='mb-1 text-sm font-medium'>原文</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.original} onChange={(event) => commit(parts.translation, event.target.value)} /></div></>}</div></DialogContent></Dialog></>
 }
 
-function FieldRow({ field, label, candidate, beforeItem, checked, onCheck, hideCheckbox = false, onChange }: { field: FieldKey; label: string; candidate: MetadataCandidate; beforeItem: Record<string, unknown>; checked?: boolean; onCheck?: () => void; hideCheckbox?: boolean; onChange: (value: string) => void }) {
+type PersonCardData = MetadataPerson & { image_url?: string; ImageUrl?: string; PrimaryImageUrl?: string }
+
+function normalizePeople(value: unknown): PersonCardData[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const person = item as Record<string, unknown>
+    const name = String(person.Name ?? person.name ?? '').trim()
+    if (!name) return []
+    return [{
+      name,
+      id: typeof person.Id === 'string' ? person.Id : typeof person.id === 'string' ? person.id : undefined,
+      role: typeof person.Role === 'string' ? person.Role : typeof person.role === 'string' ? person.role : undefined,
+      type: typeof person.Type === 'string' ? person.Type : typeof person.type === 'string' ? person.type : undefined,
+      image_url: typeof person.ImageUrl === 'string' ? person.ImageUrl : typeof person.image_url === 'string' ? person.image_url : undefined,
+      ImageUrl: typeof person.ImageUrl === 'string' ? person.ImageUrl : undefined,
+      PrimaryImageUrl: typeof person.PrimaryImageUrl === 'string' ? person.PrimaryImageUrl : undefined,
+      PrimaryImageTag: typeof person.PrimaryImageTag === 'string' ? person.PrimaryImageTag : undefined,
+    }]
+  })
+}
+
+function PersonImage({ person, referer }: { person: PersonCardData; referer?: string }) {
+  const source = person.ImageUrl ?? person.PrimaryImageUrl ?? person.image_url
+  const imageUrl = source && /^https?:\/\//i.test(source) ? apiClient.metadataImageUrl(source, referer ?? '') : source
+  return <div className='flex h-32 w-24 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-100'>
+    {imageUrl ? <img src={imageUrl} alt={person.name} className='size-full object-cover' /> : <Database className='size-7 text-slate-300' />}
+  </div>
+}
+
+function PersonCard({ person, referer, removable, onRemove }: { person: PersonCardData; referer?: string; removable?: boolean; onRemove?: () => void }) {
+  return <div className='relative flex w-36 shrink-0 flex-col items-center gap-2 rounded-lg border bg-white p-2 shadow-sm'>
+    {removable && <button type='button' aria-label={`移除${person.name}`} className='absolute right-1 top-1 z-10 rounded-full bg-white p-1 text-slate-500 shadow hover:text-red-500' onClick={onRemove}><X className='size-3.5' /></button>}
+    <div className='max-w-full truncate px-1 text-sm font-semibold' title={person.name}>{person.name}</div>
+    <PersonImage person={person} referer={referer} />
+  </div>
+}
+
+function PeoplePreview({ people, referer, editable, onChange }: { people: PersonCardData[]; referer?: string; editable?: boolean; onChange?: (people: MetadataPerson[]) => void }) {
+  const [name, setName] = useState('')
+  const addPerson = () => {
+    const nextName = name.trim()
+    if (!nextName || !onChange) return
+    onChange([...people, { name: nextName, type: 'Actor' }])
+    setName('')
+  }
+  return <div className='flex min-h-52 w-full min-w-0 gap-3 overflow-x-auto overflow-y-hidden rounded-lg border border-slate-200 bg-slate-50/60 p-3'>
+    {people.map((person, index) => <PersonCard key={`${person.name}-${person.id ?? index}`} person={person} referer={referer} removable={editable} onRemove={() => onChange?.(people.filter((_, itemIndex) => itemIndex !== index))} />)}
+    {editable && <div className='flex w-36 shrink-0 flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-white p-3'>
+      <Input value={name} placeholder='输入演员名字' className='h-8 text-xs' onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addPerson() } }} />
+      <button type='button' className='flex flex-col items-center gap-1 text-sm text-blue-600 hover:text-blue-700 disabled:text-slate-300' disabled={!name.trim()} onClick={addPerson}><span className='text-4xl font-light leading-none'>＋</span><span>添加演员</span></button>
+    </div>}
+    {!people.length && !editable && <span className='self-center text-sm text-slate-400'>暂无演员</span>}
+  </div>
+}
+
+function FieldRow({ field, label, candidate, beforeItem, checked, onCheck, hideCheckbox = false, onChange }: { field: FieldKey; label: string; candidate: MetadataCandidate; beforeItem: Record<string, unknown>; checked?: boolean; onCheck?: () => void; hideCheckbox?: boolean; onChange: (value: FieldValue) => void }) {
   const value = candidateValues(candidate)[field]
   const embyField: Record<FieldKey, string> = { Name: 'Name', OriginalTitle: 'OriginalTitle', Taglines: 'Taglines', Overview: 'Overview', ProductionYear: 'ProductionYear', PremiereDate: 'PremiereDate', Genres: 'Genres', Studios: 'Studios', People: 'People', Tags: 'TagItems', CommunityRating: 'CommunityRating', OfficialRating: 'OfficialRating', CustomRating: 'CustomRating', SortName: 'SortName', ForcedSortName: 'ForcedSortName', ExternalIds: 'ProviderIds' }
   const current = beforeItem[embyField[field]]
   const currentText = Array.isArray(current) ? current.map((item) => typeof item === 'object' && item ? String((item as { Name?: string }).Name ?? '') : String(item)).filter(Boolean).join('、') : typeof current === 'object' && current ? JSON.stringify(current, null, 2) : current === undefined || current === null ? '' : String(current)
   const multiline = field === 'Name' || field === 'OriginalTitle' || field === 'Taglines' || field === 'Overview'
-  const cellClass = field === 'Overview' ? 'h-52 max-h-52' : multiline ? 'h-20 max-h-20' : 'min-h-9'
-  const editor = collectionFields.has(field) ? <TagEditor value={value} onChange={onChange} /> : field === 'Overview' ? <OverviewEditor value={value} currentValue={currentText} title={candidate.title} onChange={onChange} onTranslate={(text) => apiClient.translateMetadata(text)} onTitleTranslated={(translatedTitle) => window.dispatchEvent(new CustomEvent('metadata-title-translated', { detail: translatedTitle }))} /> : multiline ? <textarea className='h-full max-h-20 w-full resize-none overflow-y-auto rounded border px-2 py-1 text-sm' value={value} onChange={(event) => onChange(event.target.value)} /> : field === 'ExternalIds' ? <ExternalIdsEditor value={value} onChange={onChange} /> : field === 'OfficialRating' || field === 'CustomRating' ? <Select value={value || '__empty__'} onValueChange={(next) => onChange(next === '__empty__' ? '' : next)}><SelectTrigger className='h-9'><SelectValue placeholder='选择评分' /></SelectTrigger><SelectContent>{ratingOptions.map((option) => <SelectItem key={option || '__empty__'} value={option || '__empty__'}>{option || '未设置'}</SelectItem>)}</SelectContent></Select> : <Input className='h-9' type={field === 'CommunityRating' ? 'number' : 'text'} value={value} onChange={(event) => onChange(event.target.value)} />
+  const people = field === 'People' ? normalizePeople(current) : []
+  const candidatePeople = field === 'People' ? candidate.people : []
+  const cellClass = field === 'People' ? 'h-56 max-h-56' : field === 'Overview' ? 'h-52 max-h-52' : multiline ? 'h-20 max-h-20' : 'min-h-9'
+  const editor = field === 'People' ? <PeoplePreview people={candidatePeople} referer={candidate.raw_url} editable onChange={onChange} /> : collectionFields.has(field) ? <TagEditor value={value} onChange={onChange} /> : field === 'Overview' ? <OverviewEditor value={value} currentValue={currentText} title={candidate.title} onChange={onChange} onTranslate={(text) => apiClient.translateMetadata(text)} onTitleTranslated={(translatedTitle) => window.dispatchEvent(new CustomEvent('metadata-title-translated', { detail: translatedTitle }))} /> : multiline ? <textarea className='h-full max-h-20 w-full resize-none overflow-y-auto rounded border px-2 py-1 text-sm' value={value} onChange={(event) => onChange(event.target.value)} /> : field === 'ExternalIds' ? <ExternalIdsEditor value={value} onChange={onChange} /> : field === 'OfficialRating' || field === 'CustomRating' ? <Select value={value || '__empty__'} onValueChange={(next) => onChange(next === '__empty__' ? '' : next)}><SelectTrigger className='h-9'><SelectValue placeholder='选择评分' /></SelectTrigger><SelectContent>{ratingOptions.map((option) => <SelectItem key={option || '__empty__'} value={option || '__empty__'}>{option || '未设置'}</SelectItem>)}</SelectContent></Select> : <Input className='h-9' type={field === 'CommunityRating' ? 'number' : 'text'} value={value} onChange={(event) => onChange(event.target.value)} />
   const gridClass = hideCheckbox ? 'grid-cols-[76px_minmax(0,1fr)_minmax(0,1fr)]' : 'grid-cols-[28px_76px_minmax(0,1fr)_minmax(0,1fr)]'
-  const row = <div className={`grid ${gridClass} items-stretch gap-2 py-2`}>{!hideCheckbox && <Checkbox checked={checked} onCheckedChange={onCheck} />}<label className='self-center text-sm'>{label}</label><div className={`${cellClass} ${multiline ? '' : 'flex items-center'} overflow-x-hidden overflow-y-auto break-words whitespace-pre-wrap text-sm text-slate-500`}>{field === 'ExternalIds' ? <ExternalIdsView value={current} /> : collectionFields.has(field) ? <ValueChips value={currentText} /> : currentText || '—'}</div><div className={`${cellClass} ${multiline ? '' : 'flex items-center'} min-w-0 overflow-hidden`}>{editor}</div></div>
+  const row = <div className={`grid ${gridClass} items-stretch gap-2 py-2`}>{!hideCheckbox && <Checkbox checked={checked} onCheckedChange={onCheck} />}<label className='self-center text-sm'>{label}</label><div className={`${cellClass} ${field === 'People' ? 'min-w-0' : multiline ? '' : 'flex items-center'} overflow-x-hidden overflow-y-auto break-words whitespace-pre-wrap text-sm text-slate-500`}>{field === 'People' ? <PeoplePreview people={people} referer={candidate.raw_url} /> : field === 'ExternalIds' ? <ExternalIdsView value={current} /> : collectionFields.has(field) ? <ValueChips value={currentText} /> : currentText || '—'}</div><div className={`${cellClass} ${field === 'People' ? 'min-w-0' : multiline ? '' : 'flex items-center'} min-w-0 overflow-hidden`}>{editor}</div></div>
   return field === 'SortName' || field === 'ForcedSortName' || field === 'ExternalIds' ? <details className='rounded border-b px-2'><summary className='cursor-pointer py-2 text-sm font-medium text-slate-600'>{label}</summary>{row}</details> : row
 }
 
