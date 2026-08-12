@@ -16,7 +16,16 @@ class BoyStudioSource(MetadataSource):
 
     def __init__(self, timeout_seconds: float = 25.0, cookie_manager: CookieManager | None = None) -> None:
         self._timeout = aiohttp.ClientTimeout(total=timeout_seconds)
-        self._headers = {"User-Agent": "EmbyMetadataManager/1.0", "Accept-Language": "ja,en;q=0.8"}
+        self._headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/131.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+            "Referer": f"{self.base_url}/",
+        }
         cookie = (cookie_manager or CookieManager()).get_cookie(self.name)
         if cookie:
             self._headers["Cookie"] = cookie
