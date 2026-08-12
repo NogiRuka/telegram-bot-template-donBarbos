@@ -69,6 +69,8 @@ class AcceedParser:
         if not isinstance(heading, Tag) or not heading.get_text(strip=True):
             raise MetadataSourceParseError("详情页缺少作品标题", cls.source_name)
 
+        for favorite in heading.select(".favoritebtn"):
+            favorite.decompose()
         original_title = cls._clean_text(heading.get_text(" ", strip=True))
         product_number = source_id.split("_", 1)[0]
         title = f"{product_number} {original_title}"

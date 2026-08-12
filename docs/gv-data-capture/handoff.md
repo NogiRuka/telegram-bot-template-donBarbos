@@ -130,7 +130,7 @@ python -m compileall -q bot/services/emby_metadata
 
 ## 9. Koshop 与 CK 元数据合并（2026-08-12）
 
-- Koshop 详情页的 `キーワード` 已解析并加入标签，和 `モデルタイプ` 一起去重；`シリーズ` 不作为标签。
+- Koshop 详情页的 `キーワード` 已解析并加入标签，和 `モデルタイプ`、`シリーズ` 一起去重。
 - 选择 Koshop 候选后，系统会使用 Koshop 原标题自动搜索 CK 补充结果。
 - 选择 CK 结果后，Koshop 保留为主来源；CK 的标签、演员、类型、工作室等信息会合并补充，不覆盖 Koshop 番号和标题。
 - 合并结果会保留两个来源的 Provider ID，方便后续追溯。

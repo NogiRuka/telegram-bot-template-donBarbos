@@ -18,6 +18,7 @@ from bot.services.emby_metadata.models import (
 )
 from bot.services.emby_metadata.parser.ck_download import CkDownloadParser
 from bot.services.emby_metadata.parser.acceed import AcceedParser
+from bot.services.emby_metadata.parser.boy_studio import BoyStudioParser
 from bot.services.emby_metadata.parser.hunk_ch import HunkChParser
 from bot.services.emby_metadata.parser.ko_shop import KoShopParser
 from bot.services.emby_metadata.sources.base import MetadataSourceParseError
@@ -182,8 +183,7 @@ class KoShopParserTests(unittest.TestCase):
 
         candidate = KoShopParser.parse_detail(html, "123")
 
-        self.assertEqual([tag.name for tag in candidate.tags], ["类型A", "类型B", "关键词A"])
-        self.assertNotIn("系列名", [tag.name for tag in candidate.tags])
+        self.assertEqual([tag.name for tag in candidate.tags], ["类型A", "类型B", "系列名", "关键词A"])
 
 
 class AcceedParserTests(unittest.TestCase):
@@ -199,6 +199,37 @@ class AcceedParserTests(unittest.TestCase):
         self.assertTrue(results[0].image_urls)
         self.assertEqual(results[0].image_urls[0], results[0].image_urls[0].rstrip())
         self.assertTrue(results[0].image_urls[0].endswith("_pickup.jpg"))
+
+    def test_detail_title_excludes_favorite_link(self) -> None:
+        candidate = AcceedParser.parse_detail(self._read_fixture("detail/ACSM355.html"), "ACSM355")
+
+        self.assertTrue(candidate.original_title.startswith("ACCEED STAR 2024"))
+        self.assertIn("神山", candidate.original_title)
+        self.assertNotIn("お気に入り", candidate.original_title)
+
+
+class BoyStudioParserTests(unittest.TestCase):
+    @staticmethod
+    def _fixture(name: str) -> str:
+        root = next(path for path in _FIXTURE_ROOT.parent.rglob("boy-studio") if path.is_dir())
+        return (root / name).read_text(encoding="utf-8")
+
+    def test_parse_search_results(self) -> None:
+        results = BoyStudioParser.parse_search_results(self._fixture("search/今どきヒゲイケメン、シコシコ開始。.html"))
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].source_id, "4748")
+        self.assertEqual(results[0].title, "今どきヒゲイケメン、シコシコ開始。")
+        self.assertTrue(results[0].image_urls[0].endswith(".webp"))
+
+    def test_parse_detail(self) -> None:
+        candidate = BoyStudioParser.parse_detail(self._fixture("detail/BOY-671.html"), "4748")
+
+        self.assertEqual(candidate.product_number, "BOY-671")
+        self.assertEqual(candidate.title, "BOY-671 今どきヒゲイケメン、シコシコ開始。")
+        self.assertEqual(candidate.release_date, date(2026, 5, 15))
+        self.assertTrue(candidate.poster_url.endswith(".webp"))
+        self.assertIn("オナニー", [tag.name for tag in candidate.tags])
 
 
 class WriterTests(unittest.TestCase):

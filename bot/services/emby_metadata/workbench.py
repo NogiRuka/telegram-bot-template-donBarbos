@@ -16,6 +16,7 @@ from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCand
 from bot.services.emby_metadata.matching import extract_product_number, is_hunk_ch_product_number, normalize_search_keyword
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
 from bot.services.emby_metadata.sources.acceed import AcceedSource
+from bot.services.emby_metadata.sources.boy_studio import BoyStudioSource
 from bot.services.emby_metadata.sources.hunk_ch import HunkChSource
 from bot.services.emby_metadata.sources.jgvdata import JgvdataSource
 from bot.services.emby_metadata.sources.ko_shop import KoShopSource
@@ -83,6 +84,7 @@ _SOURCES_BY_CATEGORY: dict[str, dict[str, type[MetadataSource]]] = {
         KoShopSource.name: KoShopSource,
         MensrushSource.name: MensrushSource,
         AcceedSource.name: AcceedSource,
+        BoyStudioSource.name: BoyStudioSource,
     },
     MediaLibraryCategory.DOMESTIC.value: {},
     MediaLibraryCategory.WESTERN.value: {},
@@ -97,6 +99,9 @@ def _source_for_product_number(category: str, product_number: str | None) -> str
     if product_number and is_hunk_ch_product_number(product_number):
         if HunkChSource.name in sources:
             return HunkChSource.name
+    if product_number and product_number.upper().startswith("BWB"):
+        if KoShopSource.name in sources:
+            return KoShopSource.name
     return next(iter(sources), "未配置")
 
 
@@ -288,13 +293,18 @@ async def search_queue(selections: list[dict[str, str]]) -> list[dict[str, Any]]
     for selection in selections:
         notification_id = selection["notification_id"]
         item = _queue_item(await _get_notification(notification_id))
-        keyword = normalize_search_keyword(selection["keyword"].strip() or item["search_keyword"])
+        requested_keyword = selection["keyword"].strip()
+        keyword = normalize_search_keyword(requested_keyword or item["search_keyword"])
         source_name = _source_for_search(
             selection["category"],
             selection["keyword"] or item["search_keyword"],
             selection["source"],
             item["source"],
         )
+        if source_name == BoyStudioSource.name and (
+            not requested_keyword or requested_keyword == item["search_keyword"]
+        ):
+            keyword = item["item_name"]
         source = _resolve_source(selection["category"], source_name)
         try:
             results = await source.search(keyword)

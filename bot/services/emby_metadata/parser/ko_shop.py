@@ -70,6 +70,9 @@ class KoShopParser:
         title = f"{product_number} {original_title}" if product_number else original_title
         release_date = cls._parse_date(fields.get("発売日", ""))
         tags = cls._split_values(fields.get("モデルタイプ", ""))
+        series = fields.get("シリーズ")
+        if series:
+            tags.append(series)
         tags.extend(cls._linked_field_values(product if isinstance(product, Tag) else soup, "キーワード"))
         tags = cls._unique(tags)
         genres = cls._genres(soup)
