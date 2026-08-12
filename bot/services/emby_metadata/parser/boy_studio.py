@@ -69,8 +69,11 @@ class BoyStudioParser:
         title = f"{product_number} {original_title}"
         release_date = cls._parse_date(fields.get("配信開始日", ""))
         poster_url = cls._poster_url(soup)
-        labels = cls._labels(soup)
-        genres = cls._genre_values(soup)
+        labels = cls._table_link_values(soup, "レーベル", "/videos/label/")
+        tags = cls._table_link_values(soup, "ジャンル", "/videos/category/")
+        series = fields.get("シリーズ")
+        if series:
+            tags.append(series)
         people = cls._people(soup)
         return MetadataCandidate(
             source=cls.source_name,
@@ -84,10 +87,10 @@ class BoyStudioParser:
             overview=cls._overview(soup),
             year=release_date.year if release_date else None,
             release_date=release_date,
-            genres=[MetadataNamedItem(name=value) for value in genres],
+            genres=[],
             studios=[MetadataNamedItem(name=value) for value in labels],
             people=people,
-            tags=[MetadataNamedItem(name=value) for value in genres],
+            tags=[MetadataNamedItem(name=value) for value in cls._unique(tags)],
             external_ids={
                 "source": cls.source_name,
                 "source_id": source_id,
@@ -126,6 +129,19 @@ class BoyStudioParser:
         )
 
     @classmethod
+    def _table_link_values(cls, soup: BeautifulSoup, field_name: str, href_part: str) -> list[str]:
+        for row in soup.select(".table--item-data tr"):
+            heading = row.select_one("th")
+            if not isinstance(heading, Tag) or cls._clean_text(heading.get_text(" ", strip=True)) != field_name:
+                continue
+            return cls._unique(
+                cls._clean_text(link.get_text(" ", strip=True))
+                for link in row.select(f'a[href*="{href_part}"]')
+                if cls._clean_text(link.get_text(" ", strip=True))
+            )
+        return []
+
+    @classmethod
     def _people(cls, soup: BeautifulSoup) -> list[MetadataPerson]:
         people: list[MetadataPerson] = []
         for link in soup.select('a[href*="/videos/model/"]'):
@@ -150,7 +166,16 @@ class BoyStudioParser:
         container = soup.select_one(".item__lower .item__content details div")
         if not isinstance(container, Tag):
             return None
-        return cls._clean_text(container.get_text(" ", strip=True)) or None
+        paragraphs = [
+            cls._clean_text(paragraph.get_text(" ", strip=True))
+            for paragraph in container.select("p")
+            if not cls._is_commercial_notice(paragraph.get_text(" ", strip=True))
+        ]
+        return "\n".join(value for value in paragraphs if value) or None
+
+    @staticmethod
+    def _is_commercial_notice(value: str) -> bool:
+        return "サブスク会員" in value or ("通常価格" in value and "単品" in value)
 
     @staticmethod
     def _parse_date(value: str) -> date | None:
