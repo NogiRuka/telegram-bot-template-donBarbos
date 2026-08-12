@@ -79,7 +79,7 @@ class CkDownloadParser:
 
         original_title = cls._clean_text(heading.get_text(" ", strip=True))
         fields = cls._parse_product_fields(soup)
-        product_number = fields.get("プロダクトナンバー") or None
+        product_number = cls._normalize_product_number(fields.get("プロダクトナンバー"))
         display_title = f"{product_number} {original_title}" if product_number else original_title
         release_date = cls._parse_release_date(soup)
         dvd_year = cls._parse_year(fields.get("DVD発売年"))
@@ -237,8 +237,22 @@ class CkDownloadParser:
         container = soup.select_one(".detail_page .intro_text")
         if not isinstance(container, Tag):
             return None
-        paragraphs = [cls._clean_multiline(paragraph.get_text("\n", strip=True)) for paragraph in container.find_all("p")]
+        paragraphs = [
+            cls._clean_multiline(paragraph.get_text("\n", strip=True))
+            for paragraph in container.find_all("p")
+            if not cls._is_streaming_only_notice(paragraph.get_text(" ", strip=True))
+        ]
         return "\n\n".join(paragraph for paragraph in paragraphs if paragraph) or None
+
+    @staticmethod
+    def _normalize_product_number(value: str | None) -> str | None:
+        if not value:
+            return None
+        return re.sub(r"-HD$", "", value.strip(), flags=re.IGNORECASE) or None
+
+    @staticmethod
+    def _is_streaming_only_notice(value: str) -> bool:
+        return "視聴方法" in value and "ストリーミング再生のみ" in value and "ダウンロード再生" in value
 
     @classmethod
     def _parse_poster_url(cls, soup: BeautifulSoup, source_id: str) -> str | None:

@@ -99,6 +99,9 @@ def _source_for_product_number(category: str, product_number: str | None) -> str
     if product_number and is_hunk_ch_product_number(product_number):
         if HunkChSource.name in sources:
             return HunkChSource.name
+    if product_number and product_number.upper().startswith("BOY-"):
+        if BoyStudioSource.name in sources:
+            return BoyStudioSource.name
     if product_number and product_number.upper().startswith("BWB"):
         if KoShopSource.name in sources:
             return KoShopSource.name

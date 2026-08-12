@@ -76,12 +76,12 @@ class CkDownloadParserTests(unittest.TestCase):
         self.assertEqual(candidate.poster_url, "https://img.ck-download.com/images/product/33907/33907_1.jpg")
         self.assertIn("フェラチオ", [genre.name for genre in candidate.genres])
         self.assertIn("激撮フィッティングルーム", [tag.name for tag in candidate.tags])
-        self.assertIn("※この作品の視聴方法", candidate.overview or "")
+        self.assertNotIn("※この作品の視聴方法", candidate.overview or "")
         self.assertNotIn("販売価格", candidate.overview or "")
 
     def test_parse_set_product_detail(self) -> None:
         candidate = CkDownloadSource.parse_detail(self._read_fixture("detail/33831.html"), "33831")
-        self.assertEqual(candidate.product_number, "COCO562-HD")
+        self.assertEqual(candidate.product_number, "COCO562")
         self.assertEqual(candidate.runtime_minutes, 126)
         self.assertEqual(candidate.year, 2026)
         self.assertEqual([studio.name for studio in candidate.studios], ["COAT"])
