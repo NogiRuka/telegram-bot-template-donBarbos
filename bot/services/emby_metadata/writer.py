@@ -62,7 +62,12 @@ async def _download_image_as_base64(
     archive_path: Path | None = None,
     extra_headers: dict[str, str] | None = None,
 ) -> str:
-    image_bytes, _ = await download_image(url, referer=referer, extra_headers=extra_headers)
+    image_bytes, _ = await download_image(
+        url,
+        referer=referer,
+        extra_headers=extra_headers,
+        verify_ssl="ko-shop.com" not in url.lower(),
+    )
     if archive_path is not None:
         archive_path.parent.mkdir(parents=True, exist_ok=True)
         archive_path.write_bytes(image_bytes)

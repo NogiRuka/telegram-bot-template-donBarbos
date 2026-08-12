@@ -17,7 +17,9 @@ from bot.services.emby_metadata.models import (
     MetadataSearchResult,
 )
 from bot.services.emby_metadata.parser.ck_download import CkDownloadParser
+from bot.services.emby_metadata.parser.acceed import AcceedParser
 from bot.services.emby_metadata.parser.hunk_ch import HunkChParser
+from bot.services.emby_metadata.parser.ko_shop import KoShopParser
 from bot.services.emby_metadata.sources.base import MetadataSourceParseError
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
 from bot.services.emby_metadata.writer import (
@@ -161,6 +163,42 @@ class HunkChParserTests(unittest.TestCase):
         self.assertEqual([studio.name for studio in candidate.studios], ["マラ面接!!"])
         self.assertTrue(candidate.poster_url.endswith("gv-oav1350_top.jpg"))
         self.assertTrue(candidate.overview)
+
+
+class KoShopParserTests(unittest.TestCase):
+    def test_series_is_not_added_to_tags(self) -> None:
+        html = """
+        <div class="detail_product">
+            <h2>商品标题</h2>
+            <dl>
+                <dt>商品コード</dt><dd>ABC123_DVD</dd>
+                <dt>発売日</dt><dd>2026年8月13日</dd>
+                <dt>モデルタイプ</dt><dd>类型A / 类型B</dd>
+                <dt>シリーズ</dt><dd>系列名</dd>
+                <dt>キーワード</dt><dd><a href="/keyword/a">关键词A</a></dd>
+            </dl>
+        </div>
+        """
+
+        candidate = KoShopParser.parse_detail(html, "123")
+
+        self.assertEqual([tag.name for tag in candidate.tags], ["类型A", "类型B", "关键词A"])
+        self.assertNotIn("系列名", [tag.name for tag in candidate.tags])
+
+
+class AcceedParserTests(unittest.TestCase):
+    @staticmethod
+    def _read_fixture(name: str) -> str:
+        fixture_root = next(path for path in _FIXTURE_ROOT.parent.rglob("acceed") if path.is_dir())
+        return (fixture_root / name).read_text(encoding="utf-8")
+
+    def test_search_result_image_urls_are_trimmed(self) -> None:
+        results = AcceedParser.parse_search_results(self._read_fixture("search/ACSM355.html"))
+
+        self.assertTrue(results)
+        self.assertTrue(results[0].image_urls)
+        self.assertEqual(results[0].image_urls[0], results[0].image_urls[0].rstrip())
+        self.assertTrue(results[0].image_urls[0].endswith("_pickup.jpg"))
 
 
 class WriterTests(unittest.TestCase):

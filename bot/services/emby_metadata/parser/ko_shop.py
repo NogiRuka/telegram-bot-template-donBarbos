@@ -70,9 +70,7 @@ class KoShopParser:
         title = f"{product_number} {original_title}" if product_number else original_title
         release_date = cls._parse_date(fields.get("発売日", ""))
         tags = cls._split_values(fields.get("モデルタイプ", ""))
-        series = fields.get("シリーズ")
-        if series:
-            tags.append(series)
+        tags.extend(cls._linked_field_values(product if isinstance(product, Tag) else soup, "キーワード"))
         tags = cls._unique(tags)
         genres = cls._genres(soup)
         studio = fields.get("メーカー")
@@ -111,6 +109,23 @@ class KoShopParser:
             if isinstance(dd, Tag):
                 fields[cls._clean_text(dt.get_text(" ", strip=True))] = cls._clean_text(dd.get_text(" ", strip=True)).lstrip(": ")
         return fields
+
+    @classmethod
+    def _linked_field_values(cls, container: Tag | BeautifulSoup, field_name: str) -> list[str]:
+        """提取详情字段下的链接值，例如キーワード的多个标签。"""
+        values: list[str] = []
+        for dt in container.select("dl dt"):
+            if cls._clean_text(dt.get_text(" ", strip=True)) != field_name:
+                continue
+            dd = dt.find_next_sibling("dd")
+            if not isinstance(dd, Tag):
+                continue
+            values.extend(
+                cls._clean_text(link.get_text(" ", strip=True))
+                for link in dd.select("a")
+                if cls._clean_text(link.get_text(" ", strip=True))
+            )
+        return cls._unique(values)
 
     @classmethod
     def _overview(cls, soup: BeautifulSoup) -> str | None:

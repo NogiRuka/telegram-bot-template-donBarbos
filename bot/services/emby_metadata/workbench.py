@@ -15,6 +15,7 @@ from bot.database.models import LibraryNewNotificationModel
 from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate
 from bot.services.emby_metadata.matching import extract_product_number, is_hunk_ch_product_number, normalize_search_keyword
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
+from bot.services.emby_metadata.sources.acceed import AcceedSource
 from bot.services.emby_metadata.sources.hunk_ch import HunkChSource
 from bot.services.emby_metadata.sources.jgvdata import JgvdataSource
 from bot.services.emby_metadata.sources.ko_shop import KoShopSource
@@ -30,6 +31,45 @@ from bot.services.emby_metadata.writer import (
 
 _search_cache: dict[str, list[dict[str, Any]]] = {}
 
+
+def _merge_named_items(primary: list[Any], supplement: list[Any]) -> list[Any]:
+    merged = list(primary)
+    seen = {str(item.name).strip().casefold() for item in merged if getattr(item, "name", "").strip()}
+    for item in supplement:
+        name = str(getattr(item, "name", "")).strip()
+        if name and name.casefold() not in seen:
+            merged.append(item)
+            seen.add(name.casefold())
+    return merged
+
+
+def _merge_people(primary: list[Any], supplement: list[Any]) -> list[Any]:
+    merged = list(primary)
+    seen = {person.name.strip().casefold() for person in merged if person.name.strip()}
+    for person in supplement:
+        name = person.name.strip()
+        if name and name.casefold() not in seen:
+            merged.append(person)
+            seen.add(name.casefold())
+    return merged
+
+
+def merge_metadata_candidates(primary: MetadataCandidate, supplement: MetadataCandidate) -> MetadataCandidate:
+    """以主来源为准合并补充来源，避免 CK 覆盖 Koshop 的标题和番号。"""
+    external_ids = dict(primary.external_ids)
+    external_ids.update({f"{supplement.source}_{key}": value for key, value in supplement.external_ids.items()})
+    return primary.model_copy(update={
+        "overview": primary.overview or supplement.overview,
+        "year": primary.year or supplement.year,
+        "release_date": primary.release_date or supplement.release_date,
+        "genres": _merge_named_items(primary.genres, supplement.genres),
+        "studios": _merge_named_items(primary.studios, supplement.studios),
+        "people": _merge_people(primary.people, supplement.people),
+        "tags": _merge_named_items(primary.tags, supplement.tags),
+        "taglines": primary.taglines or supplement.taglines,
+        "external_ids": external_ids,
+    })
+
 _CATEGORY_OPTIONS = (
     {"value": MediaLibraryCategory.JAPANESE_KOREAN.value, "label": "日韩"},
     {"value": MediaLibraryCategory.DOMESTIC.value, "label": "国产"},
@@ -42,6 +82,7 @@ _SOURCES_BY_CATEGORY: dict[str, dict[str, type[MetadataSource]]] = {
         JgvdataSource.name: JgvdataSource,
         KoShopSource.name: KoShopSource,
         MensrushSource.name: MensrushSource,
+        AcceedSource.name: AcceedSource,
     },
     MediaLibraryCategory.DOMESTIC.value: {},
     MediaLibraryCategory.WESTERN.value: {},
@@ -284,6 +325,17 @@ async def get_candidate(source: str, source_id: str) -> MetadataCandidate:
         raise HTTPException(status_code=502, detail=f"候选详情抓取失败：{error}") from error
 
 
+async def get_merged_candidate(
+    primary_source: str,
+    primary_source_id: str,
+    supplement_source: str,
+    supplement_source_id: str,
+) -> MetadataCandidate:
+    primary = await get_candidate(primary_source, primary_source_id)
+    supplement = await get_candidate(supplement_source, supplement_source_id)
+    return merge_metadata_candidates(primary, supplement)
+
+
 async def get_candidate_preview(
     notification_id: str,
     source: str,
@@ -300,6 +352,23 @@ async def get_candidate_preview(
         notification.item_id,
         preview["before_item"],
     )
+    return {"candidate": candidate.model_dump(mode="json"), "before_item": _with_person_image_urls(preview["before_item"])}
+
+
+async def get_merged_candidate_preview(
+    notification_id: str,
+    primary_source: str,
+    primary_source_id: str,
+    supplement_source: str,
+    supplement_source_id: str,
+) -> dict[str, Any]:
+    notification = await _get_notification(notification_id)
+    if not notification.item_id:
+        raise HTTPException(status_code=400, detail="队列项目缺少 Emby Item ID")
+    candidate = await get_merged_candidate(primary_source, primary_source_id, supplement_source, supplement_source_id)
+    candidate.parse_report = {field: value for field, value in candidate.model_dump(mode="json").items() if field != "parse_report"}
+    preview = await preview_metadata_candidate_update(notification.item_id, candidate)
+    candidate.current_image_url = _before_item_image_url(notification.item_id, preview["before_item"])
     return {"candidate": candidate.model_dump(mode="json"), "before_item": _with_person_image_urls(preview["before_item"])}
 
 
@@ -323,7 +392,6 @@ async def writeback(
     candidate: MetadataCandidate,
     *,
     fields: list[str] | None = None,
-    overwrite: bool = False,
 ) -> dict[str, Any]:
     """将候选数据写入 Emby 通知状态不改变。"""
     notification = await _get_notification(notification_id)
@@ -334,7 +402,7 @@ async def writeback(
             notification.item_id,
             candidate,
             fields=set(fields) if fields else None,
-            overwrite=overwrite,
+            overwrite=True,
         )
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"Emby 写入失败：{error}") from error

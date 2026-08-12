@@ -33,7 +33,6 @@ class WritebackRequest(BaseModel):
 
     candidate: MetadataCandidate
     fields: list[str] = Field(default_factory=list)
-    overwrite: bool = False
     confirmed: bool = False
 
 
@@ -41,6 +40,13 @@ class TranslationRequest(BaseModel):
     """简介翻译请求。"""
 
     text: str = Field(min_length=1, max_length=20000)
+
+
+class MergeCandidateRequest(BaseModel):
+    primary_source: str
+    primary_source_id: str
+    supplement_source: str
+    supplement_source_id: str
 
 
 @router.get("/queue")
@@ -82,6 +88,20 @@ async def get_candidate_preview(
     return await workbench.get_candidate_preview(notification_id, source, source_id)
 
 
+@router.post("/queue/{notification_id}/candidates/merge")
+async def merge_candidate(
+    notification_id: str,
+    request: MergeCandidateRequest,
+) -> dict[str, Any]:
+    return await workbench.get_merged_candidate_preview(
+        notification_id,
+        request.primary_source,
+        request.primary_source_id,
+        request.supplement_source,
+        request.supplement_source_id,
+    )
+
+
 @router.get("/images")
 async def proxy_source_image(url: str, referer: str | None = None) -> Response:
     """使用数据源所需请求头代理候选图片。"""
@@ -100,6 +120,5 @@ async def writeback(notification_id: str, request: WritebackRequest) -> dict[str
             notification_id,
             request.candidate,
             fields=request.fields,
-            overwrite=request.overwrite,
         ),
     }

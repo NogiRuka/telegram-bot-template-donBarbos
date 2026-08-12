@@ -267,6 +267,10 @@ class ApiClient {
     return this.request({ method: 'GET', url: `/emby/metadata/queue/${notificationId}/candidates/${source}/${sourceId}` })
   }
 
+  async mergeMetadataCandidates(notificationId: string, data: { primary_source: string; primary_source_id: string; supplement_source: string; supplement_source_id: string }): Promise<{ candidate: MetadataCandidate; before_item: Record<string, unknown> }> {
+    return this.request({ method: 'POST', url: `/emby/metadata/queue/${notificationId}/candidates/merge`, data })
+  }
+
   async translateMetadata(text: string): Promise<string> {
     const response = await this.request<{ translation: string }>({ method: 'POST', url: '/emby/metadata/translate', data: { text } })
     if (!response.translation?.trim()) {
@@ -279,7 +283,7 @@ class ApiClient {
     return `${this.client.defaults.baseURL}/emby/metadata/images?${new URLSearchParams({ url, referer })}`
   }
 
-  async writebackMetadata(notificationId: string, data: { candidate: MetadataCandidate; fields: string[]; overwrite: boolean; confirmed: boolean }): Promise<void> {
+  async writebackMetadata(notificationId: string, data: { candidate: MetadataCandidate; fields: string[]; confirmed: boolean }): Promise<void> {
     return this.request<void>({ method: 'POST', url: `/emby/metadata/queue/${notificationId}/writeback`, data })
   }
 

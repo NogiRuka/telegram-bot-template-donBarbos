@@ -19,6 +19,7 @@ const fields = [
 
 type FieldKey = typeof fields[number][0]
 type Routing = { category: string; source: string }
+type PrimarySelection = { source: string; source_id: string }
 type ResultGroup = { item: MetadataQueueItem; results: MetadataSearchResult[] }
 const collectionFields = new Set<FieldKey>(['Genres', 'Studios', 'People', 'Tags'])
 const ratingOptions = ['', 'TV-Y', 'APPROVED', 'G', 'E', 'EC', 'TV-G', 'TV-Y7', 'TV-Y7-FV', 'PG', 'TV-PG', 'PG-13', 'T', 'TV-14', 'R', 'M', 'TV-MA', 'NC-17', 'AO', 'RP', 'UR', 'X', 'XXX']
@@ -113,6 +114,7 @@ export function EmbyMetadataWorkspace() {
   const [beforeItem, setBeforeItem] = useState<Record<string, unknown>>({})
   const [selectedResult, setSelectedResult] = useState<string | null>(null)
   const [selectedResultsByItem, setSelectedResultsByItem] = useState<Record<string, string>>({})
+  const [primarySelectionsByItem, setPrimarySelectionsByItem] = useState<Record<string, PrimarySelection>>({})
   const [query, setQuery] = useState('')
   const [fieldSelection, setFieldSelection] = useState<string[]>(fields.map(([key]) => key))
   const [statusFilter, setStatusFilter] = useState('all')
@@ -250,6 +252,7 @@ export function EmbyMetadataWorkspace() {
       setCandidatesByItem((previous) => Object.fromEntries(Object.entries(previous).filter(([notificationId]) => !selectedIds.includes(notificationId))))
       setBeforeItemsByItem((previous) => Object.fromEntries(Object.entries(previous).filter(([notificationId]) => !selectedIds.includes(notificationId))))
       setSelectedResultsByItem((previous) => Object.fromEntries(Object.entries(previous).filter(([notificationId]) => !selectedIds.includes(notificationId))))
+      setPrimarySelectionsByItem((previous) => Object.fromEntries(Object.entries(previous).filter(([notificationId]) => !selectedIds.includes(notificationId))))
       clearActive()
       toast.success('搜索完成，请在中间栏查看结果', { id: toastId })
     } catch (error) {
@@ -266,18 +269,23 @@ export function EmbyMetadataWorkspace() {
     setActiveId(owner.notification_id)
     setSelectedResult(result.source_id)
     setSelectedResultsByItem((current) => ({ ...current, [owner.notification_id]: result.source_id }))
-    const cachedCandidate = candidatesByItem[owner.notification_id]
-    if (cachedCandidate && selectedResultsByItem[owner.notification_id] === result.source_id) {
-      setCandidate(cachedCandidate)
-      setBeforeItem(beforeItemsByItem[owner.notification_id] ?? {})
-      return
-    }
     try {
-      const response = await apiClient.getMetadataCandidate(owner.notification_id, result.source, result.source_id)
+      const primarySelection = primarySelectionsByItem[owner.notification_id]
+      const response = result.source !== 'ko-shop' && primarySelection
+        ? await apiClient.mergeMetadataCandidates(owner.notification_id, {
+          primary_source: primarySelection.source,
+          primary_source_id: primarySelection.source_id,
+          supplement_source: result.source,
+          supplement_source_id: result.source_id,
+        })
+        : await apiClient.getMetadataCandidate(owner.notification_id, result.source, result.source_id)
       let nextCandidate = response.candidate
-      if (autoTranslate && response.candidate.title?.trim()) {
+      if (result.source === 'ko-shop') {
+        setPrimarySelectionsByItem((current) => ({ ...current, [owner.notification_id]: { source: result.source, source_id: result.source_id } }))
+      }
+      if (autoTranslate && response.candidate.original_title?.trim()) {
         try {
-          const translatedTitle = await apiClient.translateMetadata(response.candidate.title)
+          const translatedTitle = await apiClient.translateMetadata(response.candidate.original_title)
           nextCandidate = {
             ...nextCandidate,
             taglines: translatedTitle,
@@ -295,12 +303,35 @@ export function EmbyMetadataWorkspace() {
       setCandidatesByItem((current) => ({ ...current, [owner.notification_id]: nextCandidate }))
       setBeforeItem(response.before_item)
       setBeforeItemsByItem((current) => ({ ...current, [owner.notification_id]: response.before_item }))
+      if (result.source === 'ko-shop' && nextCandidate.original_title?.trim()) {
+        try {
+          const ckResponse = await apiClient.searchMetadataQueue([{
+            notification_id: owner.notification_id,
+            keyword: nextCandidate.original_title,
+            category: owner.category,
+            source: 'ck-download',
+          }])
+          const ckResults = ckResponse[0]?.results ?? []
+          if (ckResults.length) {
+            setResultsByItem((current) => ({
+              ...current,
+              [owner.notification_id]: [
+                ...(current[owner.notification_id] ?? []).filter((item) => item.source !== 'ck-download'),
+                ...ckResults,
+              ],
+            }))
+            toast.success(`已根据原标题找到 ${ckResults.length} 条 CK 补充结果`)
+          }
+        } catch {
+          toast.info('CK 没有找到原标题对应的补充结果')
+        }
+      }
     } catch (error) { toast.error(error instanceof Error ? error.message : '获取详情失败') }
   }
 
   const writeback = async () => {
     if (!active || !candidate) return toast.error('请先选择候选结果')
-    try { await apiClient.writebackMetadata(active.notification_id, { candidate, fields: fields.map(([key]) => key), overwrite: true, confirmed: true }); setStatusOverrides((current) => ({ ...current, [active.notification_id]: 'written' })); toast.success('元数据已写入 Emby'); void queueQuery.refetch() }
+    try { await apiClient.writebackMetadata(active.notification_id, { candidate, fields: fields.map(([key]) => key), confirmed: true }); setStatusOverrides((current) => ({ ...current, [active.notification_id]: 'written' })); toast.success('元数据已写入 Emby'); void queueQuery.refetch() }
     catch (error) { toast.error(error instanceof Error ? error.message : '写入失败') }
   }
 
@@ -316,7 +347,6 @@ export function EmbyMetadataWorkspace() {
         await apiClient.writebackMetadata(target.notificationId, {
           candidate: target.candidate,
           fields: fields.map(([key]) => key),
-          overwrite: true,
           confirmed: true,
         })
         setStatusOverrides((current) => ({ ...current, [target.notificationId]: 'written' }))
@@ -367,10 +397,6 @@ function MetadataEditorPanelLegacy({ candidate, beforeItem, autoTranslate, setAu
 
 function ResultPanel({ results, active, selectedResult, selectCandidate, clearResults }: { results: MetadataSearchResult[]; active?: MetadataQueueItem; selectedResult: string | null; selectCandidate: (result: MetadataSearchResult) => void; clearResults: () => void }) {
   return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='flex justify-between border-b px-4 py-3'><b>搜索结果</b><Button size='icon' variant='ghost' onClick={clearResults}><X className='size-4' /></Button></div><div className='min-h-0 flex-1 space-y-2 overflow-y-auto p-3'>{results.length ? results.map((result) => <div key={`${result.source}-${result.source_id}`} className='flex items-center gap-3 rounded-lg border p-3'><div className='flex h-24 w-40 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-100'>{result.image_urls[0] ? <img src={apiClient.metadataImageUrl(result.image_urls[0], result.detail_url)} alt='' className='size-full object-contain' /> : <Database className='size-6 text-slate-400' />}</div><div className='min-w-0 flex-1'><b className='line-clamp-2 text-sm'>{result.title}</b><p className='mt-1 text-xs text-slate-500'>{result.release_date ?? '日期未知'} · {result.statuses.join(' · ')}</p></div><Button size='sm' className='shrink-0' variant={selectedResult === result.source_id ? 'default' : 'outline'} onClick={() => selectCandidate(result)}>{selectedResult === result.source_id ? '已选择' : '选择并抓取'} <ExternalLink className='ml-1 size-3' /></Button></div>) : <Empty title='尚未加载搜索结果' text={`勾选左侧项目后，点击“批量搜索”。${active ? '' : ''}`} />}</div></div>
-}
-
-function EditorPanel({ candidate, beforeItem, fieldSelection, setFieldSelection, overwrite, setOverwrite, setCandidate, writeback }: { candidate: MetadataCandidate | null; beforeItem: Record<string, unknown>; fieldSelection: string[]; setFieldSelection: (value: (current: string[]) => string[]) => void; overwrite: boolean; setOverwrite: (value: boolean) => void; setCandidate: (value: (current: MetadataCandidate | null) => MetadataCandidate | null) => void; writeback: () => void }) {
-  return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='border-b px-4 py-3'><b>编辑元数据</b></div><Tabs defaultValue='basic' className='flex min-h-0 flex-1 flex-col'><TabsList className='justify-start rounded-none border-b bg-white px-3'><TabsTrigger value='basic'>基本信息</TabsTrigger><TabsTrigger value='images'>演员图片</TabsTrigger><TabsTrigger value='history'>操作记录</TabsTrigger></TabsList><TabsContent value='basic' className='min-h-0 flex-1 overflow-y-auto p-4'>{candidate ? <><CoverPreview candidate={candidate} /><div className='mb-3 flex justify-between rounded border bg-slate-50 p-2 text-sm'><span>覆盖模式</span><button onClick={() => setOverwrite(!overwrite)}>{overwrite ? '覆盖已选字段' : '仅填充空字段'}</button></div><div className='grid grid-cols-[28px_110px_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b pb-2 text-xs text-slate-500'><span /><span>字段</span><span>当前 Emby 值</span><span>候选值</span></div><div className='divide-y'>{fields.map(([key, label]) => <FieldRow key={key} field={key} label={label} candidate={candidate} beforeItem={beforeItem} checked={fieldSelection.includes(key)} onCheck={() => setFieldSelection((current) => current.includes(key) ? current.filter((value) => value !== key) : [...current, key])} onChange={(value) => setCandidate((current) => current ? updateCandidate(current, key, value) : current)} />)}</div><div className='mt-4 rounded border bg-slate-50 p-3 text-xs'>数据源：{candidate.source}　编号：{candidate.source_id}<br />产品番号：{candidate.product_number ?? '—'}<br /><a href={candidate.raw_url} target='_blank' rel='noreferrer' className='text-blue-600'>打开来源页</a></div></> : <Empty title='等待候选详情' text='从中栏选择一条搜索结果。' />}</TabsContent><TabsContent value='images' className='min-h-0 flex-1 overflow-y-auto p-4 text-sm text-slate-500'>{candidate ? <div className='space-y-3'>{candidate.people.map((person, index) => <div key={`${person.name}-${index}`} className='flex items-center gap-3 rounded border p-2'><div className='flex size-12 items-center justify-center rounded bg-slate-100'><Database className='size-4 text-slate-400' /></div><span>{person.name}</span></div>)}</div> : <Empty title='等待候选详情' text='从中栏选择一条搜索结果。' />}</TabsContent><TabsContent value='history' className='p-4 text-sm text-slate-500'>写入完成后将在此展示本次字段变更记录。</TabsContent></Tabs><div className='flex justify-end gap-3 border-t p-3'><Button variant='outline' disabled={!candidate}>保存为草稿</Button><Button onClick={writeback} disabled={!candidate}><Upload className='size-4' />确认写入 Emby</Button></div></div>
 }
 
 function ExternalIdsView({ value }: { value: unknown }) {
@@ -529,7 +555,7 @@ export function FieldRowLegacy({ field, label, candidate, beforeItem, checked, o
 }
 
 function MetadataEditorPanelNoTabs({ candidate, beforeItem, autoTranslate, setAutoTranslate, setCandidate, writeback, batchWriteback, batchCount }: { candidate: MetadataCandidate | null; beforeItem: Record<string, unknown>; autoTranslate: boolean; setAutoTranslate: (value: boolean) => void; setCandidate: (value: (current: MetadataCandidate | null) => MetadataCandidate | null) => void; writeback: () => void; batchWriteback: () => void; batchCount: number }) {
-  return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='border-b px-4 py-3'><b>编辑元数据</b></div><div className='min-h-0 flex-1 overflow-y-auto p-4'>{candidate ? <><CoverPreview candidate={candidate} /><div className='mb-3 flex justify-between rounded border bg-slate-50 p-2 text-sm'><span>覆盖模式</span><button onClick={() => setAutoTranslate(!autoTranslate)}>{autoTranslate ? '自动翻译已开启' : '自动翻译已关闭'}</button></div><div className='grid grid-cols-[76px_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b pb-2 text-xs text-slate-500'><span>字段</span><span>当前 Emby 值</span><span>候选值</span></div><div className='divide-y'>{fields.map(([key, label]) => <FieldRow key={key} field={key} label={label} candidate={candidate} beforeItem={beforeItem} hideCheckbox onChange={(value) => setCandidate((current) => current ? updateCandidate(current, key, value) : current)} />)}</div><div className='mt-4 rounded border bg-slate-50 p-3 text-xs'>数据源：{candidate.source}　编号：{candidate.source_id}<br />产品番号：{candidate.product_number ?? '—'}<br /><a href={candidate.raw_url} target='_blank' rel='noreferrer' className='text-blue-600'>打开来源页</a></div></> : <Empty title='等待候选详情' text='从中栏选择一条搜索结果。' />}</div><div className='flex items-center justify-end gap-2 border-t p-3'><Button variant='outline' disabled={!candidate}>保存为草稿</Button><Button variant='outline' disabled={batchCount < 2} onClick={batchWriteback}>批量写入 Emby</Button><Button onClick={writeback} disabled={!candidate}><Upload className='size-4' />确认写入 Emby</Button></div></div>
+  return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='border-b px-4 py-3'><b>编辑元数据</b></div><div className='min-h-0 flex-1 overflow-y-auto p-4'>{candidate ? <><CoverPreview candidate={candidate} /><div className='grid grid-cols-[76px_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b pb-2 text-xs text-slate-500'><span>字段</span><span>当前 Emby 值</span><span>候选值</span></div><div className='divide-y'>{fields.map(([key, label]) => <FieldRow key={key} field={key} label={label} candidate={candidate} beforeItem={beforeItem} hideCheckbox onChange={(value) => setCandidate((current) => current ? updateCandidate(current, key, value) : current)} />)}</div><div className='mt-4 rounded border bg-slate-50 p-3 text-xs'>数据源：{candidate.source}　编号：{candidate.source_id}<br />产品番号：{candidate.product_number ?? '—'}<br /><a href={candidate.raw_url} target='_blank' rel='noreferrer' className='text-blue-600'>打开来源页</a></div></> : <Empty title='等待候选详情' text='从中栏选择一条搜索结果。' />}</div><div className='flex items-center justify-end gap-2 border-t p-3'><div className='mr-auto flex items-center gap-2 text-sm'><span>自动翻译简介</span><Button type='button' size='sm' variant={autoTranslate ? 'default' : 'outline'} onClick={() => setAutoTranslate(!autoTranslate)}>{autoTranslate ? '已开启' : '已关闭'}</Button></div><Button variant='outline' disabled={!candidate}>保存为草稿</Button><Button variant='outline' disabled={batchCount < 2} onClick={batchWriteback}>批量写入 Emby</Button><Button onClick={writeback} disabled={!candidate}><Upload className='size-4' />确认写入 Emby</Button></div></div>
 }
 
 function Status({ value }: { value: string }) {
@@ -537,5 +563,7 @@ function Status({ value }: { value: string }) {
   return <span className={`queue-status queue-status-${value}`}>{labels[value] ?? value}</span>
 }
 function Empty({ title, text }: { title: string; text: string }) { return <div className='flex h-full min-h-48 flex-col items-center justify-center text-center'><CircleHelp className='mb-3 size-8 text-slate-300' /><b className='text-sm'>{title}</b><p className='mt-1 text-sm text-slate-500'>{text}</p></div> }
+
+const EditorPanel = MetadataEditorPanel
 
 export { EditorPanel, QueuePanel, ResultPanel }
