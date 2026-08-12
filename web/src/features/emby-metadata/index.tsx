@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type MouseEvent } from 'react'
+import { useEffect, useId, useMemo, useState, type MouseEvent, type WheelEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Check, CircleHelp, Database, ExternalLink, Maximize2, RefreshCw, Search, Sparkles, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -80,11 +80,26 @@ function ValueChips({ value }: { value: string }) {
   </div>
 }
 
-function CoverPreview({ candidate }: { candidate: MetadataCandidate }) {
+function CoverPreview({ candidate, onChange }: { candidate: MetadataCandidate; onChange?: (candidate: MetadataCandidate) => void }) {
   const currentImageUrl = candidate.current_image_url ?? null
+  const scrapedImageUrl = candidate.poster_data
+    ? `data:image/jpeg;base64,${candidate.poster_data}`
+    : candidate.poster_url
+      ? apiClient.metadataImageUrl(candidate.poster_url, candidate.raw_url)
+      : null
+  const selectPoster = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = String(reader.result)
+      const nextCandidate = { ...candidate, poster_data: dataUrl.split(',', 2)[1] ?? '', poster_url: undefined }
+      onChange?.(nextCandidate)
+      window.dispatchEvent(new CustomEvent('metadata-poster-uploaded', { detail: nextCandidate }))
+    }
+    reader.readAsDataURL(file)
+  }
   return <div className='mb-4 flex items-center gap-4 rounded-lg border bg-slate-50 p-3'>
     <div className='min-w-0 flex-1'><b className='mb-2 block text-sm'>当前 Emby 封面</b><div className='flex h-28 items-center justify-center overflow-hidden rounded bg-slate-200'>{currentImageUrl ? <img src={currentImageUrl} alt='当前 Emby 封面' className='size-full object-contain' /> : <Database className='size-7 text-slate-400' />}</div></div>
-    <div className='min-w-0 flex-1'><b className='mb-2 block text-sm'>抓取封面</b><div className='flex h-28 items-center justify-center overflow-hidden rounded bg-slate-200'>{candidate.poster_url ? <img src={apiClient.metadataImageUrl(candidate.poster_url, candidate.raw_url)} alt='抓取封面' className='size-full object-contain' /> : <Database className='size-7 text-slate-400' />}</div></div>
+    <div className='min-w-0 flex-1'><b className='mb-2 block text-sm'>抓取封面</b><label className='flex h-28 cursor-pointer items-center justify-center overflow-hidden rounded bg-slate-200 hover:ring-2 hover:ring-blue-300'>{scrapedImageUrl ? <img src={scrapedImageUrl} alt='抓取封面' className='size-full object-contain' /> : <Database className='size-7 text-slate-400' />}<input type='file' accept='image/*' className='sr-only' onChange={(event) => { const file = event.target.files?.[0]; if (file) selectPoster(file); event.target.value = '' }} /></label></div>
   </div>
 }
 
@@ -109,6 +124,14 @@ export function EmbyMetadataWorkspace() {
   const [, setSearching] = useState(false)
 
   const queueQuery = useQuery({ queryKey: ['emby-metadata-queue'], queryFn: () => apiClient.getMetadataQueue() })
+  const refreshQueue = async () => {
+    try {
+      await queueQuery.refetch()
+      toast.success('队列已刷新')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '刷新队列失败')
+    }
+  }
   const items = queueQuery.data?.items ?? []
   useEffect(() => {
     const handleTitleTranslation = (event: Event) => {
@@ -118,7 +141,15 @@ export function EmbyMetadataWorkspace() {
       }
     }
     window.addEventListener('metadata-title-translated', handleTitleTranslation)
-    return () => window.removeEventListener('metadata-title-translated', handleTitleTranslation)
+    const handlePosterUpload = (event: Event) => {
+      const nextCandidate = (event as CustomEvent<MetadataCandidate>).detail
+      if (nextCandidate?.poster_data) setCandidate(nextCandidate)
+    }
+    window.addEventListener('metadata-poster-uploaded', handlePosterUpload)
+    return () => {
+      window.removeEventListener('metadata-title-translated', handleTitleTranslation)
+      window.removeEventListener('metadata-poster-uploaded', handlePosterUpload)
+    }
   }, [])
   useEffect(() => {
     const openItemInEmby = (event: globalThis.MouseEvent) => {
@@ -133,6 +164,42 @@ export function EmbyMetadataWorkspace() {
     document.addEventListener('click', openItemInEmby, true)
     return () => document.removeEventListener('click', openItemInEmby, true)
   }, [items])
+  useEffect(() => {
+    const layer = document.createElement('div')
+    const preview = document.createElement('img')
+    layer.style.cssText = 'position:fixed;z-index:1000;display:block;background:transparent!important;opacity:0;pointer-events:none;transition:opacity 150ms ease;'
+    preview.style.cssText = 'display:block;width:min(55vw,720px);max-height:82vh;object-fit:contain;border-radius:.5rem;'
+    layer.appendChild(preview)
+    document.body.appendChild(layer)
+    const showPreview = (event: Event) => {
+      const image = event.target instanceof HTMLImageElement ? event.target : null
+      if (!image || !image.closest('main')) return
+      const placePreview = () => {
+        const rect = image.getBoundingClientRect()
+        const previewRect = preview.getBoundingClientRect()
+        const gap = 12
+        const left = rect.right + previewRect.width + gap <= window.innerWidth ? rect.right + gap : Math.max(gap, rect.left - previewRect.width - gap)
+        const top = Math.min(Math.max(gap, rect.top), Math.max(gap, window.innerHeight - previewRect.height - gap))
+        layer.style.left = `${left}px`
+        layer.style.top = `${top}px`
+      }
+      preview.onload = placePreview
+      preview.src = image.currentSrc || image.src
+      preview.alt = image.alt
+      placePreview()
+      layer.style.opacity = '1'
+    }
+    const hidePreview = (event: Event) => {
+      if (event.target instanceof HTMLImageElement) layer.style.opacity = '0'
+    }
+    document.addEventListener('mouseover', showPreview)
+    document.addEventListener('mouseout', hidePreview)
+    return () => {
+      document.removeEventListener('mouseover', showPreview)
+      document.removeEventListener('mouseout', hidePreview)
+      layer.remove()
+    }
+  }, [])
   const active = items.find((item) => item.notification_id === activeId) ?? items[0]
   const resultGroups = Object.entries(resultsByItem)
     .map(([notificationId, itemResults]) => ({
@@ -264,9 +331,9 @@ export function EmbyMetadataWorkspace() {
   }
 
   return <main className='flex min-h-screen flex-col bg-slate-50 text-slate-800'>
-    <header className='flex items-start justify-between border-b bg-white px-6 py-4'><div><h1 className='flex items-center gap-2 text-2xl font-bold'>Emby 元数据工作台 <Sparkles className='size-6 text-amber-500' /></h1><p className='mt-1 text-sm text-slate-500'>批量搜索、候选对比与写入 Emby</p></div><div className='flex items-center gap-3'><div className='rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700'><Check className='mr-1 inline size-4' />Emby 连接正常</div><Button variant='outline' onClick={() => void queueQuery.refetch()}><RefreshCw className='size-4' />刷新队列</Button></div></header>
+    <header className='flex items-start justify-between border-b bg-white px-6 py-4'><div><h1 className='flex items-center gap-2 text-2xl font-bold'>Emby 元数据工作台 <Sparkles className='size-6 text-amber-500' /></h1><p className='mt-1 text-sm text-slate-500'>批量搜索、候选对比与写入 Emby</p></div><div className='flex items-center gap-3'><div className='rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700'><Check className='mr-1 inline size-4' />Emby 连接正常</div><Button variant='outline' disabled={queueQuery.isFetching} onClick={() => void refreshQueue()}><RefreshCw className={`size-4 ${queueQuery.isFetching ? 'animate-spin' : ''}`} />{queueQuery.isFetching ? '刷新中' : '刷新队列'}</Button></div></header>
     <section className='mx-5 mt-2 flex items-center gap-3 rounded-lg border bg-white p-2'><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className='w-32'><SelectValue placeholder='全部状态' /></SelectTrigger><SelectContent><SelectItem value='all'>全部状态</SelectItem><SelectItem value='pending'>待搜索</SelectItem><SelectItem value='fetched'>已抓取</SelectItem></SelectContent></Select><Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className='w-32'><SelectValue placeholder='全部分类' /></SelectTrigger><SelectContent><SelectItem value='all'>全部分类</SelectItem><SelectItem value='japanese_korean'>日韩</SelectItem><SelectItem value='domestic'>国产</SelectItem><SelectItem value='western'>欧美</SelectItem></SelectContent></Select><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder='搜索词 / 番号 / 名称' className='max-w-sm' /><Button variant='outline' onClick={() => setQuery('')}><X className='size-4' />清空</Button></section>
-    <section className='grid h-[calc(100vh-158px)] min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,1.15fr)] gap-2 overflow-hidden px-5 py-2'>
+    <section className='grid h-[calc(100vh-158px)] min-h-0 grid-cols-[minmax(220px,.78fr)_minmax(0,1fr)_minmax(0,1.35fr)] gap-2 overflow-hidden px-5 py-2'>
       <CompactQueuePanel items={items} visibleItems={visibleItems} active={active} selectedIds={selectedIds} statusOverrides={statusOverrides} routeFor={routeFor} searchKeywords={searchKeywords} setSearchKeywords={setSearchKeywords} setRouting={setRouting} setActiveId={activateItem} toggle={toggle} searchSelected={searchSelected} setSelectedIds={setSelectedIds} />
       <CompactGroupedResultPanel groups={resultGroups} activeId={active?.notification_id} selectedResult={selectedResult} setActiveId={activateItem} selectCandidate={selectCandidate} clearResults={() => active && setResultsByItem((current) => ({ ...current, [active.notification_id]: [] }))} />
       <MetadataEditorPanel candidate={candidate} beforeItem={beforeItem} autoTranslate={autoTranslate} setAutoTranslate={setAutoTranslate} fieldSelection={fieldSelection} setFieldSelection={setFieldSelection} setCandidate={setCandidate} writeback={writeback} batchWriteback={batchWriteback} batchCount={selectedIds.length} />
@@ -291,7 +358,7 @@ export function GroupedResultPanel({ groups, activeId, selectedResult, setActive
 }
 
 function MetadataEditorPanel({ candidate, beforeItem, autoTranslate, setAutoTranslate, setCandidate, writeback, batchWriteback, batchCount }: { candidate: MetadataCandidate | null; beforeItem: Record<string, unknown>; autoTranslate: boolean; setAutoTranslate: (value: boolean) => void; fieldSelection?: string[]; setFieldSelection?: (value: (current: string[]) => string[]) => void; setCandidate: (value: (current: MetadataCandidate | null) => MetadataCandidate | null) => void; writeback: () => void; batchWriteback: () => void; batchCount: number }) {
-  return <MetadataEditorPanelLegacy candidate={candidate} beforeItem={beforeItem} autoTranslate={autoTranslate} setAutoTranslate={setAutoTranslate} setCandidate={setCandidate} writeback={writeback} batchWriteback={batchWriteback} batchCount={batchCount} />
+  return <MetadataEditorPanelNoTabs candidate={candidate} beforeItem={beforeItem} autoTranslate={autoTranslate} setAutoTranslate={setAutoTranslate} setCandidate={setCandidate} writeback={writeback} batchWriteback={batchWriteback} batchCount={batchCount} />
 }
 
 function MetadataEditorPanelLegacy({ candidate, beforeItem, autoTranslate, setAutoTranslate, setCandidate, writeback, batchWriteback, batchCount }: { candidate: MetadataCandidate | null; beforeItem: Record<string, unknown>; autoTranslate: boolean; setAutoTranslate: (value: boolean) => void; fieldSelection?: string[]; setFieldSelection?: (value: (current: string[]) => string[]) => void; setCandidate: (value: (current: MetadataCandidate | null) => MetadataCandidate | null) => void; writeback: () => void; batchWriteback: () => void; batchCount: number }) {
@@ -326,7 +393,7 @@ function TagEditor({ value, onChange }: { value: string; onChange: (value: strin
   const [draft, setDraft] = useState('')
   const values = value.split(/[、,，]/).map((item) => item.trim()).filter(Boolean)
   const add = () => { const next = draft.trim(); if (!next) return; onChange([...values, next].filter((item, index, list) => list.indexOf(item) === index).join('、')); setDraft('') }
-  return <div className='flex min-h-9 flex-wrap items-center gap-1 rounded border bg-slate-50 p-2'>{values.map((tag) => <span key={tag} className='inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700'>{tag}<button type='button' className='text-blue-500 hover:text-red-600' onClick={() => onChange(values.filter((item) => item !== tag).join('、'))}><X className='size-3' /></button></span>)}<input className='min-w-20 flex-1 bg-transparent text-xs outline-none' value={draft} placeholder={values.length ? '回车添加' : '输入后回车添加'} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); add() } }} /></div>
+  return <div className='flex min-h-9 flex-wrap items-center gap-1 rounded border p-2'>{values.map((tag) => <span key={tag} className='inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700'>{tag}<button type='button' className='text-blue-500 hover:text-red-600' onClick={() => onChange(values.filter((item) => item !== tag).join('、'))}><X className='size-3' /></button></span>)}<input className='min-w-20 flex-1 bg-transparent text-xs outline-none' value={draft} placeholder={values.length ? '回车添加' : '输入后回车添加'} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); add() } }} /></div>
 }
 
 export function OverviewEditorLegacy({ value, currentValue, onChange, onTranslate }: { value: string; currentValue: string; onChange: (value: string) => void; onTranslate: (text: string) => Promise<string> }) {
@@ -340,7 +407,7 @@ export function OverviewEditorLegacy({ value, currentValue, onChange, onTranslat
   useEffect(() => { if (!expanded) setShowFinalValue(false) }, [expanded])
   const commit = (translation: string, original: string) => { setParts({ translation, original }); onChange(translation.trim() ? `${translation.trim()}${separator}${original}` : original) }
   const translate = async () => { if (!parts.original.trim()) return; setTranslating(true); try { commit(await onTranslate(parts.original), parts.original) } catch (error) { toast.error(error instanceof Error ? error.message : '翻译失败') } finally { setTranslating(false) } }
-  return <><div className='overview-editor flex h-full min-h-0 w-full flex-col gap-1'><div className='flex shrink-0 items-center justify-between text-[11px] text-slate-500'><span>翻译</span><div className='flex items-center gap-1'><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? '翻译中…' : '翻译'}</Button><Button type='button' size='icon' variant='ghost' className='size-6' title='放大查看当前 Emby 值和候选值' onClick={() => setExpanded(true)}><Maximize2 className='size-3.5' /></Button></div></div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm' value={parts.translation} placeholder='点击“翻译”生成中文，也可以手动修改' onChange={(event) => commit(event.target.value, parts.original)} /><div className='shrink-0 text-[11px] text-slate-500'>原文</div><textarea className='overview-editor-textarea resize-none rounded border bg-slate-50 px-2 py-1 text-sm text-slate-500' value={parts.original} placeholder='原文' onChange={(event) => commit(parts.translation, event.target.value)} /></div><Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className='h-[85vh] w-[92vw] max-w-[1500px] sm:max-w-[1500px]'><DialogHeader><div className='flex items-center justify-between pr-8'><DialogTitle>简介对比</DialogTitle><Button type='button' size='sm' variant='outline' onClick={() => setShowFinalValue((visible) => !visible)}>{showFinalValue ? '返回翻译和原文' : '查看最终写入值'}</Button></div></DialogHeader><div className='grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-3'><div className='min-w-0'><div className='mb-1 text-sm font-medium'>当前 Emby 值</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={currentValue} readOnly /></div>{showFinalValue ? <div className='min-w-0 md:col-span-2'><div className='mb-1 text-sm font-medium'>最终写入值</div><textarea className='h-[68vh] w-full resize-none rounded border bg-amber-50 p-3 text-sm' value={value} readOnly /></div> : <><div className='min-w-0'><div className='mb-1 flex items-center justify-between text-sm font-medium'><span>翻译</span><Button type='button' size='sm' variant='outline' className='h-7 px-2 text-xs' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? '翻译中…' : '翻译'}</Button></div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.translation} onChange={(event) => commit(event.target.value, parts.original)} /></div><div className='min-w-0'><div className='mb-1 text-sm font-medium'>原文</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.original} onChange={(event) => commit(parts.translation, event.target.value)} /></div></>}</div></DialogContent></Dialog></>
+  return <><div className='overview-editor flex h-full min-h-0 w-full flex-col gap-1'><div className='flex shrink-0 items-center justify-between text-[11px] text-slate-500'><span>翻译</span><div className='flex items-center gap-1'><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? '翻译中…' : '翻译'}</Button><Button type='button' size='icon' variant='ghost' className='size-6' title='放大查看当前 Emby 值和候选值' onClick={() => setExpanded(true)}><Maximize2 className='size-3.5' /></Button></div></div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm' value={parts.translation} placeholder='点击“翻译”生成中文，也可以手动修改' onChange={(event) => commit(event.target.value, parts.original)} /><div className='shrink-0 text-[11px] text-slate-500'>原文</div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm ' value={parts.original} placeholder='原文' onChange={(event) => commit(parts.translation, event.target.value)} /></div><Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className='h-[85vh] w-[92vw] max-w-[1500px] sm:max-w-[1500px]'><DialogHeader><div className='flex items-center justify-between pr-8'><DialogTitle>简介对比</DialogTitle><Button type='button' size='sm' variant='outline' onClick={() => setShowFinalValue((visible) => !visible)}>{showFinalValue ? '返回翻译和原文' : '查看最终写入值'}</Button></div></DialogHeader><div className='grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-3'><div className='min-w-0'><div className='mb-1 text-sm font-medium'>当前 Emby 值</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={currentValue} readOnly /></div>{showFinalValue ? <div className='min-w-0 md:col-span-2'><div className='mb-1 text-sm font-medium'>最终写入值</div><textarea className='h-[68vh] w-full resize-none rounded border bg-amber-50 p-3 text-sm' value={value} readOnly /></div> : <><div className='min-w-0'><div className='mb-1 flex items-center justify-between text-sm font-medium'><span>翻译</span><Button type='button' size='sm' variant='outline' className='h-7 px-2 text-xs' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? '翻译中…' : '翻译'}</Button></div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.translation} onChange={(event) => commit(event.target.value, parts.original)} /></div><div className='min-w-0'><div className='mb-1 text-sm font-medium'>原文</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.original} onChange={(event) => commit(parts.translation, event.target.value)} /></div></>}</div></DialogContent></Dialog></>
 }
 
 function OverviewEditor({ value, currentValue, title, onChange, onTranslate, onTitleTranslated }: { value: string; currentValue: string; title: string; onChange: (value: string) => void; onTranslate: (text: string) => Promise<string>; onTitleTranslated: (value: string) => void }) {
@@ -355,8 +422,8 @@ function OverviewEditor({ value, currentValue, title, onChange, onTranslate, onT
   useEffect(() => { if (!expanded) setShowFinalValue(false) }, [expanded])
   const commit = (translation: string, original: string) => { setParts({ translation, original }); onChange(translation.trim() ? `${translation.trim()}${separator}${original}` : original) }
   const translate = async () => { if (!parts.original.trim()) return; setTranslating(true); try { commit(await onTranslate(parts.original), parts.original) } catch (error) { toast.error(error instanceof Error ? error.message : '翻译失败') } finally { setTranslating(false) } }
-  const translateTitle = async () => { if (!title.trim()) return; setTitleTranslating(true); try { onTitleTranslated(await onTranslate(title)) } catch (error) { toast.error(error instanceof Error ? error.message : '标题翻译失败') } finally { setTitleTranslating(false) } }
-  return <><div className='overview-editor flex h-full min-h-0 w-full flex-col gap-1'><div className='flex shrink-0 items-center justify-between text-[11px] text-slate-500'><span>翻译</span><div className='flex items-center gap-1'><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={titleTranslating || !title.trim()} onClick={() => void translateTitle()}>{titleTranslating ? '标题翻译中…' : '标题翻译'}</Button><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? 'AI翻译中…' : 'AI翻译'}</Button><Button type='button' size='icon' variant='ghost' className='size-6' title='放大查看当前 Emby 值和候选值' onClick={() => setExpanded(true)}><Maximize2 className='size-3.5' /></Button></div></div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm' value={parts.translation} placeholder='点击“AI翻译”生成中文，也可以手动修改' onChange={(event) => commit(event.target.value, parts.original)} /><div className='shrink-0 text-[11px] text-slate-500'>原文</div><textarea className='overview-editor-textarea resize-none rounded border bg-slate-50 px-2 py-1 text-sm text-slate-500' value={parts.original} placeholder='原文' onChange={(event) => commit(parts.translation, event.target.value)} /></div><Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className='h-[85vh] w-[92vw] max-w-[1500px] sm:max-w-[1500px]'><DialogHeader><div className='flex items-center justify-between pr-8'><DialogTitle>简介对比</DialogTitle><div className='flex items-center gap-2'><Button type='button' size='sm' variant='outline' disabled={titleTranslating || !title.trim()} onClick={() => void translateTitle()}>{titleTranslating ? '标题翻译中…' : '标题翻译'}</Button><Button type='button' size='sm' variant='outline' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? 'AI翻译中…' : 'AI翻译'}</Button><Button type='button' size='sm' variant='outline' onClick={() => setShowFinalValue((visible) => !visible)}>{showFinalValue ? '返回翻译和原文' : '查看最终写入值'}</Button></div></div></DialogHeader><div className='grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-3'><div className='min-w-0'><div className='mb-1 text-sm font-medium'>当前 Emby 值</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={currentValue} readOnly /></div>{showFinalValue ? <div className='min-w-0 md:col-span-2'><div className='mb-1 text-sm font-medium'>最终写入值</div><textarea className='h-[68vh] w-full resize-none rounded border bg-amber-50 p-3 text-sm' value={value} readOnly /></div> : <><div className='min-w-0'><div className='mb-1 text-sm font-medium'>翻译</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.translation} onChange={(event) => commit(event.target.value, parts.original)} /></div><div className='min-w-0'><div className='mb-1 text-sm font-medium'>原文</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.original} onChange={(event) => commit(parts.translation, event.target.value)} /></div></>}</div></DialogContent></Dialog></>
+  const translateTitle = async () => { const titleWithoutPrefix = title.replace(/^【[^】]*】\s*/, '').trim(); if (!titleWithoutPrefix) return; setTitleTranslating(true); try { onTitleTranslated(await onTranslate(titleWithoutPrefix)) } catch (error) { toast.error(error instanceof Error ? error.message : '标题翻译失败') } finally { setTitleTranslating(false) } }
+  return <><div className='overview-editor flex h-full min-h-0 w-full flex-col gap-1'><div className='flex shrink-0 items-center justify-between text-[11px] text-slate-500'><span>翻译</span><div className='flex items-center gap-1'><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={titleTranslating || !title.trim()} onClick={() => void translateTitle()}>{titleTranslating ? '标题翻译中…' : '标题翻译'}</Button><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? 'AI翻译中…' : 'AI翻译'}</Button><Button type='button' size='icon' variant='ghost' className='size-6' title='放大查看当前 Emby 值和候选值' onClick={() => setExpanded(true)}><Maximize2 className='size-3.5' /></Button></div></div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm' value={parts.translation} placeholder='点击“AI翻译”生成中文，也可以手动修改' onChange={(event) => commit(event.target.value, parts.original)} /><div className='shrink-0 text-[11px] text-slate-500'>原文</div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm' value={parts.original} placeholder='原文' onChange={(event) => commit(parts.translation, event.target.value)} /></div><Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className='h-[85vh] w-[92vw] max-w-[1500px] sm:max-w-[1500px]'><DialogHeader><div className='flex items-center justify-between pr-8'><DialogTitle>简介对比</DialogTitle><div className='flex items-center gap-2'><Button type='button' size='sm' variant='outline' disabled={titleTranslating || !title.trim()} onClick={() => void translateTitle()}>{titleTranslating ? '标题翻译中…' : '标题翻译'}</Button><Button type='button' size='sm' variant='outline' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? 'AI翻译中…' : 'AI翻译'}</Button><Button type='button' size='sm' variant='outline' onClick={() => setShowFinalValue((visible) => !visible)}>{showFinalValue ? '返回翻译和原文' : '查看最终写入值'}</Button></div></div></DialogHeader><div className='grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-3'><div className='min-w-0'><div className='mb-1 text-sm font-medium'>当前 Emby 值</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={currentValue} readOnly /></div>{showFinalValue ? <div className='min-w-0 md:col-span-2'><div className='mb-1 text-sm font-medium'>最终写入值</div><textarea className='h-[68vh] w-full resize-none rounded border bg-amber-50 p-3 text-sm' value={value} readOnly /></div> : <><div className='min-w-0'><div className='mb-1 text-sm font-medium'>翻译</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.translation} onChange={(event) => commit(event.target.value, parts.original)} /></div><div className='min-w-0'><div className='mb-1 text-sm font-medium'>原文</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.original} onChange={(event) => commit(parts.translation, event.target.value)} /></div></>}</div></DialogContent></Dialog></>
 }
 
 type PersonCardData = MetadataPerson & { image_url?: string; ImageUrl?: string; PrimaryImageUrl?: string }
@@ -381,35 +448,54 @@ function normalizePeople(value: unknown): PersonCardData[] {
   })
 }
 
-function PersonImage({ person, referer }: { person: PersonCardData; referer?: string }) {
-  const source = person.ImageUrl ?? person.PrimaryImageUrl ?? person.image_url
+function PersonImage({ person, referer, editable, onImageChange }: { person: PersonCardData; referer?: string; editable?: boolean; onImageChange?: (imageData: string) => void }) {
+  const source = person.image_data ? `data:image/jpeg;base64,${person.image_data}` : person.ImageUrl ?? person.PrimaryImageUrl ?? person.image_url
   const imageUrl = source && /^https?:\/\//i.test(source) ? apiClient.metadataImageUrl(source, referer ?? '') : source
-  return <div className='flex h-32 w-24 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-100'>
-    {imageUrl ? <img src={imageUrl} alt={person.name} className='size-full object-cover' /> : <Database className='size-7 text-slate-300' />}
+  const selectImage = async (file: File) => {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(file)
+    })
+    onImageChange?.(dataUrl.split(',', 2)[1] ?? '')
+  }
+  return <label className={`relative flex h-32 w-24 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-100 ${editable ? 'cursor-pointer hover:border-blue-400 hover:ring-2 hover:ring-blue-100' : ''}`} title={editable ? '点击上传演员图片' : undefined}>
+    {imageUrl ? <img src={imageUrl} alt={person.name} className='size-full object-cover' /> : <span className='text-xs text-slate-400'>无图片</span>}
+    {editable && <input type='file' accept='image/*' className='sr-only' onChange={(event) => { const file = event.target.files?.[0]; if (file) void selectImage(file); event.target.value = '' }} />}
+  </label>
+}
+
+function PersonCard({ person, referer, removable, editable, onRemove, onImageChange, onNameChange }: { person: PersonCardData; referer?: string; removable?: boolean; editable?: boolean; onRemove?: () => void; onImageChange?: (imageData: string) => void; onNameChange?: (name: string) => void }) {
+  return <div className='group relative flex w-36 shrink-0 flex-col items-center gap-2 rounded-lg border bg-white p-2 shadow-sm'>
+    {removable && <button type='button' aria-label={`移除${person.name}`} className='pointer-events-none absolute right-1 top-1 z-10 rounded-full bg-white p-1 text-slate-500 opacity-0 shadow transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 hover:text-red-500' onClick={onRemove}><X className='size-3.5' /></button>}
+    {editable ? <input value={person.name} aria-label={`编辑${person.name}`} className='w-full min-w-0 border-0 border-b border-solid border-slate-400 bg-transparent px-1 text-center text-sm font-semibold outline-none focus:border-blue-500' onChange={(event) => onNameChange?.(event.target.value)} /> : <div className='max-w-full truncate px-1 text-sm font-semibold' title={person.name}>{person.name}</div>}
+    <PersonImage person={person} referer={referer} editable={editable} onImageChange={onImageChange} />
   </div>
 }
 
-function PersonCard({ person, referer, removable, onRemove }: { person: PersonCardData; referer?: string; removable?: boolean; onRemove?: () => void }) {
-  return <div className='relative flex w-36 shrink-0 flex-col items-center gap-2 rounded-lg border bg-white p-2 shadow-sm'>
-    {removable && <button type='button' aria-label={`移除${person.name}`} className='absolute right-1 top-1 z-10 rounded-full bg-white p-1 text-slate-500 shadow hover:text-red-500' onClick={onRemove}><X className='size-3.5' /></button>}
-    <div className='max-w-full truncate px-1 text-sm font-semibold' title={person.name}>{person.name}</div>
-    <PersonImage person={person} referer={referer} />
-  </div>
-}
-
-function PeoplePreview({ people, referer, editable, onChange }: { people: PersonCardData[]; referer?: string; editable?: boolean; onChange?: (people: MetadataPerson[]) => void }) {
+function PeoplePreview({ people, currentPeople = [], referer, editable, onChange }: { people: PersonCardData[]; currentPeople?: PersonCardData[]; referer?: string; editable?: boolean; onChange?: (people: MetadataPerson[]) => void }) {
   const [name, setName] = useState('')
   const addPerson = () => {
     const nextName = name.trim()
     if (!nextName || !onChange) return
-    onChange([...people, { name: nextName, type: 'Actor' }])
+    const existingPerson = currentPeople.find((person) => person.name.trim().toLocaleLowerCase() === nextName.toLocaleLowerCase())
+    onChange([...people, existingPerson ? { ...existingPerson, name: nextName, type: 'Actor' } : { name: nextName, type: 'Actor' }])
     setName('')
   }
-  return <div className='flex min-h-52 w-full min-w-0 gap-3 overflow-x-auto overflow-y-hidden rounded-lg border border-slate-200 bg-slate-50/60 p-3'>
-    {people.map((person, index) => <PersonCard key={`${person.name}-${person.id ?? index}`} person={person} referer={referer} removable={editable} onRemove={() => onChange?.(people.filter((_, itemIndex) => itemIndex !== index))} />)}
-    {editable && <div className='flex w-36 shrink-0 flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-white p-3'>
-      <Input value={name} placeholder='输入演员名字' className='h-8 text-xs' onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addPerson() } }} />
-      <button type='button' className='flex flex-col items-center gap-1 text-sm text-blue-600 hover:text-blue-700 disabled:text-slate-300' disabled={!name.trim()} onClick={addPerson}><span className='text-4xl font-light leading-none'>＋</span><span>添加演员</span></button>
+  const scrollHorizontally = (event: WheelEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const delta = event.deltaY || event.deltaX
+    if (!delta) return
+    event.currentTarget.scrollLeft += delta
+  }
+  return <div onWheelCapture={scrollHorizontally} className='flex min-h-52 w-full min-w-0 overscroll-none gap-3 overflow-x-auto overflow-y-hidden rounded-lg border border-slate-200 bg-slate-50/60 p-3'>
+    {people.map((person, index) => <PersonCard key={`${person.id ?? index}`} person={person} referer={referer} removable={editable} editable={editable} onRemove={() => onChange?.(people.filter((_, itemIndex) => itemIndex !== index))} onNameChange={(name) => onChange?.(people.map((item, itemIndex) => itemIndex === index ? { ...item, name } : item))} onImageChange={(imageData) => onChange?.(people.map((item, itemIndex) => itemIndex === index ? { ...item, image_data: imageData, image_url: undefined } : item))} />)}
+    {editable && <div className='group flex w-36 shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-blue-300 bg-gradient-to-b from-blue-50 to-white p-3 shadow-sm transition hover:border-blue-500 hover:shadow-md'>
+      <div className='flex size-10 items-center justify-center rounded-full bg-blue-100 text-2xl font-light leading-none text-blue-600 transition group-hover:scale-105'>＋</div>
+      <Input value={name} placeholder='输入演员名字' className='h-8 border-blue-200 bg-white text-xs shadow-none focus-visible:ring-blue-200' onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addPerson() } }} />
+      <button type='button' className='text-xs font-medium text-blue-600 hover:text-blue-700 disabled:text-slate-300' disabled={!name.trim()} onClick={addPerson}>添加演员</button>
     </div>}
     {!people.length && !editable && <span className='self-center text-sm text-slate-400'>暂无演员</span>}
   </div>
@@ -423,8 +509,8 @@ function FieldRow({ field, label, candidate, beforeItem, checked, onCheck, hideC
   const multiline = field === 'Name' || field === 'OriginalTitle' || field === 'Taglines' || field === 'Overview'
   const people = field === 'People' ? normalizePeople(current) : []
   const candidatePeople = field === 'People' ? candidate.people : []
-  const cellClass = field === 'People' ? 'h-56 max-h-56' : field === 'Overview' ? 'h-52 max-h-52' : multiline ? 'h-20 max-h-20' : 'min-h-9'
-  const editor = field === 'People' ? <PeoplePreview people={candidatePeople} referer={candidate.raw_url} editable onChange={onChange} /> : collectionFields.has(field) ? <TagEditor value={value} onChange={onChange} /> : field === 'Overview' ? <OverviewEditor value={value} currentValue={currentText} title={candidate.title} onChange={onChange} onTranslate={(text) => apiClient.translateMetadata(text)} onTitleTranslated={(translatedTitle) => window.dispatchEvent(new CustomEvent('metadata-title-translated', { detail: translatedTitle }))} /> : multiline ? <textarea className='h-full max-h-20 w-full resize-none overflow-y-auto rounded border px-2 py-1 text-sm' value={value} onChange={(event) => onChange(event.target.value)} /> : field === 'ExternalIds' ? <ExternalIdsEditor value={value} onChange={onChange} /> : field === 'OfficialRating' || field === 'CustomRating' ? <Select value={value || '__empty__'} onValueChange={(next) => onChange(next === '__empty__' ? '' : next)}><SelectTrigger className='h-9'><SelectValue placeholder='选择评分' /></SelectTrigger><SelectContent>{ratingOptions.map((option) => <SelectItem key={option || '__empty__'} value={option || '__empty__'}>{option || '未设置'}</SelectItem>)}</SelectContent></Select> : <Input className='h-9' type={field === 'CommunityRating' ? 'number' : 'text'} value={value} onChange={(event) => onChange(event.target.value)} />
+  const cellClass = field === 'People' ? 'h-54 max-h-54' : field === 'Overview' ? 'h-52 max-h-52' : multiline ? 'h-20 max-h-20' : 'min-h-9'
+  const editor = field === 'People' ? <PeoplePreview people={candidatePeople} currentPeople={people} referer={candidate.raw_url} editable onChange={onChange} /> : collectionFields.has(field) ? <TagEditor value={value} onChange={onChange} /> : field === 'Overview' ? <OverviewEditor value={value} currentValue={currentText} title={candidate.original_title} onChange={onChange} onTranslate={(text) => apiClient.translateMetadata(text)} onTitleTranslated={(translatedTitle) => window.dispatchEvent(new CustomEvent('metadata-title-translated', { detail: translatedTitle }))} /> : multiline ? <textarea className='h-full max-h-20 w-full resize-none overflow-y-auto rounded border px-2 py-1 text-sm' value={value} onChange={(event) => onChange(event.target.value)} /> : field === 'ExternalIds' ? <ExternalIdsEditor value={value} onChange={onChange} /> : field === 'OfficialRating' || field === 'CustomRating' ? <Select value={value || '__empty__'} onValueChange={(next) => onChange(next === '__empty__' ? '' : next)}><SelectTrigger className='h-9'><SelectValue placeholder='选择评分' /></SelectTrigger><SelectContent>{ratingOptions.map((option) => <SelectItem key={option || '__empty__'} value={option || '__empty__'}>{option || '未设置'}</SelectItem>)}</SelectContent></Select> : <Input className='h-9' type={field === 'CommunityRating' ? 'number' : 'text'} value={value} onChange={(event) => onChange(event.target.value)} />
   const gridClass = hideCheckbox ? 'grid-cols-[76px_minmax(0,1fr)_minmax(0,1fr)]' : 'grid-cols-[28px_76px_minmax(0,1fr)_minmax(0,1fr)]'
   const row = <div className={`grid ${gridClass} items-stretch gap-2 py-2`}>{!hideCheckbox && <Checkbox checked={checked} onCheckedChange={onCheck} />}<label className='self-center text-sm'>{label}</label><div className={`${cellClass} ${field === 'People' ? 'min-w-0' : multiline ? '' : 'flex items-center'} overflow-x-hidden overflow-y-auto break-words whitespace-pre-wrap text-sm text-slate-500`}>{field === 'People' ? <PeoplePreview people={people} referer={candidate.raw_url} /> : field === 'ExternalIds' ? <ExternalIdsView value={current} /> : collectionFields.has(field) ? <ValueChips value={currentText} /> : currentText || '—'}</div><div className={`${cellClass} ${field === 'People' ? 'min-w-0' : multiline ? '' : 'flex items-center'} min-w-0 overflow-hidden`}>{editor}</div></div>
   return field === 'SortName' || field === 'ForcedSortName' || field === 'ExternalIds' ? <details className='rounded border-b px-2'><summary className='cursor-pointer py-2 text-sm font-medium text-slate-600'>{label}</summary>{row}</details> : row
@@ -440,6 +526,10 @@ export function FieldRowLegacy({ field, label, candidate, beforeItem, checked, o
   const cellClass = multiline ? 'h-20 max-h-20' : 'min-h-9'
   const row = <div className={`grid ${gridClass} items-center gap-2 py-2`}>{!hideCheckbox && <Checkbox checked={checked} onCheckedChange={onCheck} />}<label className='text-sm'>{label}</label><div className={`${cellClass} overflow-hidden break-words whitespace-pre-wrap text-sm text-slate-500`}>{field === 'ExternalIds' ? <ExternalIdsView value={current} /> : collectionFields.has(field) ? <ValueChips value={currentText} /> : currentText || '—'}</div><div className={`${cellClass} min-w-0 overflow-hidden`}>{collectionFields.has(field) ? <TagEditor value={value} onChange={onChange} /> : multiline ? <textarea className='h-full max-h-20 w-full resize-none overflow-y-auto rounded border px-2 py-1 text-sm' value={value} onChange={(event) => onChange(event.target.value)} /> : field === 'ExternalIds' ? <ExternalIdsEditor value={value} onChange={onChange} /> : field === 'OfficialRating' || field === 'CustomRating' ? <Select value={value || '__empty__'} onValueChange={(next) => onChange(next === '__empty__' ? '' : next)}><SelectTrigger className='h-9'><SelectValue placeholder='选择评分' /></SelectTrigger><SelectContent>{ratingOptions.map((option) => <SelectItem key={option || '__empty__'} value={option || '__empty__'}>{option || '未设置'}</SelectItem>)}</SelectContent></Select> : <Input className='h-9' type={field === 'CommunityRating' ? 'number' : 'text'} min={field === 'CommunityRating' ? 0 : undefined} max={field === 'CommunityRating' ? 10 : undefined} step={field === 'CommunityRating' ? '.1' : undefined} value={value} onChange={(event) => onChange(event.target.value)} />}</div></div>
   return field === 'SortName' || field === 'ForcedSortName' || field === 'ExternalIds' ? <details className='rounded border-b px-2'><summary className='cursor-pointer py-2 text-sm font-medium text-slate-600'>{label}</summary>{row}</details> : row
+}
+
+function MetadataEditorPanelNoTabs({ candidate, beforeItem, autoTranslate, setAutoTranslate, setCandidate, writeback, batchWriteback, batchCount }: { candidate: MetadataCandidate | null; beforeItem: Record<string, unknown>; autoTranslate: boolean; setAutoTranslate: (value: boolean) => void; setCandidate: (value: (current: MetadataCandidate | null) => MetadataCandidate | null) => void; writeback: () => void; batchWriteback: () => void; batchCount: number }) {
+  return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='border-b px-4 py-3'><b>编辑元数据</b></div><div className='min-h-0 flex-1 overflow-y-auto p-4'>{candidate ? <><CoverPreview candidate={candidate} /><div className='mb-3 flex justify-between rounded border bg-slate-50 p-2 text-sm'><span>覆盖模式</span><button onClick={() => setAutoTranslate(!autoTranslate)}>{autoTranslate ? '自动翻译已开启' : '自动翻译已关闭'}</button></div><div className='grid grid-cols-[76px_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b pb-2 text-xs text-slate-500'><span>字段</span><span>当前 Emby 值</span><span>候选值</span></div><div className='divide-y'>{fields.map(([key, label]) => <FieldRow key={key} field={key} label={label} candidate={candidate} beforeItem={beforeItem} hideCheckbox onChange={(value) => setCandidate((current) => current ? updateCandidate(current, key, value) : current)} />)}</div><div className='mt-4 rounded border bg-slate-50 p-3 text-xs'>数据源：{candidate.source}　编号：{candidate.source_id}<br />产品番号：{candidate.product_number ?? '—'}<br /><a href={candidate.raw_url} target='_blank' rel='noreferrer' className='text-blue-600'>打开来源页</a></div></> : <Empty title='等待候选详情' text='从中栏选择一条搜索结果。' />}</div><div className='flex items-center justify-end gap-2 border-t p-3'><Button variant='outline' disabled={!candidate}>保存为草稿</Button><Button variant='outline' disabled={batchCount < 2} onClick={batchWriteback}>批量写入 Emby</Button><Button onClick={writeback} disabled={!candidate}><Upload className='size-4' />确认写入 Emby</Button></div></div>
 }
 
 function Status({ value }: { value: string }) {

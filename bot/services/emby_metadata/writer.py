@@ -269,8 +269,8 @@ async def apply_metadata_candidate_to_item(
     await apply_item_update(
         item_id,
         preview["payload"],
-        apply_poster=apply_poster or bool(candidate.poster_url),
-        poster_data=poster_data,
+        apply_poster=apply_poster or bool(candidate.poster_url or candidate.poster_data),
+        poster_data=poster_data or candidate.poster_data,
         poster_url=candidate.poster_url,
         poster_referer=candidate.raw_url,
         poster_archive_path=_archive_path(candidate, "poster.jpg"),

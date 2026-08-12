@@ -317,7 +317,7 @@ main > section.grid > div:nth-child(3) .divide-y > div:nth-child(4) > div:nth-ch
 /* 当前 Emby 值较长时在字段单元格内滚动，避免内容被外层面板截断。 */
 main > section.grid > div:nth-child(3) .divide-y > div > div:nth-child(3) {
   min-width: 0;
-  max-height: 13rem;
+  max-height: 14rem;
   overflow-y: auto;
   scrollbar-width: thin;
 }
