@@ -1,6 +1,6 @@
 # GV Data Capture 交接文档
 
-更新时间：2026-08-12
+更新时间：2026-08-13
 
 ## 1. 本次完成内容
 
@@ -148,3 +148,40 @@ python -m compileall -q bot/services/emby_metadata
 - 自动翻译简介开关恢复到“确认写入 Emby”底部操作栏左侧，并恢复原来的 Button 样式。
 - 删除覆盖模式界面和请求参数，写入统一使用固定覆盖逻辑。
 - 恢复 `EditorPanel` 兼容导出，避免前端懒加载模块出现导出不存在错误。
+
+## 12. 数据源解析与番号路由更新（2026-08-13）
+
+- 新增 `boy-studio` 日韩数据源，并注册到元数据工作台。
+- `boy-studio` 默认使用标题搜索，不使用番号搜索；详情页从 `品番` 解析番号。
+- `boy-studio` 的 `レーベル` 映射为工作室，`ジャンル` 和 `シリーズ` 映射为标签，类型保持为空。
+- `boy-studio` 简介会过滤订阅价格及购买方式提示，例如 `サブスク会員`、`通常価格` 等商业说明。
+- `BOY-` 开头的番号默认使用 `boy-studio` 数据源；`BWB` 开头的番号默认使用 `ko-shop` 数据源。
+- `boy-studio` 请求使用浏览器兼容请求头，降低站点返回 HTTP 503 的概率。
+- ACCEED 详情标题会移除标题区域中的“お気に入りに追加”按钮文本；搜索结果封面地址会清理首尾空白。
+- CK-Download 简介会过滤“ストリーミング再生のみ”提示，产品番号末尾的 `-HD` 会被移除。
+- Koshop 详情页的 `シリーズ` 会加入标签，并与 `モデルタイプ`、`キーワード` 一起去重。
+
+## 13. 新增四个日韩数据源（2026-08-13）
+
+- 新增并注册 `ko-video`、`trance-video`、`ko-tube`、`str8boys2023`，分别位于 `parser/ko_video.py`、`parser/trance_video.py`、`parser/ko_tube.py`、`parser/str8boys2023.py` 与对应的 `sources/` 文件。
+- 所有详情候选都保留 `parse_report.source_html_fields`，用于按 fixture 逐字段复核；没有在 HTML 中出现的字段保持为空，不用猜测值。
+- `ko-video`：详情 `h2` 为原标题；`商品発売日` 为发行日期；`メーカー/レーベル` 的厂家写入 Studios；`シリーズ/ジャンル` 与 `モデル` 写入 Tags；`*_DVD.jpg` 为封面。
+- `trance-video`：详情表格中的 `作品ID`、`掲載日`、标题和图片按页面值解析；`label`/`play_type` 链接写入 Tags。
+- `str8boys2023`：`品番`、`公開日`、`レーベル`、`MODEL NAME`、`SERIES`、`PLAY LIST`、`MODEL TYPE` 分别映射为番号、日期、工作室、演员和标签；封面优先 `images/{番号}/0s.jpg`。
+- `ko-tube`：普通 product 直接使用 `/product/index/{id}`；`KT-25389` 是 package 的外部番号，必须直接请求 `/package/index/25389`，不能拿 `KT-25389` 去搜索。package 详情通过封面 `81-02-0001_C.jpg` 得到 DVD 番号 `81-02-0001`，并在 `parse_report.child_product_links` 保留 `/product/index2/72780/` 等组成 product 链接。
+- `ko-tube` product 详情的番号来自 `作品番号`；メーカー写入 Studios；プレイ和モデル写入 Tags。package 的标题、厂家、レーベル、DVD発売和组成 product 链接按 package HTML 保留。
+
+## 14. 本次校对范围与限制
+
+- 已按 `fixtures/日韩/{ko-video,trance-video,ko-tube,str8boys2023}/` 中的 search/detail HTML 对 selector 和字段映射逐项核对。
+- 本次按要求未运行测试；后续接入真实站点时应单独确认搜索参数、重定向和站点访问策略，不要把 fixture 解析通过当成线上可用性证明。
+
+### Fixture 字段值校对记录
+
+| 来源 / fixture | 解析后的关键值 |
+|---|---|
+| `ko-video/KSUI028.html` | 番号 `KSUI028`；原标题 `ある変態リーマンの淫猥な日常 4`；发行日 `2023-03-24`；厂家 `KO`；标签 `SUITS`、`ストーリー`、`普通・スジ筋`、`筋肉・ガチムチ`；封面 `/upload/save_image/SUITS/KSUI028_DVD/KSUI028_DVD.jpg`。 |
+| `trance-video/TO-07-0011-01.html` | 番号 `TO-07-0011-01`；原标题 `【独占配信】ワケアリ part11`；掲載日 `2017-05-26`；表格值 `00:25:24`、`1040MB`、`1920×1080pixel`、`最大5Mbps`；详情标签包含 `ワケアリ`、`目隠し`、`手コキ・フェラ`、`拘束`、`MORE`；封面 `/picture/parent/TO-07-0011-01-14_1.jpg`。 |
+| `ko-tube/70-01-0035-01.html` | 番号 `70-01-0035-01`；厂家/レーベル `赤面男子`；プレイ `アナルSEX`、`手コキ・フェラ・アナル責め`；モデル `標準・ムッチリ`；无 DVD発売值。 |
+| `ko-tube/KT-25389.html` | package 外部 ID `KT-25389`；DVD 番号 `81-02-0001`；原标题 `【monster】 MONSTER 巨根中毒`；厂家 `KO EAST`；レーベル `monster`；DVD発売 `2016-07-01`（HTML 只有 `2016年07月`，按月首日保存）；组成 product 为 `72780`、`72781`、`72782`，链接为 `/product/index2/{id}/`。 |
+| `str8boys2023/SBM-0511.html` | 番号 `SBM-0511`；公开日 `2025-07-05`；レーベル `STR8 BOYS`；MODEL NAME `涼真-RYOMA-`；SERIES `THE FIRST TAKE`；PLAY LIST `手コキ・フェラ`；MODEL TYPE 八项标签；封面为 `images/SBM-0511/0s.jpg`。 |

@@ -21,6 +21,10 @@ from bot.services.emby_metadata.sources.hunk_ch import HunkChSource
 from bot.services.emby_metadata.sources.jgvdata import JgvdataSource
 from bot.services.emby_metadata.sources.ko_shop import KoShopSource
 from bot.services.emby_metadata.sources.mensrush import MensrushSource
+from bot.services.emby_metadata.sources.ko_video import KoVideoSource
+from bot.services.emby_metadata.sources.trance_video import TranceVideoSource
+from bot.services.emby_metadata.sources.ko_tube import KoTubeSource
+from bot.services.emby_metadata.sources.str8boys2023 import Str8BoysSource
 from bot.services.emby_metadata.sources.base import MetadataSource
 from bot.services.emby_metadata.writer import (
     apply_metadata_candidate_to_item,
@@ -85,6 +89,10 @@ _SOURCES_BY_CATEGORY: dict[str, dict[str, type[MetadataSource]]] = {
         MensrushSource.name: MensrushSource,
         AcceedSource.name: AcceedSource,
         BoyStudioSource.name: BoyStudioSource,
+        KoVideoSource.name: KoVideoSource,
+        TranceVideoSource.name: TranceVideoSource,
+        KoTubeSource.name: KoTubeSource,
+        Str8BoysSource.name: Str8BoysSource,
     },
     MediaLibraryCategory.DOMESTIC.value: {},
     MediaLibraryCategory.WESTERN.value: {},
@@ -105,6 +113,9 @@ def _source_for_product_number(category: str, product_number: str | None) -> str
     if product_number and product_number.upper().startswith("BWB"):
         if KoShopSource.name in sources:
             return KoShopSource.name
+    if product_number and product_number.upper().startswith("KT-"):
+        if KoTubeSource.name in sources:
+            return KoTubeSource.name
     return next(iter(sources), "未配置")
 
 
