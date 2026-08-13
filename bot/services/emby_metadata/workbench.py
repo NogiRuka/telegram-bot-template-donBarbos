@@ -399,12 +399,24 @@ async def get_merged_candidate_preview(
 async def proxy_source_image(url: str, referer: str | None = None) -> tuple[bytes, str]:
     """通过带请求头的下载器代理数据源图片，避免浏览器防盗链拦截。"""
     try:
-        source = CkDownloadSource()
-        verify_ssl = "ko-shop.com" not in url.lower()
+        url_lower = url.lower()
+        source: MetadataSource = CkDownloadSource()
+        verify_ssl = "ko-shop.com" not in url_lower
+        if "ko-video.com" in url_lower:
+            source = KoVideoSource()
+            verify_ssl = False
+        elif "ko-tube.com" in url_lower:
+            source = KoTubeSource()
+            verify_ssl = False
+        elif "trance-video.com" in url_lower:
+            source = TranceVideoSource()
+        elif "str8boys2023.com" in url_lower:
+            source = Str8BoysSource()
+        image_headers = source.image_headers(referer) if hasattr(source, "image_headers") else None
         return await download_image(
             url,
             referer=referer,
-            extra_headers=source.image_headers(referer),
+            extra_headers=image_headers,
             verify_ssl=verify_ssl,
         )
     except Exception as error:

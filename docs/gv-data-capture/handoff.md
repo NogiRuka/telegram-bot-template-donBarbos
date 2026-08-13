@@ -175,6 +175,60 @@ python -m compileall -q bot/services/emby_metadata
 
 - 已按 `fixtures/日韩/{ko-video,trance-video,ko-tube,str8boys2023}/` 中的 search/detail HTML 对 selector 和字段映射逐项核对。
 - 本次按要求未运行测试；后续接入真实站点时应单独确认搜索参数、重定向和站点访问策略，不要把 fixture 解析通过当成线上可用性证明。
+- `str8boys2023` 实站搜索使用官网实际请求 `/Store/list.php?keywords=...`；结果链接从 `detail.php` 的 `keywords` 查询参数提取番号。
+- `ko-video` 实站搜索参数名是 `name`，请求格式为 `/products/list.php?name=...`。
+- `ko-tube` 实站搜索使用 `/search/index?kw=...&sk=0&x=10&y=16`，并跟随 302 到 `/search/result/keep:1`。
+- `trance-video` 实站搜索必须先请求 `/product/search?keyword=...` 并跟随 302 到 `/product/result`，再解析最终 HTML。
+- `trance-video` 搜索结果只解析 `.title_list > li` 作品卡片，标题只取卡片 `h4`；不能扫描页面所有 `product/detail` 链接，否则会混入排行榜并把日期、价格拼进标题。
+- `ko-video` 与 `ko-tube` 仅在各自 source 内使用 `TCPConnector(ssl=False)` 兼容当前站点证书链；不得把关闭证书校验扩展到全局请求或其他数据源。
+- 四个新数据源的搜索结果必须填写 `MetadataSearchResult.image_urls`；ko-tube 和 str8boys2023 需从作品卡片的 `li` 容器取图，不能只从标题链接取图。
+- ko-tube 搜索结果只解析 `.title_list > li` 和卡片 `h4`，避免把价格、导航或其他推荐作品混入标题和结果。
+- `/api/emby/metadata/images` 图片代理必须按图片 URL 的站点选择对应 source 的 `image_headers` 和 SSL 策略；不能统一使用 `CkDownloadSource` 的请求头。ko-video、ko-tube 的图片请求也要在代理阶段保持证书兼容设置。
+
+## 15. 新数据源适配标准流程（后续对话按此执行）
+
+### 15.1 开始前：确认范围与证据
+
+1. 先确认数据源名称、所属媒体库分类、官方搜索 URL、详情 URL、图片 URL 和特殊番号规则。
+2. 优先使用用户提供的真实浏览器 Network 记录；必须记录请求方法、最终 URL、302 跳转、POST 表单字段、必要 Cookie/Referer 和响应页面结构。
+3. 先检查 `fixtures/日韩/<source>/search` 与 `detail`。fixture 是字段和 selector 的证据，不得凭其他站点经验猜字段。
+
+### 15.2 文件结构：每个数据源完全独立
+
+- HTML 解析只放在 `bot/services/emby_metadata/parser/<source>.py`。
+- 网络请求只放在 `bot/services/emby_metadata/sources/<source>.py`。
+- 每个 source 自己实现 search、fetch_detail、请求方法和异常转换。
+- 不创建 `catalog_sources.py`、`_catalog_shared.py` 或其他跨数据源共享实现；即使请求流程相似，也保持文件和规则独立。
+- 在 `sources/__init__.py`、`workbench.py` 和必要的前端 source 注册处分别注册。
+
+### 15.3 Parser 实现顺序
+
+1. 先解析搜索结果：`source_id` 必须能用于详情请求，`title` 只取作品标题节点，不能把日期、价格、导航或推荐区文本拼进去。
+2. 搜索结果必须填写 `image_urls`；图片从作品卡片容器读取，兼容 `src`、`data-src`、`data-original` 等懒加载属性，并用 `urljoin` 转成绝对 URL。
+3. 再解析详情字段：番号、原标题、日期、厂家/工作室、标签、演员、简介、图片分别映射到统一模型；HTML 没有的字段保持空值。
+4. 详情必须保留 `parse_report.source_html_fields`，必要时增加页面层级、子作品链接、原始字段等回溯信息。
+5. 封面必须明确选择规则（例如固定 `_1.jpg`、`_DVD.jpg`、卡片首图），不能只依赖页面第一张任意图片。
+
+### 15.4 Source 请求实现
+
+- 按官网真实流程实现 GET、POST、302 和最终结果页；不要把需要会话状态的跳转页改成无状态直连。
+- POST 表单字段必须使用官网 HTML 中的真实 name/value，例如 ko-tube 的 `data[Search][keyword]`、`data[Search][ex_keyword]`、`data[Search][search_option1]`。
+- `aiohttp` 请求必须保留合理 User-Agent，并在同一请求流程中保持 Session/Cookie。
+- 证书兼容只能限定在明确有证书链问题的独立 source；禁止修改全局 SSL 校验，也不要让其他数据源继承 `ssl=False`。
+- 真实站点搜索和 fixture 解析是两种检查：fixture 通过不代表线上 URL、跳转、图片和证书可用。
+
+### 15.5 特殊番号与多层页面
+
+- 如果番号前缀代表外部 package/DVD，必须在 `_source_for_product_number` 中直接路由，不能把外部番号拿去普通搜索。
+- package、product、product/index2 等页面必须分别处理；从 package 提取 DVD 番号和子 product 链接，不把 package 错当成单一 product。
+- 详情 URL、`source_id`、`product_number`、`external_ids` 必须区分：站内数字 ID 用于详情请求，页面展示番号用于媒体标题和 ProviderId。
+
+### 15.6 交付前检查
+
+- 检查四个独立 parser/source 文件是否存在，且没有共享数据源文件或残留引用。
+- 用每个 source 的 fixture 抽样打印：`source_id`、标题、日期、工作室、标签、演员、封面 URL 和 `parse_report`。
+- 做语法、导入和 `git diff --check` 检查；除非用户明确要求，不运行测试套件。
+- 更新本 handoff 和 `任务清单.md`，记录已验证的请求方法、参数、跳转、selector、图片规则和未完成的线上联调项。
 
 ### Fixture 字段值校对记录
 

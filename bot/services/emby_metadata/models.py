@@ -87,6 +87,7 @@ class MetadataCandidate(BaseModel):
     overview: str | None = Field(default=None, description="商品简介，仅取详情页 intro_text 区域")
     year: int | None = Field(default=None, description="制作年份，优先取发布日期年份")
     release_date: date | None = Field(default=None, description="商品发布日期")
+    price_yen: int | None = Field(default=None, description="来源详情页显示的日元价格或点数")
     genres: list[MetadataNamedItem] = Field(default_factory=list, description="播放内容分类，对应 Emby Genres/GenreItems")
     studios: list[MetadataNamedItem] = Field(default_factory=list, description="厂家或工作室名称，对应 Emby Studios")
     people: list[MetadataPerson] = Field(default_factory=list, description="出演模型列表")
