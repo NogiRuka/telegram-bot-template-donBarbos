@@ -22,7 +22,6 @@ from bot.services.emby_metadata.parser.boy_studio import BoyStudioParser
 from bot.services.emby_metadata.parser.hunk_ch import HunkChParser
 from bot.services.emby_metadata.parser.ko_shop import KoShopParser
 from bot.services.emby_metadata.sources.base import MetadataSourceParseError
-from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
 from bot.services.emby_metadata.writer import (
     apply_metadata_candidate_to_item,
     build_item_update_changes,
@@ -61,7 +60,7 @@ class CkDownloadParserTests(unittest.TestCase):
         return (_FIXTURE_ROOT / name).read_text(encoding="utf-8")
 
     def test_parse_single_product_detail(self) -> None:
-        candidate = CkDownloadSource.parse_detail(self._read_fixture("detail/33907.html"), "33907")
+        candidate = CkDownloadParser.parse_detail(self._read_fixture("detail/33907.html"), "33907")
         self.assertEqual(candidate.category, MediaLibraryCategory.JAPANESE_KOREAN)
         self.assertEqual(candidate.product_number, "CO-GF00023")
         self.assertTrue(candidate.title.startswith("CO-GF00023 "))
@@ -80,7 +79,7 @@ class CkDownloadParserTests(unittest.TestCase):
         self.assertNotIn("販売価格", candidate.overview or "")
 
     def test_parse_set_product_detail(self) -> None:
-        candidate = CkDownloadSource.parse_detail(self._read_fixture("detail/33831.html"), "33831")
+        candidate = CkDownloadParser.parse_detail(self._read_fixture("detail/33831.html"), "33831")
         self.assertEqual(candidate.product_number, "COCO562")
         self.assertEqual(candidate.runtime_minutes, 126)
         self.assertEqual(candidate.year, 2026)
@@ -106,7 +105,7 @@ class CkDownloadParserTests(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            CkDownloadSource.parse_search_results(self._read_fixture("search/COCO060.html"), limit=1),
+            CkDownloadParser.parse_search_results(self._read_fixture("search/COCO060.html"), limit=1),
             results[:1],
         )
 
@@ -129,16 +128,16 @@ class CkDownloadParserTests(unittest.TestCase):
         )
 
     def test_empty_search_results(self) -> None:
-        self.assertEqual(CkDownloadSource.parse_search_results("<html></html>"), [])
-        self.assertEqual(CkDownloadSource.parse_search_results("<html></html>", limit=0), [])
+        self.assertEqual(CkDownloadParser.parse_search_results("<html></html>"), [])
+        self.assertEqual(CkDownloadParser.parse_search_results("<html></html>", limit=0), [])
 
     def test_missing_title_raises_parse_error(self) -> None:
         with self.assertRaises(MetadataSourceParseError):
-            CkDownloadSource.parse_detail("<html><table></table></html>", "33907")
+            CkDownloadParser.parse_detail("<html><table></table></html>", "33907")
 
     def test_invalid_source_id_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
-            CkDownloadSource.parse_detail("<html></html>", "../33907")
+            CkDownloadParser.parse_detail("<html></html>", "../33907")
 
 
 class HunkChParserTests(unittest.TestCase):

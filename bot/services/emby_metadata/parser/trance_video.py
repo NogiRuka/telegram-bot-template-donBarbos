@@ -15,6 +15,15 @@ class TranceVideoParser:
     def _clean(value: str) -> str: return " ".join(value.split())
 
     @classmethod
+    def _overview(cls, node: Tag | None) -> str | None:
+        if not isinstance(node, Tag):
+            return None
+        for br in node.select("br"):
+            br.replace_with("\n")
+        lines = [cls._clean(line) for line in node.get_text("\n").splitlines()]
+        return "\n".join(line for line in lines if line) or None
+
+    @classmethod
     def parse_search_results(cls, html: str, limit: int = 10) -> list[MetadataSearchResult]:
         soup = BeautifulSoup(html, "html.parser")
         results = []
@@ -36,7 +45,11 @@ class TranceVideoParser:
                     or image.get("data-original")
                     or ""
                 )
-            results.append(MetadataSearchResult(source=cls.source_name, source_id=sid, category=cls.category, title=title, image_urls=[urljoin(cls.base_url + "/", image_src)] if image_src else [], detail_url=cls.detail_url(sid)))
+            date_node = card.select_one(".ftData .date")
+            date_match = re.search(r"(\d{4})\.(\d{1,2})\.(\d{1,2})", date_node.get_text(" ", strip=True) if isinstance(date_node, Tag) else "")
+            price_node = card.select_one(".ftData .price")
+            price_match = re.search(r"[\d,]+", price_node.get_text(" ", strip=True) if isinstance(price_node, Tag) else "")
+            results.append(MetadataSearchResult(source=cls.source_name, source_id=sid, category=cls.category, title=title, release_date=datetime.strptime(date_match.group(), "%Y.%m.%d").date() if date_match else None, price_yen=int(price_match.group().replace(",", "")) if price_match else None, image_urls=[urljoin(cls.base_url + "/", image_src.strip())] if image_src else [], detail_url=cls.detail_url(sid)))
             if len(results) >= limit: break
         return results
 
@@ -55,12 +68,16 @@ class TranceVideoParser:
         studio = ""
         tags = []
         if isinstance(product_category, Tag):
-            maker = product_category.find("strong", string=lambda x: x and "メーカー" in x)
-            maker_item = maker.find_next(class_="item") if isinstance(maker, Tag) else None
-            studio = cls._clean(maker_item.get_text(" ", strip=True)) if isinstance(maker_item, Tag) else ""
-            tags = list(dict.fromkeys(cls._clean(a.get_text(" ", strip=True)) for a in product_category.select('a[href*="play_type"],a[href*="label"]')))
+            for row in product_category.select("li"):
+                label = cls._clean(row.select_one("strong").get_text(" ", strip=True)) if isinstance(row.select_one("strong"), Tag) else ""
+                values = [cls._clean(a.get_text(" ", strip=True)) for a in row.select(".item a") if cls._clean(a.get_text(" ", strip=True))]
+                if label == "メーカー":
+                    studio = values[0] if values else ""
+                elif label in {"レーベル", "カテゴリ"}:
+                    tags.extend(values)
+            tags = list(dict.fromkeys(tag for tag in tags if tag.upper() != "MORE"))
         overview_node = soup.select_one(".intro_text")
-        overview = cls._clean(overview_node.get_text(" ", strip=True)) if isinstance(overview_node, Tag) else None
+        overview = cls._overview(overview_node)
         price_node = soup.select_one(".detail_page .price strong")
         price_match = re.search(r"[\d,]+", price_node.get_text(" ", strip=True)) if isinstance(price_node, Tag) else None
         price = int(price_match.group().replace(",", "")) if price_match else None

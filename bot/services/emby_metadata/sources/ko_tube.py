@@ -16,7 +16,7 @@ class KoTubeSource(MetadataSource):
     async def search(self, keyword: str, limit: int=10) -> list[MetadataSearchResult]:
         if keyword.strip().upper().startswith("KT-"):
             candidate=await self.fetch_detail(keyword.strip().upper())
-            return [MetadataSearchResult(source=self.name, source_id=candidate.source_id, category=self.category, title=candidate.title, release_date=candidate.release_date, detail_url=candidate.raw_url)]
+            return [MetadataSearchResult(source=self.name, source_id=candidate.source_id, category=self.category, title=candidate.title, release_date=candidate.release_date, price_yen=candidate.price_yen, image_urls=[candidate.poster_url] if candidate.poster_url else [], detail_url=candidate.raw_url)]
         html = await self._request_post(
             "/search/result",
             {
