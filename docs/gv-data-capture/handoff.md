@@ -233,6 +233,7 @@ python -m compileall -q bot/services/emby_metadata
 ## 17. 后续修正记录（2026-08-15）
 
 - ck-download 已移除 source 到 parser 的兼容入口；HTML fixture 和 parser 测试直接调用 `CkDownloadParser`，`CkDownloadSource` 只保留 POST/GET 请求、Cookie、重试、图片请求头和异常转换。新增或修改的注释、docstring 和错误说明统一使用中文。
+- `sources/base.py` 已提供 `HttpMetadataSource`：集中管理超时、CookieManager、请求头、GET/POST、302、SSL、重试、HTTP/网络异常和图片请求头。ck-download 作为首个接入来源，只声明 `cookie_key`、请求头、POST 搜索表单和详情路径；后续来源按相同边界迁移。
 - 追加回归修正：`ko-tube` 演员实际位于 `#model_list li h6`，图片位于同一条目的 `img`，不能从演员链接文本读取；`ko-video` 搜索兼容正式作品链接的通用选择器，避免因列表容器 class 变化返回空结果。
 - 四个新数据源保留各自 parser/source 文件；公共能力依照 [数据源开发规范](数据源开发规范.md) 收敛到职责明确的基础层，不再复制解析或请求样板代码。
 - `ko-video` 搜索只读取 `.item_list_last > li` 正式作品卡片；详情页演员读取 `.model_performance a` 的 `span` 和 `img`，`MetadataPerson.image_url` 必须保存绝对地址，并使用详情页作为 Referer 下载。若页面已有出演模型，不再把简介中的 CAST 重复追加为演员。
