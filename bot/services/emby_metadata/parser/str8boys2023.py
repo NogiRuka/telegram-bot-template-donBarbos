@@ -12,6 +12,19 @@ class Str8BoysParser:
     category = MediaLibraryCategory.JAPANESE_KOREAN
 
     @staticmethod
+    def _source_id(detail_id: str, product_number: str) -> str:
+        """组合详情页 ID 和作品番号，避免不同详情入口互相串页。"""
+        return f"{detail_id}:{product_number}"
+
+    @staticmethod
+    def _source_parts(source_id: str) -> tuple[str | None, str]:
+        """拆分内部来源 ID；纯作品番号不包含详情页 ID。"""
+        if ":" not in source_id:
+            return None, source_id
+        detail_id, product_number = source_id.split(":", 1)
+        return detail_id or None, product_number
+
+    @staticmethod
     def _clean(value: str) -> str: return " ".join(value.split())
 
     @classmethod
@@ -32,7 +45,11 @@ class Str8BoysParser:
             if not isinstance(link, Tag):
                 continue
             query = parse_qs(urlparse(str(link.get("href"))).query)
-            sid = query.get("keywords", [""])[0].strip()
+            product_number = query.get("keywords", [""])[0].strip()
+            detail_id = query.get("did", [""])[0].strip()
+            if not product_number or not detail_id:
+                continue
+            sid = cls._source_id(detail_id, product_number)
             title_node = card.select_one(".id-title a")
             title = cls._clean(title_node.get_text(" ", strip=True)) if isinstance(title_node, Tag) else ""
             if not sid or not title or any(item.source_id == sid for item in results):
@@ -62,7 +79,8 @@ class Str8BoysParser:
         for dt in soup.select("dl dt"):
             dd = dt.find_next_sibling("dd")
             if isinstance(dd, Tag): fields[cls._clean(dt.get_text(" ", strip=True))] = cls._clean(dd.get_text(" ", strip=True))
-        number = fields.get("品番", source_id); title = cls._clean(heading.get_text(" ", strip=True)); result_title = f"{number} {title}"; release = None
+        _, product_number = cls._source_parts(source_id)
+        number = fields.get("品番", product_number); title = cls._clean(heading.get_text(" ", strip=True)); result_title = f"{number} {title}"; release = None
         match = re.search(r"\d{4}/\d{1,2}/\d{1,2}", fields.get("公開日", ""))
         if match: release = datetime.strptime(match.group(), "%Y/%m/%d").date()
         tags = [x.strip() for x in re.split(r"[,，]", fields.get("MODEL TYPE", "")) if x.strip()] + [fields.get("SERIES", ""), fields.get("PLAY LIST", "")]
@@ -75,4 +93,9 @@ class Str8BoysParser:
         return MetadataCandidate(source=cls.source_name, source_id=source_id, category=cls.category, product_number=number, title=result_title, original_title=title, sort_name=result_title, forced_sort_name=result_title, overview=overview, year=release.year if release else None, release_date=release, price_yen=price, studios=[MetadataNamedItem(name=fields["レーベル"])] if fields.get("レーベル") else [], people=[MetadataPerson(name=fields["MODEL NAME"])] if fields.get("MODEL NAME") else [], tags=[MetadataNamedItem(name=x) for x in dict.fromkeys(x for x in tags if x)], external_ids={"source": cls.source_name, "source_id": source_id, "source_url": cls.detail_url(source_id), "product_number": number, "Imdb": number}, poster_url=urljoin(cls.base_url + "/", str(image["src"]).strip()) if isinstance(image, Tag) else None, raw_url=cls.detail_url(source_id), parse_report={"source_html_fields": fields, "overview": overview, "price": price})
 
     @classmethod
-    def detail_url(cls, source_id: str) -> str: return f"{cls.base_url}/detail.php?did=546&cid=1&scid=&avid=&keywords={source_id}"
+    def detail_url(cls, source_id: str) -> str:
+        """根据来源 ID 生成对应详情页链接。"""
+        detail_id, product_number = cls._source_parts(source_id)
+        if not detail_id:
+            raise ValueError("str8boys2023 详情抓取缺少搜索结果中的 did")
+        return f"{cls.base_url}/detail.php?did={detail_id}&cid=1&scid=&avid=&keywords={product_number}"

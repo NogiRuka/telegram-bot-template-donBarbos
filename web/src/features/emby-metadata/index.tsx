@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState, type MouseEvent, type WheelEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Check, CircleHelp, Database, ExternalLink, Maximize2, RefreshCw, Search, Sparkles, Upload, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, CircleHelp, Database, ExternalLink, Maximize2, RefreshCw, Search, Sparkles, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +25,39 @@ type ResultGroup = { item: MetadataQueueItem; results: MetadataSearchResult[] }
 function ResultDateStatus({ result, className }: { result: MetadataSearchResult; className: string }) {
   const values = [result.release_date, ...result.statuses].filter(Boolean)
   return values.length ? <p className={className}>{values.join(' · ')}</p> : null
+}
+
+function uniqueImageUrls(imageUrls: Array<string | undefined | null>): string[] {
+  return [...new Set(imageUrls.filter((url): url is string => Boolean(url?.trim())).map((url) => url.trim()))]
+}
+
+function ImageCarousel({ imageUrls, referer, alt, className }: { imageUrls: string[]; referer: string; alt: string; className: string }) {
+  const images = uniqueImageUrls(imageUrls)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const imageCount = images.length
+  const activeImage = images[activeIndex % Math.max(imageCount, 1)]
+  const move = (offset: number) => setActiveIndex((current) => (current + offset + imageCount) % imageCount)
+
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [imageUrls.join('\u0001')])
+  useEffect(() => {
+    if (imageCount < 2) return
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % imageCount)
+    }, 3500)
+    return () => window.clearInterval(timer)
+  }, [imageCount])
+
+  if (!activeImage) return <Database className='size-7 text-slate-400' />
+  return <div className='group relative size-full'>
+    <img src={apiClient.metadataImageUrl(activeImage, referer)} alt={alt} className={className} />
+    {imageCount > 1 && <>
+      <Button type='button' size='icon' variant='secondary' className='absolute left-1 top-1/2 size-7 -translate-y-1/2 rounded-full bg-white/85 p-0 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100' aria-label='查看上一张图片' onClick={(event) => { event.preventDefault(); event.stopPropagation(); move(-1) }}><ChevronLeft className='size-4' /></Button>
+      <Button type='button' size='icon' variant='secondary' className='absolute right-1 top-1/2 size-7 -translate-y-1/2 rounded-full bg-white/85 p-0 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100' aria-label='查看下一张图片' onClick={(event) => { event.preventDefault(); event.stopPropagation(); move(1) }}><ChevronRight className='size-4' /></Button>
+      <span className='absolute bottom-1 right-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] text-white'>{activeIndex % imageCount + 1}/{imageCount}</span>
+    </>}
+  </div>
 }
 const collectionFields = new Set<FieldKey>(['Genres', 'Studios', 'People', 'Tags'])
 const ratingOptions = ['', 'TV-Y', 'APPROVED', 'G', 'E', 'EC', 'TV-G', 'TV-Y7', 'TV-Y7-FV', 'PG', 'TV-PG', 'PG-13', 'T', 'TV-14', 'R', 'M', 'TV-MA', 'NC-17', 'AO', 'RP', 'UR', 'X', 'XXX']
@@ -87,7 +120,9 @@ function ValueChips({ value }: { value: string }) {
 }
 
 function CoverPreview({ candidate, onChange }: { candidate: MetadataCandidate; onChange?: (candidate: MetadataCandidate) => void }) {
+  const [pickerOpen, setPickerOpen] = useState(false)
   const currentImageUrl = candidate.current_image_url ?? null
+  const posterUrls = uniqueImageUrls([...(candidate.poster_urls ?? []), candidate.poster_url])
   const scrapedImageUrl = candidate.poster_data
     ? `data:image/jpeg;base64,${candidate.poster_data}`
     : candidate.poster_url
@@ -103,10 +138,14 @@ function CoverPreview({ candidate, onChange }: { candidate: MetadataCandidate; o
     }
     reader.readAsDataURL(file)
   }
-  return <div className='mb-4 flex items-center gap-4 rounded-lg border bg-slate-50 p-3'>
+  const choosePoster = (posterUrl: string) => {
+    onChange?.({ ...candidate, poster_url: posterUrl, poster_data: undefined })
+    setPickerOpen(false)
+  }
+  return <><div className='mb-4 flex items-center gap-4 rounded-lg border bg-slate-50 p-3'>
     <div className='min-w-0 flex-1'><b className='mb-2 block text-sm'>当前 Emby 封面</b><div className='flex h-28 items-center justify-center overflow-hidden rounded bg-slate-200'>{currentImageUrl ? <img src={currentImageUrl} alt='当前 Emby 封面' className='size-full object-contain' /> : <Database className='size-7 text-slate-400' />}</div></div>
-    <div className='min-w-0 flex-1'><b className='mb-2 block text-sm'>抓取封面</b><label className='flex h-28 cursor-pointer items-center justify-center overflow-hidden rounded bg-slate-200 hover:ring-2 hover:ring-blue-300'>{scrapedImageUrl ? <img src={scrapedImageUrl} alt='抓取封面' className='size-full object-contain' /> : <Database className='size-7 text-slate-400' />}<input type='file' accept='image/*' className='sr-only' onChange={(event) => { const file = event.target.files?.[0]; if (file) selectPoster(file); event.target.value = '' }} /></label></div>
-  </div>
+    <div className='min-w-0 flex-1'><div className='mb-2 flex items-center justify-between gap-2'><b className='text-sm'>抓取封面</b><Button type='button' size='sm' variant='outline' disabled={!posterUrls.length} onClick={() => setPickerOpen(true)}><Maximize2 className='size-3.5' />更改封面（{posterUrls.length} 张）</Button></div><label className='flex h-28 cursor-pointer items-center justify-center overflow-hidden rounded bg-slate-200 hover:ring-2 hover:ring-blue-300'>{scrapedImageUrl ? <img src={scrapedImageUrl} alt='抓取封面' className='size-full object-contain' /> : <Database className='size-7 text-slate-400' />}<input type='file' accept='image/*' className='sr-only' onChange={(event) => { const file = event.target.files?.[0]; if (file) selectPoster(file); event.target.value = '' }} /></label></div>
+  </div><Dialog open={pickerOpen} onOpenChange={setPickerOpen}><DialogContent className='h-[100dvh] max-w-none rounded-none p-6 sm:max-w-none'><DialogHeader><DialogTitle>选择抓取封面（{posterUrls.length} 张）</DialogTitle></DialogHeader><div className='min-h-0 overflow-y-auto'><div className='grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>{posterUrls.map((posterUrl, index) => <button key={posterUrl} type='button' className={`group relative aspect-[2/3] overflow-hidden rounded-lg border-2 bg-slate-100 text-left ${posterUrl === candidate.poster_url && !candidate.poster_data ? 'border-blue-500 ring-2 ring-blue-200' : 'border-transparent hover:border-blue-300'}`} onClick={() => choosePoster(posterUrl)}><img src={apiClient.metadataImageUrl(posterUrl, candidate.raw_url)} alt={`可选封面 ${index + 1}`} className='size-full object-contain' /><span className='absolute bottom-2 left-2 rounded bg-black/65 px-2 py-1 text-xs text-white'>第 {index + 1} 张</span></button>)}</div></div></DialogContent></Dialog></>
 }
 
 export function EmbyMetadataWorkspace() {
@@ -284,7 +323,14 @@ export function EmbyMetadataWorkspace() {
           supplement_source_id: result.source_id,
         })
         : await apiClient.getMetadataCandidate(owner.notification_id, result.source, result.source_id)
-      let nextCandidate = response.candidate
+      let nextCandidate: MetadataCandidate = {
+        ...response.candidate,
+        poster_urls: uniqueImageUrls([
+          ...(response.candidate.poster_urls ?? []),
+          response.candidate.poster_url,
+          ...result.image_urls,
+        ]),
+      }
       if (result.source === 'ko-shop') {
         setPrimarySelectionsByItem((current) => ({ ...current, [owner.notification_id]: { source: result.source, source_id: result.source_id } }))
       }
@@ -385,7 +431,7 @@ function QueuePanel({ items, visibleItems, active, selectedIds, routeFor, search
 }
 
 function CompactGroupedResultPanel({ groups, activeId, selectedResult, setActiveId, selectCandidate, clearResults }: { groups: ResultGroup[]; activeId?: string; selectedResult: string | null; setActiveId: (id: string) => void; selectCandidate: (result: MetadataSearchResult, resultOwnerId?: string) => void; clearResults: () => void }) {
-  return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='flex justify-between border-b px-3 py-2'><b className='text-sm'>搜索结果</b><Button size='icon' variant='ghost' onClick={clearResults}><X className='size-4' /></Button></div><div className='min-h-0 flex-1 space-y-2 overflow-y-auto p-2'>{groups.length ? groups.map((group) => <details key={group.item.notification_id} open={group.item.notification_id === activeId} className={`rounded-lg border ${group.item.notification_id === activeId ? 'border-blue-400 bg-blue-50/40' : 'bg-white'}`} onToggle={(event) => { if ((event.currentTarget as HTMLDetailsElement).open) setActiveId(group.item.notification_id) }}><summary className='cursor-pointer list-none px-2 py-1.5 text-xs font-semibold'>{group.item.item_id} {group.item.item_name}<span className='ml-1 font-normal text-slate-500'>（{group.results.length}）</span></summary><div className='grid grid-cols-2 gap-2 border-t p-2'>{group.results.length ? group.results.map((result) => <div key={`${group.item.notification_id}-${result.source}-${result.source_id}`} className='flex flex-col overflow-hidden rounded-md border bg-white shadow-sm'><div className='flex h-36 items-center justify-center overflow-hidden bg-slate-100'>{result.image_urls[0] ? <img src={apiClient.metadataImageUrl(result.image_urls[0], result.detail_url)} alt='' className='size-full object-contain' /> : <Database className='size-7 text-slate-400' />}</div><div className='flex min-w-0 flex-1 flex-col p-2'>{result.statuses.length ? <div className='mb-1 flex min-h-5 flex-wrap gap-1'>{result.statuses.map((status) => <span key={status} className='rounded border bg-slate-50 px-1 py-0.5 text-[10px] text-slate-600'>{status}</span>)}</div> : null}<div className='mb-1 flex items-center gap-1 text-[10px] text-slate-500'><SourceIcon source={result.source} className='size-3' />{result.source}</div><b className='line-clamp-3 text-xs leading-4'>{result.title}</b><div className='mt-auto flex items-center justify-between gap-1 pt-2 text-[11px]'><span className='text-slate-500'>{result.release_date ?? '日期未知'}</span><span className='font-semibold text-emerald-700'>{result.price_yen ? `¥${result.price_yen.toLocaleString()}` : '价格未知'}</span></div><Button size='sm' className='mt-2 w-full' variant={selectedResult === result.source_id && group.item.notification_id === activeId ? 'default' : 'outline'} onClick={() => { setActiveId(group.item.notification_id); selectCandidate(result, group.item.notification_id) }}>{selectedResult === result.source_id && group.item.notification_id === activeId ? '已选择' : '选择并抓取'} <ExternalLink className='ml-1 size-3' /></Button></div></div>) : <p className='col-span-2 p-2 text-sm text-slate-500'>该项目没有匹配结果。</p>}</div></details>) : <Empty title='尚未加载搜索结果' text='勾选左侧项目后，点击“批量搜索”。' />}</div></div>
+  return <div className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border bg-white'><div className='flex justify-between border-b px-3 py-2'><b className='text-sm'>搜索结果</b><Button size='icon' variant='ghost' onClick={clearResults}><X className='size-4' /></Button></div><div className='min-h-0 flex-1 space-y-2 overflow-y-auto p-2'>{groups.length ? groups.map((group) => <details key={group.item.notification_id} open={group.item.notification_id === activeId} className={`rounded-lg border ${group.item.notification_id === activeId ? 'border-blue-400 bg-blue-50/40' : 'bg-white'}`} onToggle={(event) => { if ((event.currentTarget as HTMLDetailsElement).open) setActiveId(group.item.notification_id) }}><summary className='cursor-pointer list-none px-2 py-1.5 text-xs font-semibold'>{group.item.item_id} {group.item.item_name}<span className='ml-1 font-normal text-slate-500'>（{group.results.length}）</span></summary><div className='grid grid-cols-2 gap-2 border-t p-2'>{group.results.length ? group.results.map((result) => <div key={`${group.item.notification_id}-${result.source}-${result.source_id}`} className='flex flex-col overflow-hidden rounded-md border bg-white shadow-sm'><div className='flex h-36 items-center justify-center overflow-hidden bg-slate-100'><ImageCarousel imageUrls={result.image_urls} referer={result.detail_url} alt={result.title} className='size-full object-contain' /></div><div className='flex min-w-0 flex-1 flex-col p-2'>{result.statuses.length ? <div className='mb-1 flex min-h-5 flex-wrap gap-1'>{result.statuses.map((status) => <span key={status} className='rounded border bg-slate-50 px-1 py-0.5 text-[10px] text-slate-600'>{status}</span>)}</div> : null}<div className='mb-1 flex items-center gap-1 text-[10px] text-slate-500'><SourceIcon source={result.source} className='size-3' />{result.source}</div><b className='line-clamp-3 text-xs leading-4'>{result.title}</b><div className='mt-auto flex items-center justify-between gap-1 pt-2 text-[11px]'><span className='text-slate-500'>{result.release_date ?? '日期未知'}</span><span className='font-semibold text-emerald-700'>{result.price_yen ? `¥${result.price_yen.toLocaleString()}` : '价格未知'}</span></div><Button size='sm' className='mt-2 w-full' variant={selectedResult === result.source_id && group.item.notification_id === activeId ? 'default' : 'outline'} onClick={() => { setActiveId(group.item.notification_id); selectCandidate(result, group.item.notification_id) }}>{selectedResult === result.source_id && group.item.notification_id === activeId ? '已选择' : '选择并抓取'} <ExternalLink className='ml-1 size-3' /></Button></div></div>) : <p className='col-span-2 p-2 text-sm text-slate-500'>该项目没有匹配结果。</p>}</div></details>) : <Empty title='尚未加载搜索结果' text='勾选左侧项目后，点击“批量搜索”。' />}</div></div>
 }
 
 export function GroupedResultPanel({ groups, activeId, selectedResult, setActiveId, selectCandidate, clearResults }: { groups: ResultGroup[]; activeId?: string; selectedResult: string | null; setActiveId: (id: string) => void; selectCandidate: (result: MetadataSearchResult, resultOwnerId?: string) => void; clearResults: () => void }) {

@@ -2,6 +2,7 @@
 
 from urllib.parse import quote_plus
 
+from bot.services.emby_metadata.errors import MetadataSourceParseError
 from bot.services.emby_metadata.models import MetadataCandidate, MetadataSearchResult
 from bot.services.emby_metadata.parser.str8boys2023 import Str8BoysParser
 from bot.services.emby_metadata.sources.base import HttpMetadataSource
@@ -32,6 +33,24 @@ class Str8BoysSource(HttpMetadataSource):
 
     async def fetch_detail(self, source_id: str) -> MetadataCandidate:
         """抓取 str8boys2023 商品详情。"""
+        detail_id, product_number = Str8BoysParser._source_parts(source_id)
+        if not detail_id:
+            results = await self.search(product_number)
+            matched_result = next(
+                (
+                    result
+                    for result in results
+                    if Str8BoysParser._source_parts(result.source_id)[1].casefold()
+                    == product_number.casefold()
+                ),
+                None,
+            )
+            if matched_result is None:
+                raise MetadataSourceParseError(
+                    f"未找到作品番号 {product_number} 对应的详情页 ID",
+                    self.name,
+                )
+            source_id = matched_result.source_id
         path = Str8BoysParser.detail_url(source_id).removeprefix(self.base_url)
         html = await self._request_text(path)
         return Str8BoysParser.parse_detail(html, source_id)
