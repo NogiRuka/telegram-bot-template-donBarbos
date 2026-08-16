@@ -15,8 +15,17 @@ class AcceedSource(HttpMetadataSource):
     base_url = AcceedParser.base_url
     request_timeout_seconds = 25.0
     default_headers = {
-        "User-Agent": "EmbyMetadataManager/1.0",
-        "Accept-Language": "ja,en;q=0.8",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/140.0.0.0 Safari/537.36"
+        ),
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;q=0.9,"
+            "image/avif,image/webp,*/*;q=0.8"
+        ),
+        "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+        "Referer": f"{base_url}/",
     }
 
     async def search(self, keyword: str, limit: int = 10) -> list[MetadataSearchResult]:
@@ -28,5 +37,6 @@ class AcceedSource(HttpMetadataSource):
     async def fetch_detail(self, source_id: str) -> MetadataCandidate:
         """抓取 ACCEED 详情页。"""
         AcceedParser._validate_source_id(source_id)
-        _, html = await self._request_text_sequence(("/", f"/detail.{source_id}.html"))
+        search_path = "/search.php?" + urlencode({"s": source_id})
+        _, html = await self._request_text_sequence((search_path, f"/detail.{source_id}.html"))
         return AcceedParser.parse_detail(html, source_id)

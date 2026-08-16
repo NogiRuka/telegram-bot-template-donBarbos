@@ -250,7 +250,9 @@ class AcceedParserTests(unittest.TestCase):
         candidate = asyncio.run(source.fetch_detail("ACSM355"))
 
         assert candidate.original_title.startswith("ACCEED STAR 2024")
-        source._request_text_sequence.assert_awaited_once_with(("/", "/detail.ACSM355.html"))
+        source._request_text_sequence.assert_awaited_once_with(
+            ("/search.php?s=ACSM355", "/detail.ACSM355.html")
+        )
 
 
 class BoyStudioParserTests(unittest.TestCase):
