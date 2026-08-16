@@ -9,7 +9,6 @@
 """
 
 from __future__ import annotations
-
 import time
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
@@ -20,6 +19,7 @@ from loguru import logger
 
 from bot.api.routes import admins, auth, dashboard, emby_metadata, openai, redpacket, users, webhooks
 from bot.core.config import settings
+from bot.services.emby_metadata.translation import close_translation_session, init_translation_session
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
@@ -30,10 +30,14 @@ async def api_lifespan(app: FastAPI) -> AsyncIterator[None]:
     """API 生命周期管理。"""
     del app
     logger.info("🚀 API 服务启动中...")
+    await init_translation_session()
     logger.info("✅ API 服务启动完成")
-    yield
-    logger.info("⏹️ API 服务停止中...")
-    logger.info("✅ API 服务已停止")
+    try:
+        yield
+    finally:
+        logger.info("⏹️ API 服务停止中...")
+        await close_translation_session()
+        logger.info("✅ API 服务已停止")
 
 
 def create_app() -> FastAPI:
