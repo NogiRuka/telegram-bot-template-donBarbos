@@ -130,7 +130,7 @@ class KoTubeParser:
                 image_src = image.get("src", "") if isinstance(image, Tag) else ""
                 if name:
                     people.append(MetadataPerson(name=name, image_url=cls._image_url(image_src) if image_src else None))
-        image = soup.select_one(f'img[src*="{number}_C.jpg"]') or soup.select_one("img[src*='/picture/parent/']")
+        poster_urls = cls._poster_urls(soup, number)
         report = {
             "source_html_fields": fields,
             "is_package": source_id.upper().startswith("KT-"),
@@ -158,7 +158,8 @@ class KoTubeParser:
             people=people,
             tags=[MetadataNamedItem(name=name) for name in dict.fromkeys(tags)],
             external_ids={"source": cls.source_name, "source_id": source_id, "source_url": cls.detail_url(source_id), "product_number": number, "Imdb": number},
-            poster_url=cls._image_url(str(image.get("src"))) if isinstance(image, Tag) else None,
+            poster_url=poster_urls[0] if poster_urls else None,
+            poster_urls=poster_urls,
             raw_url=cls.detail_url(source_id),
             parse_report=report,
         )
@@ -166,3 +167,16 @@ class KoTubeParser:
     @classmethod
     def detail_url(cls, source_id: str) -> str:
         return f"{cls.base_url}/package/index/{source_id[3:]}" if source_id.upper().startswith("KT-") else f"{cls.base_url}/product/index/{source_id}"
+
+    @classmethod
+    def _poster_urls(cls, soup: BeautifulSoup, number: str) -> list[str]:
+        """提取当前作品编号的所有原图，排除重复的 bx 轮播克隆图。"""
+        values: list[str] = []
+        pattern = re.compile(re.escape(number) + r"(?:_C|[-_]\d+[_-]\d+)\.(?:jpe?g|png|webp)$", re.IGNORECASE)
+        for image in soup.select("img[src], img[data-src], img[data-original]"):
+            for key in ("src", "data-src", "data-original"):
+                source = image.get(key)
+                if isinstance(source, str) and pattern.search(source.split("?", 1)[0]):
+                    values.append(cls._image_url(source))
+                    break
+        return list(dict.fromkeys(values))

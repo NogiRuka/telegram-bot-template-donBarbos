@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -52,7 +53,24 @@ def _image_headers(url: str, referer: str | None = None) -> dict[str, str]:
 
 
 def _archive_path(candidate: MetadataCandidate, filename: str) -> Path:
-    return IMAGE_ARCHIVE_ROOT / candidate.source / candidate.source_id / filename
+    safe_source = _safe_archive_component(candidate.source)
+    safe_source_id = _safe_archive_component(candidate.source_id)
+    return IMAGE_ARCHIVE_ROOT / safe_source / safe_source_id / _safe_archive_component(filename)
+
+
+def _safe_archive_component(value: str) -> str:
+    """把数据源标识转换为 Windows 和 Linux 都可用的目录名。"""
+    cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", value).strip(" .")
+    return cleaned or "unknown"
+
+
+def _should_verify_image_ssl(url: str) -> bool:
+    """判断图片下载是否使用系统证书校验。"""
+    url_lower = url.lower()
+    return not any(
+        host in url_lower
+        for host in ("ko-shop.com", "ko-video.com", "ko-tube.com")
+    )
 
 
 async def _download_image_as_base64(
@@ -66,7 +84,7 @@ async def _download_image_as_base64(
         url,
         referer=referer,
         extra_headers=extra_headers,
-        verify_ssl="ko-shop.com" not in url.lower(),
+        verify_ssl=_should_verify_image_ssl(url),
     )
     if archive_path is not None:
         archive_path.parent.mkdir(parents=True, exist_ok=True)

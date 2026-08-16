@@ -96,7 +96,8 @@ class HunkChParser:
             studios=[MetadataNamedItem(name=studio)] if studio else [],
             people=[],
             tags=[MetadataNamedItem(name=value) for value in genres],
-            poster_url=cls._poster_url(soup),
+            poster_urls=cls._poster_urls(soup, product_number),
+            poster_url=cls._poster_urls(soup, product_number)[0] if cls._poster_urls(soup, product_number) else None,
             external_ids={
                 "source": cls.source_name,
                 "source_id": source_id,
@@ -136,6 +137,17 @@ class HunkChParser:
         if not isinstance(image, Tag) or not isinstance(image.get("src"), str):
             return None
         return urljoin(f"{cls.base_url}/", image["src"])
+
+    @classmethod
+    def _poster_urls(cls, soup: BeautifulSoup, product_number: str) -> list[str]:
+        """提取当前作品的主图和画廊原图，排除页面推荐区域。"""
+        values: list[str] = []
+        pattern = re.compile(re.escape(product_number.lower()) + r"_(?:top|big\d+)\.", re.IGNORECASE)
+        for image in soup.select(".product_detail_centre img[src], .product_detail_centre a[href]"):
+            source = image.get("src") if image.name == "img" else image.get("href")
+            if isinstance(source, str) and pattern.search(source.lower()):
+                values.append(urljoin(f"{cls.base_url}/", source))
+        return cls._unique(values)
 
     @classmethod
     def _statuses(cls, table: Tag) -> list[str]:

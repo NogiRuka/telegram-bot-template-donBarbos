@@ -13,7 +13,7 @@ from bot.core.config import settings
 from bot.database.database import sessionmaker
 from bot.database.models import LibraryNewNotificationModel
 from bot.services.emby_metadata.models import MediaLibraryCategory, MetadataCandidate
-from bot.services.emby_metadata.matching import extract_product_number, is_hunk_ch_product_number, normalize_search_keyword
+from bot.services.emby_metadata.matching import extract_product_number, normalize_search_keyword
 from bot.services.emby_metadata.sources.ck_download import CkDownloadSource
 from bot.services.emby_metadata.sources.acceed import AcceedSource
 from bot.services.emby_metadata.sources.boy_studio import BoyStudioSource
@@ -97,40 +97,6 @@ _SOURCES_BY_CATEGORY: dict[str, dict[str, type[MetadataSource]]] = {
     MediaLibraryCategory.DOMESTIC.value: {},
     MediaLibraryCategory.WESTERN.value: {},
 }
-
-
-def _source_for_product_number(category: str, product_number: str | None) -> str:
-    """根据分类和番号匹配默认数据源；新增规则统一放在这里。"""
-    sources = _SOURCES_BY_CATEGORY.get(category, {})
-    if not sources:
-        return "未配置"
-    if product_number and is_hunk_ch_product_number(product_number):
-        if HunkChSource.name in sources:
-            return HunkChSource.name
-    if product_number and product_number.upper().startswith("BOY-"):
-        if BoyStudioSource.name in sources:
-            return BoyStudioSource.name
-    if product_number and product_number.upper().startswith("BWB"):
-        if KoShopSource.name in sources:
-            return KoShopSource.name
-    if product_number and product_number.upper().startswith("KT-"):
-        if KoTubeSource.name in sources:
-            return KoTubeSource.name
-    return next(iter(sources), "未配置")
-
-
-def _source_for_search(
-    category: str,
-    keyword: str,
-    requested_source: str,
-    fallback_source: str,
-) -> str:
-    """为实际搜索选择数据源；番号规则优先于界面上的普通默认值。"""
-    product_number = extract_product_number(keyword) or keyword.strip() or None
-    matched_source = _source_for_product_number(category, product_number)
-    if product_number and is_hunk_ch_product_number(product_number):
-        return matched_source
-    return requested_source or fallback_source or matched_source
 
 
 def _path_from_payload(notification: LibraryNewNotificationModel, current_item: dict[str, Any] | None = None) -> str:
@@ -228,7 +194,6 @@ def _queue_item(
     )
     extracted_number = extract_product_number(item_name)
     search_keyword = normalize_search_keyword(extracted_number or item_name)
-    source = _source_for_product_number(category, extracted_number)
     return {
         "notification_id": str(notification.id),
         "item_id": notification.item_id or "",
@@ -237,7 +202,7 @@ def _queue_item(
         "path": path,
         "category": category,
         "category_label": category_label,
-        "source": source,
+        "source": "",
         "status": "pending" if notification.status == "pending_completion" else notification.status or "pending",
         "search_keyword": search_keyword,
         "search_count": len(_search_cache.get(str(notification.id), [])),
@@ -309,12 +274,9 @@ async def search_queue(selections: list[dict[str, str]]) -> list[dict[str, Any]]
         item = _queue_item(await _get_notification(notification_id))
         requested_keyword = selection["keyword"].strip()
         keyword = normalize_search_keyword(requested_keyword or item["search_keyword"])
-        source_name = _source_for_search(
-            selection["category"],
-            selection["keyword"] or item["search_keyword"],
-            selection["source"],
-            item["source"],
-        )
+        source_name = selection["source"].strip()
+        if not source_name:
+            raise HTTPException(status_code=400, detail="搜索请求缺少数据源")
         if source_name == BoyStudioSource.name and (
             not requested_keyword or requested_keyword == item["search_keyword"]
         ):

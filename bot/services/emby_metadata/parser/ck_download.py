@@ -123,7 +123,8 @@ class CkDownloadParser:
                 "product_number": product_number or "",
                 "Imdb": product_number or "",
             },
-            poster_url=cls._parse_poster_url(soup, source_id),
+            poster_urls=cls._parse_poster_urls(soup, source_id),
+            poster_url=cls._parse_poster_urls(soup, source_id)[0] if cls._parse_poster_urls(soup, source_id) else None,
             confidence=0.0,
             raw_url=urljoin(f"{cls.base_url}/", f"product/detail/{source_id}"),
         )
@@ -256,12 +257,21 @@ class CkDownloadParser:
 
     @classmethod
     def _parse_poster_url(cls, soup: BeautifulSoup, source_id: str) -> str | None:
-        expected_suffix = f"/{source_id}/{source_id}_1.jpg"
-        for image in soup.select(".detail_page .title_photo img, .detail_page .set_photo img"):
-            source = image.get("src") or image.get("data-src") or image.get("data-original")
-            if isinstance(source, str) and urlparse(source).path.endswith(expected_suffix):
-                return urljoin(f"{cls.base_url}/", source)
-        return None
+        values = cls._parse_poster_urls(soup, source_id)
+        return values[0] if values else None
+
+    @classmethod
+    def _parse_poster_urls(cls, soup: BeautifulSoup, source_id: str) -> list[str]:
+        """提取详情页当前商品图片，并按页面顺序去重。"""
+        values: list[str] = []
+        for image in soup.select(".detail_page .title_photo img, .detail_page .set_photo img, .detail_page a[href]"):
+            source = image.get("src") or image.get("data-src") or image.get("data-original") if image.name == "img" else image.get("href")
+            if not isinstance(source, str) or not re.search(r"\.(?:jpe?g|png|webp)(?:\?|$)", source, re.IGNORECASE):
+                continue
+            path = urlparse(source).path.lower()
+            if f"/{source_id.lower()}/" in path or "/product/" in path:
+                values.append(urljoin(f"{cls.base_url}/", source))
+        return cls._unique(values)
 
     @staticmethod
     def _clean_text(value: str) -> str:

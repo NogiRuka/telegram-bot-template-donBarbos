@@ -89,8 +89,22 @@ class Str8BoysParser:
         price_node = soup.select_one(".detail-price-checkbox .Price")
         price_match = re.search(r"[\d,]+", price_node.get_text(" ", strip=True) if isinstance(price_node, Tag) else "")
         price = int(price_match.group().replace(",", "")) if price_match else None
-        image = soup.select_one(f'img[src*="/{number}/0s.jpg"]') or soup.select_one("img.ListThumImg01")
-        return MetadataCandidate(source=cls.source_name, source_id=source_id, category=cls.category, product_number=number, title=result_title, original_title=title, sort_name=result_title, forced_sort_name=result_title, overview=overview, year=release.year if release else None, release_date=release, price_yen=price, studios=[MetadataNamedItem(name=fields["レーベル"])] if fields.get("レーベル") else [], people=[MetadataPerson(name=fields["MODEL NAME"])] if fields.get("MODEL NAME") else [], tags=[MetadataNamedItem(name=x) for x in dict.fromkeys(x for x in tags if x)], external_ids={"source": cls.source_name, "source_id": source_id, "source_url": cls.detail_url(source_id), "product_number": number, "Imdb": number}, poster_url=urljoin(cls.base_url + "/", str(image["src"]).strip()) if isinstance(image, Tag) else None, raw_url=cls.detail_url(source_id), parse_report={"source_html_fields": fields, "overview": overview, "price": price})
+        poster_urls = cls._poster_urls(soup, number)
+        return MetadataCandidate(source=cls.source_name, source_id=source_id, category=cls.category, product_number=number, title=result_title, original_title=title, sort_name=result_title, forced_sort_name=result_title, overview=overview, year=release.year if release else None, release_date=release, price_yen=price, studios=[MetadataNamedItem(name=fields["レーベル"])] if fields.get("レーベル") else [], people=[MetadataPerson(name=fields["MODEL NAME"])] if fields.get("MODEL NAME") else [], tags=[MetadataNamedItem(name=x) for x in dict.fromkeys(x for x in tags if x)], external_ids={"source": cls.source_name, "source_id": source_id, "source_url": cls.detail_url(source_id), "product_number": number, "Imdb": number}, poster_url=poster_urls[0] if poster_urls else None, poster_urls=poster_urls, raw_url=cls.detail_url(source_id), parse_report={"source_html_fields": fields, "overview": overview, "price": price})
+
+    @classmethod
+    def _poster_urls(cls, soup: BeautifulSoup, product_number: str) -> list[str]:
+        """提取当前作品的主封面与样本图，排除相关推荐作品的图片。"""
+        image_pattern = re.compile(
+            rf"/images/{re.escape(product_number)}/\d+s\.jpg$",
+            re.IGNORECASE,
+        )
+        return list(dict.fromkeys(
+            urljoin(cls.base_url + "/", source.strip())
+            for image in soup.select("img[src]")
+            if isinstance((source := image.get("src")), str)
+            and image_pattern.search(urlparse(source).path)
+        ))
 
     @classmethod
     def detail_url(cls, source_id: str) -> str:

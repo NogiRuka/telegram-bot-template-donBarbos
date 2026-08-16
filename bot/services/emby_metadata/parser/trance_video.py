@@ -87,8 +87,24 @@ class TranceVideoParser:
         price_node = soup.select_one(".detail_page .price strong")
         price_match = re.search(r"[\d,]+", price_node.get_text(" ", strip=True)) if isinstance(price_node, Tag) else None
         price = int(price_match.group().replace(",", "")) if price_match else None
-        image = soup.select_one(f'img[src*="{number}_1.jpg"]') or soup.select_one("img[src*='/picture/parent/']")
-        return MetadataCandidate(source=cls.source_name, source_id=source_id, category=cls.category, product_number=number, title=result_title, original_title=title, sort_name=result_title, forced_sort_name=result_title, overview=overview, release_date=release, year=release.year if release else None, price_yen=price, studios=[MetadataNamedItem(name=studio)] if studio else [], tags=[MetadataNamedItem(name=x) for x in tags], external_ids={"source": cls.source_name, "source_id": source_id, "source_url": cls.detail_url(source_id), "product_number": number, "Imdb": number}, poster_url=urljoin(cls.base_url + "/", str(image["src"])) if isinstance(image, Tag) else None, raw_url=cls.detail_url(source_id), parse_report={"source_html_fields": fields, "overview": overview, "price_yen": price, "studio": studio, "tags": tags})
+        poster_urls = cls._poster_urls(soup, number)
+        return MetadataCandidate(source=cls.source_name, source_id=source_id, category=cls.category, product_number=number, title=result_title, original_title=title, sort_name=result_title, forced_sort_name=result_title, overview=overview, release_date=release, year=release.year if release else None, price_yen=price, studios=[MetadataNamedItem(name=studio)] if studio else [], tags=[MetadataNamedItem(name=x) for x in tags], external_ids={"source": cls.source_name, "source_id": source_id, "source_url": cls.detail_url(source_id), "product_number": number, "Imdb": number}, poster_url=poster_urls[0] if poster_urls else None, poster_urls=poster_urls, raw_url=cls.detail_url(source_id), parse_report={"source_html_fields": fields, "overview": overview, "price_yen": price, "studio": studio, "tags": tags})
+
+    @classmethod
+    def _poster_urls(cls, soup: BeautifulSoup, number: str) -> list[str]:
+        """提取当前作品编号对应的全部大图，并去除重复的轮播克隆节点。"""
+        values: list[str] = []
+        pattern = re.compile(re.escape(number) + r"-\d+_1\.(?:jpe?g|png|webp)$", re.IGNORECASE)
+        for image in soup.select(".photo_flexslider img[src], .photo_flexslider img[data-src], .photo_flexslider img[data-original]"):
+            parent = image.find_parent("li")
+            if isinstance(parent, Tag) and "clone" in parent.get("class", []):
+                continue
+            for key in ("src", "data-src", "data-original"):
+                source = image.get(key)
+                if isinstance(source, str) and pattern.search(source.split("?", 1)[0]):
+                    values.append(urljoin(cls.base_url + "/", source.strip()))
+                    break
+        return list(dict.fromkeys(values))
 
     @classmethod
     def detail_url(cls, source_id: str) -> str: return f"{cls.base_url}/product/detail/{source_id}"

@@ -99,7 +99,8 @@ class MensrushParser:
                 "product_number": product_number,
                 "Imdb": product_number,
             },
-            poster_url=cls._poster_url(soup),
+            poster_urls=cls._poster_urls(soup),
+            poster_url=cls._poster_urls(soup)[0] if cls._poster_urls(soup) else None,
             raw_url=cls._detail_url(source_id),
         )
 
@@ -138,6 +139,20 @@ class MensrushParser:
         video = soup.select_one("video[poster]")
         source = video.get("poster") if isinstance(video, Tag) else None
         return source if isinstance(source, str) else None
+
+    @classmethod
+    def _poster_urls(cls, soup: BeautifulSoup) -> list[str]:
+        """提取作品视频海报和画廊原图，过滤页面推荐内容。"""
+        values: list[str] = []
+        video = soup.select_one("video[poster]")
+        poster = video.get("poster") if isinstance(video, Tag) else None
+        if isinstance(poster, str) and poster.strip():
+            values.append(urljoin(f"{cls.base_url}/", poster.strip()))
+        for link in soup.select("a.glightbox[href], a[data-gallery][href], .sub-image a[href]"):
+            href = link.get("href")
+            if isinstance(href, str) and href.strip():
+                values.append(urljoin(f"{cls.base_url}/", href.strip()))
+        return cls._unique(values)
 
     @staticmethod
     def _source_id(href: object) -> str | None:

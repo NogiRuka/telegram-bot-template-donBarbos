@@ -100,7 +100,8 @@ class KoShopParser:
                 "product_number": product_number or "",
                 "Imdb": product_number or source_id,
             },
-            poster_url=cls._poster_url(soup),
+            poster_urls=cls._poster_urls(soup),
+            poster_url=cls._poster_urls(soup)[0] if cls._poster_urls(soup) else None,
             raw_url=cls._detail_url(source_id),
         )
 
@@ -175,6 +176,16 @@ class KoShopParser:
         image = soup.select_one(".detail_main_img a.fancybox[href]")
         source = image.get("href") if isinstance(image, Tag) else None
         return urljoin(f"{cls.base_url}/", str(source).split("?", 1)[0]) if isinstance(source, str) else None
+
+    @classmethod
+    def _poster_urls(cls, soup: BeautifulSoup) -> list[str]:
+        """提取商品画廊中的原图，避免把页面其它商品图片当作封面。"""
+        values = []
+        for link in soup.select(".detail_main_img a.fancybox[href], .detail_main_img a[href], .sample_img a.fancybox[href]"):
+            source = link.get("href")
+            if isinstance(source, str) and source.strip():
+                values.append(urljoin(f"{cls.base_url}/", source.split("?", 1)[0]))
+        return cls._unique(values)
 
     @classmethod
     def _images(cls, link: Tag) -> list[str]:

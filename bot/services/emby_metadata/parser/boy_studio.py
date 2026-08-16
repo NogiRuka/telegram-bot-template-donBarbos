@@ -68,7 +68,7 @@ class BoyStudioParser:
         product_number = fields.get("品番") or source_id
         title = f"{product_number} {original_title}"
         release_date = cls._parse_date(fields.get("配信開始日", ""))
-        poster_url = cls._poster_url(soup)
+        poster_urls = cls._poster_urls(soup)
         labels = cls._table_link_values(soup, "レーベル", "/videos/label/")
         tags = cls._table_link_values(soup, "ジャンル", "/videos/category/")
         series = fields.get("シリーズ")
@@ -98,7 +98,8 @@ class BoyStudioParser:
                 "product_number": product_number,
                 "Imdb": product_number,
             },
-            poster_url=poster_url,
+            poster_url=poster_urls[0] if poster_urls else None,
+            poster_urls=poster_urls,
             raw_url=cls._detail_url(source_id),
         )
 
@@ -160,6 +161,21 @@ class BoyStudioParser:
         image = soup.select_one(".item__thumbnail img")
         source = image.get("src", "").strip() if isinstance(image, Tag) else ""
         return urljoin(f"{cls.base_url}/", source) if source else None
+
+    @classmethod
+    def _poster_urls(cls, soup: BeautifulSoup) -> list[str]:
+        """提取详情页当前作品的播放器海报和轮播图。"""
+        values: list[str] = []
+        iframe = soup.select_one('iframe[src*="poster="]')
+        if isinstance(iframe, Tag):
+            poster = parse_qs(urlparse(str(iframe.get("src"))).query).get("poster", [""])[0]
+            if poster:
+                values.append(unquote(poster))
+        for image in soup.select(".item__carousel .swiper img[src], .item__carousel .swiper-slide img[src]"):
+            source = image.get("src")
+            if isinstance(source, str) and source.strip():
+                values.append(urljoin(f"{cls.base_url}/", source.strip()))
+        return cls._unique(values)
 
     @classmethod
     def _overview(cls, soup: BeautifulSoup) -> str | None:

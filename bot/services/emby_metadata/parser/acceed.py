@@ -77,8 +77,7 @@ class AcceedParser:
         fields = cls._detail_fields(soup)
         people = cls._people(soup)
         tags = cls._tags(soup)
-        poster = soup.select_one(".sanpham .show a[href]")
-        poster_url = poster.get("href") if isinstance(poster, Tag) else None
+        poster_urls = cls._poster_urls(soup)
         release_date = cls._parse_date(fields.get("DVD発売", ""))
         overview = cls._overview(soup)
 
@@ -105,7 +104,8 @@ class AcceedParser:
                 "product_number": product_number,
                 "Imdb": product_number,
             },
-            poster_url=urljoin(f"{cls.base_url}/", str(poster_url)) if isinstance(poster_url, str) else None,
+            poster_url=poster_urls[0] if poster_urls else None,
+            poster_urls=poster_urls,
             raw_url=cls._detail_url(source_id),
         )
 
@@ -149,6 +149,21 @@ class AcceedParser:
             return None
         lines = [cls._clean_text(line) for line in container.get_text("\n", strip=True).splitlines()]
         return "\n".join(line for line in lines if line) or None
+
+    @classmethod
+    def _poster_urls(cls, soup: BeautifulSoup) -> list[str]:
+        """提取详情页当前作品的原图链接，优先使用画廊链接而不是缩略图。"""
+        values: list[str] = []
+        for link in soup.select(".sanpham .show a[href], a.gallery1[href], a.swipebox[href]"):
+            href = link.get("href")
+            if isinstance(href, str) and href.strip():
+                values.append(urljoin(f"{cls.base_url}/", href.strip()))
+        if not values:
+            image = soup.select_one(".sanpham .show img[src]")
+            source = image.get("src") if isinstance(image, Tag) else None
+            if isinstance(source, str) and source.strip():
+                values.append(urljoin(f"{cls.base_url}/", source.strip()))
+        return cls._unique(values)
 
     @staticmethod
     def _price(card: Tag) -> int | None:

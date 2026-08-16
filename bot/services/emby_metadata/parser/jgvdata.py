@@ -98,7 +98,8 @@ class JgvdataParser:
                 "product_number": source_id,
                 "Imdb": source_id,
             },
-            poster_url=cls._poster_url(soup),
+            poster_urls=cls._poster_urls(soup),
+            poster_url=cls._poster_urls(soup)[0] if cls._poster_urls(soup) else None,
             raw_url=cls._detail_url(soup, source_id),
         )
 
@@ -145,6 +146,21 @@ class JgvdataParser:
         image = soup.select_one("img.wp-post-image")
         source = image.get("src") if isinstance(image, Tag) else None
         return urljoin(f"{cls.base_url}/", source) if isinstance(source, str) else None
+
+    @classmethod
+    def _poster_urls(cls, soup: BeautifulSoup) -> list[str]:
+        """提取文章正文中的当前作品图片，优先使用外链原图。"""
+        values: list[str] = []
+        for link in soup.select(".entry-content a[href], .post-content a[href]"):
+            href = link.get("href")
+            if isinstance(href, str) and re.search(r"\.(?:jpe?g|png|webp)(?:\?|$)", href, re.IGNORECASE):
+                values.append(urljoin(f"{cls.base_url}/", href))
+        if not values:
+            for image in soup.select(".entry-content img[src], .post-content img[src], img.sub-image[src], img.wp-post-image"):
+                source = image.get("src")
+                if isinstance(source, str) and source.strip():
+                    values.append(urljoin(f"{cls.base_url}/", source))
+        return cls._unique(values)
 
     @classmethod
     def _images(cls, article: Tag) -> list[str]:

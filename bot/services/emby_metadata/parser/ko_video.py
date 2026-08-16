@@ -104,9 +104,22 @@ class KoVideoParser:
             if person.name.casefold() not in seen_people:
                 unique_people.append(person)
                 seen_people.add(person.name.casefold())
-        poster = soup.select_one(f'img[src*="{number}_DVD.jpg"]')
+        poster_urls = cls._poster_urls(soup, number)
         result_title = f"{number} {title}"
-        return MetadataCandidate(source=cls.source_name, source_id=source_id, category=cls.category, product_number=number, title=result_title, original_title=title, sort_name=result_title, forced_sort_name=result_title, overview=overview, year=release.year if release else None, release_date=release, studios=[MetadataNamedItem(name=studio)] if studio else [], people=unique_people, tags=[MetadataNamedItem(name=x) for x in dict.fromkeys(tags)], external_ids={"source": cls.source_name, "source_id": source_id, "source_url": cls.detail_url(number), "product_number": number, "Imdb": number}, poster_url=cls._image_url(str(poster["src"])) if isinstance(poster, Tag) else None, raw_url=cls.detail_url(number), parse_report={"source_html_fields": fields, "overview": overview, "people": [person.model_dump(exclude_none=True) for person in unique_people], "label": label})
+        return MetadataCandidate(source=cls.source_name, source_id=source_id, category=cls.category, product_number=number, title=result_title, original_title=title, sort_name=result_title, forced_sort_name=result_title, overview=overview, year=release.year if release else None, release_date=release, studios=[MetadataNamedItem(name=studio)] if studio else [], people=unique_people, tags=[MetadataNamedItem(name=x) for x in dict.fromkeys(tags)], external_ids={"source": cls.source_name, "source_id": source_id, "source_url": cls.detail_url(number), "product_number": number, "Imdb": number}, poster_url=poster_urls[0] if poster_urls else None, poster_urls=poster_urls, raw_url=cls.detail_url(number), parse_report={"source_html_fields": fields, "overview": overview, "people": [person.model_dump(exclude_none=True) for person in unique_people], "label": label})
+
+    @classmethod
+    def _poster_urls(cls, soup: BeautifulSoup, product_number: str) -> list[str]:
+        """提取作品主封面和详情图库的原始图片，忽略轮播复制节点。"""
+        urls: list[str] = []
+        main_image = soup.select_one(f'img[src*="{product_number}_DVD.jpg"]')
+        if isinstance(main_image, Tag) and isinstance(main_image.get("src"), str):
+            urls.append(cls._image_url(main_image["src"]))
+        for link in soup.select('a.fancybox[data-fancybox-group="gallery"][href]'):
+            source = link.get("href")
+            if isinstance(source, str) and f"/{product_number}_DVD/" in urlparse(source).path:
+                urls.append(cls._image_url(source))
+        return list(dict.fromkeys(urls))
 
     @classmethod
     def detail_url(cls, source_id: str) -> str:
