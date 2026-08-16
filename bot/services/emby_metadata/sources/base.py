@@ -89,7 +89,29 @@ class HttpMetadataSource(MetadataSource):
         allow_redirects: bool = True,
     ) -> str:
         """请求文本页面，并转换 HTTP 与网络异常。"""
-        url = urljoin(f"{self.base_url}/", path.lstrip("/"))
+        return (
+            await self._request_text_sequence(
+                (path,),
+                method=method,
+                form_data=form_data,
+                allow_redirects=allow_redirects,
+            )
+        )[0]
+
+    async def _request_text_sequence(
+        self,
+        paths: tuple[str, ...],
+        *,
+        method: str = "GET",
+        form_data: dict[str, str] | None = None,
+        allow_redirects: bool = True,
+    ) -> list[str]:
+        """在同一 HTTP 会话中按顺序请求多个文本页面。"""
+        if not paths:
+            msg = "请求路径不能为空"
+            raise ValueError(msg)
+
+        urls = [urljoin(f"{self.base_url}/", path.lstrip("/")) for path in paths]
         last_network_error: Exception | None = None
 
         for attempt in range(self.max_request_attempts):
@@ -100,16 +122,19 @@ class HttpMetadataSource(MetadataSource):
                     headers=self._request_headers(),
                     connector=connector,
                 ) as session:
-                    async with session.request(
-                        method,
-                        url,
-                        data=form_data,
-                        allow_redirects=allow_redirects,
-                    ) as response:
-                        if response.status >= 400:
-                            message = f"HTTP {response.status}: {response.reason}"
-                            raise MetadataSourceHTTPError(message, self.name)
-                        return await response.text()
+                    texts: list[str] = []
+                    for url in urls:
+                        async with session.request(
+                            method,
+                            url,
+                            data=form_data,
+                            allow_redirects=allow_redirects,
+                        ) as response:
+                            if response.status >= 400:
+                                message = f"HTTP {response.status}: {response.reason}"
+                                raise MetadataSourceHTTPError(message, self.name)
+                            texts.append(await response.text())
+                    return texts
             except MetadataSourceHTTPError:
                 raise
             except (aiohttp.ClientError, TimeoutError) as error:

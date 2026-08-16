@@ -14,7 +14,6 @@ from bot.services.emby_metadata.models import (
     MetadataSearchResult,
 )
 
-
 _DETAIL_PATH = re.compile(r"^/detail\.([A-Za-z0-9_-]+)\.html(?:[?#]|$)", re.IGNORECASE)
 
 
@@ -65,9 +64,17 @@ class AcceedParser:
     def parse_detail(cls, html: str, source_id: str) -> MetadataCandidate:
         cls._validate_source_id(source_id)
         soup = BeautifulSoup(html, "html.parser")
+        page_title = cls._clean_text(soup.title.get_text(" ", strip=True)) if soup.title else ""
+        if "ログイン" in page_title:
+            msg = "详情请求被重定向到登录页"
+            raise MetadataSourceParseError(msg, cls.source_name)
         heading = soup.select_one(".title h2") or soup.select_one("h2")
         if not isinstance(heading, Tag) or not heading.get_text(strip=True):
-            raise MetadataSourceParseError("详情页缺少作品标题", cls.source_name)
+            msg = "详情页缺少作品标题"
+            raise MetadataSourceParseError(msg, cls.source_name)
+        if cls._clean_text(heading.get_text(" ", strip=True)) == "ログイン":
+            msg = "详情请求被重定向到登录页"
+            raise MetadataSourceParseError(msg, cls.source_name)
 
         for favorite in heading.select(".favoritebtn"):
             favorite.decompose()
@@ -193,7 +200,8 @@ class AcceedParser:
     @staticmethod
     def _validate_source_id(source_id: str) -> None:
         if not re.fullmatch(r"[A-Za-z0-9_-]+", source_id):
-            raise ValueError("acceed source_id 格式无效")
+            msg = "acceed source_id 格式无效"
+            raise ValueError(msg)
 
     @staticmethod
     def _clean_text(value: str) -> str:

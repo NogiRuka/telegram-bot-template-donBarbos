@@ -28,5 +28,5 @@ class AcceedSource(HttpMetadataSource):
     async def fetch_detail(self, source_id: str) -> MetadataCandidate:
         """抓取 ACCEED 详情页。"""
         AcceedParser._validate_source_id(source_id)
-        html = await self._request_text(f"/detail.{source_id}.html")
+        _, html = await self._request_text_sequence(("/", f"/detail.{source_id}.html"))
         return AcceedParser.parse_detail(html, source_id)
