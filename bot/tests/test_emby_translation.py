@@ -23,6 +23,21 @@ class TranslationTests(unittest.TestCase):
         }
         assert translation.extract_output_text(body) == "中文译文"
 
+    def test_extract_output_text_joins_all_response_text_parts(self) -> None:
+        body = {
+            "output": [
+                {
+                    "type": "message",
+                    "content": [
+                        {"type": "output_text", "text": "【HUNK原创：Full"},
+                        {"type": "output_text", "text": " HD】20周年特别企划"},
+                    ],
+                }
+            ]
+        }
+
+        assert translation.extract_output_text(body) == "【HUNK原创：Full HD】20周年特别企划"
+
     def test_extract_output_text_rejects_unexpected_shapes(self) -> None:
         assert translation.extract_output_text({"output": {"text": "错误路径"}}) is None
         assert translation.extract_output_text({"output": []}) is None

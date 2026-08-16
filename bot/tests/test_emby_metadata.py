@@ -327,14 +327,14 @@ class WriterTests(unittest.TestCase):
         self.assertEqual(payload["Genres"], ["A", "B"])
         self.assertEqual(payload["ProviderIds"], {"imdb": "tt123"})
 
-    def test_build_item_update_payload_keeps_tagline_as_string(self) -> None:
+    def test_build_item_update_payload_wraps_tagline_for_emby(self) -> None:
         candidate = self.candidate.model_copy(
             update={"taglines": "【HUNK原创：Full HD】完整宣传语"}
         )
 
         payload = build_item_update_payload(self.before_item, candidate)
 
-        self.assertEqual(payload["Taglines"], "【HUNK原创：Full HD】完整宣传语")
+        self.assertEqual(payload["Taglines"], ["【HUNK原创：Full HD】完整宣传语"])
 
     def test_build_item_update_changes_with_core_fields(self) -> None:
         payload = build_item_update_payload(self.before_item, self.candidate)

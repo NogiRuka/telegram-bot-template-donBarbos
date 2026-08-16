@@ -140,7 +140,7 @@ def build_item_update_payload(
     payload["Studios"] = _named_items_to_payload(candidate.studios)
     payload["People"] = [_person_to_payload(person) for person in candidate.people]
     payload["TagItems"] = _named_items_to_payload(candidate.tags)
-    payload["Taglines"] = candidate.taglines
+    payload["Taglines"] = [candidate.taglines] if candidate.taglines else []
     payload["ProviderIds"] = dict(candidate.external_ids)
     payload["CommunityRating"] = candidate.community_rating
     payload["OfficialRating"] = candidate.official_rating
