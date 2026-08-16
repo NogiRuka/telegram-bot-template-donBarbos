@@ -192,7 +192,7 @@ def _queue_item(
         or notification.title
         or "未命名条目"
     )
-    extracted_number = extract_product_number(item_name)
+    extracted_number = extract_product_number(item_name) or extract_product_number(path)
     search_keyword = normalize_search_keyword(extracted_number or item_name)
     return {
         "notification_id": str(notification.id),
@@ -277,10 +277,6 @@ async def search_queue(selections: list[dict[str, str]]) -> list[dict[str, Any]]
         source_name = selection["source"].strip()
         if not source_name:
             raise HTTPException(status_code=400, detail="搜索请求缺少数据源")
-        if source_name == BoyStudioSource.name and (
-            not requested_keyword or requested_keyword == item["search_keyword"]
-        ):
-            keyword = item["item_name"]
         source = _resolve_source(selection["category"], source_name)
         try:
             results = await source.search(keyword)

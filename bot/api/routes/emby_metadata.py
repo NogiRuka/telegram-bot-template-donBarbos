@@ -25,7 +25,7 @@ class QueueSearchSelection(BaseModel):
 class SearchRequest(BaseModel):
     """批量搜索时由管理员选中的通知项。"""
 
-    selections: list[QueueSearchSelection] = Field(min_length=1, max_length=30)
+    selections: list[QueueSearchSelection] = Field(min_length=1, max_length=100)
 
 
 class WritebackRequest(BaseModel):

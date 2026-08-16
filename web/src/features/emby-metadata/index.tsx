@@ -28,8 +28,16 @@ function defaultSourceForKeyword(keyword: string, fallbackSource: string, availa
     ? 'str8boys2023'
     : normalized.startsWith('BOY-')
       ? 'boy-studio'
-      : normalized.startsWith('BWB')
+    : normalized.startsWith('BWB') || normalized.startsWith('COAT')
         ? 'ko-shop'
+        : normalized.startsWith('SBB-')
+          ? 'str8boys2023'
+        : normalized.startsWith('MTN-')
+          ? 'hunk-ch'
+          : normalized.startsWith('GT-') || normalized.startsWith('CAPY-')
+            ? 'mensrush'
+            : normalized.startsWith('ACSM')
+              ? 'acceed'
         : normalized.startsWith('KT-')
           ? 'ko-tube'
           : /^(?:GV-)?OAV\d+/i.test(normalized)
@@ -308,7 +316,11 @@ export function EmbyMetadataWorkspace() {
     const selections = selectedIds.map((notification_id) => {
       const item = items.find((value) => value.notification_id === notification_id)!
       const route = routeFor(item)
-      return { notification_id, keyword: searchKeywords[notification_id] ?? item.search_keyword ?? '', ...route }
+      const requestedKeyword = searchKeywords[notification_id] ?? item.search_keyword ?? ''
+      const keyword = route.source === 'boy-studio' && /^BOY-\d+/i.test(requestedKeyword)
+        ? item.item_name.replace(/^\s*BOY-\d+\s*/i, '').trim() || item.item_name
+        : requestedKeyword
+      return { notification_id, keyword, ...route }
     })
     if (selections.some((item) => !item.source)) return toast.error('所选分类尚未配置数据源')
     const toastId = toast.loading(`正在搜索 ${selections.length} 个项目，请稍候...`)
