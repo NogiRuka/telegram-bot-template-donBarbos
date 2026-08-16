@@ -19,6 +19,10 @@ const fields = [
 
 type FieldKey = typeof fields[number][0]
 type Routing = { category: string; source: string }
+
+function titleForTagline(title: string): string {
+  return title.replace(/【[^】]*】/g, '').trim()
+}
 type PrimarySelection = { source: string; source_id: string }
 type ResultGroup = { item: MetadataQueueItem; results: MetadataSearchResult[] }
 
@@ -375,10 +379,13 @@ export function EmbyMetadataWorkspace() {
       }
       if (autoTranslate && response.candidate.original_title?.trim()) {
         try {
-          const translatedTitle = await apiClient.translateMetadata(response.candidate.original_title)
-          nextCandidate = {
-            ...nextCandidate,
-            taglines: translatedTitle,
+          const title = titleForTagline(response.candidate.original_title)
+          if (title) {
+            const translatedTitle = await apiClient.translateMetadata(title)
+            nextCandidate = {
+              ...nextCandidate,
+              taglines: translatedTitle,
+            }
           }
         } catch (error) { toast.error(error instanceof Error ? error.message : '自动翻译标题失败') }
       }
@@ -538,7 +545,7 @@ function OverviewEditor({ value, currentValue, title, onChange, onTranslate, onT
   useEffect(() => { if (!expanded) setShowFinalValue(false) }, [expanded])
   const commit = (translation: string, original: string) => { setParts({ translation, original }); onChange(translation.trim() ? `${translation.trim()}${separator}${original}` : original) }
   const translate = async () => { if (!parts.original.trim()) return; setTranslating(true); try { commit(await onTranslate(parts.original), parts.original) } catch (error) { toast.error(error instanceof Error ? error.message : '翻译失败') } finally { setTranslating(false) } }
-  const translateTitle = async () => { const titleWithoutPrefix = title.replace(/^【[^】]*】\s*/, '').trim(); if (!titleWithoutPrefix) return; setTitleTranslating(true); try { onTitleTranslated(await onTranslate(titleWithoutPrefix)) } catch (error) { toast.error(error instanceof Error ? error.message : '标题翻译失败') } finally { setTitleTranslating(false) } }
+  const translateTitle = async () => { const titleWithoutPrefix = titleForTagline(title); if (!titleWithoutPrefix) return; setTitleTranslating(true); try { onTitleTranslated(await onTranslate(titleWithoutPrefix)) } catch (error) { toast.error(error instanceof Error ? error.message : '标题翻译失败') } finally { setTitleTranslating(false) } }
   return <><div className='overview-editor flex h-full min-h-0 w-full flex-col gap-1'><div className='flex shrink-0 items-center justify-between text-[11px] text-slate-500'><span>翻译</span><div className='flex items-center gap-1'><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={titleTranslating || !title.trim()} onClick={() => void translateTitle()}>{titleTranslating ? '标题翻译中…' : '标题翻译'}</Button><Button type='button' size='sm' variant='outline' className='h-6 px-2 text-[11px]' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? 'AI翻译中…' : 'AI翻译'}</Button><Button type='button' size='icon' variant='ghost' className='size-6' title='放大查看当前 Emby 值和候选值' onClick={() => setExpanded(true)}><Maximize2 className='size-3.5' /></Button></div></div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm' value={parts.translation} placeholder='点击“AI翻译”生成中文，也可以手动修改' onChange={(event) => commit(event.target.value, parts.original)} /><div className='shrink-0 text-[11px] text-slate-500'>原文</div><textarea className='overview-editor-textarea resize-none rounded border px-2 py-1 text-sm' value={parts.original} placeholder='原文' onChange={(event) => commit(parts.translation, event.target.value)} /></div><Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className='h-[85vh] w-[92vw] max-w-[1500px] sm:max-w-[1500px]'><DialogHeader><div className='flex items-center justify-between pr-8'><DialogTitle>简介对比</DialogTitle><div className='flex items-center gap-2'><Button type='button' size='sm' variant='outline' disabled={titleTranslating || !title.trim()} onClick={() => void translateTitle()}>{titleTranslating ? '标题翻译中…' : '标题翻译'}</Button><Button type='button' size='sm' variant='outline' disabled={translating || !parts.original.trim()} onClick={() => void translate()}>{translating ? 'AI翻译中…' : 'AI翻译'}</Button><Button type='button' size='sm' variant='outline' onClick={() => setShowFinalValue((visible) => !visible)}>{showFinalValue ? '返回翻译和原文' : '查看最终写入值'}</Button></div></div></DialogHeader><div className='grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-3'><div className='min-w-0'><div className='mb-1 text-sm font-medium'>当前 Emby 值</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={currentValue} readOnly /></div>{showFinalValue ? <div className='min-w-0 md:col-span-2'><div className='mb-1 text-sm font-medium'>最终写入值</div><textarea className='h-[68vh] w-full resize-none rounded border bg-amber-50 p-3 text-sm' value={value} readOnly /></div> : <><div className='min-w-0'><div className='mb-1 text-sm font-medium'>翻译</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.translation} onChange={(event) => commit(event.target.value, parts.original)} /></div><div className='min-w-0'><div className='mb-1 text-sm font-medium'>原文</div><textarea className='h-[68vh] w-full resize-none rounded border p-3 text-sm' value={parts.original} onChange={(event) => commit(parts.translation, event.target.value)} /></div></>}</div></DialogContent></Dialog></>
 }
 

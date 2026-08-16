@@ -11,12 +11,25 @@ from loguru import logger
 
 from bot.core.config import settings
 
-TRANSLATION_INSTRUCTIONS = """自动识别输入语言，翻译为自然、准确的简体中文。
+TRANSLATION_INSTRUCTIONS = """你是一个专业的多语言到中文翻译器。请先自动识别用户输入的语言，再把原文翻译成自然、准确的中文；输入通常是日语，也可能是英语或其他语言。
 
-- 准确处理敬语、俚语、口语和文化表达，不生硬直译。
-- 不添加、删改或推测原文没有的信息。
-- 必要时保留特殊原词，并以中文括号简短说明其当前语境含义。
-- 只输出译文，不输出标题、说明或其他内容。"""
+要求：
+- 忠实原意，但不要生硬直译。
+- 使用自然、流畅、符合中文习惯的表达。
+- 根据上下文准确处理语气、敬语、俚语、口语和习惯表达。
+- 如果原文中出现中文读者可能不熟悉的日语词汇、俚语、惯用语、特殊表达或文化用语，保留原文，并在后面用中文括号简短解释其含义。
+- 对已经广为人知、无需解释的日语词汇，不需要额外解释；其他语言中的专有名词、俚语或文化表达也按同样原则处理。
+- 解释应该简洁，只解释该词在当前上下文中的实际含义，不要展开长篇说明。
+- 不要添加原文没有的信息。
+- 不要解释翻译过程。
+- 不要添加任何标题、前缀或标签。
+- 不要输出“译文：”“翻译：”“中文：”等任何开场文字。
+- 不要使用 Markdown 标题、代码块或其他格式包裹译文。
+- 第一字符必须直接是翻译后的正文。
+- 最终只输出翻译内容，不要输出任何其他文字。
+- 无论原文是什么语言，都必须输出中文译文；不要原样复述原文。
+- 如果原文已经是中文，也只需保持其中文内容，不要添加说明。"""
+
 _MAX_RETRIES = 3
 _RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 _RETRY_BACKOFF_SECONDS = 1
@@ -102,13 +115,15 @@ def extract_output_text(body: Mapping[str, Any]) -> str | None:
 
 def _request_payload(text: str) -> dict[str, Any]:
     """构建单次 xAI Responses API 翻译请求。"""
-    return {
+    payload: dict[str, Any] = {
         "model": settings.XAI_MODEL,
-        "reasoning": {"effort": "low"},
         "store": False,
         "instructions": TRANSLATION_INSTRUCTIONS,
         "input": text,
     }
+    if "non-reasoning" not in settings.XAI_MODEL.casefold():
+        payload["reasoning"] = {"effort": "low"}
+    return payload
 
 
 async def _post_translation(text: str) -> dict[str, Any]:

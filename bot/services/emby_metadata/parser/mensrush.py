@@ -30,22 +30,15 @@ class MensrushParser:
         soup = BeautifulSoup(html, "html.parser")
         results: list[MetadataSearchResult] = []
         seen: set[str] = set()
-        for link in soup.select('a[href*="single.php?id="]'):
-            if link.select_one("img"):
-                continue
+        for link in soup.select('.movie_lists .movie_box > a[href*="single.php?id="]'):
             source_id = cls._source_id(link.get("href"))
             title = re.sub(r"^(?:[MW]\s+|\[\d+\]\s*)", "", cls._clean_text(link.get_text(" ", strip=True)))
             if source_id is None or source_id in seen or not title:
                 continue
-            image = next(
-                (
-                    image_node
-                    for image_node in link.find_all_previous("img", limit=20)
-                    if isinstance(image_node.get("src"), str) and source_id.lower() in image_node["src"].lower()
-                ),
-                None,
-            )
-            price = link.find_previous(class_="price")
+            image = link.select_one("img[src]")
+            container = link.find_parent(class_="movie_box")
+            price_container = container.find_next_sibling(class_="movie_box") if isinstance(container, Tag) else None
+            price = price_container.select_one(".price") if isinstance(price_container, Tag) else None
             seen.add(source_id)
             results.append(
                 MetadataSearchResult(

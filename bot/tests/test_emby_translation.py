@@ -27,6 +27,18 @@ class TranslationTests(unittest.TestCase):
         assert translation.extract_output_text({"output": {"text": "错误路径"}}) is None
         assert translation.extract_output_text({"output": []}) is None
 
+    @patch.object(translation.settings, "XAI_MODEL", "grok-4.20-0309-non-reasoning")
+    def test_non_reasoning_model_payload_omits_reasoning(self) -> None:
+        payload = translation._request_payload("original")
+
+        assert "reasoning" not in payload
+
+    @patch.object(translation.settings, "XAI_MODEL", "grok-4.20-0309-reasoning")
+    def test_reasoning_model_payload_uses_low_effort(self) -> None:
+        payload = translation._request_payload("original")
+
+        assert payload["reasoning"] == {"effort": "low"}
+
     @patch("bot.services.emby_metadata.translation._post_translation", new_callable=AsyncMock)
     def test_translate_to_chinese_preserves_empty_input(self, post_translation: AsyncMock) -> None:
         assert asyncio.run(translation.translate_to_chinese("  \n")) == ""

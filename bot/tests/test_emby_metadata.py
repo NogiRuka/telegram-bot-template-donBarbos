@@ -23,6 +23,7 @@ from bot.services.emby_metadata.parser.hunk_ch import HunkChParser
 from bot.services.emby_metadata.parser.ko_shop import KoShopParser
 from bot.services.emby_metadata.parser.ko_tube import KoTubeParser
 from bot.services.emby_metadata.parser.ko_video import KoVideoParser
+from bot.services.emby_metadata.parser.mensrush import MensrushParser
 from bot.services.emby_metadata.parser.trance_video import TranceVideoParser
 from bot.services.emby_metadata.sources.base import MetadataSourceParseError
 from bot.services.emby_metadata.writer import (
@@ -169,6 +170,23 @@ class HunkChParserTests(unittest.TestCase):
         self.assertTrue(candidate.overview)
 
 
+class MensrushParserTests(unittest.TestCase):
+    def test_search_result_uses_primary_product_card(self) -> None:
+        html = (
+            _FIXTURE_SOURCE_ROOT / "mensrush" / "search" / "GT-2715.html"
+        ).read_text(encoding="utf-8")
+
+        results = MensrushParser.parse_search_results(html)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].source_id, "GT-2715_DL")
+        self.assertEqual(
+            results[0].title,
+            "顔と同じぐらいの大きさがある巨根を挿入で即トコロテン！！",
+        )
+        self.assertEqual(results[0].price_yen, 1850)
+
+
 class KoShopParserTests(unittest.TestCase):
     def test_series_is_not_added_to_tags(self) -> None:
         html = """
@@ -308,6 +326,15 @@ class WriterTests(unittest.TestCase):
         self.assertEqual(payload["Overview"], "新的简介")
         self.assertEqual(payload["Genres"], ["A", "B"])
         self.assertEqual(payload["ProviderIds"], {"imdb": "tt123"})
+
+    def test_build_item_update_payload_keeps_tagline_as_string(self) -> None:
+        candidate = self.candidate.model_copy(
+            update={"taglines": "【HUNK原创：Full HD】完整宣传语"}
+        )
+
+        payload = build_item_update_payload(self.before_item, candidate)
+
+        self.assertEqual(payload["Taglines"], "【HUNK原创：Full HD】完整宣传语")
 
     def test_build_item_update_changes_with_core_fields(self) -> None:
         payload = build_item_update_payload(self.before_item, self.candidate)
