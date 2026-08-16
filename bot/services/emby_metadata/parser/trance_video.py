@@ -49,7 +49,13 @@ class TranceVideoParser:
             date_match = re.search(r"(\d{4})\.(\d{1,2})\.(\d{1,2})", date_node.get_text(" ", strip=True) if isinstance(date_node, Tag) else "")
             price_node = card.select_one(".ftData .price")
             price_match = re.search(r"[\d,]+", price_node.get_text(" ", strip=True) if isinstance(price_node, Tag) else "")
-            results.append(MetadataSearchResult(source=cls.source_name, source_id=sid, category=cls.category, title=title, release_date=datetime.strptime(date_match.group(), "%Y.%m.%d").date() if date_match else None, price_yen=int(price_match.group().replace(",", "")) if price_match else None, image_urls=[urljoin(cls.base_url + "/", image_src.strip())] if image_src else [], detail_url=cls.detail_url(sid)))
+            status_node = card.select_one(".status")
+            statuses = [
+                cls._clean(span.get_text(" ", strip=True))
+                for span in status_node.select("span")
+                if cls._clean(span.get_text(" ", strip=True))
+            ] if isinstance(status_node, Tag) else []
+            results.append(MetadataSearchResult(source=cls.source_name, source_id=sid, category=cls.category, title=title, release_date=datetime.strptime(date_match.group(), "%Y.%m.%d").date() if date_match else None, price_yen=int(price_match.group().replace(",", "")) if price_match else None, statuses=statuses, image_urls=[urljoin(cls.base_url + "/", image_src.strip())] if image_src else [], detail_url=cls.detail_url(sid)))
             if len(results) >= limit: break
         return results
 

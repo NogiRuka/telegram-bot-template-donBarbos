@@ -73,7 +73,16 @@ class KoVideoParser:
         maker_label = fields.get("メーカー/レーベル", "").split("/", 1)
         studio = maker_label[0].strip()
         label = maker_label[1].strip() if len(maker_label) > 1 else ""
-        tags = [x for x in re.split(r"[/\s]+", fields.get("シリーズ/ジャンル", "") + " " + fields.get("モデル", "") + " " + label) if x]
+        tags = [
+            value
+            for value in re.split(
+                r"[/\s]+",
+                f"{fields.get('シリーズ/ジャンル', '')} {fields.get('モデル', '')}",
+            )
+            if value
+        ]
+        if label:
+            tags.append(label)
         overview_node = soup.select_one(".deitail_txt")
         overview = cls._overview(overview_node)
         people: list[MetadataPerson] = []

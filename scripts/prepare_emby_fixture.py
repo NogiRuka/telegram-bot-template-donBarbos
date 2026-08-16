@@ -13,9 +13,9 @@ from bot.services.emby_metadata.fixture_tools import (
 def build_parser() -> argparse.ArgumentParser:
     """Build the command-line argument parser."""
     parser = argparse.ArgumentParser(
-        description="Create empty search/detail HTML fixtures for one source."
+        description="Create fixtures and a per-source Cookie config scaffold."
     )
-    parser.add_argument("source", help="fixture source name")
+    parser.add_argument("source", help="source name or CATEGORY/SOURCE, e.g. 日韩/temp")
     parser.add_argument(
         "detail_name",
         nargs="?",

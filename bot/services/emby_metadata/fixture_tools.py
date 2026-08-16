@@ -1,23 +1,71 @@
 """Utilities for preparing local Emby metadata HTML fixtures."""
 
 from __future__ import annotations
+import json
 import re
 import shutil
+import tomllib
 from pathlib import Path
 
 _SOURCE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 _HTML_SUFFIXES = {".htm", ".html"}
+_CATEGORY_NAMES = {"日韩", "国产", "欧美"}
+
+
+def split_source_spec(source: str) -> tuple[str | None, str]:
+    """Split ``category/source`` input into category and source name."""
+    normalized = source.replace("\\", "/").strip("/")
+    parts = normalized.split("/")
+    if len(parts) == 1:
+        source_name = parts[0]
+        category = None
+    elif len(parts) == 2:
+        category, source_name = parts
+        if category not in _CATEGORY_NAMES:
+            raise ValueError(f"unsupported category: {category}")
+    else:
+        raise ValueError("source must be SOURCE or CATEGORY/SOURCE")
+
+    if not _SOURCE_NAME_PATTERN.fullmatch(source_name):
+        raise ValueError(
+            "source name must contain only letters, numbers, underscores, and hyphens"
+        )
+    return category, source_name
+
+
+def create_cookie_file(config_root: Path, source: str) -> Path:
+    """Create a disabled per-source Cookie file without overwriting it."""
+    _, source_name = split_source_spec(source)
+    cookie_dir = config_root / "cookies"
+    cookie_dir.mkdir(parents=True, exist_ok=True)
+    destination = cookie_dir / f"{source_name}.toml"
+    default_content = "enabled = false\ncookie = \"\"\n"
+    if destination.exists() and destination.read_text(encoding="utf-8") != default_content:
+        return destination
+
+    content = default_content
+    legacy_file = config_root / "cookies.toml"
+    if legacy_file.is_file():
+        with legacy_file.open("rb") as file:
+            legacy_config = tomllib.load(file)
+        legacy_data = legacy_config.get(source_name)
+        if isinstance(legacy_data, dict):
+            enabled = bool(legacy_data.get("enabled", False))
+            cookie = legacy_data.get("cookie", "")
+            if not isinstance(cookie, str):
+                cookie = ""
+            content = (
+                f"enabled = {'true' if enabled else 'false'}\n"
+                f"cookie = {json.dumps(cookie, ensure_ascii=False)}\n"
+            )
+    destination.write_text(content, encoding="utf-8")
+    return destination
 
 
 def prepare_fixture_directories(fixtures_root: Path, source: str) -> Path:
     """Create and return the standard directory tree for one metadata source."""
-    if not _SOURCE_NAME_PATTERN.fullmatch(source):
-        msg = "source must contain only letters, numbers, underscores, and hyphens"
-        raise ValueError(
-            msg
-        )
-
-    source_root = fixtures_root / source
+    category, source_name = split_source_spec(source)
+    source_root = fixtures_root / category / source_name if category else fixtures_root / source_name
     (source_root / "search").mkdir(parents=True, exist_ok=True)
     (source_root / "detail").mkdir(parents=True, exist_ok=True)
     return source_root

@@ -21,6 +21,9 @@ from bot.services.emby_metadata.parser.acceed import AcceedParser
 from bot.services.emby_metadata.parser.boy_studio import BoyStudioParser
 from bot.services.emby_metadata.parser.hunk_ch import HunkChParser
 from bot.services.emby_metadata.parser.ko_shop import KoShopParser
+from bot.services.emby_metadata.parser.ko_tube import KoTubeParser
+from bot.services.emby_metadata.parser.ko_video import KoVideoParser
+from bot.services.emby_metadata.parser.trance_video import TranceVideoParser
 from bot.services.emby_metadata.sources.base import MetadataSourceParseError
 from bot.services.emby_metadata.writer import (
     apply_metadata_candidate_to_item,
@@ -32,6 +35,7 @@ from bot.services.emby_metadata.writer import (
 
 _FIXTURE_ROOT = Path(__file__).parents[1] / "services" / "emby_metadata" / "fixtures" / "ck_download"
 _HUNK_FIXTURE_ROOT = Path(__file__).parents[1] / "services" / "emby_metadata" / "fixtures" / "hunk_ch"
+_FIXTURE_SOURCE_ROOT = Path(__file__).parents[1] / "services" / "emby_metadata" / "fixtures" / "日韩"
 
 
 class MatchingTests(unittest.TestCase):
@@ -183,6 +187,34 @@ class KoShopParserTests(unittest.TestCase):
         candidate = KoShopParser.parse_detail(html, "123")
 
         self.assertEqual([tag.name for tag in candidate.tags], ["类型A", "类型B", "系列名", "关键词A"])
+
+
+class EmbyMetadataSourceParserTests(unittest.TestCase):
+    @staticmethod
+    def _fixture(source: str, kind: str, name: str) -> str:
+        return (_FIXTURE_SOURCE_ROOT / source / kind / name).read_text(encoding="utf-8")
+
+    def test_multi_word_labels_are_single_tags(self) -> None:
+        ko_video = KoVideoParser.parse_detail(
+            "<h2>标题</h2><dl><dt>メーカー/レーベル</dt><dd>KO/Secret Film</dd>"
+            "<dt>シリーズ/ジャンル</dt><dd>ストーリー</dd></dl>",
+            "KSUI028",
+        )
+        self.assertIn("Secret Film", [tag.name for tag in ko_video.tags])
+
+        ko_tube = KoTubeParser.parse_detail(
+            "<h3>标题</h3><table class='movie_data'><tr><th>作品番号</th>"
+            "<td>70-01-0035-01</td></tr><tr><th>レーベル</th>"
+            "<td>TUBE オリジナル</td></tr></table>",
+            "70-01-0035-01",
+        )
+        self.assertIn("TUBE オリジナル", [tag.name for tag in ko_tube.tags])
+
+    def test_trance_video_search_parses_statuses(self) -> None:
+        results = TranceVideoParser.parse_search_results(
+            self._fixture("trance-video", "search", "TO-07-0011-01.html")
+        )
+        self.assertEqual(results[0].statuses, ["オススメ", "単品"])
 
 
 class AcceedParserTests(unittest.TestCase):

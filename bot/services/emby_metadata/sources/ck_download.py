@@ -11,7 +11,6 @@ class CkDownloadSource(HttpMetadataSource):
     name = CkDownloadParser.source_name
     category = CkDownloadParser.category
     base_url = CkDownloadParser.base_url
-    cookie_key = name
     default_headers = {
         "User-Agent": "EmbyMetadataManager/1.0 (+private metadata lookup)",
         "Accept-Language": "ja,en;q=0.8",

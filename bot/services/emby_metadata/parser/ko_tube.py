@@ -107,7 +107,15 @@ class KoTubeParser:
 
         studio = fields.get("メーカー", "")
         label = fields.get("レーベル", "")
-        tags = [value for value in re.split(r"\s+", f"{fields.get('プレイ', '')} {fields.get('モデル', '')} {label}") if value]
+        tags = [
+            value
+            for value in re.split(
+                r"\s+", f"{fields.get('プレイ', '')} {fields.get('モデル', '')}"
+            )
+            if value
+        ]
+        if label:
+            tags.append(label)
         overview_node = soup.select_one(".intro_text") or soup.select_one(".sub_data > p:not(.dousa)")
         overview = cls._overview(overview_node)
         price = cls._price(soup.select_one(".single_price .price .gold, .pack_price .price .gold"))

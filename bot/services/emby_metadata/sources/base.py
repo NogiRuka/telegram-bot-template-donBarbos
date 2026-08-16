@@ -40,28 +40,31 @@ class MetadataSource(ABC):
 class HttpMetadataSource(MetadataSource):
     """提供可复用的 HTTP、Cookie、重试和图片请求能力。
 
-    子类只声明本站的请求头、Cookie 标识、证书策略和 URL/表单差异；公共层
-    不得根据 source 名称判断网站行为。
+    子类只声明本站的请求头、证书策略和 URL/表单差异；Cookie 由公共层按
+    数据源名称读取本地配置。
     """
 
     default_headers: dict[str, str] = {}
-    cookie_key: str | None = None
+    image_header_overrides: dict[str, str] = {}
     verify_ssl = True
     max_request_attempts = 2
+    request_timeout_seconds = 15.0
 
     def __init__(
         self,
-        timeout_seconds: float = 15.0,
+        timeout_seconds: float | None = None,
         cookie_manager: CookieManager | None = None,
     ) -> None:
         """初始化超时配置和 Cookie 提供者。"""
-        self._timeout = aiohttp.ClientTimeout(total=timeout_seconds)
+        timeout = timeout_seconds or self.request_timeout_seconds
+        self._timeout = aiohttp.ClientTimeout(total=timeout)
         self._cookie_manager = cookie_manager or CookieManager()
 
     def image_headers(self, referer: str | None = None) -> dict[str, str]:
         """返回下载来源图片时使用的请求头。"""
         return {
             **self._request_headers(),
+            **self.image_header_overrides,
             "Referer": referer or f"{self.base_url}/",
             "Accept": (
                 "image/avif,image/webp,image/apng,image/svg+xml,image/*,"
@@ -72,10 +75,9 @@ class HttpMetadataSource(MetadataSource):
     def _request_headers(self) -> dict[str, str]:
         """构建本站 HTML 和图片请求共用的基础请求头。"""
         headers = dict(self.default_headers)
-        if self.cookie_key:
-            cookie = self._cookie_manager.get_cookie(self.cookie_key)
-            if cookie:
-                headers["Cookie"] = cookie
+        cookie = self._cookie_manager.get_cookie(self.name)
+        if cookie:
+            headers["Cookie"] = cookie
         return headers
 
     async def _request_text(

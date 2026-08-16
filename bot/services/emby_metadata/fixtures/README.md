@@ -55,3 +55,17 @@ uv run python -m scripts.prepare_emby_fixture str8boys2023 GV-OAV1350 OAV135
 ```powershell
 function fix { & "D:\Projects\Python\telegram-bot-template-donBarbos\fix.ps1" @args }
 ```
+
+`fix.ps1` 也会同时创建 `bot/config/cookies/<source>.toml`，不会覆盖已有配置。
+新数据源可以带媒体库分类，例如：
+
+```powershell
+.\fix.ps1 日韩/temp
+```
+
+这会创建 `fixtures/日韩/temp/` 和 `bot/config/cookies/temp.toml`。
+已有 fixture 来源的 Cookie 文件可以批量初始化：
+
+```powershell
+uv run python -m scripts.prepare_emby_cookies
+```
