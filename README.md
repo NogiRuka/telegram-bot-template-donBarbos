@@ -445,8 +445,12 @@ docker compose up -d --build
 │   ├── vite.config.ts          # Vite 构建配置
 │   └── tsconfig.json           # TypeScript 配置
 │
-├── docs/                       # 项目文档
-│   ├── database_design.md      # 数据库设计文档
+├── docs/                       # 项目文档，入口见 docs/README.md
+│   ├── README.md               # 文档分类与导航
+│   ├── 项目/                   # 开发规范、架构与规划
+│   ├── 功能设计/               # 各业务功能设计
+│   ├── Emby/                   # 账号、元数据与 API 参考
+│   └── 集成/                   # OpenAI、xAI 等外部集成
 │   ├── group_message_save_example.md  # 群消息保存示例
 │   ├── permissions_design.md   # 权限设计文档
 │   └── 设计文档.md             # 设计文档
