@@ -362,7 +362,12 @@ async def sync_roles_from_settings_on_startup(session: AsyncSession) -> None:
         await session.commit()
 
 
-async def set_is_admin(session: AsyncSession, user_id: int, is_admin: bool) -> None:
+async def set_is_admin(
+    session: AsyncSession,
+    user_id: int,
+    is_admin: bool,
+    operator_id: int | None = None,
+) -> None:
     """设置管理员角色
 
     功能说明:
@@ -372,6 +377,7 @@ async def set_is_admin(session: AsyncSession, user_id: int, is_admin: bool) -> N
     - session: 异步数据库会话
     - user_id: 用户 ID
     - is_admin: 是否管理员
+    - operator_id: 执行操作的所有者用户 ID
 
     返回值:
     - None
@@ -385,13 +391,24 @@ async def set_is_admin(session: AsyncSession, user_id: int, is_admin: bool) -> N
         if model.role == UserRole.owner:
             return
         model.role = target_role
+        model.updated_by = operator_id
     else:
-        model = UserExtendModel(user_id=user_id, role=target_role)
+        model = UserExtendModel(
+            user_id=user_id,
+            role=target_role,
+            created_by=operator_id,
+            updated_by=operator_id,
+        )
         session.add(model)
     await session.commit()
+    await clear_cache(is_admin, user_id)
 
 
-async def add_admin(session: AsyncSession, user_id: int) -> bool:
+async def add_admin(
+    session: AsyncSession,
+    user_id: int,
+    operator_id: int | None = None,
+) -> bool:
     """添加管理员
 
     功能说明:
@@ -400,18 +417,25 @@ async def add_admin(session: AsyncSession, user_id: int) -> bool:
     输入参数:
     - session: 异步数据库会话
     - user_id: Telegram 用户ID
+    - operator_id: 执行操作的所有者用户 ID
 
     返回值:
     - bool: True 表示操作成功
     """
     try:
-        await set_is_admin(session, user_id, True)
+        await set_is_admin(session, user_id, True, operator_id)
         return True
-    except Exception:
+    except Exception as exc:
+        logger.exception("添加机器人管理员失败，user_id=%s，错误信息：%s", user_id, exc)
+        await session.rollback()
         return False
 
 
-async def remove_admin(session: AsyncSession, user_id: int) -> bool:
+async def remove_admin(
+    session: AsyncSession,
+    user_id: int,
+    operator_id: int | None = None,
+) -> bool:
     """移除管理员
 
     功能说明:
@@ -420,14 +444,17 @@ async def remove_admin(session: AsyncSession, user_id: int) -> bool:
     输入参数:
     - session: 异步数据库会话
     - user_id: Telegram 用户ID
+    - operator_id: 执行操作的所有者用户 ID
 
     返回值:
     - bool: True 表示操作成功
     """
     try:
-        await set_is_admin(session, user_id, False)
+        await set_is_admin(session, user_id, False, operator_id)
         return True
-    except Exception:
+    except Exception as exc:
+        logger.exception("撤销机器人管理员失败，user_id=%s，错误信息：%s", user_id, exc)
+        await session.rollback()
         return False
 
 
@@ -449,26 +476,6 @@ async def get_user_count(session: AsyncSession) -> int:
 
     count = result.scalar_one_or_none() or 0
     return int(count)
-
-
-@cached(key_builder=lambda session: build_key())
-async def list_admins(session: AsyncSession) -> list[UserModel]:
-    """列出管理员用户
-
-    功能说明:
-    - 基于 `user_extend.role in ('admin','owner')` 查询管理员/所有者对应的用户列表
-
-    输入参数:
-    - session: 异步数据库会话
-
-    返回值:
-    - list[UserModel]: 管理员列表
-    """
-    role_query = select(UserExtendModel.user_id).where(UserExtendModel.role.in_([UserRole.admin, UserRole.owner]))
-    query = select(UserModel).where(UserModel.id.in_(role_query))
-    result = await session.execute(query)
-    users = result.scalars()
-    return list(users)
 
 
 async def create_and_bind_emby_user(

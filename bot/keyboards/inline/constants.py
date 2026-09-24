@@ -240,15 +240,6 @@ BACK_TO_ADMIN_PANEL_CALLBACK_DATA = "admin:panel"
 OWNER_PANEL_LABEL = "👑 所有者面板"
 OWNER_PANEL_CALLBACK_DATA = "owner:panel"
 
-# 管理员管理
-OWNER_ADMINS_LABEL = "👮 管理员管理"
-OWNER_ADMINS_CALLBACK_DATA = "owner:admins"
-
-# 查看管理员列表
-ADMIN_LIST_LABEL = "👀 查看管理员列表"
-ADMIN_LIST_CALLBACK_DATA = "owner:admin_list"
-ADMIN_LIST_VIEW_CALLBACK_DATA = "owner:admins:list"
-
 # 功能开关
 USER_FEATURES_PANEL_LABEL = "🧩 用户功能开关"
 USER_FEATURES_PANEL_CALLBACK_DATA = "owner:user_features"

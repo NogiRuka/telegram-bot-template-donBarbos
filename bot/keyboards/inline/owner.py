@@ -3,7 +3,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.config import ADMIN_FEATURES_MAPPING, USER_FEATURES_MAPPING
 from bot.keyboards.inline.buttons import (
-    ADMIN_LIST_BUTTON,
     BACK_TO_HOME_BUTTON,
     BACK_TO_OWNER_PANEL_BUTTON,
     MAIN_OWNER_BUTTONS,
@@ -36,7 +35,7 @@ def get_owner_panel_keyboard() -> InlineKeyboardMarkup:
     """所有者面板键盘
 
     功能说明:
-    - 提供所有者面板主入口, 包含总开关、功能开关、管理员管理与返回主面板
+    - 提供所有者面板主入口, 包含功能开关与返回主面板
 
     输入参数:
     - 无
@@ -47,28 +46,6 @@ def get_owner_panel_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder(markup=OWNER_PANEL_BUTTONS)
     kb.adjust(1)
     return kb.as_markup()
-
-
-def get_admins_panel_keyboard() -> InlineKeyboardMarkup:
-    """管理员管理面板键盘
-
-    功能说明:
-    - 提供查看管理员列表与返回所有者主面板入口
-
-    输入参数:
-    - 无
-
-    返回值:
-    - InlineKeyboardMarkup: 管理员面板键盘
-    """
-    buttons = [
-        [ADMIN_LIST_BUTTON],
-        [BACK_TO_OWNER_PANEL_BUTTON],
-        [BACK_TO_HOME_BUTTON],
-    ]
-    keyboard = InlineKeyboardBuilder(markup=buttons)
-    keyboard.adjust(1, 2)
-    return keyboard.as_markup()
 
 
 def get_user_features_panel_keyboard(features: dict[str, bool]) -> InlineKeyboardMarkup:
