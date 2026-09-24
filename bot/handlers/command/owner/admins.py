@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import UserExtendModel, UserModel, UserRole
-from bot.handlers.command._usage import build_usage_text
+from bot.handlers.command._usage import reply_usage
 from bot.services.users import add_admin, remove_admin
 from bot.utils.permissions import require_owner
 from bot.utils.text import build_user_link_html
@@ -188,7 +188,7 @@ async def admin_command(
         await message.reply(await _format_admin_list(session), parse_mode="HTML")
         return
     if action not in GRANT_ACTIONS | REVOKE_ACTIONS:
-        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        await reply_usage(message, COMMAND_META)
         return
 
     target = await _resolve_target_user(
@@ -197,9 +197,10 @@ async def admin_command(
         session,
     )
     if target is None:
-        await message.reply(
-            f"❌ 无法识别目标用户。\n\n{build_usage_text(COMMAND_META)}",
-            parse_mode="Markdown",
+        await reply_usage(
+            message,
+            COMMAND_META,
+            prefix="❌ 无法识别目标用户。",
         )
         return
     await _change_admin_role(

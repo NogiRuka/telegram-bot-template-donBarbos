@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
 from bot.database.models import UserExtendModel, UserModel, UserRole
-from bot.handlers.command._usage import build_usage_text
+from bot.handlers.command._usage import reply_usage
 from bot.services.admin_service import ban_emby_user
 from bot.utils.decorators import private_chat_only
 from bot.utils.permissions import require_admin_command_access, require_admin_priv
@@ -38,7 +38,7 @@ COMMAND_META = {
 @require_admin_command_access(COMMAND_META["name"])
 async def ban_user_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     if not command.args:
-        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        await reply_usage(message, COMMAND_META)
         return
 
     try:

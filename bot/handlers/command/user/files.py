@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models.media_file import MediaFileModel
-from bot.handlers.command._usage import build_usage_text
+from bot.handlers.command._usage import reply_usage
 from bot.utils.permissions import require_user_command_access
 from bot.utils.text import escape_markdown_v2
 
@@ -34,7 +34,7 @@ COMMAND_META = {
 async def search_and_send_file(message: Message, session: AsyncSession, search_term: str) -> None:
     """搜索并发送文件通用逻辑"""
     if not search_term:
-        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        await reply_usage(message, COMMAND_META)
         return
 
     stmt = select(MediaFileModel).where(MediaFileModel.unique_name == search_term, MediaFileModel.is_deleted.is_(False))

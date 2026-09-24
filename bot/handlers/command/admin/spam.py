@@ -16,7 +16,7 @@ from bot.database.models import (
     UserModel,
 )
 from bot.database.models.audit_log import ActionType
-from bot.handlers.command._usage import build_usage_text
+from bot.handlers.command._usage import build_usage_text, reply_usage_text
 from bot.services.command_permission_service import (
     has_command_permission,
     list_command_permissions,
@@ -423,11 +423,11 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
         message.reply_to_message and message.reply_to_message.from_user
     ):
         can_manage_permissions = await _can_manage_spam_permissions(message)
-        await message.reply(
+        await reply_usage_text(
+            message,
             _build_spam_usage_text(
                 include_permission_management=can_manage_permissions,
             ),
-            parse_mode="Markdown",
         )
         return
 
@@ -469,9 +469,9 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
             permission_chat_id,
         )
         if target is None:
-            await message.reply(
+            await reply_usage_text(
+                message,
                 _build_spam_usage_text(include_permission_management=True),
-                parse_mode="Markdown",
             )
             return
         if action in GRANT_ACTIONS:
@@ -501,10 +501,10 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
         await _reply_with_command_cleanup(message, "❌ 你没有权限执行此操作。")
         return
     if args and not _is_explicit_target(args[0]):
-        await message.reply(
+        await reply_usage_text(
+            message,
             "❌ 无法识别参数，未执行封禁。\n"
             f"\n{_build_spam_usage_text(include_permission_management=is_admin)}",
-            parse_mode="Markdown",
         )
         return
     target = await _resolve_target_user(
@@ -514,9 +514,9 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
         message.chat.id,
     )
     if target is None:
-        await message.reply(
+        await reply_usage_text(
+            message,
             _build_spam_usage_text(include_permission_management=is_admin),
-            parse_mode="Markdown",
         )
         return
     await _execute_spam_action(message, session, target[0])

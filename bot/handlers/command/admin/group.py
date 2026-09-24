@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import GroupConfigModel, GroupType, MessageSaveMode
-from bot.handlers.command._usage import build_usage_text
+from bot.handlers.command._usage import reply_usage
 from bot.services.message_export import MessageExportService
 from bot.utils.permissions import require_admin_command_access, require_admin_priv
 
@@ -90,7 +90,7 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
     启用群组消息保存
     """
     if not command.args:
-        await message.answer(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        await reply_usage(message, COMMAND_META)
         return
     try:
         chat_id = int(command.args)
@@ -122,7 +122,7 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
     禁用群组消息保存
     """
     if not command.args:
-        await message.answer(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        await reply_usage(message, COMMAND_META)
         return
     try:
         chat_id = int(command.args)
@@ -148,7 +148,7 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
     查看群组详细信息
     """
     if not command.args:
-        await message.answer(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        await reply_usage(message, COMMAND_META)
         return
     try:
         chat_id = int(command.args)

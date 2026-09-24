@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from aiogram import F, Router
@@ -10,8 +9,8 @@ from sqlalchemy import select
 
 from bot.config.constants import KEY_ADMIN_QUIZ
 from bot.database.models import QuizQuestionModel
+from bot.handlers.command._usage import reply_usage
 from bot.handlers.command.admin._quiz_command import (
-    build_usage_text,
     get_random_question_ids,
     is_current_group_admin,
     reply_failure,
@@ -60,7 +59,10 @@ def _parse_quiz_args(raw_args: str | None) -> tuple[int | None, int | None, int 
     return timeout_sec, reward_bonus, question_id
 
 
-@router.message(Command(COMMAND_META["name"], COMMAND_META["alias"]), F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP]))
+@router.message(
+    Command(COMMAND_META["name"], COMMAND_META["alias"]),
+    F.chat.type.in_([ChatType.GROUP, ChatType.SUPERGROUP]),
+)
 @require_admin_command_access(COMMAND_META["name"])
 @require_admin_feature(KEY_ADMIN_QUIZ)
 async def quiz_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
@@ -103,7 +105,7 @@ async def quiz_command(message: Message, command: CommandObject, session: AsyncS
             reason = fail_reasons[0] if fail_reasons else "问答发送失败"
             await reply_failure(message, reason)
     except ValueError:
-        await reply_failure(message, build_usage_text(COMMAND_META), parse_mode="Markdown")
+        await reply_usage(message, COMMAND_META)
     except Exception as exc:  # noqa: BLE001
         logger.exception(f"群组单条问答命令执行失败: {exc}")
         await reply_failure(message, f"触发失败: {exc}")

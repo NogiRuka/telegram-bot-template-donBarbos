@@ -1,6 +1,12 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING, Any
 
-from typing import Any
+from bot.utils.message import delete_message_after_delay
+
+if TYPE_CHECKING:
+    from aiogram.types import Message
+
+USAGE_AUTO_DELETE_SECONDS = 30
 
 
 def _to_str_list(value: Any) -> list[str]:
@@ -87,3 +93,29 @@ def build_usage_text(meta: dict[str, Any]) -> str:
                 lines.append(example_explain)
 
     return "\n".join(lines)
+
+
+async def reply_usage_text(
+    message: Message,
+    text: str,
+    *,
+    parse_mode: str | None = "Markdown",
+    delay: int = USAGE_AUTO_DELETE_SECONDS,
+) -> None:
+    """发送使用说明，并延迟删除说明与触发命令。"""
+    usage_message = await message.reply(text, parse_mode=parse_mode)
+    delete_message_after_delay(usage_message, delay=delay)
+    delete_message_after_delay(message, delay=delay)
+
+
+async def reply_usage(
+    message: Message,
+    meta: dict[str, Any],
+    *,
+    prefix: str | None = None,
+) -> None:
+    """根据命令元数据发送使用说明，并在三十秒后清理。"""
+    usage_text = build_usage_text(meta)
+    if prefix:
+        usage_text = f"{prefix}\n\n{usage_text}"
+    await reply_usage_text(message, usage_text)

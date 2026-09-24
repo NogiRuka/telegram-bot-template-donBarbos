@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.constants import CURRENCY_SYMBOL
 from bot.database.models import UserSubmissionModel
 from bot.database.models.library_new_notification import LibraryNewNotificationModel
-from bot.handlers.command._usage import build_usage_text
+from bot.handlers.command._usage import reply_usage
 from bot.keyboards.inline.buttons import CLOSE_BUTTON
 from bot.services.currency import CurrencyService
 from bot.utils.datetime import now
@@ -73,7 +73,7 @@ async def cmd_submission_review(message: Message, command: CommandObject, sessio
         args_raw = (command.args or "").strip()
         parts = args_raw.split()
         if len(parts) < 2:
-            await send_toast(message, f"❌ 参数不足\n{build_usage_text(COMMAND_META)}", parse_mode="Markdown")
+            await reply_usage(message, COMMAND_META, prefix="❌ 参数不足")
             return
 
         submission_id_str, action_str = parts[0], parts[1]

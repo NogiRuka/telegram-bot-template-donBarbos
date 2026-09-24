@@ -4,7 +4,7 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.command._meta import collect_command_names
-from bot.handlers.command._usage import build_usage_text
+from bot.handlers.command._usage import reply_usage
 from bot.services.config_service import get_disabled_commands, toggle_command_access
 from bot.utils.permissions import require_owner
 
@@ -65,7 +65,7 @@ async def owner_command_control(message: Message, command: CommandObject, sessio
     name = parts[1] if len(parts) > 1 else ""
 
     if scope not in {"user", "admin"} or not name:
-        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        await reply_usage(message, COMMAND_META)
         return
 
     valid = name in user_commands if scope == "user" else name in admin_commands

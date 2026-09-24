@@ -4,7 +4,7 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import ADMIN_FEATURES_MAPPING, USER_FEATURES_MAPPING
-from bot.handlers.command._usage import build_usage_text
+from bot.handlers.command._usage import reply_usage
 from bot.services.config_service import list_admin_features, list_user_features, toggle_config
 from bot.utils.permissions import require_owner
 
@@ -60,7 +60,7 @@ async def feature_command(message: Message, command: CommandObject, session: Asy
     short_code = parts[1] if len(parts) > 1 else ""
 
     if scope not in {"user", "admin"} or not short_code:
-        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        await reply_usage(message, COMMAND_META)
         return
 
     mapping = USER_FEATURES_MAPPING if scope == "user" else ADMIN_FEATURES_MAPPING

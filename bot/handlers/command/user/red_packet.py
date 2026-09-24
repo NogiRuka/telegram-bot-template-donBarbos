@@ -17,6 +17,7 @@ from bot.database.models import MediaFileModel, UserModel
 from bot.services.red_packet_service import RedPacketCreateRequest, RedPacketService
 from bot.services.redpacket_preview import compose_redpacket_with_info
 from bot.states.user import RedPacketWizardStates
+from bot.utils.message import delete_message_after_delay
 from bot.utils.permissions import require_user_command_access
 
 if TYPE_CHECKING:
@@ -320,7 +321,13 @@ async def create_red_packet_command(
         return
     args_raw = (command.args or "").strip()
     if _is_help_trigger(args_raw):
-        await message.reply(_build_tutorial_text(), reply_markup=_build_tutorial_keyboard(), parse_mode=None)
+        tutorial_message = await message.reply(
+            _build_tutorial_text(),
+            reply_markup=_build_tutorial_keyboard(),
+            parse_mode=None,
+        )
+        delete_message_after_delay(tutorial_message, delay=30)
+        delete_message_after_delay(message, delay=30)
         return
     if message.chat.type not in {"group", "supergroup"}:
         await message.reply("请在群里发送红包；私聊里可用 /rp 教程 或点“生成向导”生成命令。", parse_mode=None)
