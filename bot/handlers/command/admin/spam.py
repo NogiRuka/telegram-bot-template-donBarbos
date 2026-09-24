@@ -32,28 +32,34 @@ from bot.utils.text import build_user_link_html
 
 router = Router(name="command_spam")
 
+SPAM_USAGE_SUMMARY = [
+    "封禁垃圾账号并清理其近期消息",
+    "清理操作仅能在群组中执行",
+]
+SPAM_EXECUTION_FORMATS = [
+    "回复垃圾消息后发送 /spam",
+    "/spam <用户ID|@用户名>",
+]
+SPAM_EXECUTION_EXAMPLES = ["/spam 123456789"]
+SPAM_PERMISSION_FORMATS = [
+    "/spam g <用户ID|@用户名>",
+    "/spam r <用户ID|@用户名>",
+    "/spam l",
+    "回复用户消息后发送 /spam g 或 /spam r",
+]
+SPAM_PERMISSION_EXAMPLES = [
+    "/s g @username",
+    "/s r 123456789",
+    "/s l",
+]
+
 COMMAND_META = {
     "name": "spam",
     "alias": "s",
     "usage": {
-        "summary": [
-            "封禁垃圾账号并清理其近期消息",
-            "清理操作仅能在群组中执行",
-        ],
-        "formats": [
-            "回复垃圾消息后发送 /spam",
-            "/spam <用户ID|@用户名>",
-            "/spam g <用户ID|@用户名>",
-            "/spam r <用户ID|@用户名>",
-            "/spam l",
-            "回复用户消息后发送 /spam g 或 /spam r",
-        ],
-        "examples": [
-            "/spam 123456789",
-            "/s g @username",
-            "/s r 123456789",
-            "/s l",
-        ],
+        "summary": SPAM_USAGE_SUMMARY,
+        "formats": SPAM_EXECUTION_FORMATS,
+        "examples": SPAM_EXECUTION_EXAMPLES,
     },
     "desc": "封禁垃圾账号并清理其近期消息",
 }
@@ -62,6 +68,24 @@ GRANT_ACTIONS = {"g", "grant", "allow", "add", "授权"}
 REVOKE_ACTIONS = {"r", "revoke", "deny", "remove", "撤权"}
 LIST_ACTIONS = {"l", "list", "列表"}
 MAX_DELETE_MESSAGES = 100
+
+
+def _build_spam_usage_text(*, include_permission_management: bool) -> str:
+    """按操作者权限生成 `/spam` 使用方法。"""
+    formats = list(SPAM_EXECUTION_FORMATS)
+    examples = list(SPAM_EXECUTION_EXAMPLES)
+    if include_permission_management:
+        formats.extend(SPAM_PERMISSION_FORMATS)
+        examples.extend(SPAM_PERMISSION_EXAMPLES)
+    usage_meta = {
+        **COMMAND_META,
+        "usage": {
+            "summary": SPAM_USAGE_SUMMARY,
+            "formats": formats,
+            "examples": examples,
+        },
+    }
+    return build_usage_text(usage_meta)
 
 
 async def _is_chat_admin(message: Message, user_id: int, chat_id: int) -> bool:
@@ -91,6 +115,20 @@ async def _resolve_permission_chat_id(message: Message) -> int | None:
     if chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
         return None
     return chat.id
+
+
+async def _can_manage_spam_permissions(message: Message) -> bool:
+    """检查消息发送者能否管理目标群的 `/spam` 授权。"""
+    if not message.from_user:
+        return False
+    permission_chat_id = await _resolve_permission_chat_id(message)
+    if permission_chat_id is None:
+        return False
+    return await _is_chat_admin(
+        message,
+        message.from_user.id,
+        permission_chat_id,
+    )
 
 
 async def _is_spam_operator(session: AsyncSession, chat_id: int, user_id: int) -> bool:
@@ -384,7 +422,13 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
     if not args and not (
         message.reply_to_message and message.reply_to_message.from_user
     ):
-        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        can_manage_permissions = await _can_manage_spam_permissions(message)
+        await message.reply(
+            _build_spam_usage_text(
+                include_permission_management=can_manage_permissions,
+            ),
+            parse_mode="Markdown",
+        )
         return
 
     if action in GRANT_ACTIONS | REVOKE_ACTIONS | LIST_ACTIONS:
@@ -425,7 +469,10 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
             permission_chat_id,
         )
         if target is None:
-            await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
+            await message.reply(
+                _build_spam_usage_text(include_permission_management=True),
+                parse_mode="Markdown",
+            )
             return
         if action in GRANT_ACTIONS:
             validation_error = await _validate_permission_target(
@@ -456,7 +503,7 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
     if args and not _is_explicit_target(args[0]):
         await message.reply(
             "❌ 无法识别参数，未执行封禁。\n"
-            f"\n{build_usage_text(COMMAND_META)}",
+            f"\n{_build_spam_usage_text(include_permission_management=is_admin)}",
             parse_mode="Markdown",
         )
         return
@@ -467,6 +514,9 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
         message.chat.id,
     )
     if target is None:
-        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        await message.reply(
+            _build_spam_usage_text(include_permission_management=is_admin),
+            parse_mode="Markdown",
+        )
         return
     await _execute_spam_action(message, session, target[0])
