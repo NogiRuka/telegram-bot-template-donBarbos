@@ -29,13 +29,13 @@
 
 ```text
 D:\Projects\Python\telegram-bot-template-donBarbos  # Python 服务端
-D:\Projects\Android\lustfulboy-android              # Android 客户端
+D:\Projects\Android\lustfulboy              # Android 客户端
 ```
 
 Android 项目建议配置：
 
 ```text
-项目名称：lustfulboy-android
+项目名称：lustfulboy
 App 名称：桜色男孩
 包名：com.alviss.lustfulboy
 语言：Kotlin
