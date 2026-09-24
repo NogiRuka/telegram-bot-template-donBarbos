@@ -238,7 +238,14 @@ async def _get_disabled_commands_raw(session: AsyncSession, key: str) -> set[str
 
 async def get_disabled_commands(session: AsyncSession, scope: str) -> set[str]:
     key = KEY_USER_COMMANDS_DISABLED if scope == "user" else KEY_ADMIN_COMMANDS_DISABLED
-    return await _get_disabled_commands_raw(session, key)
+    disabled = await _get_disabled_commands_raw(session, key)
+    if scope == "admin":
+        legacy_names = {
+            "group": "groups",
+            "sr": "submission_review",
+        }
+        return {legacy_names.get(name, name) for name in disabled}
+    return disabled
 
 
 async def _set_disabled_commands_raw(

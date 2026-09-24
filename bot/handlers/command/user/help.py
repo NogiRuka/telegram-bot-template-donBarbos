@@ -29,9 +29,7 @@ def _append_commands(
         desc = str(cmd.get("desc") or "")
         if not name and not alias:
             continue
-        command_names = [value for value in (name, alias) if value]
-        display_name = str(cmd.get("full_name") or max(command_names, key=len))
-        lines.append(f"/{display_name} {desc}")
+        lines.append(f"/{name or alias} {desc}")
 
 
 async def _resolve_group_chat_id(message: types.Message) -> int | None:

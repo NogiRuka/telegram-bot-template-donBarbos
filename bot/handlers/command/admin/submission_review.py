@@ -17,8 +17,8 @@ from bot.utils.permissions import require_admin_command_access, require_admin_pr
 router = Router(name="command_submission_review")
 
 COMMAND_META = {
-    "name": "sr",
-    "alias": "submission_review",
+    "name": "submission_review",
+    "alias": "sr",
     "usage": {
         "summary": [
             "/sr <投稿ID> <操作> [留言]",
