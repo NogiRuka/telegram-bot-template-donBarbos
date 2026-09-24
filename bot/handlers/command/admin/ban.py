@@ -3,14 +3,15 @@
 """
 
 from aiogram import Router
+from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandObject
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import Message
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
-from bot.database.models import UserModel
+from bot.database.models import UserExtendModel, UserModel, UserRole
 from bot.handlers.command._usage import build_usage_text
 from bot.services.admin_service import ban_emby_user
 from bot.utils.decorators import private_chat_only
@@ -45,6 +46,37 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
     except ValueError:
         await message.reply("无效的用户 ID，必须为整数。")
         return
+
+    if target_user_id == message.from_user.id:
+        await message.reply("不能封禁自己。")
+        return
+
+    bot_user = await message.bot.me()
+    if target_user_id == bot_user.id:
+        await message.reply("不能封禁机器人自身。")
+        return
+
+    target_role = (
+        await session.execute(select(UserExtendModel.role).where(UserExtendModel.user_id == target_user_id))
+    ).scalar_one_or_none()
+    if target_role in {UserRole.admin, UserRole.owner}:
+        await message.reply("不能通过 `/ban` 封禁系统管理员或所有者。", parse_mode="Markdown")
+        return
+
+    if settings.GROUP:
+        try:
+            target_member = await message.bot.get_chat_member(
+                chat_id=settings.GROUP,
+                user_id=target_user_id,
+            )
+            if target_member.status in {
+                ChatMemberStatus.ADMINISTRATOR,
+                ChatMemberStatus.CREATOR,
+            }:
+                await message.reply("不能通过 `/ban` 封禁群管理员或群主。", parse_mode="Markdown")
+                return
+        except Exception as exc:  # noqa: BLE001
+            logger.info(f"封禁前无法取得目标群成员状态: user_id={target_user_id}, error={exc}")
 
     results: list[str] = []
 
@@ -124,13 +156,4 @@ async def ban_user_command(message: Message, command: CommandObject, session: As
 
     await session.commit()
 
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="解除封禁", callback_data=f"unban:{target_user_id}"),
-                InlineKeyboardButton(text="关闭", callback_data="close_message"),
-            ]
-        ]
-    )
-
-    await message.reply("\n".join(results), reply_markup=kb, parse_mode="MarkdownV2")
+    await message.reply("\n".join(results), parse_mode="MarkdownV2")

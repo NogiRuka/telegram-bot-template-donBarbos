@@ -1,5 +1,6 @@
 from .audit_log import ActionType, AuditLogModel
 from .base import Base
+from .command_permission import CommandPermissionModel, CommandPermissionScope
 from .config import ConfigModel, ConfigType
 from .currency_config import CurrencyConfigModel
 from .currency_product import CurrencyProductModel
@@ -29,6 +30,8 @@ __all__ = [
     "ActionType",
     "AuditLogModel",
     "Base",
+    "CommandPermissionModel",
+    "CommandPermissionScope",
     "ConfigModel",
     "ConfigType",
     "CurrencyConfigModel",
