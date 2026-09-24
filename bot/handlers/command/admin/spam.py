@@ -148,6 +148,13 @@ def _is_explicit_target(raw_target: str) -> bool:
     )
 
 
+async def _reply_with_command_cleanup(message: Message, text: str) -> None:
+    """回复临时提示，并在五秒后同时删除提示和触发命令。"""
+    result_message = await message.reply(text)
+    delete_message_after_delay(result_message, delay=5)
+    delete_message_after_delay(message, delay=5)
+
+
 async def _set_operator_permission(
     message: Message,
     session: AsyncSession,
@@ -180,9 +187,8 @@ async def _set_operator_permission(
 
     await session.commit()
     result_message = await message.reply(result_text, parse_mode="Markdown")
-    if changed:
-        delete_message_after_delay(result_message, delay=5)
-        delete_message_after_delay(message, delay=5)
+    delete_message_after_delay(result_message, delay=5)
+    delete_message_after_delay(message, delay=5)
 
 
 async def _format_authorized_users(
@@ -366,7 +372,7 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
             permission_chat_id,
         )
         if not is_admin:
-            await message.reply("❌ 你没有权限执行此操作。")
+            await _reply_with_command_cleanup(message, "❌ 你没有权限执行此操作。")
             return
         if action in LIST_ACTIONS:
             user_ids = await list_command_permissions(
@@ -422,7 +428,7 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
 
     is_admin = await _is_chat_admin(message, message.from_user.id, message.chat.id)
     if not is_admin and not await _is_spam_operator(session, message.chat.id, message.from_user.id):
-        await message.reply("❌ 你没有权限执行此操作。")
+        await _reply_with_command_cleanup(message, "❌ 你没有权限执行此操作。")
         return
     if args and not _is_explicit_target(args[0]):
         await message.reply(
