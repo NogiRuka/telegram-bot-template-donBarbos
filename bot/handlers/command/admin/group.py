@@ -15,6 +15,7 @@ router = Router(name="admin_group")
 COMMAND_META = {
     "name": "group",
     "alias": "g",
+    "full_name": "groups",
     "usage": "/groups, /enable_group <chat_id>, /disable_group <chat_id>, /group_info <chat_id>",
     "desc": "群组消息保存配置管理"
 }

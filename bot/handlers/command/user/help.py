@@ -3,12 +3,10 @@ from aiogram.enums import ChatMemberStatus, ChatType
 from aiogram.filters import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config.constants import KEY_ADMIN_FEATURES_ENABLED, KEY_ADMIN_QUIZ
 from bot.core.config import settings
 from bot.database.models import CommandPermissionScope
 from bot.handlers.command._meta import collect_command_meta
 from bot.services.command_permission_service import has_command_permission
-from bot.services.config_service import get_config, is_command_enabled
 from bot.utils.permissions import _resolve_role
 
 router = Router(name="help")
@@ -17,15 +15,13 @@ COMMAND_META = {
     "name": "help",
     "alias": "h",
     "usage": "/h",
-    "desc": "显示根据权限生成的命令帮助列表",
+    "desc": "获取帮助",
 }
 
 
-async def _append_scope_commands(
+def _append_commands(
     lines: list[str],
     cmds: list[dict[str, object]],
-    session: AsyncSession,
-    scope: str,
 ) -> None:
     for cmd in cmds:
         name = str(cmd.get("name") or "")
@@ -33,15 +29,9 @@ async def _append_scope_commands(
         desc = str(cmd.get("desc") or "")
         if not name and not alias:
             continue
-        if scope in {"user", "admin"} and not await is_command_enabled(
-            session,
-            scope,
-            name or alias,
-        ):
-            continue
         command_names = [value for value in (name, alias) if value]
-        display_name = min(command_names, key=len)
-        lines.append(f"/{display_name} — {desc}")
+        display_name = str(cmd.get("full_name") or max(command_names, key=len))
+        lines.append(f"/{display_name} {desc}")
 
 
 async def _resolve_group_chat_id(message: types.Message) -> int | None:
@@ -102,11 +92,7 @@ async def _append_group_commands(
     if can_use_spam:
         visible_names.add("spam")
     if is_group_admin:
-        quiz_enabled = bool(
-            await get_config(session, KEY_ADMIN_FEATURES_ENABLED)
-        ) and bool(await get_config(session, KEY_ADMIN_QUIZ))
-        if quiz_enabled:
-            visible_names.update({"quiz", "quizs"})
+        visible_names.update({"quiz", "quizs"})
     if not visible_names:
         return
 
@@ -116,9 +102,9 @@ async def _append_group_commands(
     if not group_cmds:
         return
     command_lines: list[str] = []
-    await _append_scope_commands(command_lines, group_cmds, session, "admin")
+    _append_commands(command_lines, group_cmds)
     if command_lines:
-        lines.extend(["", "群组管理", *command_lines])
+        lines.extend(command_lines)
 
 
 @router.message(Command("help", "h"))
@@ -127,8 +113,11 @@ async def help_command(message: types.Message, session: AsyncSession) -> None:
     admin_cmds = collect_command_meta("bot.handlers.command.admin")
     owner_cmds = collect_command_meta("bot.handlers.command.owner")
 
-    lines: list[str] = ["可用命令", "", "基础命令"]
-    await _append_scope_commands(lines, user_cmds, session, "user")
+    lines: list[str] = ["/help 获取帮助"]
+    other_user_cmds = [
+        cmd for cmd in user_cmds if str(cmd.get("name") or "") != "help"
+    ]
+    _append_commands(lines, other_user_cmds)
 
     if not message.from_user:
         await message.reply("\n".join(lines), parse_mode=None)
@@ -145,19 +134,14 @@ async def help_command(message: types.Message, session: AsyncSession) -> None:
             if str(cmd.get("name") or "") not in {"spam", "quiz", "quizs"}
         ]
         robot_admin_lines: list[str] = []
-        await _append_scope_commands(
-            robot_admin_lines,
-            robot_admin_cmds,
-            session,
-            "admin",
-        )
+        _append_commands(robot_admin_lines, robot_admin_cmds)
         if robot_admin_lines:
-            lines.extend(["", "机器人管理", *robot_admin_lines])
+            lines.extend(robot_admin_lines)
 
     if role == "owner":
         owner_lines: list[str] = []
-        await _append_scope_commands(owner_lines, owner_cmds, session, "owner")
+        _append_commands(owner_lines, owner_cmds)
         if owner_lines:
-            lines.extend(["", "机器人所有者", *owner_lines])
+            lines.extend(owner_lines)
 
     await message.reply("\n".join(lines), parse_mode=None)
