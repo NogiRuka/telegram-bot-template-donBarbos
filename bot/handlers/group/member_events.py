@@ -19,6 +19,7 @@ from bot.handlers.group.group_message_saver import message_saver
 from bot.services.admin_service import ban_emby_user
 from bot.services.config_service import get_config
 from bot.services.group_config_service import get_or_create_group_config
+from bot.services.moderation_context import consume_moderation_action
 from bot.services.users import upsert_user_on_interaction
 from bot.utils.msg_group import send_group_notification
 from bot.utils.text import escape_markdown_v2
@@ -122,9 +123,17 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
     """
     监听群成员离开或被踢出事件
     """
-    logger.info(f"🔄 成员变动事件: chat={event.chat.id}, user={event.new_chat_member.user.id}, old={event.old_chat_member.status}, new={event.new_chat_member.status}")
+    logger.info(
+        f"🔄 成员变动事件: chat={event.chat.id}, "
+        f"user={event.new_chat_member.user.id}, "
+        f"old={event.old_chat_member.status}, "
+        f"new={event.new_chat_member.status}"
+    )
     if settings.GROUP and not _is_config_group(event.chat):
-        logger.warning(f"⚠️ 群组不匹配，忽略事件: config={settings.GROUP}, event_chat={event.chat.id}/{event.chat.username}")
+        logger.warning(
+            f"⚠️ 群组不匹配，忽略事件: config={settings.GROUP}, "
+            f"event_chat={event.chat.id}/{event.chat.username}"
+        )
         return
     user = event.new_chat_member.user
     # 退群白名单豁免：白名单用户退群不处理（从配置表读取）
@@ -140,9 +149,23 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
         return
     reason = "主动离开了群组" if event.new_chat_member.status == ChatMemberStatus.LEFT else "被管理员踢出/封禁"
     admin_id = None
+    action = "Kick" if event.new_chat_member.status == ChatMemberStatus.KICKED else "Leave"
     if event.new_chat_member.status == ChatMemberStatus.KICKED and event.from_user:
-        admin_id = event.from_user.id
-        reason = f"被管理员 {event.from_user.full_name} 踢出/封禁"
+        moderation_actor = (
+            consume_moderation_action(event.chat.id, user.id)
+            if event.from_user.is_bot
+            else None
+        )
+        if moderation_actor and moderation_actor.action == "spam":
+            admin_id = moderation_actor.user_id
+            action = "Spam"
+            reason = (
+                f"由 {moderation_actor.full_name} 使用 /spam "
+                "标记为垃圾账号并封禁"
+            )
+        else:
+            admin_id = event.from_user.id
+            reason = f"被管理员 {event.from_user.full_name} 踢出/封禁"
     try:
         user_info = {
             "group_name": event.chat.title,
@@ -150,7 +173,7 @@ async def on_member_leave_or_kick(event: ChatMemberUpdated, session: AsyncSessio
             "chat_username": event.chat.username,
             "username": user.username if user.username else "",
             "full_name": user.full_name,
-            "action": "Kick" if event.new_chat_member.status == ChatMemberStatus.KICKED else "Leave",
+            "action": action,
             "user_id": str(user.id),
         }
         results = await ban_emby_user(

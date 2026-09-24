@@ -8,6 +8,7 @@ from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.config import settings
 from bot.database.models import (
     AuditLogModel,
     CommandPermissionScope,
@@ -19,6 +20,10 @@ from bot.services.command_permission_service import (
     has_command_permission,
     list_command_permissions,
     set_command_permission,
+)
+from bot.services.moderation_context import (
+    discard_moderation_action,
+    register_moderation_action,
 )
 from bot.utils.message import delete_message_after_delay, safe_delete_message
 from bot.utils.permissions import require_admin_command_access
@@ -43,14 +48,33 @@ LIST_ACTIONS = {"l", "list", "列表"}
 MAX_DELETE_MESSAGES = 100
 
 
-async def _is_chat_admin(message: Message, user_id: int) -> bool:
-    """检查用户是否为当前群的管理员或创建者。"""
+async def _is_chat_admin(message: Message, user_id: int, chat_id: int) -> bool:
+    """检查用户是否为指定群的管理员或创建者。"""
     try:
-        member = await message.bot.get_chat_member(message.chat.id, user_id)
+        member = await message.bot.get_chat_member(chat_id, user_id)
     except Exception as exc:  # noqa: BLE001
-        logger.warning(f"检查群管理员身份失败: chat_id={message.chat.id}, user_id={user_id}, error={exc}")
+        logger.warning(
+            f"检查群管理员身份失败: chat_id={chat_id}, "
+            f"user_id={user_id}, error={exc}"
+        )
         return False
     return member.status in {ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR}
+
+
+async def _resolve_permission_chat_id(message: Message) -> int | None:
+    """解析权限管理目标群；私聊时使用配置的主群。"""
+    if message.chat.type in {ChatType.GROUP, ChatType.SUPERGROUP}:
+        return message.chat.id
+    if message.chat.type != ChatType.PRIVATE or not settings.GROUP:
+        return None
+    try:
+        chat = await message.bot.get_chat(settings.GROUP)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"解析权限管理目标群失败: group={settings.GROUP}, error={exc}")
+        return None
+    if chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
+        return None
+    return chat.id
 
 
 async def _is_spam_operator(session: AsyncSession, chat_id: int, user_id: int) -> bool:
@@ -68,6 +92,7 @@ async def _resolve_target_user(
     message: Message,
     raw_target: str | None,
     session: AsyncSession,
+    member_chat_id: int,
 ) -> tuple[int, User | None] | None:
     """从回复消息、数字 ID 或机器人已记录的用户名解析目标。"""
     if not raw_target:
@@ -89,7 +114,7 @@ async def _resolve_target_user(
         user_model = (await session.execute(stmt)).scalar_one_or_none()
         if user_model:
             try:
-                member = await message.bot.get_chat_member(message.chat.id, user_model.id)
+                member = await message.bot.get_chat_member(member_chat_id, user_model.id)
             except Exception:  # noqa: BLE001
                 return None
             current_username = member.user.username or ""
@@ -128,6 +153,7 @@ async def _set_operator_permission(
     session: AsyncSession,
     target_user_id: int,
     enabled: bool,
+    permission_chat_id: int,
 ) -> None:
     """授予或撤销当前群成员的垃圾消息处理权限。"""
     changed = await set_command_permission(
@@ -137,7 +163,7 @@ async def _set_operator_permission(
         scope_type=CommandPermissionScope.GROUP,
         granted_by_user_id=message.from_user.id,
         enabled=enabled,
-        scope_id=message.chat.id,
+        scope_id=permission_chat_id,
     )
     if enabled:
         result_text = (
@@ -156,12 +182,14 @@ async def _set_operator_permission(
     result_message = await message.reply(result_text, parse_mode="Markdown")
     if changed:
         delete_message_after_delay(result_message, delay=5)
+        delete_message_after_delay(message, delay=5)
 
 
 async def _format_authorized_users(
     message: Message,
     session: AsyncSession,
     user_ids: list[int],
+    permission_chat_id: int,
 ) -> str:
     """将授权用户格式化为可点击姓名链接。"""
     if not user_ids:
@@ -172,13 +200,13 @@ async def _format_authorized_users(
     lines = ["当前已授权成员："]
     for user_id in user_ids:
         try:
-            member = await message.bot.get_chat_member(message.chat.id, user_id)
+            member = await message.bot.get_chat_member(permission_chat_id, user_id)
             first_name = member.user.first_name
             last_name = member.user.last_name
         except Exception as exc:  # noqa: BLE001
             logger.info(
                 f"获取授权成员最新资料失败，使用数据库资料: "
-                f"chat_id={message.chat.id}, user_id={user_id}, error={exc}"
+                f"chat_id={permission_chat_id}, user_id={user_id}, error={exc}"
             )
             user = users.get(user_id)
             first_name = user.first_name if user else "未知用户"
@@ -188,15 +216,19 @@ async def _format_authorized_users(
     return "\n".join(lines)
 
 
-async def _validate_permission_target(message: Message, target_user_id: int) -> str | None:
+async def _validate_permission_target(
+    message: Message,
+    target_user_id: int,
+    permission_chat_id: int,
+) -> str | None:
     """验证授权目标是当前群内可被授权的普通成员。"""
     if target_user_id == message.from_user.id:
         return "群管理员无需额外授权。"
     try:
-        member = await message.bot.get_chat_member(message.chat.id, target_user_id)
+        member = await message.bot.get_chat_member(permission_chat_id, target_user_id)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            f"检查授权目标失败: chat_id={message.chat.id}, "
+            f"检查授权目标失败: chat_id={permission_chat_id}, "
             f"user_id={target_user_id}, error={exc}"
         )
         return "无法确认目标用户是当前群成员，请回复该成员的群消息后重试。"
@@ -264,13 +296,21 @@ async def _execute_spam_action(message: Message, session: AsyncSession, target_u
     if target_user_id == bot_user.id:
         await message.reply("❌ 不能对机器人自身执行 `/spam`。", parse_mode="Markdown")
         return
-    if await _is_chat_admin(message, target_user_id):
+    if await _is_chat_admin(message, target_user_id, message.chat.id):
         await message.reply("❌ 不能通过 `/spam` 封禁群管理员或群主。", parse_mode="Markdown")
         return
 
+    register_moderation_action(
+        chat_id=message.chat.id,
+        target_user_id=target_user_id,
+        actor_user_id=message.from_user.id,
+        actor_full_name=message.from_user.full_name,
+        action="spam",
+    )
     try:
         await message.bot.ban_chat_member(chat_id=message.chat.id, user_id=target_user_id)
     except Exception as exc:  # noqa: BLE001
+        discard_moderation_action(message.chat.id, target_user_id)
         logger.warning(
             f"封禁垃圾账号失败: chat_id={message.chat.id}, "
             f"user_id={target_user_id}, error={exc}"
@@ -302,37 +342,55 @@ async def _execute_spam_action(message: Message, session: AsyncSession, target_u
         f"🧹 已删除 {deleted_count}/{attempted_count} 条可定位消息。"
     )
     delete_message_after_delay(result_message, delay=5)
+    delete_message_after_delay(message, delay=5)
 
 
 @router.message(Command("spam", "s"))
 @require_admin_command_access(COMMAND_META["name"])
 async def spam_command(message: Message, command: CommandObject, session: AsyncSession) -> None:
     """处理垃圾账号封禁、消息清理及群级授权。"""
-    if message.chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP} or not message.from_user:
-        await message.reply("❌ `/spam`（`/s`）只能在群组中使用。", parse_mode="Markdown")
+    if not message.from_user:
         return
 
     args = _normalize_command_args(command.args)
     action = args[0].lower() if args else None
-    is_admin = await _is_chat_admin(message, message.from_user.id)
 
     if action in GRANT_ACTIONS | REVOKE_ACTIONS | LIST_ACTIONS:
+        permission_chat_id = await _resolve_permission_chat_id(message)
+        if permission_chat_id is None:
+            await message.reply("❌ 无法确定需要管理的群组。")
+            return
+        is_admin = await _is_chat_admin(
+            message,
+            message.from_user.id,
+            permission_chat_id,
+        )
         if not is_admin:
-            await message.reply("❌ 只有当前群管理员可以管理 `/spam` 权限。", parse_mode="Markdown")
+            await message.reply("❌ 你没有权限执行此操作。")
             return
         if action in LIST_ACTIONS:
             user_ids = await list_command_permissions(
                 session=session,
                 command_name=COMMAND_META["name"],
                 scope_type=CommandPermissionScope.GROUP,
-                scope_id=message.chat.id,
+                scope_id=permission_chat_id,
             )
             await message.reply(
-                await _format_authorized_users(message, session, user_ids),
+                await _format_authorized_users(
+                    message,
+                    session,
+                    user_ids,
+                    permission_chat_id,
+                ),
                 parse_mode="HTML",
             )
             return
-        target = await _resolve_target_user(message, args[1] if len(args) > 1 else None, session)
+        target = await _resolve_target_user(
+            message,
+            args[1] if len(args) > 1 else None,
+            session,
+            permission_chat_id,
+        )
         if target is None:
             await message.reply(
                 "用法：回复目标成员发送 `/s g` 或 `/s r`；"
@@ -341,15 +399,30 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
             )
             return
         if action in GRANT_ACTIONS:
-            validation_error = await _validate_permission_target(message, target[0])
+            validation_error = await _validate_permission_target(
+                message,
+                target[0],
+                permission_chat_id,
+            )
             if validation_error:
                 await message.reply(validation_error, parse_mode="Markdown")
                 return
-        await _set_operator_permission(message, session, target[0], action in GRANT_ACTIONS)
+        await _set_operator_permission(
+            message,
+            session,
+            target[0],
+            action in GRANT_ACTIONS,
+            permission_chat_id,
+        )
         return
 
+    if message.chat.type not in {ChatType.GROUP, ChatType.SUPERGROUP}:
+        await message.reply("❌ `/spam`（`/s`）清理操作只能在群组中使用。", parse_mode="Markdown")
+        return
+
+    is_admin = await _is_chat_admin(message, message.from_user.id, message.chat.id)
     if not is_admin and not await _is_spam_operator(session, message.chat.id, message.from_user.id):
-        await message.reply("❌ 你没有 `/spam` 执行权限。", parse_mode="Markdown")
+        await message.reply("❌ 你没有权限执行此操作。")
         return
     if args and not _is_explicit_target(args[0]):
         await message.reply(
@@ -360,7 +433,12 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
             parse_mode="Markdown",
         )
         return
-    target = await _resolve_target_user(message, args[0] if args else None, session)
+    target = await _resolve_target_user(
+        message,
+        args[0] if args else None,
+        session,
+        message.chat.id,
+    )
     if target is None:
         await message.reply(
             "用法：回复垃圾广告消息发送 `/spam`；"
