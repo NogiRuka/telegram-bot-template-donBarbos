@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import UserExtendModel, UserModel, UserRole
+from bot.handlers.command._usage import build_usage_text
 from bot.services.users import add_admin, remove_admin
 from bot.utils.permissions import require_owner
 from bot.utils.text import build_user_link_html
@@ -16,7 +17,23 @@ router = Router(name="owner_admin_commands")
 COMMAND_META = {
     "name": "admin",
     "alias": "a",
-    "usage": "/admin <g|r|l> [用户ID|@用户名]",
+    "usage": {
+        "summary": [
+            "管理机器人管理员，仅机器人所有者可用",
+            "目标用户支持 Telegram ID、@用户名或回复用户消息",
+        ],
+        "formats": [
+            "/admin g <用户ID|@用户名>",
+            "/admin r <用户ID|@用户名>",
+            "/admin l",
+            "回复用户消息后发送 /admin g 或 /admin r",
+        ],
+        "examples": [
+            "/admin g 123456789",
+            "/admin r @username",
+            "/a l",
+        ],
+    },
     "desc": "管理机器人管理员",
 }
 
@@ -171,11 +188,7 @@ async def admin_command(
         await message.reply(await _format_admin_list(session), parse_mode="HTML")
         return
     if action not in GRANT_ACTIONS | REVOKE_ACTIONS:
-        await message.reply(
-            "用法：`/admin g <用户>`、`/admin r <用户>`、`/admin l`；"
-            "也可以回复用户消息后发送 `/admin g` 或 `/admin r`。",
-            parse_mode="Markdown",
-        )
+        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
         return
 
     target = await _resolve_target_user(
@@ -185,7 +198,8 @@ async def admin_command(
     )
     if target is None:
         await message.reply(
-            "❌ 无法识别目标用户，请使用用户 ID、@用户名或回复用户消息。"
+            f"❌ 无法识别目标用户。\n\n{build_usage_text(COMMAND_META)}",
+            parse_mode="Markdown",
         )
         return
     await _change_admin_role(

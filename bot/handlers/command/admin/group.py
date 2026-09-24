@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import GroupConfigModel, GroupType, MessageSaveMode
+from bot.handlers.command._usage import build_usage_text
 from bot.services.message_export import MessageExportService
 from bot.utils.permissions import require_admin_command_access, require_admin_priv
 
@@ -15,7 +16,19 @@ router = Router(name="admin_group")
 COMMAND_META = {
     "name": "groups",
     "alias": "g",
-    "usage": "/groups, /enable_group <chat_id>, /disable_group <chat_id>, /group_info <chat_id>",
+    "usage": {
+        "summary": "查看或管理群组消息保存配置",
+        "formats": [
+            "/groups",
+            "/enable_group <群组ID>",
+            "/disable_group <群组ID>",
+            "/group_info <群组ID>",
+        ],
+        "examples": [
+            "/enable_group -1001234567890",
+            "/group_info -1001234567890",
+        ],
+    },
     "desc": "群组消息保存配置管理"
 }
 
@@ -77,7 +90,7 @@ async def admin_enable_group_command(message: Message, command: CommandObject, s
     启用群组消息保存
     """
     if not command.args:
-        await message.answer("🔴 请提供群组ID\n用法: `/admin_enable_group <chat_id>`", parse_mode="Markdown")
+        await message.answer(build_usage_text(COMMAND_META), parse_mode="Markdown")
         return
     try:
         chat_id = int(command.args)
@@ -109,7 +122,7 @@ async def admin_disable_group_command(message: Message, command: CommandObject, 
     禁用群组消息保存
     """
     if not command.args:
-        await message.answer("🔴 请提供群组ID\n用法: `/admin_disable_group <chat_id>`", parse_mode="Markdown")
+        await message.answer(build_usage_text(COMMAND_META), parse_mode="Markdown")
         return
     try:
         chat_id = int(command.args)
@@ -135,7 +148,7 @@ async def admin_group_info_command(message: Message, command: CommandObject, ses
     查看群组详细信息
     """
     if not command.args:
-        await message.answer("🔴 请提供群组ID\n用法: `/admin_group_info <chat_id>`", parse_mode="Markdown")
+        await message.answer(build_usage_text(COMMAND_META), parse_mode="Markdown")
         return
     try:
         chat_id = int(command.args)

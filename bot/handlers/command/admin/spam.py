@@ -16,6 +16,7 @@ from bot.database.models import (
     UserModel,
 )
 from bot.database.models.audit_log import ActionType
+from bot.handlers.command._usage import build_usage_text
 from bot.services.command_permission_service import (
     has_command_permission,
     list_command_permissions,
@@ -34,10 +35,25 @@ router = Router(name="command_spam")
 COMMAND_META = {
     "name": "spam",
     "alias": "s",
-    "usage": "/s（回复广告消息）",
-    "example": {
-        "command": "/s g 123456789",
-        "explain": "授予该成员垃圾消息处理权限，也可回复成员消息执行",
+    "usage": {
+        "summary": [
+            "封禁垃圾账号并清理其近期消息",
+            "清理操作仅能在群组中执行",
+        ],
+        "formats": [
+            "回复垃圾消息后发送 /spam",
+            "/spam <用户ID|@用户名>",
+            "/spam g <用户ID|@用户名>",
+            "/spam r <用户ID|@用户名>",
+            "/spam l",
+            "回复用户消息后发送 /spam g 或 /spam r",
+        ],
+        "examples": [
+            "/spam 123456789",
+            "/s g @username",
+            "/s r 123456789",
+            "/s l",
+        ],
     },
     "desc": "封禁垃圾账号并清理其近期消息",
 }
@@ -148,9 +164,13 @@ def _is_explicit_target(raw_target: str) -> bool:
     )
 
 
-async def _reply_with_command_cleanup(message: Message, text: str) -> None:
+async def _reply_with_command_cleanup(
+    message: Message,
+    text: str,
+    parse_mode: str | None = None,
+) -> None:
     """回复临时提示，并在五秒后同时删除提示和触发命令。"""
-    result_message = await message.reply(text)
+    result_message = await message.reply(text, parse_mode=parse_mode)
     delete_message_after_delay(result_message, delay=5)
     delete_message_after_delay(message, delay=5)
 
@@ -361,6 +381,12 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
     args = _normalize_command_args(command.args)
     action = args[0].lower() if args else None
 
+    if not args and not (
+        message.reply_to_message and message.reply_to_message.from_user
+    ):
+        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
+        return
+
     if action in GRANT_ACTIONS | REVOKE_ACTIONS | LIST_ACTIONS:
         permission_chat_id = await _resolve_permission_chat_id(message)
         if permission_chat_id is None:
@@ -381,7 +407,8 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
                 scope_type=CommandPermissionScope.GROUP,
                 scope_id=permission_chat_id,
             )
-            await message.reply(
+            await _reply_with_command_cleanup(
+                message,
                 await _format_authorized_users(
                     message,
                     session,
@@ -398,11 +425,7 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
             permission_chat_id,
         )
         if target is None:
-            await message.reply(
-                "用法：回复目标成员发送 `/s g` 或 `/s r`；"
-                "也可附加用户 ID 或 @用户名。",
-                parse_mode="Markdown",
-            )
+            await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
             return
         if action in GRANT_ACTIONS:
             validation_error = await _validate_permission_target(
@@ -433,9 +456,7 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
     if args and not _is_explicit_target(args[0]):
         await message.reply(
             "❌ 无法识别参数，未执行封禁。\n"
-            "授权：`/s g @用户名` 或回复用户发送 `/s g`\n"
-            "撤权：`/s r @用户名` 或回复用户发送 `/s r`\n"
-            "清理：回复广告消息发送 `/s`",
+            f"\n{build_usage_text(COMMAND_META)}",
             parse_mode="Markdown",
         )
         return
@@ -446,10 +467,6 @@ async def spam_command(message: Message, command: CommandObject, session: AsyncS
         message.chat.id,
     )
     if target is None:
-        await message.reply(
-            "用法：回复垃圾广告消息发送 `/spam`；"
-            "也可使用 `/spam <用户ID|@用户名>`。",
-            parse_mode="Markdown",
-        )
+        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
         return
     await _execute_spam_action(message, session, target[0])

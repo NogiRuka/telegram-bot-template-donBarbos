@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models.media_file import MediaFileModel
+from bot.handlers.command._usage import build_usage_text
 from bot.utils.permissions import require_user_command_access
 from bot.utils.text import escape_markdown_v2
 
@@ -15,7 +16,17 @@ router = Router(name="user_files")
 COMMAND_META = {
     "name": "get_file",
     "alias": "gf",
-    "usage": "/get_file <唯一名> 或 /gf <唯一名>",
+    "usage": {
+        "summary": "根据唯一名或文件 ID 获取文件，可一次输入多个目标",
+        "formats": [
+            "/get_file <唯一名|文件ID> [...更多目标]",
+            "/gf <唯一名|文件ID> [...更多目标]",
+        ],
+        "examples": [
+            "/get_file welcome_video",
+            "/gf photo_a photo_b",
+        ],
+    },
     "desc": "根据唯一名或文件ID获取文件"
 }
 
@@ -23,10 +34,7 @@ COMMAND_META = {
 async def search_and_send_file(message: Message, session: AsyncSession, search_term: str) -> None:
     """搜索并发送文件通用逻辑"""
     if not search_term:
-        await message.reply(
-            "⚠️ 请提供文件名或ID\n用法: `/get_file <unique_name>` 或 `/gf <unique_name>`",
-            parse_mode="MarkdownV2",
-        )
+        await message.reply(build_usage_text(COMMAND_META), parse_mode="Markdown")
         return
 
     stmt = select(MediaFileModel).where(MediaFileModel.unique_name == search_term, MediaFileModel.is_deleted.is_(False))
